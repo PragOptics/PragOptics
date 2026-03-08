@@ -178,7 +178,74 @@
     .k{ opacity:.75; font-size:13px; }
     .v{ font-size:13px; text-align:right; overflow-wrap:anywhere; max-width:65%; }
     .pill{ display:inline-flex; padding:3px 10px; border-radius:999px; border:1px solid rgba(255,255,255,.14); background: rgba(255,255,255,.06); font-size:12px; opacity:.95;}
-   /* ===========================
+  /* ===== Catalog Drawer + Cards (Ping Visual) ===== */
+.catalog-drawer{
+  margin-top:10px;
+  border:1px solid rgba(255,255,255,.10);
+  border-radius:12px;
+  background: rgba(255,255,255,.03);
+  overflow:hidden;
+}
+
+.catalog-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  padding:10px 12px;
+  background: rgba(255,255,255,.04);
+  border-bottom:1px solid rgba(255,255,255,.08);
+}
+
+.catalog-grid{
+  display:grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap:10px;
+  padding:12px;
+  max-height:320px;           /* scroll container */
+  overflow:auto;
+}
+
+.catalog-card{
+  border:1px solid rgba(255,255,255,.10);
+  border-radius:12px;
+  background: rgba(0,0,0,.18);
+  padding:12px;
+}
+
+.catalog-title{
+  font-weight:800;
+  color: rgba(255,255,255,.92);
+  margin-bottom:6px;
+  font-size:.95rem;
+}
+
+.catalog-meta{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  margin-bottom:10px;
+}
+
+.catalog-price{
+  font-weight:900;
+  font-size:1.1rem;
+  color: var(--brand-600);
+}
+
+.catalog-sub{
+  font-size:.85rem;
+  color: var(--muted);
+  margin-top:6px;
+}
+
+.catalog-actions{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  margin-top:10px;
+}
+    /* ===========================
    DNA FINALIZATION LOADER (OPTION B)
    Two bead trains + opposite phase + depth swap
    =========================== */
@@ -1171,6 +1238,52 @@
     /* ===========================
        DEV CONSOLE FUNCTIONS
        =========================== */
+
+    
+
+    function formatMoney(cents, currency="USD") {
+  const n = Number(cents);
+  if (!Number.isFinite(n)) return "—";
+  try {
+    return new Intl.NumberFormat(undefined, {
+      style: "currency",
+      currency: currency || "USD",
+      minimumFractionDigits: 2
+    }).format(n / 100);
+  } catch {
+    return `$${(n/100).toFixed(2)}`;
+  }
+}
+
+function labelFromLookupKey(lookupKey="") {
+  // po.user.base.monthly -> "User Base"
+  // po.addon.domains.monthly -> "Addon: Domains"
+  const key = String(lookupKey);
+  const parts = key.split(".");
+  if (parts.length < 3) return key;
+
+  const type = parts[1]; // user, partner, addon
+  const name = parts[2]; // base, premium, domains, storage5gb, api50k, flows10k
+  const pretty = name
+    .replace(/([a-z])([0-9])/i, "$1 $2")
+    .replace(/5gb/i, "5GB")
+    .replace(/10k/i, "10K")
+    .replace(/50k/i, "50K")
+    .replace(/_/g, " ");
+
+  if (type === "addon") return `Addon: ${pretty[0].toUpperCase()}${pretty.slice(1)}`;
+  if (type === "user") return `User: ${pretty[0].toUpperCase()}${pretty.slice(1)}`;
+  if (type === "partner") return `Partner: ${pretty[0].toUpperCase()}${pretty.slice(1)}`;
+  return `${type}: ${pretty}`;
+}
+
+    function toggleCatalog(forceOpen) {
+  const el = document.getElementById("catalogDrawer");
+  if (!el) return;
+  const open = (forceOpen === true) ? true : (forceOpen === false) ? false : (el.style.display === "none");
+  el.style.display = open ? "block" : "none";
+}
+    
     function setOutput(obj) {
   document.getElementById("po-output").textContent = JSON.stringify(obj, null, 2);
 
@@ -1411,6 +1524,64 @@ function normalizeEndpointKey(obj) {
 
   const truthy = (v) => v === true ? "✅" : (v === false ? "—" : "—");
 
+  const renderCatalog = (items) => {
+  if (!Array.isArray(items) || !items.length) return "";
+
+  // Active-only by default
+  const active = items.filter(x => String(x.active || "true").toLowerCase() === "true");
+
+  // Sort stable: role -> interval -> label
+  const sortKey = (x) => `${x.role || ""}|${x.interval || ""}|${x.lookupKey || ""}`;
+  active.sort((a,b) => sortKey(a).localeCompare(sortKey(b)));
+
+  const card = (x) => {
+    const title = labelFromLookupKey(x.lookupKey);
+    const interval = (x.interval === "year") ? "Annual" : (x.interval === "month" ? "Monthly" : (x.interval || "—"));
+    const role = (x.role || "—").toUpperCase();
+    const price = formatMoney(x.amount, x.currency);
+    const priceId = x.priceId || "—";
+
+    return `
+      <div class="catalog-card">
+        <div class="catalog-title">${esc(title)}</div>
+        <div class="catalog-meta">
+          <span class="pill">${esc(role)}</span>
+          <span class="pill">${esc(interval)}</span>
+          <span class="pill">${esc((x.currency || "USD").toUpperCase())}</span>
+        </div>
+        <div class="catalog-price">${esc(price)}</div>
+        <div class="catalog-sub">lookupKey: <span style="opacity:.9">${esc(x.lookupKey)}</span></div>
+        <div class="catalog-sub">priceId: <span style="opacity:.9">${esc(priceId)}</span></div>
+        <div class="catalog-actions">
+          <button class="copy-btn" type="button"
+            onclick="navigator.clipboard.writeText('${esc(x.lookupKey).replace(/'/g, "\\'")}')">Copy lookupKey</button>
+          <button class="copy-btn" type="button"
+            onclick="navigator.clipboard.writeText('${esc(priceId).replace(/'/g, "\\'")}')">Copy priceId</button>
+        </div>
+      </div>
+    `;
+  };
+
+  const html = active.map(card).join("");
+  const total = items.length;
+  const shown = active.length;
+
+  return `
+    <div class="catalog-drawer" id="catalogDrawer" style="display:none;">
+      <div class="catalog-head">
+        <div>
+          <strong>Product Catalog</strong>
+          <div class="hint">${shown}/${total} active items</div>
+        </div>
+        <button class="copy-btn" type="button" onclick="toggleCatalog(false)">Hide</button>
+      </div>
+      <div class="catalog-grid">
+        ${html || `<div class="hint">No active items.</div>`}
+      </div>
+    </div>
+  `;
+};
+
   // ---------- extract from YOUR ping schema ----------
   const deployment = ping?.deployment || {};
   const user = ping?.user || {};
@@ -1504,7 +1675,11 @@ function normalizeEndpointKey(obj) {
                  ${kv("RowKey", env.rowKey || "—")}`
               : `<div class="hint" style="margin-top:6px;">No environment loaded (may be provisioning).</div>`
         }
-        <div class="hint" style="margin-top:10px;">Catalog attached: ${hasCatalog ? "✅" : "—"}</div>
+        <div class="hint" style="margin-top:10px; display:flex; justify-content:space-between; align-items:center; gap:10px;">
+          <span>Catalog attached: ${hasCatalog ? "✅" : "—"}</span>
+          ${hasCatalog ? `<button class="copy-btn" type="button" onclick="toggleCatalog(true)">View Product Catalog</button>` : ""}
+        </div>
+        ${hasCatalog ? renderCatalog(ping.productCatalog) : ""}
       </div>
 
     </div>
