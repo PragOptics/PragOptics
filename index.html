@@ -58,7 +58,8 @@
     header{ position:sticky; top:0; z-index:50; backdrop-filter:saturate(140%) blur(10px); background:var(--glass); border-bottom:1px solid var(--border); }
     .nav{ max-width:var(--maxw); margin:0 auto; padding:14px 20px; display:flex; align-items:center; justify-content:space-between; gap:12px; }
     .brand{ display:flex; align-items:center; gap:10px; }
-    .logo{ width:34px; height:34px; border-radius:10px; background-image:url('https://pragoptics.com/images/logo.png'); background-size:cover; background-position:center; box-shadow:0 0 0 2px rgba(92,140,69,.25), 0 10px 20px rgba(92,140,69,.18); }
+    .logo { width:34px; height:34px; border-radius:10px; display:flex; align-items:center; justify-content:center; background:transparent; box-shadow: 0 0 0 2px rgba(92,140,69,.25), 0 10px 20px rgba(92,140,69,.18);}
+    .logo img { width:100%; height:100%; object-fit:contain; display:block;}
     .brand-title{ font-weight:700; }
     .brand-sub{ font-size:.85rem; color:var(--muted); }
 
@@ -410,7 +411,9 @@
   <header>
     <div class="nav">
       <div class="brand">
-        <a href="/" class="logo" aria-label="PragOptics Home"></a>
+        <a href="/" class="logo" aria-label="PragOptics Home">
+          <img src="https://pragoptics.com/images/logo.png" alt="" />
+        </a>
         <div>
           <div class="brand-title">PragOptics™ <span style="color:var(--brand-600);">Platform</span></div>
           <div class="brand-sub">Onboarding • Billing • API Console • Dashboards</div>
@@ -437,7 +440,7 @@
                 <li><a href="#" onclick="event.preventDefault(); callPragOpticsAuth();">Call /auth</a></li>
 
                 <li><span class="menu-section">Billing</span></li>
-                <li><a href="#" onclick="event.preventDefault(); setAppMode('wizard');">Billing Wizard</a></li>
+                <li><a href="#" onclick="event.preventDefault(); openBillingFromMenu();">Billing</a></li>
               </ul>
             </li>
           </ul>
@@ -1860,6 +1863,73 @@ function normalizeEndpointKey(obj) {
        BOOT
        =========================== */
     setAppMode("landing");
+
+    
+    /* ===========================
+       BILLING
+       =========================== */
+
+    function showCanceledBanner() {
+  const host = document.getElementById("platformFlow");
+  if (!host) return;
+
+  const banner = document.createElement("div");
+  banner.className = "login-panel";
+  banner.style.borderColor = "rgba(255,107,107,.45)";
+  banner.innerHTML = `
+    <strong>Subscription canceled</strong>
+    <div class="hint" style="margin-top:6px;">
+      Your previous subscription was canceled. You can restart billing at any time.
+    </div>
+  `;
+
+  host.prepend(banner);
+}
+
+    
+    function openBillingFromMenu() {
+  const ping = JSON.parse(sessionStorage.getItem("pragoptics_ping") || "null");
+
+  // No session yet → onboarding
+  if (!ping || !ping.billingProfile) {
+    setAppMode("wizard");
+    gotoStep1();
+    return;
+  }
+
+  const status = (ping.billingProfile.status || "").toUpperCase();
+
+  // Wizard-only states
+  if (status === "PENDING_SUBSCRIPTION") {
+    setAppMode("wizard");
+    gotoStep2();
+    return;
+  }
+
+  if (status === "PAYMENT_PENDING") {
+    setAppMode("wizard");
+    gotoStep5();
+    setDnaMode("fast", "Finalizing subscription…", "Confirming with Stripe…");
+    return;
+  }
+
+  if (status === "CANCELED") {
+    setAppMode("wizard");
+    showCanceledBanner();
+    gotoStep1();
+    return;
+  }
+
+  // ACTIVE or PAST_DUE → Stripe Portal with DNA bridge
+  if (status === "ACTIVE" || status === "PAST_DUE") {
+    redirectToStripePortalWithDna(status);
+    return;
+  }
+
+  // Fallback
+  setAppMode("wizard");
+  gotoStep1();
+}
   </script>
 </body>
 </html>
