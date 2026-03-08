@@ -398,6 +398,7 @@
 #po-visual-view .login-panel{
   min-height:90px;
 }
+#po-visual-view pre { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; font-size: 12.5px; }
   </style>
 </head>
 
@@ -1114,11 +1115,195 @@
     function setOutput(obj) {
   document.getElementById("po-output").textContent = JSON.stringify(obj, null, 2);
 
-  const ping = (obj?.endpoint === "/ping" && obj?.response)
-    ? obj.response
-    : (obj?.ping || null);
+  // Decide what payload we are visualizing and what "endpoint key" it maps to.
+  const endpointKey = normalizeEndpointKey(obj);
+  const payload =
+    obj?.response ??        // typical: { endpoint, response }
+    obj?.ping ??            // active path: { mode, ping }
+    obj?.data ?? null;
 
-  if (ping) renderPingVisual(ping);
+  // Visual render: route by endpoint, else fallback
+  if (viewerMode === "visual") {
+    renderVisual(endpointKey, payload, obj);
+  } else {
+    // Still render visuals in the background so it’s ready when user toggles
+    renderVisual(endpointKey, payload, obj, { silent: true });
+  }
+}
+
+function normalizeEndpointKey(obj) {
+  const ep = (obj?.endpoint || "").toString();
+
+  // Handle your existing shapes:
+  // - "/ping"
+  // - "https://api.pragoptics.com/api/v1/auth"
+  // - or ACTIVE path: {mode:"ACTIVE", ping:{...}} (treat as "/ping")
+  if (obj?.ping) return "/ping";
+
+  if (ep.includes("/auth")) return "/auth";
+  if (ep.includes("/ping")) return "/ping";
+
+  // If your direct api call sets endpoint as full URL like .../v1/ping etc
+  if (ep.includes("v1/auth")) return "/auth";
+  if (ep.includes("v1/ping")) return "/ping";
+
+  // Fallback: keep whatever it is
+  return ep || "unknown";
+}
+
+    
+    function renderVisual(endpointKey, payload, fullObj, opts = {}) {
+  const host = document.getElementById("po-visual-view");
+  if (!host) return;
+
+  const renderers = {
+    "/ping": renderPingVisual,
+    "/auth": renderAuthVisual
+  };
+
+  const fn = renderers[endpointKey] || renderGenericVisual;
+
+  // Some calls (like /auth) return the doc under fullObj.response
+  // Ensure payload is the inner response doc if needed.
+  fn(payload, fullObj);
+
+  if (!opts.silent && viewerMode === "visual") {
+    document.getElementById("po-raw-view")?.classList.add("hidden");
+    document.getElementById("po-visual-view")?.classList.remove("hidden");
+  }
+}
+
+    function renderGenericVisual(payload) {
+  const host = document.getElementById("po-visual-view");
+  if (!host) return;
+
+  const esc = (v) => String(v ?? "—").replace(/[&<>"]/g, c =>
+    ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;" }[c])
+  );
+
+  const entries = Object.entries(payload || {});
+  const rows = entries.slice(0, 30).map(([k, v]) => {
+    const val = (typeof v === "object") ? JSON.stringify(v) : String(v ?? "—");
+    return `
+      <div class="kv">
+        <div class="k">${esc(k)}</div>
+        <div class="v">${esc(val).slice(0, 260)}</div>
+      </div>
+    `;
+  }).join("");
+
+  host.innerHTML = `
+    <div class="login-panel">
+      <strong>Visual Summary</strong>
+      <div class="hint">Generic view (first 30 fields)</div>
+      <div style="margin-top:10px;">${rows || `<div class="hint">No fields.</div>`}</div>
+    </div>
+  `;
+}
+
+    function renderAuthVisual(authDoc) {
+  const host = document.getElementById("po-visual-view");
+  if (!host) return;
+
+  // safe escape
+  const esc = (v) => String(v ?? "—").replace(/[&<>"]/g, c =>
+    ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;" }[c])
+  );
+
+  const pill = (text, tone="neutral") => {
+    const styles = {
+      good:   "border-color:rgba(33,188,165,.35); color:#a7fff1;",
+      warn:   "border-color:rgba(255,190,120,.35); color:#ffd7b0;",
+      bad:    "border-color:rgba(255,107,107,.35); color:#ffb3b3;",
+      neutral:"border-color:rgba(255,255,255,.14); color:rgba(255,255,255,.92);"
+    };
+    return `<span class="pill" style="${styles[tone] || styles.neutral}">${esc(text)}</span>`;
+  };
+
+  const flow = authDoc?.flow || {};
+  const prereq = Array.isArray(authDoc?.prerequisites) ? authDoc.prerequisites : [];
+  const steps = Array.isArray(authDoc?.steps) ? authDoc.steps : [];
+  const examples = authDoc?.examples || {};
+
+  // Compact “copy” buttons for endpoints
+  const copyBtn = (label, value) => `
+    <button class="copy-btn" type="button"
+      onclick="navigator.clipboard.writeText('${esc(value).replace(/'/g, "\\'")}')">
+      Copy ${esc(label)}
+    </button>
+  `;
+
+  const stepCards = steps.map(s => `
+    <div class="login-panel field" style="cursor:default;">
+      <strong>Step ${esc(s.step)} — ${esc(s.title)}</strong>
+      <div class="hint" style="margin-top:8px;">${esc(s.detail)}</div>
+    </div>
+  `).join("");
+
+  const prereqList = prereq.length
+    ? prereq.map(p => `<div class="hint">• ${esc(p)}</div>`).join("")
+    : `<div class="hint">—</div>`;
+
+  // Render
+  host.innerHTML = `
+    <div class="row">
+
+      <div class="login-panel field">
+        <strong>${esc(authDoc?.service || "Authentication")}</strong>
+        <div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap;">
+          ${pill(`v${esc(authDoc?.version || "—")}`, "good")}
+          ${pill("PKCE Browser Flow", "neutral")}
+          ${pill("CORS‑gated", prereq.length ? "warn" : "neutral")}
+        </div>
+        <div class="hint" style="margin-top:10px;">${esc(authDoc?.purpose || "")}</div>
+      </div>
+
+      <div class="login-panel field">
+        <strong>Endpoints</strong>
+        <div class="kv"><div class="k">Start Login</div><div class="v">${esc(flow.startLogin || "—")}</div></div>
+        <div class="kv"><div class="k">Callback</div><div class="v">${esc(flow.callback || "—")}</div></div>
+        <div style="margin-top:10px; display:flex; gap:10px; flex-wrap:wrap;">
+          ${flow.startLogin ? copyBtn("Start Login URL", flow.startLogin) : ""}
+          ${flow.callback ? copyBtn("Callback URL", flow.callback) : ""}
+        </div>
+      </div>
+
+      <div class="login-panel field">
+        <strong>Prerequisites</strong>
+        ${prereqList}
+        <div class="hint" style="margin-top:10px;">
+          Tip: this doc is returned from <code>/v1/auth</code> for developer onboarding.
+        </div>
+      </div>
+
+    </div>
+
+    <div class="row" style="margin-top:12px;">
+      ${stepCards || `<div class="login-panel field"><strong>Steps</strong><div class="hint">—</div></div>`}
+    </div>
+
+    <div class="row" style="margin-top:12px;">
+
+      <div class="login-panel field">
+        <strong>Examples</strong>
+        <div class="hint" style="margin-top:6px;">Start Login</div>
+        <pre style="margin-top:8px; color:var(--ink); background:#0f1626; padding:10px 12px; border-radius:10px; overflow:auto;">${esc(examples.startLogin || "")}</pre>
+      </div>
+
+      <div class="login-panel field">
+        <strong>&nbsp;</strong>
+        <div class="hint" style="margin-top:6px;">Handle Callback</div>
+        <pre style="margin-top:8px; color:var(--ink); background:#0f1626; padding:10px 12px; border-radius:10px; overflow:auto;">${esc(examples.handleCallback || "")}</pre>
+      </div>
+
+      <div class="login-panel field">
+        <strong>&nbsp;</strong>
+        <div class="hint" style="margin-top:6px;">Call API / curl</div>
+        <pre style="margin-top:8px; color:var(--ink); background:#0f1626; padding:10px 12px; border-radius:10px; overflow:auto;">${esc(examples.callApi || examples.curl || "")}</pre>
+      </div>
+
+    </div>
+  `;
 }
 
     
