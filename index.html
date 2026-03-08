@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PragOptics™ — The Operating System for Web Automation</title>
+
+  <meta name="description"
+    content="PragOptics™ is a programmable API platform for deploying websites, workflows, and data-driven experiences at scale." />
+
+  <meta name="color-scheme" content="dark" />
+
+  <!-- Canonical -->
+  <link rel="canonical" href="https://pragoptics.com" />
+
+  <!-- OpenGraph -->
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="PragOptics™" />
+  <meta property="og:description"
+    content="Build, deploy, and automate web experiences using a single programmable platform." />
+  <meta property="og:url" content="https://pragoptics.com" />
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg:#070b14;
+      --panel:#0e1424;
+      --glass:rgba(255,255,255,.06);
+      --border:rgba(255,255,255,.12);
+      --ink:#e7ecff;
+      --muted:#9aa6d1;
+      --brand:#21bca5;
+      --radius:16px;
+      --maxw:1200px;
+    }
+
+    * { box-sizing:border-box; }
+    html,body {
+      margin:0;
+      font-family:Inter,system-ui,sans-serif;
+      background:var(--bg);
+      color:var(--ink);
+    }
+
+    canvas#stars {
+      position:fixed;
+      inset:0;
+      z-index:-1;
+    }
+
+    header {
+      position:sticky;
+      top:0;
+      backdrop-filter:blur(12px);
+      background:rgba(7,11,20,.65);
+      border-bottom:1px solid var(--border);
+    }
+
+    .nav {
+      max-width:var(--maxw);
+      margin:auto;
+      padding:16px 20px;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+    }
+
+    .logo {
+      font-weight:800;
+      letter-spacing:.3px;
+    }
+
+    .cta {
+      background:linear-gradient(180deg,#21bca5,#1aa28f);
+      color:#05120f;
+      border:none;
+      border-radius:999px;
+      padding:10px 18px;
+      font-weight:700;
+      cursor:pointer;
+    }
+
+    main {
+      max-width:var(--maxw);
+      margin:auto;
+      padding:80px 20px;
+    }
+
+    .hero {
+      display:grid;
+      gap:28px;
+      max-width:760px;
+    }
+
+    h1 {
+      font-size:clamp(2.2rem,4vw,3.2rem);
+      line-height:1.1;
+    }
+
+    .sub {
+      color:var(--muted);
+      font-size:1.1rem;
+    }
+
+    .actions {
+      display:flex;
+      gap:14px;
+      flex-wrap:wrap;
+    }
+
+    .btn {
+      background:var(--glass);
+      border:1px solid var(--border);
+      color:var(--ink);
+      padding:10px 18px;
+      border-radius:999px;
+      cursor:pointer;
+    }
+
+    .panel {
+      background:var(--panel);
+      border:1px solid var(--border);
+      border-radius:var(--radius);
+      padding:24px;
+    }
+
+    .hidden { display:none !important; }
+
+    footer {
+      text-align:center;
+      padding:40px 20px;
+      color:var(--muted);
+      font-size:.9rem;
+    }
+  </style>
+</head>
+<body>
+
+<canvas id="stars"></canvas>
+
+<header>
+  <div class="nav">
+    <div class="logo">PragOptics™</div>
+    <button class="cta" id="startBtn">Get Started</button>
+  </div>
+</header>
+
+<main>
+  <!-- HERO -->
+  <section class="hero">
+    <h1>Build. Deploy. Automate.<br/>All from one API.</h1>
+    <p class="sub">
+      PragOptics™ is a programmable control plane for websites, workflows,
+      subscriptions, and data‑driven experiences.
+    </p>
+
+    <div class="actions">
+      <button class="btn" id="readmeBtn">Read the Docs</button>
+      <button class="cta" id="launchBtn">Launch Platform</button>
+    </div>
+  </section>
+
+  <!-- DASHBOARD PLACEHOLDER -->
+  <section id="dashboard" class="panel hidden">
+    <h2>Welcome to PragOptics</h2>
+    <p class="sub">This is where dashboards, builders, and deployments will live.</p>
+  </section>
+</main>
+
+<footer>
+  © 2026 PragOptics™ — Programmable Infrastructure
+</footer>
+
+<!-- AGREEMENT MODAL -->
+<div id="agreementModal" class="hidden"></div>
+
+<script>
+/* ==========================================================
+   CONFIG
+   ========================================================== */
+const API_BASE = "https://api.pragoptics.com/api/v1";
+const CIAM_LOGIN = `${API_BASE}/auth/login`;
+const PING_URL = `${API_BASE}/ping`;
+
+/* ==========================================================
+   STARFIELD (simple, tasteful)
+   ========================================================== */
+(() => {
+  const c = document.getElementById('stars');
+  const ctx = c.getContext('2d');
+  const stars = [];
+
+  function resize() {
+    c.width = innerWidth;
+    c.height = innerHeight;
+  }
+  resize(); addEventListener('resize', resize);
+
+  for (let i=0;i<120;i++)
+    stars.push({ x:Math.random()*c.width, y:Math.random()*c.height, a:Math.random() });
+
+  function draw() {
+    ctx.clearRect(0,0,c.width,c.height);
+    stars.forEach(s=>{
+      ctx.fillStyle = `rgba(255,255,255,${0.2+Math.sin(Date.now()/1000+s.a)*0.3})`;
+      ctx.fillRect(s.x,s.y,1.5,1.5);
+    });
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+
+/* ==========================================================
+   ENTRY FLOW
+   ========================================================== */
+document.getElementById('launchBtn').onclick = openAgreement;
+document.getElementById('startBtn').onclick = openAgreement;
+document.getElementById('readmeBtn').onclick = () =>
+  window.open('https://docs.pragoptics.com', '_blank');
+
+function openAgreement() {
+  // placeholder — you already have this modal logic
+  startLogin();
+}
+
+/* ==========================================================
+   CIAM LOGIN
+   ========================================================== */
+async function startLogin() {
+  const returnUrl = encodeURIComponent(location.origin);
+  const res = await fetch(`${CIAM_LOGIN}?returnUrl=${returnUrl}`);
+  const { authorizeUrl } = await res.json();
+  location.href = authorizeUrl;
+}
+
+/* ==========================================================
+   CALLBACK + PING
+   ========================================================== */
+(async function handleLogin() {
+  const params = new URLSearchParams(location.search);
+  if (!params.has('authResult')) return;
+
+  const auth = JSON.parse(decodeURIComponent(params.get('authResult')));
+  if (!auth.success) return alert("Login failed");
+
+  sessionStorage.setItem("prag_tokens", JSON.stringify(auth.tokens));
+  history.replaceState({}, "", "/");
+
+  const ping = await fetch(PING_URL, {
+    headers:{ Authorization:`Bearer ${auth.tokens.access_token}` }
+  }).then(r=>r.json());
+
+  document.querySelector('.hero').classList.add('hidden');
+  document.getElementById('dashboard').classList.remove('hidden');
+})();
+</script>
+
+</body>
+</html>
