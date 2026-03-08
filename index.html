@@ -1,262 +1,1107 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>PragOptics™ — The Operating System for Web Automation</title>
-
-  <meta name="description"
-    content="PragOptics™ is a programmable API platform for deploying websites, workflows, and data-driven experiences at scale." />
-
-  <meta name="color-scheme" content="dark" />
+  <!-- Primary Meta -->
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PragOptics™</title>
+  <meta name="description" content="PragOptics™ — programmable API platform for web automation, deployment, and data-driven experiences.">
 
   <!-- Canonical -->
-  <link rel="canonical" href="https://pragoptics.com" />
+  <link rel="canonical" href="https://pragoptics.com/">
 
-  <!-- OpenGraph -->
-  <meta property="og:type" content="website" />
-  <meta property="og:title" content="PragOptics™" />
-  <meta property="og:description"
-    content="Build, deploy, and automate web experiences using a single programmable platform." />
-  <meta property="og:url" content="https://pragoptics.com" />
+  <!-- Theme -->
+  <meta name="theme-color" content="#000000">
+  <meta name="color-scheme" content="dark">
 
-  <!-- Fonts -->
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Icons -->
+  <link rel="icon" type="image/x-icon" href="https://fortiviewholdings.com/images/favicon.ico" sizes="48x48">
+  <link rel="icon" type="image/png" href="https://fortiviewholdings.com/images/favicon.png" sizes="192x192">
+  <link rel="apple-touch-icon" href="https://fortiviewholdings.com/images/apple-touch-icon.png">
+
+  <!-- Stripe (publishable key injected below) -->
+  <script>
+    // ✅ set per environment (test vs live)
+    window.STRIPE_PUBLISHABLE_KEY = "pk_test_REPLACE_ME";
+  </script>
+  <script src="https://js.stripe.com/v3"></script>
 
   <style>
-    :root {
-      --bg:#070b14;
-      --panel:#0e1424;
-      --glass:rgba(255,255,255,.06);
-      --border:rgba(255,255,255,.12);
+    :root{
+      --bg-deep:#000000 !important;
+      --grad:linear-gradient(135deg,#121b2d 0%,#060e1e 40%,#0f1824 100%);
+      --glass:#0000006e;
+      --glass-2:#11101012;
+      --border:#ffffff1a;
       --ink:#e7ecff;
-      --muted:#9aa6d1;
-      --brand:#21bca5;
+      --muted:#c6d0f0a6;
+      --brand:#1ca490da;
+      --brand-600:#21bca5;
+      --brandsoft:#21bca588;
+      --aura:0 4px 8px rgba(17, 76, 67, 0.678);
       --radius:16px;
+      --radius-sm:12px;
       --maxw:1200px;
     }
+    *{box-sizing:border-box}
+    html,body{ margin:0; padding:0; font-family:ui-sans-serif,system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif; color:var(--ink); background:transparent !important; }
+    a{color:inherit;text-decoration:none}
+    .hidden{display:none !important}
 
-    * { box-sizing:border-box; }
-    html,body {
-      margin:0;
-      font-family:Inter,system-ui,sans-serif;
-      background:var(--bg);
+    /* ====== STARFIELD + BACKGROUND ====== */
+    #bg-stars{ position:fixed; inset:0; width:100vw; height:100vh; z-index:-1; pointer-events:none; opacity:0; animation: fvStarFade 3.7s ease forwards; }
+    .bg{ position:fixed; inset:0; z-index:-2; background:var(--grad); filter:blur(6px) brightness(.9) saturate(1.05); transform:scale(1.03); }
+    .global-darken{ position:fixed; inset:0; z-index:-0.5; background:rgba(0,0,0,0.25); pointer-events:none; }
+    @keyframes fvStarFade{ 0%{opacity:0} 60%{opacity:.2} 100%{opacity:.55} }
+
+    /* ====== HEADER ====== */
+    header{ position:sticky; top:0; z-index:50; backdrop-filter:saturate(140%) blur(10px); background:var(--glass); border-bottom:1px solid var(--border); }
+    .nav{ max-width:var(--maxw); margin:0 auto; padding:14px 20px; display:flex; align-items:center; justify-content:space-between; gap:12px; }
+    .brand{ display:flex; align-items:center; gap:10px; }
+    .logo{ width:34px; height:34px; border-radius:10px; background-image:url('https://fortiviewholdings.com/images/pragoptics.png'); background-size:cover; background-position:center; box-shadow:0 0 0 2px rgba(92,140,69,.25), 0 10px 20px rgba(92,140,69,.18); }
+    .brand-title{ font-weight:700; }
+    .brand-sub{ font-size:.85rem; color:var(--muted); }
+
+    /* ====== BUTTONS ====== */
+    .cta{
+      background:linear-gradient(180deg, var(--brand), var(--brand-600));
+      color:#05120f; font-weight:800;
+      border:none; border-radius:999px;
+      padding:10px 16px; cursor:pointer;
+      box-shadow:var(--aura);
+    }
+    .btn{
+      background:var(--glass-2);
       color:var(--ink);
-    }
-
-    canvas#stars {
-      position:fixed;
-      inset:0;
-      z-index:-1;
-    }
-
-    header {
-      position:sticky;
-      top:0;
-      backdrop-filter:blur(12px);
-      background:rgba(7,11,20,.65);
-      border-bottom:1px solid var(--border);
-    }
-
-    .nav {
-      max-width:var(--maxw);
-      margin:auto;
-      padding:16px 20px;
-      display:flex;
-      justify-content:space-between;
-      align-items:center;
-    }
-
-    .logo {
-      font-weight:800;
-      letter-spacing:.3px;
-    }
-
-    .cta {
-      background:linear-gradient(180deg,#21bca5,#1aa28f);
-      color:#05120f;
-      border:none;
+      border:1px solid var(--border);
       border-radius:999px;
-      padding:10px 18px;
-      font-weight:700;
+      padding:10px 16px;
       cursor:pointer;
     }
+    .btn:hover{ background:rgba(33,188,165,0.12); border-color:rgba(33,188,165,0.35); }
 
-    main {
-      max-width:var(--maxw);
-      margin:auto;
-      padding:80px 20px;
+    /* ====== DROPDOWN ====== */
+    .dev-nav ul{ list-style:none; margin:0; padding:0 }
+    .dropdown{ position:relative }
+    .dropdown-toggle{
+      background:none; border:1px solid transparent;
+      color:var(--brand-600); font-size:.95rem;
+      padding:8px 12px; border-radius:12px;
+      cursor:pointer; transition:.2s ease;
     }
-
-    .hero {
-      display:grid;
-      gap:28px;
-      max-width:760px;
+    .dropdown-toggle:hover{ background:rgba(33,188,165,0.12); border:1px solid var(--brand-600); }
+    .dropdown-menu{
+      display:none; position:absolute; top:110%; right:0;
+      background:var(--glass); border:1px solid rgba(255,255,255,0.12);
+      border-radius:var(--radius-sm); box-shadow:var(--aura);
+      min-width:240px; padding:8px 0; z-index:100;
+      backdrop-filter:blur(14px) saturate(160%);
     }
-
-    h1 {
-      font-size:clamp(2.2rem,4vw,3.2rem);
-      line-height:1.1;
+    .dropdown-menu li span.menu-section{
+      display:block; padding:8px 16px 4px;
+      font-size:.8rem; text-transform:uppercase; letter-spacing:.08em;
+      color:var(--brand-600); font-weight:700; opacity:.9;
     }
-
-    .sub {
-      color:var(--muted);
-      font-size:1.1rem;
+    .dropdown-menu li a{
+      display:block; padding:8px 16px;
+      color:var(--ink); font-size:.9rem; font-weight:500;
+      transition:.2s ease;
     }
+    .dropdown-menu li a:hover{ background:rgba(33,188,165,0.12); color:var(--brand-600); }
+    .dropdown.open .dropdown-menu{ display:block; }
 
-    .actions {
-      display:flex;
-      gap:14px;
-      flex-wrap:wrap;
+    /* ====== PAGE LAYOUT ====== */
+    .page{ max-width:var(--maxw); margin:32px auto; padding:0 20px 40px; }
+    .glass{ background:var(--glass); border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--aura); }
+    .panel{ padding:20px; display:flex; flex-direction:column; gap:16px; background:var(--glass-2); backdrop-filter: blur(14px) saturate(160%); }
+    .row{ display:flex; gap:16px; flex-wrap:wrap; }
+    .col{ flex:1 1 320px; }
+    .muted{ color:var(--muted) }
+    .hero h1{ margin:0; font-size: clamp(2rem, 4vw, 3.1rem); line-height:1.08; }
+    .hero p{ margin:0; font-size:1.02rem; line-height:1.6; color:var(--muted) }
+
+    /* ====== VIEWER / CONSOLE ====== */
+    .login-panel{ padding:14px; border-radius:var(--radius-sm); background:var(--glass-2); border:1px solid var(--border); font-size:.9rem; }
+    .viewer{ min-height:260px; padding:16px; background:var(--glass); border-radius:var(--radius-sm); border:1px solid var(--border); font-size:.9rem; overflow:auto; color:var(--brand-600); backdrop-filter:blur(14px) saturate(160%); }
+    pre{ white-space:pre-wrap; word-break:break-word; margin:0; }
+
+    .copy-btn{
+      padding:6px 12px; font-size:.85rem;
+      border-radius:12px; border:1px solid var(--brand-600);
+      background:var(--glass-2); color:var(--brand-600);
+      cursor:pointer; transition:.2s ease;
     }
+    .copy-btn:hover{ background:rgba(33,188,165,0.12); transform:translateY(-2px); }
 
-    .btn {
-      background:var(--glass);
-      border:1px solid var(--border);
-      color:var(--ink);
-      padding:10px 18px;
-      border-radius:999px;
-      cursor:pointer;
+    /* ====== MODAL (Agreement/README) ====== */
+    .modal-overlay{ position:fixed; inset:0; z-index:10000; background:rgba(0,0,0,0.55); display:none; }
+    .modal-overlay.is-open{ display:block; }
+    .modal{ position:fixed; inset:0; z-index:10001; display:none; place-items:center; }
+    .modal.is-open{ display:grid; }
+    .modal-card{
+      width:min(980px, 92vw); max-height:86vh;
+      background:var(--glass); border:1px solid var(--border);
+      border-radius:var(--radius); box-shadow:var(--aura);
+      overflow:hidden; display:grid; grid-template-rows:auto 1fr auto;
+      backdrop-filter:blur(14px) saturate(160%);
     }
+    .modal-head{ padding:14px 18px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; background:var(--glass-2); }
+    .modal-title{ margin:0; font-weight:800; }
+    .modal-close{ background:none; border:0; color:var(--muted); cursor:pointer; font-weight:700; }
+    .modal-body{ overflow:auto; background:#0a0f19; }
+    .md-view{ padding:18px 22px; color:#dfe7ff; font-size:.98rem; line-height:1.55; }
+    .md-view pre{ background:#0f1626; padding:10px 12px; border-radius:10px; overflow:auto; }
+    .md-view code{ background:#0f1626; padding:2px 6px; border-radius:6px; }
+    .modal-foot{ border-top:1px solid var(--border); padding:12px 16px; background:var(--glass-2); display:flex; justify-content:space-between; gap:14px; align-items:flex-start; }
+    .ack{ display:flex; gap:10px; align-items:flex-start; color:var(--muted); font-size:.95rem; }
+    .ack input{ accent-color: var(--brand-600); margin-top:4px; }
+    .actions{ display:flex; gap:10px; }
+    .primary[disabled]{ opacity:.6; pointer-events:none; }
 
-    .panel {
-      background:var(--panel);
-      border:1px solid var(--border);
-      border-radius:var(--radius);
-      padding:24px;
-    }
-
-    .hidden { display:none !important; }
-
-    footer {
-      text-align:center;
-      padding:40px 20px;
-      color:var(--muted);
-      font-size:.9rem;
-    }
+    /* ====== WIZARD ====== */
+    .wizard{ padding:20px; border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--glass-2); }
+    .wizard .step{ display:none; }
+    .wizard .step.is-active{ display:block; }
+    .badge{ display:inline-block; padding:2px 8px; border-radius:999px; background:#ffffff12; border:1px solid #ffffff22; font-size:.8rem; color:var(--muted); }
+    .field{ flex:1 1 260px; }
+    .hint{ color:var(--muted); font-size:.9rem; }
   </style>
 </head>
+
 <body>
+  <div class="global-darken"></div>
+  <canvas id="bg-stars"></canvas>
+  <div class="bg"></div>
 
-<canvas id="stars"></canvas>
+  <header>
+    <div class="nav">
+      <div class="brand">
+        <a href="/" class="logo" aria-label="PragOptics Home"></a>
+        <div>
+          <div class="brand-title">PragOptics™ <span style="color:var(--brand-600);">Platform</span></div>
+          <div class="brand-sub">Onboarding • Billing • API Console • Dashboards</div>
+        </div>
+      </div>
 
-<header>
-  <div class="nav">
-    <div class="logo">PragOptics™</div>
-    <button class="cta" id="startBtn">Get Started</button>
-  </div>
-</header>
+      <!-- Right side actions -->
+      <div style="display:flex; align-items:center; gap:10px;">
+        <button id="navLaunch" class="cta">Launch</button>
 
-<main>
-  <!-- HERO -->
-  <section class="hero">
-    <h1>Build. Deploy. Automate.<br/>All from one API.</h1>
-    <p class="sub">
-      PragOptics™ is a programmable control plane for websites, workflows,
-      subscriptions, and data‑driven experiences.
-    </p>
+        <nav class="dev-nav">
+          <ul>
+            <li class="dropdown">
+              <button class="dropdown-toggle">Menu ▾</button>
+              <ul class="dropdown-menu">
+                <li><span class="menu-section">Platform</span></li>
+                <li><a href="#" onclick="event.preventDefault(); setAppMode('landing');">Landing</a></li>
+                <li><a href="#" onclick="event.preventDefault(); openAgreementModal();">Read Agreement</a></li>
+                <li><a href="#" onclick="event.preventDefault(); startPragOpticsLogin();">Login</a></li>
 
-    <div class="actions">
-      <button class="btn" id="readmeBtn">Read the Docs</button>
-      <button class="cta" id="launchBtn">Launch Platform</button>
+                <li><span class="menu-section">Developer</span></li>
+                <li><a href="#" onclick="event.preventDefault(); setAppMode('console');">Console</a></li>
+                <li><a href="#" onclick="event.preventDefault(); callPragOpticsPing();">Call /ping</a></li>
+                <li><a href="#" onclick="event.preventDefault(); callPragOpticsAuth();">Call /auth</a></li>
+
+                <li><span class="menu-section">Billing</span></li>
+                <li><a href="#" onclick="event.preventDefault(); setAppMode('wizard');">Billing Wizard</a></li>
+              </ul>
+            </li>
+          </ul>
+        </nav>
+      </div>
     </div>
-  </section>
+  </header>
 
-  <!-- DASHBOARD PLACEHOLDER -->
-  <section id="dashboard" class="panel hidden">
-    <h2>Welcome to PragOptics</h2>
-    <p class="sub">This is where dashboards, builders, and deployments will live.</p>
-  </section>
-</main>
+  <main class="page">
 
-<footer>
-  © 2026 PragOptics™ — Programmable Infrastructure
-</footer>
+    <!-- ============ LANDING VIEW ============ -->
+    <section id="landingView" class="glass panel">
+      <div class="hero">
+        <h1>Build, deploy, and automate<br>web experiences with one API.</h1>
+        <p>
+          PragOptics™ is your programmable control plane for websites, workflows, subscriptions,
+          and data‑driven systems. Authenticate, onboard, and ship production‑grade automation—fast.
+        </p>
+        <div style="display:flex; gap:12px; flex-wrap:wrap; margin-top:8px;">
+          <button class="cta" onclick="openAgreementModal()">Get Started</button>
+          <button class="btn" onclick="openDocs()">Docs</button>
+          <button class="btn" onclick="setAppMode('console')">Developer Console</button>
+        </div>
+        <div class="row" style="margin-top:18px;">
+          <div class="col login-panel">
+            <strong style="display:block; margin-bottom:6px;">What you get</strong>
+            <div class="muted">• CIAM login + token-based API access</div>
+            <div class="muted">• Subscription onboarding (User / Partner)</div>
+            <div class="muted">• Stripe payment-method capture + webhooks</div>
+            <div class="muted">• Dashboards + builders (next)</div>
+          </div>
+          <div class="col login-panel">
+            <strong style="display:block; margin-bottom:6px;">Fast path</strong>
+            <div class="muted">1) Read & agree</div>
+            <div class="muted">2) Login</div>
+            <div class="muted">3) Complete billing wizard</div>
+            <div class="muted">4) Use console + dashboards</div>
+          </div>
+        </div>
+      </div>
+    </section>
 
-<!-- AGREEMENT MODAL -->
-<div id="agreementModal" class="hidden"></div>
+    <!-- ============ WIZARD VIEW ============ -->
+    <section id="wizardView" class="glass panel hidden">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <div>
+          <h2 style="margin:0; color:var(--brand-600);">PragOptics™ Subscription Wizard</h2>
+          <div class="hint">Complete setup to activate your PragOptics subscription.</div>
+        </div>
+        <span class="badge" id="authBadge">Signed out</span>
+      </div>
 
-<script>
-/* ==========================================================
-   CONFIG
-   ========================================================== */
-const API_BASE = "https://api.pragoptics.com/api/v1";
-const CIAM_LOGIN = `${API_BASE}/auth/login`;
-const PING_URL = `${API_BASE}/ping`;
+      <!-- Wizard container -->
+      <div id="platformFlow" class="wizard" style="display:none;" aria-live="polite">
 
-/* ==========================================================
-   STARFIELD (simple, tasteful)
-   ========================================================== */
-(() => {
-  const c = document.getElementById('stars');
-  const ctx = c.getContext('2d');
-  const stars = [];
+        <!-- Step 1 -->
+        <div id="step1" class="step is-active">
+          <h3>Step 1 — Choose Subscriber Type</h3>
+          <div class="row">
+            <label class="login-panel field" style="cursor:pointer;">
+              <input type="radio" name="subType" value="user" style="margin-right:10px;">
+              <strong>User</strong>
+              <div class="hint">Base: <strong>$7.50/user/month</strong> — 10k calls, 1GB storage, deploy tools.</div>
+            </label>
+            <label class="login-panel field" style="cursor:pointer;">
+              <input type="radio" name="subType" value="partner" style="margin-right:10px;">
+              <strong>Partner</strong>
+              <div class="hint">Base: <strong>$49/month</strong> — Partner tools + onboard users + pricing control.</div>
+            </label>
+          </div>
+          <div style="margin-top:12px;">
+            <button class="btn" id="toStep2" onclick="gotoStep2()" disabled>Next</button>
+          </div>
+        </div>
 
-  function resize() {
-    c.width = innerWidth;
-    c.height = innerHeight;
-  }
-  resize(); addEventListener('resize', resize);
+        <!-- Step 2 -->
+        <div id="step2" class="step">
+          <h3>Step 2 — Select Plan & Add‑Ons</h3>
+          <div class="row">
+            <div class="field login-panel">
+              <label class="hint"><strong>Plan cadence</strong></label><br>
+              <label><input type="radio" name="cadence" value="monthly" checked> Monthly</label>&nbsp;&nbsp;
+              <label><input type="radio" name="cadence" value="annual"> Annual</label>
+            </div>
+          </div>
 
-  for (let i=0;i<120;i++)
-    stars.push({ x:Math.random()*c.width, y:Math.random()*c.height, a:Math.random() });
+          <div class="row" style="margin-top:10px;">
+            <div class="field">
+              <label class="hint"><strong>Add‑ons (user only)</strong></label>
+              <div class="option-card login-panel" style="text-align:left;">
+                <label><input type="checkbox" id="aoDomains"> Domains + Business Email ($7.50/user/mo)</label>
+              </div>
+              <div class="option-card login-panel" style="text-align:left;">
+                <label><input type="checkbox" id="aoStorage"> Additional Storage ($2 per 5GB/mo)</label>
+              </div>
+              <div class="option-card login-panel" style="text-align:left;">
+                <label><input type="checkbox" id="aoFlows"> Workflow Bundle ($3 per 10k exec)</label>
+              </div>
+              <div class="option-card login-panel" style="text-align:left;">
+                <label><input type="checkbox" id="aoApi"> API Bundle ($5 per 50k calls)</label>
+              </div>
+            </div>
 
-  function draw() {
-    ctx.clearRect(0,0,c.width,c.height);
-    stars.forEach(s=>{
-      ctx.fillStyle = `rgba(255,255,255,${0.2+Math.sin(Date.now()/1000+s.a)*0.3})`;
-      ctx.fillRect(s.x,s.y,1.5,1.5);
+            <div class="field">
+              <div class="login-panel">
+                <strong>Pricing Summary</strong>
+                <div id="priceSummary" class="hint">Select options to view an estimate.</div>
+              </div>
+              <div class="hint" style="margin-top:8px;">Final billing is finalized in Stripe. Backend remains authoritative.</div>
+            </div>
+          </div>
+
+          <div style="margin-top:12px; display:flex; gap:10px;">
+            <button class="btn" onclick="gotoStep1()">Back</button>
+            <button class="btn" onclick="gotoStep3()">Next</button>
+          </div>
+        </div>
+
+        <!-- Step 3 -->
+        <div id="step3" class="step">
+          <h3>Step 3 — Billing Profile</h3>
+          <p class="hint">Contact details used to create your Stripe customer and BillingProfile.</p>
+
+          <form onsubmit="handleBillingProfile(event)">
+            <div class="row">
+              <div class="field">
+                <label>First Name<br>
+                  <input id="bpFirstName" type="text" required style="width:100%; padding:8px; margin:6px 0;">
+                </label>
+              </div>
+              <div class="field">
+                <label>Last Name<br>
+                  <input id="bpLastName" type="text" required style="width:100%; padding:8px; margin:6px 0;">
+                </label>
+              </div>
+              <div class="field">
+                <label>Email<br>
+                  <input id="bpEmail" type="email" required style="width:100%; padding:8px; margin:6px 0;">
+                </label>
+              </div>
+            </div>
+
+            <div class="row">
+              <div class="field">
+                <label>Phone<br>
+                  <input id="bpPhone" type="tel" style="width:100%; padding:8px; margin:6px 0;" onblur="formatPhone(this)">
+                </label>
+              </div>
+              <div class="field">
+                <label>Organization (optional)<br>
+                  <input id="bpOrg" type="text" style="width:100%; padding:8px; margin:6px 0;">
+                </label>
+              </div>
+            </div>
+
+            <div class="row">
+              <div class="field">
+                <label>Address Line 1<br>
+                  <input id="bpAddr1" type="text" required style="width:100%; padding:8px; margin:6px 0;">
+                </label>
+              </div>
+              <div class="field">
+                <label>Address Line 2 (optional)<br>
+                  <input id="bpAddr2" type="text" style="width:100%; padding:8px; margin:6px 0;">
+                </label>
+              </div>
+            </div>
+
+            <div class="row">
+              <div class="field">
+                <label>City<br>
+                  <input id="bpCity" type="text" required style="width:100%; padding:8px; margin:6px 0;">
+                </label>
+              </div>
+              <div class="field">
+                <label>Postal Code<br>
+                  <input id="bpPostal" type="text" required style="width:100%; padding:8px; margin:6px 0;">
+                </label>
+              </div>
+            </div>
+
+            <div class="row">
+              <div class="field">
+                <label>State<br>
+                  <select id="bpState" required style="width:100%; padding:8px; margin:6px 0;">
+                    <option value="">Select a state</option>
+                    <option value="TX">Texas</option>
+                    <option value="CA">California</option>
+                    <option value="FL">Florida</option>
+                    <!-- (keep your full state list in your real file) -->
+                  </select>
+                </label>
+              </div>
+              <div class="field">
+                <label>Country<br>
+                  <select id="bpCountry" required style="width:100%; padding:8px; margin:6px 0;">
+                    <option value="US" selected>United States</option>
+                  </select>
+                </label>
+              </div>
+            </div>
+
+            <div style="margin-top:12px; display:flex; gap:10px;">
+              <button class="btn" type="button" onclick="gotoStep2()">Back</button>
+              <button class="cta" type="submit">Create Billing Profile</button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Step 4 -->
+        <div id="step4" class="step">
+          <h3>Step 4 — Payment Method</h3>
+          <p class="hint">Secure payment method capture powered by Stripe.</p>
+
+          <div class="login-panel" style="text-align:left;">
+            <div id="payment-element"></div>
+          </div>
+
+          <div style="margin-top:12px; display:flex; gap:10px;">
+            <button class="btn" type="button" onclick="gotoStep3()">Back</button>
+            <button class="cta" type="button" id="payNowBtn">Save Payment Method & Activate</button>
+          </div>
+
+          <div id="payMsg" class="hint" style="margin-top:10px;"></div>
+        </div>
+
+        <!-- Step 5 -->
+        <div id="step5" class="step">
+          <h3>Step 5 — Finalizing</h3>
+          <p class="hint">We’re confirming your subscription with Stripe. This usually takes a few seconds.</p>
+
+          <div class="login-panel" style="text-align:left;">
+            <div id="finalizeMsg" class="hint">Finalizing subscription…</div>
+          </div>
+
+          <div style="margin-top:12px;">
+            <button class="btn" type="button" onclick="pollUntilResolved()">Refresh Status</button>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ============ CONSOLE VIEW (from Dev Console) ============ -->
+    <section id="consoleView" class="glass panel hidden">
+      <div>
+        <h2 style="margin:0 0 6px; color:var(--brand-600);">API <span class="muted">Console</span></h2>
+        <p class="muted" style="margin:0; font-size:0.9rem;">Authenticated tooling surface. Call endpoints and inspect responses.</p>
+      </div>
+
+      <div id="po-api-console" class="login-panel" style="display:block;">
+        <strong style="display:block; margin-bottom:6px;">Direct API Call</strong>
+
+        <div style="margin-top:10px;">
+          <label style="font-size:0.85rem; color:var(--muted);">Method</label><br>
+          <select id="po-api-method"
+            style="width:140px; padding:6px; border-radius:6px; border:1px solid var(--border); background:black; color:var(--ink);">
+            <option value="GET" selected>GET</option>
+            <option value="POST">POST</option>
+            <option value="PUT">PUT</option>
+            <option value="PATCH">PATCH</option>
+            <option value="DELETE">DELETE</option>
+          </select>
+        </div>
+
+        <div id="po-api-body-container" style="display:none; margin-top:10px;">
+          <label style="font-size:0.85rem; color:var(--muted);">Request Body (JSON)</label>
+          <textarea id="po-api-body"
+            placeholder="{ }"
+            style="width:100%; height:120px; padding:8px; border-radius:8px; border:1px solid var(--border); background:var(--glass-2); color:var(--ink); font-family:monospace;"></textarea>
+        </div>
+
+        <div style="display:flex; align-items:center; gap:6px; margin-top:10px;">
+          <span style="font-size:0.85rem; color:var(--muted);">https://api.pragoptics.com/api/v1/</span>
+          <input id="po-api-route" type="text" placeholder="ping"
+            style="flex:1; padding:8px; border-radius:8px; border:1px solid var(--border); background:var(--glass-2); color:var(--ink);">
+        </div>
+
+        <div style="display:flex; gap:10px; margin-top:10px; flex-wrap:wrap;">
+          <button id="po-api-send" class="copy-btn">Send Request</button>
+          <button id="po-api-curl" class="copy-btn">Copy curl</button>
+        </div>
+      </div>
+
+      <div class="viewer">
+        <pre id="po-output">{ "hint": "Login, then call /ping or /auth." }</pre>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ===== Agreement Modal ===== -->
+  <div id="agreementMask" class="modal-overlay" aria-hidden="true"></div>
+  <div id="agreementModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="agreementTitle" aria-hidden="true">
+    <div class="modal-card" tabindex="-1">
+      <div class="modal-head">
+        <h3 id="agreementTitle" class="modal-title">PragOptics™ Agreement</h3>
+        <button class="modal-close" type="button" aria-label="Close" onclick="closeAgreementModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div id="mdContainer" class="md-view" aria-live="polite">
+          <p class="muted">Loading agreement…</p>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <label class="ack">
+          <input id="agreeChk" type="checkbox" />
+          <span>I have read and agree. I understand acceptance may be recorded.</span>
+        </label>
+        <div class="actions">
+          <button type="button" class="btn" onclick="closeAgreementModal()">Cancel</button>
+          <button id="agreeGoBtn" type="button" class="cta primary" onclick="submitAgreementAck()" disabled>Continue</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* ===========================
+       CONFIG
+       =========================== */
+    const PRAG_API_BASE   = "https://api.pragoptics.com/api/v1";
+    const CIAM_LOGIN_INIT = `${PRAG_API_BASE}/auth/login`;
+    const PING_URL        = `${PRAG_API_BASE}/ping`;
+    const AUTH_URL        = `${PRAG_API_BASE}/auth`;
+    const BILLING_PROFILE_URL  = `${PRAG_API_BASE}/billing/profile`;
+    const CHECKOUT_SESSION_URL = `${PRAG_API_BASE}/billing/checkout-session`;
+    const AGREEMENT_MD_URL = "https://fortiviewholdings.com/docs/PragOptics-Subscriber-Agreement.md";
+
+    /* ===========================
+       STATE
+       =========================== */
+    let pragopticsToken = null;
+    let selectedType = null;
+    let stripe = null;
+    let elements = null;
+
+    function setAppMode(mode) {
+      ["landingView","wizardView","consoleView"].forEach(id => document.getElementById(id)?.classList.add("hidden"));
+      document.getElementById(mode + "View")?.classList.remove("hidden");
+    }
+
+    /* ===========================
+       NAV / ENTRY
+       =========================== */
+    document.getElementById("navLaunch").addEventListener("click", openAgreementModal);
+
+    function openDocs(){ window.open("https://docs.pragoptics.com", "_blank"); }
+
+    /* ===========================
+       DROPDOWN MENU (same behavior as devconsole)
+       =========================== */
+    document.addEventListener("click", (e) => {
+      const isToggle = e.target.matches(".dropdown-toggle");
+      document.querySelectorAll(".dropdown").forEach(d => {
+        if (d.contains(e.target) && isToggle) d.classList.toggle("open");
+        else d.classList.remove("open");
+      });
     });
-    requestAnimationFrame(draw);
-  }
-  draw();
-})();
 
-/* ==========================================================
-   ENTRY FLOW
-   ========================================================== */
-document.getElementById('launchBtn').onclick = openAgreement;
-document.getElementById('startBtn').onclick = openAgreement;
-document.getElementById('readmeBtn').onclick = () =>
-  window.open('https://docs.pragoptics.com', '_blank');
+    /* ===========================
+       STARFIELD (ported)
+       =========================== */
+    window.addEventListener("load", () => {
+      const canvas = document.getElementById("bg-stars");
+      const ctx = canvas.getContext("2d");
+      function resize(){ canvas.width = innerWidth; canvas.height = innerHeight; }
+      resize(); addEventListener("resize", resize);
 
-function openAgreement() {
-  // placeholder — you already have this modal logic
-  startLogin();
-}
+      const starCount = 160;
+      const stars = Array.from({length: starCount}, () => ({
+        x: Math.random()*canvas.width,
+        y: Math.random()*canvas.height,
+        r: Math.random()*1.2 + 0.4,
+        alpha: Math.random(),
+        delta: Math.random()*0.015 + 0.005
+      }));
 
-/* ==========================================================
-   CIAM LOGIN
-   ========================================================== */
-async function startLogin() {
-  const returnUrl = encodeURIComponent(location.origin);
-  const res = await fetch(`${CIAM_LOGIN}?returnUrl=${returnUrl}`);
-  const { authorizeUrl } = await res.json();
-  location.href = authorizeUrl;
-}
+      function animate(){
+        ctx.clearRect(0,0,canvas.width,canvas.height);
+        for (const s of stars){
+          s.alpha += s.delta;
+          if (s.alpha <= 0 || s.alpha >= 1) s.delta = -s.delta;
+          ctx.beginPath();
+          ctx.arc(s.x, s.y, s.r, 0, Math.PI*2);
+          ctx.fillStyle = `rgba(255,255,255,${s.alpha})`;
+          ctx.fill();
+        }
+        requestAnimationFrame(animate);
+      }
+      animate();
+    });
 
-/* ==========================================================
-   CALLBACK + PING
-   ========================================================== */
-(async function handleLogin() {
-  const params = new URLSearchParams(location.search);
-  if (!params.has('authResult')) return;
+    /* ===========================
+       TOKENS
+       =========================== */
+    function getStoredTokens() {
+      try { return JSON.parse(sessionStorage.getItem("pragoptics_tokens") || "null"); }
+      catch { return null; }
+    }
 
-  const auth = JSON.parse(decodeURIComponent(params.get('authResult')));
-  if (!auth.success) return alert("Login failed");
+    async function fetchJson(url, options = {}) {
+      const res = await fetch(url, options);
+      const text = await res.text();
+      let data = null;
+      try { data = text ? JSON.parse(text) : null; } catch { data = { raw: text }; }
+      if (!res.ok) {
+        const msg = data?.error || data?.raw || `${res.status} ${res.statusText}`;
+        const err = new Error(msg);
+        err.status = res.status;
+        err.data = data;
+        throw err;
+      }
+      return data;
+    }
 
-  sessionStorage.setItem("prag_tokens", JSON.stringify(auth.tokens));
-  history.replaceState({}, "", "/");
+    /* ===========================
+       AGREEMENT MODAL
+       =========================== */
+    const $mask  = document.getElementById("agreementMask");
+    const $modal = document.getElementById("agreementModal");
+    const $md    = document.getElementById("mdContainer");
+    const $agree = document.getElementById("agreeChk");
+    const $go    = document.getElementById("agreeGoBtn");
 
-  const ping = await fetch(PING_URL, {
-    headers:{ Authorization:`Bearer ${auth.tokens.access_token}` }
-  }).then(r=>r.json());
+    function mdToHtml(md) {
+      // minimal markdown: headings + code fences + paragraphs (good enough for agreement)
+      const esc = s => s.replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+      md = (md || "").replace(/\r\n?/g, "\n");
+      md = md.replace(/```([\s\S]*?)```/g, (_,code)=>`<pre><code>${esc(code)}</code></pre>`);
+      md = md.replace(/^###\s?(.*)$/gm,'<h3>$1</h3>')
+             .replace(/^##\s?(.*)$/gm,'<h2>$1</h2>')
+             .replace(/^#\s?(.*)$/gm,'<h1>$1</h1>');
+      md = md.replace(/^(?!<h\d|<pre|<p|<\/|\s*$)(.+)$/gm,'<p>$1</p>');
+      return md;
+    }
 
-  document.querySelector('.hero').classList.add('hidden');
-  document.getElementById('dashboard').classList.remove('hidden');
-})();
-</script>
+    function openAgreementModal() {
+      $agree.checked = false;
+      $go.disabled = true;
+      $md.innerHTML = `<p class="muted">Loading agreement…</p>`;
+      $mask.classList.add("is-open");
+      $modal.classList.add("is-open");
 
+      fetch(AGREEMENT_MD_URL, { cache: "no-store" })
+        .then(r => r.text())
+        .then(t => { $md.innerHTML = mdToHtml(t); })
+        .catch(() => { $md.innerHTML = `<p class="muted">Unable to load agreement.</p>`; });
+    }
+
+    function closeAgreementModal() {
+      $mask.classList.remove("is-open");
+      $modal.classList.remove("is-open");
+    }
+
+    $agree.addEventListener("change", () => { $go.disabled = !$agree.checked; });
+    $mask.addEventListener("click", closeAgreementModal);
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && $modal.classList.contains("is-open")) closeAgreementModal();
+    });
+
+    async function submitAgreementAck() {
+      if (!$agree.checked) return;
+      closeAgreementModal();
+      await startPragOpticsLogin();
+    }
+
+    /* ===========================
+       LOGIN + CALLBACK
+       =========================== */
+    async function startPragOpticsLogin() {
+      const returnUrl = encodeURIComponent(`${location.origin}${location.pathname}`);
+      const data = await fetchJson(`${CIAM_LOGIN_INIT}?returnUrl=${returnUrl}`);
+      if (!data?.authorizeUrl) throw new Error("Missing authorizeUrl");
+      window.location = data.authorizeUrl;
+    }
+
+    function extractAuthResultFromLocation() {
+      const params = new URLSearchParams(location.search);
+      let encoded = params.get("authResult");
+      if (encoded) return encoded;
+
+      // handles: ?post=subscribe?authResult=...
+      const post = params.get("post");
+      if (post && post.includes("authResult=")) return post.split("authResult=")[1] || null;
+
+      const idx = location.search.indexOf("authResult=");
+      if (idx >= 0) return location.search.slice(idx + "authResult=".length);
+      return null;
+    }
+
+    async function handlePragOpticsCallback() {
+      const encoded = extractAuthResultFromLocation();
+      if (!encoded) return;
+
+      let auth;
+      try { auth = JSON.parse(decodeURIComponent(encoded)); }
+      catch { alert("Login failed: invalid callback payload."); return; }
+
+      if (!auth.success) { alert(`Login failed: ${auth.errorDescription || auth.error}`); return; }
+
+      const tokens = auth.tokens;
+      pragopticsToken = tokens.access_token;
+      sessionStorage.setItem("pragoptics_tokens", JSON.stringify(tokens));
+
+      // clean URL
+      window.history.replaceState({}, document.title, location.pathname);
+
+      // ping → decide UI
+      const ping = await fetchJson(PING_URL, { headers: { Authorization: `Bearer ${pragopticsToken}` } });
+      sessionStorage.setItem("pragoptics_ping", JSON.stringify(ping));
+      handlePostLoginUI(ping);
+    }
+
+    window.addEventListener("load", handlePragOpticsCallback);
+
+    /* ===========================
+       POST LOGIN ROUTER
+       =========================== */
+    function handlePostLoginUI(ping) {
+      const bp = ping?.billingProfile || null;
+
+      // no billing profile → wizard
+      if (!bp) {
+        setAppMode("wizard");
+        initPostLoginWizard(pragopticsToken, ping);
+        gotoStep1();
+        return;
+      }
+
+      const bpStatus = (bp.status || "").toUpperCase();
+
+      if (bpStatus === "ACTIVE") {
+        setAppMode("console");
+        setOutput({ mode: "ACTIVE", ping });
+        return;
+      }
+
+      if (bpStatus === "PAYMENT_PENDING") {
+        setAppMode("wizard");
+        initPostLoginWizard(pragopticsToken, ping);
+        showProcessingState("Finalizing subscription…");
+        pollUntilResolved();
+        return;
+      }
+
+      if (bpStatus === "PENDING_SUBSCRIPTION" || bpStatus === "PAST_DUE") {
+        setAppMode("wizard");
+        initPostLoginWizard(pragopticsToken, ping);
+        startPaymentStep(pragopticsToken);
+        return;
+      }
+
+      // fallback
+      setAppMode("wizard");
+      initPostLoginWizard(pragopticsToken, ping);
+      gotoStep1();
+    }
+
+    /* ===========================
+       DEV CONSOLE FUNCTIONS
+       =========================== */
+    function setOutput(obj) {
+      document.getElementById("po-output").textContent = JSON.stringify(obj, null, 2);
+    }
+
+    async function callPragOpticsAuth() {
+      try {
+        const stored = getStoredTokens();
+        const accessToken = stored?.access_token;
+        const data = await fetchJson(AUTH_URL, { headers: accessToken ? { Authorization:`Bearer ${accessToken}` } : {} });
+        setOutput({ endpoint: "/auth", response: data });
+      } catch (e) {
+        setOutput({ endpoint: "/auth", error: e.message || String(e) });
+      }
+    }
+
+    async function callPragOpticsPing() {
+      try {
+        const stored = getStoredTokens();
+        const accessToken = stored?.access_token;
+        const data = await fetchJson(PING_URL, { headers: accessToken ? { Authorization:`Bearer ${accessToken}` } : {} });
+        setOutput({ endpoint: "/ping", response: data });
+      } catch (e) {
+        setOutput({ endpoint: "/ping", error: e.message || String(e) });
+      }
+    }
+
+    // API console UX
+    const methodSelect = document.getElementById("po-api-method");
+    const bodyContainer = document.getElementById("po-api-body-container");
+    const bodyInput = document.getElementById("po-api-body");
+
+    methodSelect.addEventListener("change", () => {
+      const m = methodSelect.value;
+      bodyContainer.style.display = ["POST","PUT","PATCH"].includes(m) ? "block" : "none";
+    });
+
+    document.getElementById("po-api-send").addEventListener("click", async () => {
+      const route = document.getElementById("po-api-route").value.trim();
+      if (!route) return;
+
+      const method = methodSelect.value;
+      const url = `${PRAG_API_BASE}/${route}`;
+
+      const stored = getStoredTokens();
+      const accessToken = stored?.access_token;
+
+      const options = { method, headers: { "Content-Type":"application/json" } };
+      if (accessToken) options.headers.Authorization = `Bearer ${accessToken}`;
+
+      if (["POST","PUT","PATCH"].includes(method)) {
+        try { options.body = JSON.stringify(JSON.parse(bodyInput.value || "{}")); }
+        catch { setOutput({ endpoint: url, error: "Invalid JSON body" }); return; }
+      }
+
+      try {
+        const res = await fetch(url, options);
+        const text = await res.text();
+        let json; try { json = JSON.parse(text); } catch { json = text; }
+        setOutput({ endpoint: url, status: res.status, response: json });
+      } catch (e) {
+        setOutput({ endpoint: url, error: String(e) });
+      }
+    });
+
+    document.getElementById("po-api-curl").addEventListener("click", () => {
+      const route = document.getElementById("po-api-route").value.trim();
+      if (!route) return;
+
+      const method = methodSelect.value;
+      const url = `${PRAG_API_BASE}/${route}`;
+
+      const stored = getStoredTokens();
+      const accessToken = stored?.access_token;
+
+      let curl = `curl -X ${method}`;
+      if (accessToken) curl += ` -H "Authorization: Bearer ${accessToken}"`;
+      if (["POST","PUT","PATCH"].includes(method)) {
+        curl += ` -H "Content-Type: application/json" -d '${bodyInput.value || "{}"}'`;
+      }
+      curl += ` "${url}"`;
+      navigator.clipboard.writeText(curl);
+    });
+
+    /* ===========================
+       WIZARD HELPERS
+       =========================== */
+    function formatPhone(input) {
+      let digits = (input.value || "").replace(/\D/g, '').substring(0, 10);
+      if (digits.length === 10) {
+        const area = digits.substring(0,3), mid = digits.substring(3,6), last = digits.substring(6);
+        input.value = `+1 (${area}) ${mid}-${last}`;
+        input.dataset.raw = digits;
+      } else {
+        input.value = digits;
+        input.dataset.raw = digits;
+      }
+    }
+
+    function gotoStep1(){ setStep("step1"); }
+    function gotoStep2(){ setStep("step2"); }
+    function gotoStep3(){ setStep("step3"); }
+    function gotoStep4(){ setStep("step4"); }
+    function gotoStep5(){ setStep("step5"); }
+
+    function setStep(id){
+      document.querySelectorAll(".wizard .step").forEach(s => s.classList.remove("is-active"));
+      document.getElementById(id)?.classList.add("is-active");
+    }
+
+    function buildRequestedSubscription({ subType, cadence, addons }) {
+      return { subType, cadence, addons: subType === "user" ? { ...addons } : {} };
+    }
+
+    function initPostLoginWizard(accessToken, ping) {
+      const badge = document.getElementById("authBadge");
+      if (badge) { badge.textContent = "Signed in"; badge.style.color = "#21bca5"; }
+
+      // show wizard container
+      document.getElementById("platformFlow").style.display = "block";
+
+      // seed selectedType from radio if already set
+      selectedType = document.querySelector('input[name="subType"]:checked')?.value || null;
+
+      // enable Next when selection made
+      document.querySelectorAll('input[name="subType"]').forEach(r => {
+        r.addEventListener("change", () => {
+          selectedType = r.value;
+          document.getElementById("toStep2").disabled = !selectedType;
+          applySubTypeUI();
+          updatePriceSummary();
+        });
+      });
+
+      // cadence + addons
+      document.querySelectorAll('input[name="cadence"]').forEach(r => r.addEventListener("change", updatePriceSummary));
+      ["aoDomains","aoStorage","aoFlows","aoApi"].forEach(id => document.getElementById(id)?.addEventListener("change", updatePriceSummary));
+
+      // apply partner UI immediately
+      applySubTypeUI();
+      updatePriceSummary();
+
+      // prefill from ping.billingProfile if present
+      prefillBillingProfileFromPing(ping);
+    }
+
+    function applySubTypeUI() {
+      const isPartner = (selectedType === "partner");
+      ["aoDomains","aoStorage","aoFlows","aoApi"].forEach(id => {
+        const box = document.getElementById(id);
+        if (!box) return;
+        if (isPartner) box.checked = false;
+        box.disabled = isPartner;
+        box.closest('.option-card')?.classList.toggle('hidden', isPartner);
+      });
+    }
+
+    function prefillNameFields(fullName) {
+      if (!fullName) return;
+      const parts = String(fullName).trim().split(/\s+/).filter(Boolean);
+      if (!parts.length) return;
+      const first = parts.shift() || "";
+      const last = parts.join(" ");
+      const f = document.getElementById("bpFirstName");
+      const l = document.getElementById("bpLastName");
+      if (f && !f.value) f.value = first;
+      if (l && !l.value) l.value = last;
+    }
+
+    function prefillBillingProfileFromPing(ping) {
+      const bp = ping?.billingProfile;
+      if (!bp) return;
+      prefillNameFields(bp.customerName);
+      const set = (id, val) => {
+        const el = document.getElementById(id);
+        if (el && val != null && val !== "" && !el.value) el.value = String(val);
+      };
+      set("bpEmail", bp.primaryEmail);
+      set("bpPhone", bp.phone);
+      set("bpOrg", bp.organizationName || "");
+      set("bpAddr1", bp.addressLine1);
+      set("bpAddr2", bp.addressLine2);
+      set("bpCity", bp.city);
+      set("bpState", bp.state);
+      set("bpPostal", bp.postalCode);
+      set("bpCountry", bp.country || "US");
+    }
+
+    // simple summary placeholder (you can swap in catalog-based summary later)
+    function updatePriceSummary() {
+      const summary = document.getElementById("priceSummary");
+      if (!summary) return;
+
+      const cadence = document.querySelector('input[name="cadence"]:checked')?.value || "monthly";
+      const addons = {
+        domains: !!document.getElementById("aoDomains")?.checked,
+        storage: !!document.getElementById("aoStorage")?.checked,
+        flows:   !!document.getElementById("aoFlows")?.checked,
+        api:     !!document.getElementById("aoApi")?.checked
+      };
+
+      if (!selectedType) { summary.textContent = "Select options to view an estimate."; return; }
+
+      summary.textContent =
+        `${selectedType.toUpperCase()} • ${cadence} • addons: ` +
+        (selectedType === "partner" ? "N/A" : JSON.stringify(addons));
+    }
+
+    async function handleBillingProfile(e) {
+      e.preventDefault();
+
+      const stored = getStoredTokens();
+      const accessToken = stored?.access_token || pragopticsToken;
+      if (!accessToken) { alert("Please sign in first."); return; }
+
+      const firstName = document.getElementById("bpFirstName")?.value?.trim();
+      const lastName  = document.getElementById("bpLastName")?.value?.trim();
+      if (!firstName || !lastName) { alert("Enter first and last name."); return; }
+
+      const customerName = `${firstName} ${lastName}`;
+      const cadence = document.querySelector('input[name="cadence"]:checked')?.value || "monthly";
+      const addons = {
+        domains: !!document.getElementById("aoDomains")?.checked,
+        storage: !!document.getElementById("aoStorage")?.checked,
+        flows:   !!document.getElementById("aoFlows")?.checked,
+        api:     !!document.getElementById("aoApi")?.checked
+      };
+
+      const requestedSubscription = buildRequestedSubscription({ subType: selectedType || "user", cadence, addons });
+
+      const payload = {
+        customerName,
+        primaryEmail: document.getElementById("bpEmail")?.value?.trim(),
+        phone: document.getElementById("bpPhone")?.value?.trim() || "",
+        addressLine1: document.getElementById("bpAddr1")?.value?.trim(),
+        addressLine2: document.getElementById("bpAddr2")?.value?.trim() || "",
+        city: document.getElementById("bpCity")?.value?.trim(),
+        state: (document.getElementById("bpState")?.value || "").trim(),
+        postalCode: document.getElementById("bpPostal")?.value?.trim(),
+        country: document.getElementById("bpCountry")?.value?.trim(),
+        organizationName: document.getElementById("bpOrg")?.value?.trim() || "",
+        requestedSubscription
+      };
+
+      await fetchJson(BILLING_PROFILE_URL, {
+        method: "POST",
+        headers: { "Content-Type":"application/json", "Authorization": `Bearer ${accessToken}` },
+        body: JSON.stringify(payload)
+      });
+
+      await startPaymentStep(accessToken);
+    }
+
+    async function startPaymentStep(accessToken) {
+      let csResp;
+      try {
+        csResp = await fetchJson(CHECKOUT_SESSION_URL, {
+          method: "POST",
+          headers: { "Content-Type":"application/json", "Authorization": `Bearer ${accessToken}` },
+          body: JSON.stringify({})
+        });
+      } catch (err) {
+        if (err?.status === 409) { showProcessingState("Finalizing subscription…"); await pollUntilResolved(); return; }
+        throw err;
+      }
+
+      const clientSecret = csResp?.paymentIntentClientSecret || csResp?.clientSecret;
+      if (!clientSecret) throw new Error("Missing Stripe client secret.");
+
+      const key = window.STRIPE_PUBLISHABLE_KEY || "";
+      if (!key) throw new Error("Stripe publishable key not configured.");
+
+      stripe = Stripe(key);
+      elements = stripe.elements({
+        clientSecret,
+        appearance: { theme:"night" }
+      });
+
+      document.getElementById("payment-element").innerHTML = "";
+      const paymentEl = elements.create("payment");
+      paymentEl.mount("#payment-element");
+
+      document.getElementById("payNowBtn").disabled = false;
+      document.getElementById("payNowBtn").onclick = async () => {
+        const msg = document.getElementById("payMsg");
+        msg.textContent = "Saving payment method…";
+
+        const { error } = await stripe.confirmSetup({
+          elements,
+          confirmParams: { return_url: `${location.origin}${location.pathname}?post=subscribe` },
+          redirect: "if_required"
+        });
+
+        if (error) { msg.textContent = error.message || "Setup error."; return; }
+
+        showProcessingState("Finalizing subscription…");
+        await pollUntilResolved();
+      };
+
+      gotoStep4();
+      const msg = document.getElementById("payMsg");
+      if (msg) msg.textContent = "Enter payment details to activate.";
+    }
+
+    function showProcessingState(message) {
+      gotoStep5();
+      const msg = document.getElementById("finalizeMsg");
+      if (msg) msg.textContent = message;
+      const btn = document.getElementById("payNowBtn");
+      if (btn) btn.disabled = true;
+    }
+
+    async function pollUntilResolved() {
+      const stored = getStoredTokens();
+      const accessToken = stored?.access_token || pragopticsToken;
+      if (!accessToken) return;
+
+      const started = Date.now();
+      const TIMEOUT = 60000;
+
+      while (Date.now() - started < TIMEOUT) {
+        await new Promise(r => setTimeout(r, 1500));
+        const ping = await fetchJson(PING_URL, { headers: { Authorization:`Bearer ${accessToken}` } });
+        sessionStorage.setItem("pragoptics_ping", JSON.stringify(ping));
+
+        const status = (ping?.billingProfile?.status || "").toUpperCase();
+        if (status === "ACTIVE" || status === "PAST_DUE" || status === "CANCELED") {
+          handlePostLoginUI(ping);
+          return;
+        }
+      }
+    }
+
+    /* ===========================
+       BOOT
+       =========================== */
+    setAppMode("landing");
+  </script>
 </body>
 </html>
