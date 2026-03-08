@@ -165,6 +165,151 @@
     .badge{ display:inline-block; padding:2px 8px; border-radius:999px; background:#ffffff12; border:1px solid #ffffff22; font-size:.8rem; color:var(--muted); }
     .field{ flex:1 1 260px; }
     .hint{ color:var(--muted); font-size:.9rem; }
+    /* ===========================
+   DNA FINALIZATION LOADER (FULL)
+   =========================== */
+
+.dna-container{
+  display:flex;
+  align-items:center;
+  gap:18px;
+  padding:14px;
+}
+
+.dna-text{ display:flex; flex-direction:column; gap:4px; }
+.dna-label{ white-space:nowrap; font-size:.95rem; color:var(--muted); }
+.dna-sub{ white-space:nowrap; font-size:.82rem; opacity:.75; }
+
+/* Track area */
+.dna-track{
+  position:relative;
+  width:240px;
+  height:34px;
+  overflow:hidden;
+  border-radius:999px;
+  background:linear-gradient(90deg, rgba(255,255,255,0.02), rgba(255,255,255,0.00));
+  border:1px solid rgba(255,255,255,0.10);
+}
+.dna-track{
+  animation: dnaBreath 3.2s ease-in-out infinite;
+}
+@keyframes dnaBreath{
+  0%,100% { box-shadow: 0 0 0 rgba(33,188,165,0.0); }
+  50%     { box-shadow: 0 0 18px rgba(33,188,165,0.14); }
+}
+    
+.dna-container[data-dna="lock"] .dna-track{
+  border-color: rgba(33,188,165,0.45);
+}
+
+/* Strands = dotted + subtle glow */
+.dna-strand{
+  position:absolute;
+  top:50%;
+  left:-60px;
+  width:380px;
+  height:0;
+  border-top:2px dotted rgba(33,188,165,0.85);
+  filter:drop-shadow(0 0 7px rgba(33,188,165,0.45));
+  will-change:transform, opacity;
+}
+
+.strand-a{ opacity:.95; }
+.strand-b{ opacity:.55; border-top-color: rgba(108,92,231,0.65); filter:drop-shadow(0 0 7px rgba(108,92,231,0.35)); }
+
+/* ===== Helix motion =====
+   animate both strands with phase shift.
+*/
+.dna-container[data-dna="idle"] .strand-a { animation: dnaWaveA 1.75s linear infinite; }
+.dna-container[data-dna="idle"] .strand-b { animation: dnaWaveB 1.75s linear infinite; }
+
+.dna-container[data-dna="fast"] .strand-a { animation: dnaWaveA 1.05s linear infinite; }
+.dna-container[data-dna="fast"] .strand-b { animation: dnaWaveB 1.05s linear infinite; }
+
+.dna-container[data-dna="lock"] .strand-a,
+.dna-container[data-dna="lock"] .strand-b{
+  animation:none;
+  opacity:.9;
+  border-top-style:solid;
+  border-top-width:2px;
+}
+
+/* motion keyframes */
+@keyframes dnaWaveA{
+  0%   { transform: translateY(-8px) translateX(0);   }
+  50%  { transform: translateY(8px)  translateX(60px);}
+  100% { transform: translateY(-8px) translateX(120px);}
+}
+@keyframes dnaWaveB{
+  0%   { transform: translateY(8px)  translateX(0);   }
+  50%  { transform: translateY(-8px) translateX(60px);}
+  100% { transform: translateY(8px)  translateX(120px);}
+}
+
+/* ===== Beads (nodes) ===== */
+.dna-nodes{ position:absolute; inset:0; pointer-events:none; }
+
+.dna-node{
+  position:absolute;
+  top:50%;
+  width:8px; height:8px;
+  border-radius:999px;
+  transform: translate(-50%,-50%);
+  background: radial-gradient(circle, rgba(255,255,255,0.95) 0%, rgba(33,188,165,0.95) 40%, rgba(33,188,165,0.15) 70%, rgba(33,188,165,0.0) 100%);
+  box-shadow: 0 0 10px rgba(33,188,165,0.55);
+  opacity:.0;
+  will-change: left, transform, opacity, filter;
+}
+
+/* Alternate “purple” nodes to suggest dual strands */
+.dna-node:nth-child(even){
+  background: radial-gradient(circle, rgba(255,255,255,0.92) 0%, rgba(108,92,231,0.85) 40%, rgba(108,92,231,0.18) 70%, rgba(108,92,231,0.0) 100%);
+  box-shadow: 0 0 10px rgba(108,92,231,0.35);
+}
+
+/* Node travel path: left->right with vertical oscillation */
+.dna-container[data-dna="idle"] .dna-node{ animation: dnaNode 1.75s linear infinite; }
+.dna-container[data-dna="fast"] .dna-node{ animation: dnaNode 1.05s linear infinite; }
+.dna-container[data-dna="lock"] .dna-node{ animation: dnaNodeLock .55s ease forwards; opacity:1; }
+
+/* Stagger node offsets */
+.dna-node.n1{ animation-delay: 0s; }
+.dna-node.n2{ animation-delay: .18s; }
+.dna-node.n3{ animation-delay: .36s; }
+.dna-node.n4{ animation-delay: .54s; }
+.dna-node.n5{ animation-delay: .72s; }
+.dna-node.n6{ animation-delay: .90s; }
+
+@keyframes dnaNode{
+  0%   { left:-10%; opacity:0; transform:translate(-50%,-50%) translateY(-8px) scale(.85); filter:blur(.2px); }
+  10%  { opacity:1; }
+  50%  { left:50%;  opacity:1; transform:translate(-50%,-50%) translateY(8px) scale(1.1); }
+  90%  { opacity:1; }
+  100% { left:110%; opacity:0; transform:translate(-50%,-50%) translateY(-8px) scale(.85); }
+}
+
+@keyframes dnaNodeLock{
+  0%   { opacity:.0; }
+  100% { opacity:1; transform:translate(-50%,-50%) scale(1.0); }
+}
+
+/* ===== Activated “burst” (optional) ===== */
+.dna-container.is-complete .dna-track{
+  animation: dnaFadeOut .45s ease forwards;
+}
+.dna-container.is-complete .dna-label{
+  color: rgba(167,255,241,.95);
+}
+@keyframes dnaFadeOut{
+  to { opacity:0; transform:scale(.98); height:0; width:0; margin:0; border:0; padding:0; }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce){
+  .dna-strand, .dna-node{ animation:none !important; }
+  .dna-node{ opacity:.8; }
+}
+
   </style>
 </head>
 
@@ -435,8 +580,26 @@
           <h3>Step 5 — Finalizing</h3>
           <p class="hint">We’re confirming your subscription with Stripe. This usually takes a few seconds.</p>
 
-          <div class="login-panel" style="text-align:left;">
-            <div id="finalizeMsg" class="hint">Finalizing subscription…</div>
+          <div class="login-panel dna-container" data-dna="idle">
+            <div class="dna-track" aria-hidden="true">
+              <span class="dna-strand strand-a"></span>
+              <span class="dna-strand strand-b"></span>
+
+              <!-- “beads” traveling along the helix -->
+              <div class="dna-nodes">
+                <span class="dna-node n1"></span>
+                <span class="dna-node n2"></span>
+                <span class="dna-node n3"></span>
+                <span class="dna-node n4"></span>
+                <span class="dna-node n5"></span>
+                <span class="dna-node n6"></span>
+              </div>
+            </div>
+
+            <div class="dna-text">
+              <div id="finalizeMsg" class="hint dna-label">Finalizing subscription…</div>
+              <div id="finalizeSub" class="hint dna-sub">Do not refresh — safe to leave open.</div>
+            </div>
           </div>
 
           <div style="margin-top:12px;">
@@ -1058,9 +1221,17 @@
           redirect: "if_required"
         });
 
-        if (error) { msg.textContent = error.message || "Setup error."; return; }
+        if (error) {
+          msg.textContent = error.message || "Setup error.";
+          return;
+        }
 
-        showProcessingState("Finalizing subscription…");
+        // ✅ DNA speeds up — payment saved
+        setDnaMode("fast", "Payment method saved…", "Creating subscription…");
+
+        // keep that message visible briefly before switching to the generic finalizing copy
+        setTimeout(() => showProcessingState("Finalizing subscription…"), 250);
+
         await pollUntilResolved();
       };
 
@@ -1069,10 +1240,36 @@
       if (msg) msg.textContent = "Enter payment details to activate.";
     }
 
-    function showProcessingState(message) {
+    function setDnaMode(mode, msg, sub) {
+      const box = document.querySelector(".dna-container");
+      if (!box) return;
+      box.dataset.dna = mode;
+
+      if (msg) document.getElementById("finalizeMsg").textContent = msg;
+      if (sub) document.getElementById("finalizeSub").textContent = sub;
+    }
+
+    function markDnaComplete() {
+      const box = document.querySelector(".dna-container");
+      if (!box) return;
+      box.classList.add("is-complete");
+      setTimeout(() => box.classList.add("hidden"), 500);
+    }    
+
+    function showProcessingState(message = "Finalizing subscription…") {
       gotoStep5();
-      const msg = document.getElementById("finalizeMsg");
-      if (msg) msg.textContent = message;
+
+      // ✅ DO NOT override a faster mode if it’s already set
+      const box = document.querySelector(".dna-container");
+      const current = box?.dataset?.dna || "idle";
+      const modeToUse = (current === "fast" || current === "lock") ? current : "idle";
+
+      setDnaMode(
+        modeToUse,
+        message,
+        modeToUse === "fast" ? "Creating subscription…" : "Confirming with Stripe…"
+      );
+
       const btn = document.getElementById("payNowBtn");
       if (btn) btn.disabled = true;
     }
@@ -1091,7 +1288,46 @@
         sessionStorage.setItem("pragoptics_ping", JSON.stringify(ping));
 
         const status = (ping?.billingProfile?.status || "").toUpperCase();
-        if (status === "ACTIVE" || status === "PAST_DUE" || status === "CANCELED") {
+
+        // ✅ Mid-state: subscription exists, entitlements pending
+        if (status === "PAYMENT_PENDING") {
+          setDnaMode(
+            "fast",
+            "Subscription created…",
+            "Finalizing entitlements…"
+          );
+        }
+
+        // ✅ Success
+        if (status === "ACTIVE") {
+          setDnaMode(
+            "lock",
+            "Activated ✅",
+            "Launching console…"
+          );
+          markDnaComplete();
+          handlePostLoginUI(ping);
+          return;
+        }
+
+        // ✅ Recoverable
+        if (status === "PAST_DUE") {
+          setDnaMode(
+            "idle",
+            "Payment issue detected",
+            "Please update payment method."
+          );
+          handlePostLoginUI(ping);
+          return;
+        }
+
+        // ✅ Terminal
+        if (status === "CANCELED") {
+          setDnaMode(
+            "idle",
+            "Subscription canceled",
+            "You may restart onboarding anytime."
+          );
           handlePostLoginUI(ping);
           return;
         }
