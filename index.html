@@ -830,6 +830,7 @@
     const BILLING_PROFILE_URL  = `${PRAG_API_BASE}/billing/profile`;
     const CHECKOUT_SESSION_URL = `${PRAG_API_BASE}/billing/checkout-session`;
     const AGREEMENT_MD_URL = "https://pragoptics.com/docs/PragOptics-Subscriber-Agreement.md";
+    const STRIPE_PORTAL_LOGIN_URL = "https://billing.stripe.com/p/login/4gM00beIf91O1Kzc3DdjO00so";
 
     /* ===========================
        STATE
@@ -1959,6 +1960,21 @@ function normalizeEndpointKey(obj) {
   // Fallback
   setAppMode("wizard");
   gotoStep1();
+}
+
+    function redirectToStripePortalWithDna(status) {
+  setAppMode("wizard");
+  gotoStep5();
+
+  const isUrgent = String(status).toUpperCase() === "PAST_DUE";
+  setDnaMode(isUrgent ? "fast" : "idle",
+    isUrgent ? "Payment issue detected…" : "Preparing billing management…",
+    isUrgent ? "Redirecting to update payment method…" : "Redirecting securely to Stripe…"
+  );
+
+  setTimeout(() => {
+    window.location.href = STRIPE_PORTAL_LOGIN_URL;
+  }, 5000);
 }
   </script>
 </body>
