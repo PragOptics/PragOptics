@@ -382,6 +382,10 @@
   .dna-node{ opacity:.85; filter:none; }
   .dna-track{ animation:none !important; }
 }
+    
+#po-visual-view .login-panel{
+  min-height:90px;
+}
   </style>
 </head>
 
@@ -723,9 +727,23 @@
         </div>
       </div>
 
-      <div class="viewer">
+      <div class="login-panel" style="display:flex; justify-content:space-between; align-items:center;">
+        <strong>API Response</strong>
+
+        <button
+          id="viewerToggle"
+          class="copy-btn"
+          type="button"
+          onclick="toggleViewerMode()">
+          Visual View
+        </button>
+      </div>
+
+      <div class="viewer" id="po-raw-view">
         <pre id="po-output">{ "hint": "Login, then call /ping or /auth." }</pre>
       </div>
+
+      <div class="viewer hidden" id="po-visual-view"></div>
     </section>
 
   </main>
@@ -831,6 +849,21 @@
       }
       animate();
     });
+
+        /* ===========================
+       RESPONSE VIEWER
+       =========================== */
+      let viewerMode = "raw"; // raw | visual
+
+      function toggleViewerMode() {
+        viewerMode = (viewerMode === "raw") ? "visual" : "raw";
+
+        document.getElementById("po-raw-view").classList.toggle("hidden", viewerMode !== "raw");
+        document.getElementById("po-visual-view").classList.toggle("hidden", viewerMode !== "visual");
+
+        document.getElementById("viewerToggle").textContent =
+          viewerMode === "raw" ? "Visual View" : "Raw JSON";
+      }   
 
     /* ===========================
        TOKENS
@@ -1006,8 +1039,67 @@
        DEV CONSOLE FUNCTIONS
        =========================== */
     function setOutput(obj) {
-      document.getElementById("po-output").textContent = JSON.stringify(obj, null, 2);
-    }
+  // Raw JSON stays exactly the same
+  document.getElementById("po-output").textContent =
+    JSON.stringify(obj, null, 2);
+
+  // If this is a ping response, also render visual
+  if (obj?.response && obj.endpoint === "/ping") {
+    renderPingVisual(obj.response);
+  }
+}
+    
+    function renderPingVisual(ping) {
+  const host = document.getElementById("po-visual-view");
+  if (!host) return;
+
+  const bp = ping.billingProfile || {};
+  const tenant = ping.tenant || {};
+  const caps = ping.capabilities || {};
+
+  host.innerHTML = `
+    <div class="row">
+
+      <div class="login-panel field">
+        <strong>Status</strong>
+        <div class="badge" style="margin-top:6px;">
+          ${bp.status || "UNKNOWN"}
+        </div>
+        <div class="hint">Subscription state</div>
+      </div>
+
+      <div class="login-panel field">
+        <strong>Account</strong>
+        <div class="hint">${bp.customerName || "—"}</div>
+        <div class="hint">${bp.primaryEmail || "—"}</div>
+      </div>
+
+      <div class="login-panel field">
+        <strong>Tenant</strong>
+        <div class="hint">${tenant.id || "—"}</div>
+        <div class="hint">${tenant.environment || "—"}</div>
+      </div>
+
+    </div>
+
+    <div class="row" style="margin-top:12px;">
+
+      <div class="login-panel field">
+        <strong>Capabilities</strong>
+        <div class="hint">API Access: ${caps.api ? "✅" : "—"}</div>
+        <div class="hint">Workflows: ${caps.workflows ? "✅" : "—"}</div>
+        <div class="hint">Storage: ${caps.storage || "—"}</div>
+      </div>
+
+      <div class="login-panel field">
+        <strong>Usage</strong>
+        <div class="hint">Calls Used: ${caps.callsUsed ?? "—"}</div>
+        <div class="hint">Calls Remaining: ${caps.callsRemaining ?? "—"}</div>
+      </div>
+
+    </div>
+  `;
+}
 
     async function callPragOpticsAuth() {
       try {
