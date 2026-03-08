@@ -516,8 +516,8 @@
     <section id="wizardView" class="glass panel hidden">
       <div style="display:flex; justify-content:space-between; align-items:center;">
         <div>
-          <h2 style="margin:0; color:var(--brand-600);">PragOptics™ Subscription Wizard</h2>
-          <div class="hint">Complete setup to activate your PragOptics subscription.</div>
+          <h2 id="wizardTitle" style="margin:0; color:var(--brand-600);">PragOptics™ Subscription Wizard</h2>
+          <div id="wizardHint" class="hint">Complete setup to activate your PragOptics subscription.</div>
         </div>
         <span class="badge" id="authBadge">Signed out</span>
       </div>
@@ -844,6 +844,31 @@
       ["landingView","wizardView","consoleView"].forEach(id => document.getElementById(id)?.classList.add("hidden"));
       document.getElementById(mode + "View")?.classList.remove("hidden");
     }
+
+    function ensureWizardVisibleAndBranded(ping, { title, hint } = {}) {
+  // Show wizard view
+  setAppMode("wizard");
+
+  // Make wizard container visible (this is the missing piece)
+  const flow = document.getElementById("platformFlow");
+  if (flow) flow.style.display = "block";
+
+  // Mark signed-in if we have ping/user OR tokens exist
+  const badge = document.getElementById("authBadge");
+  const hasTokens = !!getStoredTokens()?.access_token;
+  const signedIn = !!ping?.user || hasTokens;
+
+  if (badge) {
+    badge.textContent = signedIn ? "Signed in" : "Signed out";
+    badge.style.color = signedIn ? "#21bca5" : "";
+  }
+
+  // Update header copy (optional but makes this feel like “Billing”, not “Wizard”)
+  const h2 = document.getElementById("wizardTitle");
+  const sub = document.getElementById("wizardHint");
+  if (h2 && title) h2.textContent = title;
+  if (sub && hint) sub.textContent = hint;
+}
 
     /* ===========================
        NAV / ENTRY
@@ -1918,59 +1943,105 @@ function normalizeEndpointKey(obj) {
 }
 
     
-    function openBillingFromMenu() {
-  const ping = JSON.parse(sessionStorage.getItem("pragoptics_ping") || "null");
+   async function openBillingFromMenu() {
+  let ping = JSON.parse(sessionStorage.getItem("pragoptics_ping") || "null");
 
-  // No session yet → onboarding
+  // If we don't have ping cached but we do have a token, fetch ping so we can route correctly
+  if (!ping) {
+    const token = getStoredTokens()?.access_token;
+    if (token) {
+      try {
+        ping = await fetchJson(PING_URL, { headers: { Authorization: `Bearer ${token}` } });
+        sessionStorage.setItem("pragoptics_ping", JSON.stringify(ping));
+      } catch {
+        // If ping fails, fall back to wizard step 1
+        ensureWizardVisibleAndBranded(null, {
+          title: "PragOptics™ Billing",
+          hint: "Sign in to manage billing."
+        });
+        gotoStep1();
+        return;
+      }
+    }
+  }
+
+  // No billing profile → onboarding wizard
   if (!ping || !ping.billingProfile) {
-    setAppMode("wizard");
+    ensureWizardVisibleAndBranded(ping, {
+      title: "PragOptics™ Subscription Wizard",
+      hint: "Complete setup to activate your PragOptics subscription."
+    });
     gotoStep1();
     return;
   }
 
-  const status = (ping.billingProfile.status || "").toUpperCase();
+  const status = String(ping.billingProfile.status || "").toUpperCase();
 
-  // Wizard-only states
+  // PENDING_SUBSCRIPTION → resume wizard
   if (status === "PENDING_SUBSCRIPTION") {
-    setAppMode("wizard");
+    ensureWizardVisibleAndBranded(ping, {
+      title: "PragOptics™ Billing",
+      hint: "Complete billing to activate your subscription."
+    });
     gotoStep2();
     return;
   }
 
+  // PAYMENT_PENDING → show finalizing DNA (no redirect)
   if (status === "PAYMENT_PENDING") {
-    setAppMode("wizard");
+    ensureWizardVisibleAndBranded(ping, {
+      title: "PragOptics™ Billing",
+      hint: "Finalizing your subscription with Stripe…"
+    });
     gotoStep5();
     setDnaMode("fast", "Finalizing subscription…", "Confirming with Stripe…");
     return;
   }
 
+  // CANCELED → restart wizard
   if (status === "CANCELED") {
-    setAppMode("wizard");
+    ensureWizardVisibleAndBranded(ping, {
+      title: "PragOptics™ Billing",
+      hint: "Your subscription was canceled. Restart billing anytime."
+    });
     showCanceledBanner();
     gotoStep1();
     return;
   }
 
-  // ACTIVE or PAST_DUE → Stripe Portal with DNA bridge
+  // ACTIVE / PAST_DUE → Stripe portal (with DNA bridge)
   if (status === "ACTIVE" || status === "PAST_DUE") {
-    redirectToStripePortalWithDna(status);
+    redirectToStripePortalWithDna(status, ping);
     return;
   }
 
   // Fallback
-  setAppMode("wizard");
+  ensureWizardVisibleAndBranded(ping, {
+    title: "PragOptics™ Billing",
+    hint: "Billing status could not be determined. Please review setup."
+  });
   gotoStep1();
 }
 
-    function redirectToStripePortalWithDna(status) {
-  setAppMode("wizard");
+    function redirectToStripePortalWithDna(status, ping) {
+  const isUrgent = String(status).toUpperCase() === "PAST_DUE";
+
+  ensureWizardVisibleAndBranded(ping, {
+    title: "PragOptics™ Billing",
+    hint: isUrgent ? "Payment issue detected — opening Stripe portal…" : "Opening Stripe billing portal…"
+  });
+
   gotoStep5();
 
-  const isUrgent = String(status).toUpperCase() === "PAST_DUE";
-  setDnaMode(isUrgent ? "fast" : "idle",
-    isUrgent ? "Payment issue detected…" : "Preparing billing management…",
-    isUrgent ? "Redirecting to update payment method…" : "Redirecting securely to Stripe…"
+  setDnaMode(
+    isUrgent ? "fast" : "idle",
+    isUrgent ? "Redirecting to update payment method…" : "Preparing billing management…",
+    "Launching Stripe portal…"
   );
+
+  // Make sure we do NOT hide the flow container
+  const flow = document.getElementById("platformFlow");
+  if (flow) flow.style.display = "block";
 
   setTimeout(() => {
     window.location.href = STRIPE_PORTAL_LOGIN_URL;
