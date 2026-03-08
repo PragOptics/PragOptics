@@ -165,8 +165,9 @@
     .badge{ display:inline-block; padding:2px 8px; border-radius:999px; background:#ffffff12; border:1px solid #ffffff22; font-size:.8rem; color:var(--muted); }
     .field{ flex:1 1 260px; }
     .hint{ color:var(--muted); font-size:.9rem; }
-    /* ===========================
-   DNA FINALIZATION LOADER (FULL)
+   /* ===========================
+   DNA FINALIZATION LOADER (OPTION B)
+   Two bead trains + opposite phase + depth swap
    =========================== */
 
 .dna-container{
@@ -189,20 +190,21 @@
   border-radius:999px;
   background:linear-gradient(90deg, rgba(255,255,255,0.02), rgba(255,255,255,0.00));
   border:1px solid rgba(255,255,255,0.10);
+  animation:dnaBreath 3.2s ease-in-out infinite;
 }
-.dna-track{
-  animation: dnaBreath 3.2s ease-in-out infinite;
-}
+
 @keyframes dnaBreath{
   0%,100% { box-shadow: 0 0 0 rgba(33,188,165,0.0); }
   50%     { box-shadow: 0 0 18px rgba(33,188,165,0.14); }
 }
-    
+
+/* lock mode: tighter, "complete" look */
 .dna-container[data-dna="lock"] .dna-track{
   border-color: rgba(33,188,165,0.45);
+  box-shadow: 0 0 22px rgba(33,188,165,0.18);
 }
 
-/* Strands = dotted + subtle glow */
+/* ===== Strands ===== */
 .dna-strand{
   position:absolute;
   top:50%;
@@ -214,12 +216,17 @@
   will-change:transform, opacity;
 }
 
+/* Strand A (teal) */
 .strand-a{ opacity:.95; }
-.strand-b{ opacity:.55; border-top-color: rgba(108,92,231,0.65); filter:drop-shadow(0 0 7px rgba(108,92,231,0.35)); }
 
-/* ===== Helix motion =====
-   animate both strands with phase shift.
-*/
+/* Strand B (purple) — boosted so it's clearly visible */
+.strand-b{
+  opacity:.82;
+  border-top-color: rgba(108,92,231,0.90);
+  filter:drop-shadow(0 0 9px rgba(108,92,231,0.48));
+}
+
+/* ===== Helix motion ===== */
 .dna-container[data-dna="idle"] .strand-a { animation: dnaWaveA 1.75s linear infinite; }
 .dna-container[data-dna="idle"] .strand-b { animation: dnaWaveB 1.75s linear infinite; }
 
@@ -229,7 +236,7 @@
 .dna-container[data-dna="lock"] .strand-a,
 .dna-container[data-dna="lock"] .strand-b{
   animation:none;
-  opacity:.9;
+  opacity:.95;
   border-top-style:solid;
   border-top-width:2px;
 }
@@ -237,63 +244,128 @@
 /* motion keyframes */
 @keyframes dnaWaveA{
   0%   { transform: translateY(-8px) translateX(0);   }
-  50%  { transform: translateY(8px)  translateX(60px);}
+  50%  { transform: translateY( 8px) translateX(60px);}
   100% { transform: translateY(-8px) translateX(120px);}
 }
 @keyframes dnaWaveB{
-  0%   { transform: translateY(8px)  translateX(0);   }
+  0%   { transform: translateY( 8px) translateX(0);   }
   50%  { transform: translateY(-8px) translateX(60px);}
-  100% { transform: translateY(8px)  translateX(120px);}
+  100% { transform: translateY( 8px) translateX(120px);}
 }
 
-/* ===== Beads (nodes) ===== */
+/* ===== Beads / Nodes ===== */
 .dna-nodes{ position:absolute; inset:0; pointer-events:none; }
 
+/* base bead */
 .dna-node{
   position:absolute;
   top:50%;
   width:8px; height:8px;
   border-radius:999px;
   transform: translate(-50%,-50%);
-  background: radial-gradient(circle, rgba(255,255,255,0.95) 0%, rgba(33,188,165,0.95) 40%, rgba(33,188,165,0.15) 70%, rgba(33,188,165,0.0) 100%);
+  opacity:0;
+  will-change:left, transform, opacity, filter;
+}
+
+/* Train A (teal) */
+.dna-node.a{
+  background: radial-gradient(circle,
+    rgba(255,255,255,0.95) 0%,
+    rgba(33,188,165,0.95) 40%,
+    rgba(33,188,165,0.15) 70%,
+    rgba(33,188,165,0.0) 100%);
   box-shadow: 0 0 10px rgba(33,188,165,0.55);
-  opacity:.0;
-  will-change: left, transform, opacity, filter;
 }
 
-/* Alternate “purple” nodes to suggest dual strands */
-.dna-node:nth-child(even){
-  background: radial-gradient(circle, rgba(255,255,255,0.92) 0%, rgba(108,92,231,0.85) 40%, rgba(108,92,231,0.18) 70%, rgba(108,92,231,0.0) 100%);
-  box-shadow: 0 0 10px rgba(108,92,231,0.35);
+/* Train B (purple) */
+.dna-node.b{
+  background: radial-gradient(circle,
+    rgba(255,255,255,0.92) 0%,
+    rgba(108,92,231,0.88) 40%,
+    rgba(108,92,231,0.18) 70%,
+    rgba(108,92,231,0.0) 100%);
+  box-shadow: 0 0 10px rgba(108,92,231,0.38);
 }
 
-/* Node travel path: left->right with vertical oscillation */
-.dna-container[data-dna="idle"] .dna-node{ animation: dnaNode 1.75s linear infinite; }
-.dna-container[data-dna="fast"] .dna-node{ animation: dnaNode 1.05s linear infinite; }
-.dna-container[data-dna="lock"] .dna-node{ animation: dnaNodeLock .55s ease forwards; opacity:1; }
+/* Speed control by mode */
+.dna-container[data-dna="idle"] .dna-node.a { animation: dnaNodeA 1.75s linear infinite; }
+.dna-container[data-dna="idle"] .dna-node.b { animation: dnaNodeB 1.75s linear infinite; }
 
-/* Stagger node offsets */
-.dna-node.n1{ animation-delay: 0s; }
-.dna-node.n2{ animation-delay: .18s; }
-.dna-node.n3{ animation-delay: .36s; }
-.dna-node.n4{ animation-delay: .54s; }
-.dna-node.n5{ animation-delay: .72s; }
-.dna-node.n6{ animation-delay: .90s; }
+.dna-container[data-dna="fast"] .dna-node.a { animation: dnaNodeA 1.05s linear infinite; }
+.dna-container[data-dna="fast"] .dna-node.b { animation: dnaNodeB 1.05s linear infinite; }
 
-@keyframes dnaNode{
-  0%   { left:-10%; opacity:0; transform:translate(-50%,-50%) translateY(-8px) scale(.85); filter:blur(.2px); }
-  10%  { opacity:1; }
-  50%  { left:50%;  opacity:1; transform:translate(-50%,-50%) translateY(8px) scale(1.1); }
-  90%  { opacity:1; }
-  100% { left:110%; opacity:0; transform:translate(-50%,-50%) translateY(-8px) scale(.85); }
+/* lock: settle beads into place */
+.dna-container[data-dna="lock"] .dna-node.a,
+.dna-container[data-dna="lock"] .dna-node.b{
+  animation: dnaNodeLock .55s ease forwards;
+  opacity:1;
+  filter: blur(0px) brightness(1.1);
+}
+
+/* Stagger timing within each train */
+.dna-node.a.n1{ animation-delay: 0s; }
+.dna-node.a.n2{ animation-delay: .22s; }
+.dna-node.a.n3{ animation-delay: .44s; }
+
+/* offset B half-step so it reads as a second strand */
+.dna-node.b.n1{ animation-delay: .11s; }
+.dna-node.b.n2{ animation-delay: .33s; }
+.dna-node.b.n3{ animation-delay: .55s; }
+
+/* ===========================
+   DEPTH SWAP (the magic)
+   - At center, A comes forward (bright/sharp/high z)
+   - At center, B goes behind (dim/blur/low z)
+   - Opposite on the other half-cycle is created by phase + y-direction
+   =========================== */
+
+/* Train A: front at center */
+@keyframes dnaNodeA{
+  0%   { left:-10%; opacity:0; transform:translate(-50%,-50%) translateY(-9px) scale(.82);
+         filter:blur(.70px) brightness(.88) contrast(1); z-index:1; }
+  12%  { opacity:1; }
+
+  35%  { left:35%; transform:translate(-50%,-50%) translateY(-1px) scale(1.00);
+         filter:blur(.25px) brightness(1.02) contrast(1.05); z-index:2; }
+
+  50%  { left:50%; transform:translate(-50%,-50%) translateY( 9px) scale(1.22);
+         filter:blur(0px) brightness(1.30) contrast(1.18); z-index:4; }
+
+  65%  { left:65%; transform:translate(-50%,-50%) translateY(-1px) scale(1.00);
+         filter:blur(.25px) brightness(1.02) contrast(1.05); z-index:2; }
+
+  88%  { opacity:1; }
+  100% { left:110%; opacity:0; transform:translate(-50%,-50%) translateY(-9px) scale(.82);
+         filter:blur(.70px) brightness(.88) contrast(1); z-index:1; }
+}
+
+/* Train B: back at center (opposite depth) */
+@keyframes dnaNodeB{
+  0%   { left:-10%; opacity:0; transform:translate(-50%,-50%) translateY( 9px) scale(.82);
+         filter:blur(.70px) brightness(.84) contrast(1); z-index:1; }
+  12%  { opacity:1; }
+
+  35%  { left:35%; transform:translate(-50%,-50%) translateY( 1px) scale(1.00);
+         filter:blur(.30px) brightness(.96) contrast(1.02); z-index:2; }
+
+  /* center: B goes behind while A is in front */
+  50%  { left:50%; transform:translate(-50%,-50%) translateY(-9px) scale(.94);
+         filter:blur(.95px) brightness(.82) contrast(.98); z-index:0; }
+
+  65%  { left:65%; transform:translate(-50%,-50%) translateY( 1px) scale(1.00);
+         filter:blur(.30px) brightness(.96) contrast(1.02); z-index:2; }
+
+  88%  { opacity:1; }
+  100% { left:110%; opacity:0; transform:translate(-50%,-50%) translateY( 9px) scale(.82);
+         filter:blur(.70px) brightness(.84) contrast(1); z-index:1; }
 }
 
 @keyframes dnaNodeLock{
-  0%   { opacity:.0; }
-  100% { opacity:1; transform:translate(-50%,-50%) scale(1.0); }
+  0%   { opacity:.0; transform:translate(-50%,-50%) scale(.9); }
+  100% { opacity:1;  transform:translate(-50%,-50%) scale(1.0); }
 }
 
-/* ===== Activated “burst” (optional) ===== */
+/* ===== Complete fade out ===== */
 .dna-container.is-complete .dna-track{
   animation: dnaFadeOut .45s ease forwards;
 }
@@ -307,9 +379,9 @@
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce){
   .dna-strand, .dna-node{ animation:none !important; }
-  .dna-node{ opacity:.8; }
+  .dna-node{ opacity:.85; filter:none; }
+  .dna-track{ animation:none !important; }
 }
-
   </style>
 </head>
 
@@ -587,12 +659,12 @@
 
               <!-- “beads” traveling along the helix -->
               <div class="dna-nodes">
-                <span class="dna-node n1"></span>
-                <span class="dna-node n2"></span>
-                <span class="dna-node n3"></span>
-                <span class="dna-node n4"></span>
-                <span class="dna-node n5"></span>
-                <span class="dna-node n6"></span>
+                <span class="dna-node a n1"></span>
+                <span class="dna-node a n2"></span>
+                <span class="dna-node a n3"></span>
+                <span class="dna-node b n1"></span>
+                <span class="dna-node b n2"></span>
+                <span class="dna-node b n3"></span>
               </div>
             </div>
 
@@ -908,7 +980,11 @@
       if (bpStatus === "PAYMENT_PENDING") {
         setAppMode("wizard");
         initPostLoginWizard(pragopticsToken, ping);
-        showProcessingState("Finalizing subscription…");
+
+        // ✅ Instant “fast” since we already know we’re mid-flight
+        gotoStep5();
+        setDnaMode("fast", "Subscription created…", "Finalizing entitlements…");
+
         pollUntilResolved();
         return;
       }
@@ -1043,6 +1119,8 @@
     }
 
     function initPostLoginWizard(accessToken, ping) {
+      if (window.__wizardInit) return;
+      window.__wizardInit = true;
       const badge = document.getElementById("authBadge");
       if (badge) { badge.textContent = "Signed in"; badge.style.color = "#21bca5"; }
 
@@ -1275,64 +1353,59 @@
     }
 
     async function pollUntilResolved() {
-      const stored = getStoredTokens();
-      const accessToken = stored?.access_token || pragopticsToken;
-      if (!accessToken) return;
+  const stored = getStoredTokens();
+  const accessToken = stored?.access_token || pragopticsToken;
+  if (!accessToken) return;
 
-      const started = Date.now();
-      const TIMEOUT = 60000;
+  const started = Date.now();
+  const TIMEOUT = 60000;
 
-      while (Date.now() - started < TIMEOUT) {
-        await new Promise(r => setTimeout(r, 1500));
-        const ping = await fetchJson(PING_URL, { headers: { Authorization:`Bearer ${accessToken}` } });
-        sessionStorage.setItem("pragoptics_ping", JSON.stringify(ping));
+  while (Date.now() - started < TIMEOUT) {
+    await new Promise(r => setTimeout(r, 1500));
 
-        const status = (ping?.billingProfile?.status || "").toUpperCase();
+    const ping = await fetchJson(PING_URL, {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
 
-        // ✅ Mid-state: subscription exists, entitlements pending
-        if (status === "PAYMENT_PENDING") {
-          setDnaMode(
-            "fast",
-            "Subscription created…",
-            "Finalizing entitlements…"
-          );
-        }
+    sessionStorage.setItem("pragoptics_ping", JSON.stringify(ping));
 
-        // ✅ Success
-        if (status === "ACTIVE") {
-          setDnaMode(
-            "lock",
-            "Activated ✅",
-            "Launching console…"
-          );
-          markDnaComplete();
-          handlePostLoginUI(ping);
-          return;
-        }
+    const status = (ping?.billingProfile?.status || "").toUpperCase();
 
-        // ✅ Recoverable
-        if (status === "PAST_DUE") {
-          setDnaMode(
-            "idle",
-            "Payment issue detected",
-            "Please update payment method."
-          );
-          handlePostLoginUI(ping);
-          return;
-        }
-
-        // ✅ Terminal
-        if (status === "CANCELED") {
-          setDnaMode(
-            "idle",
-            "Subscription canceled",
-            "You may restart onboarding anytime."
-          );
-          handlePostLoginUI(ping);
-          return;
-        }
-      }
+    // Mid-state
+    if (status === "PAYMENT_PENDING") {
+      setDnaMode("fast", "Subscription created…", "Finalizing entitlements…");
     }
+
+    // Success
+    if (status === "ACTIVE") {
+      setDnaMode("lock", "Activated ✅", "Launching console…");
+      markDnaComplete();
+      handlePostLoginUI(ping);
+      return;
+    }
+
+    // Recoverable
+    if (status === "PAST_DUE") {
+      setDnaMode("idle", "Payment issue detected", "Please update payment method.");
+      handlePostLoginUI(ping);
+      return;
+    }
+
+    // Terminal
+    if (status === "CANCELED") {
+      setDnaMode("idle", "Subscription canceled", "You may restart onboarding anytime.");
+      handlePostLoginUI(ping);
+      return;
+    }
+  }
+
+  // ✅ Timeout fallback (this was missing)
+  setDnaMode(
+    "idle",
+    "Still working…",
+    "You can safely refresh, or click Refresh Status again."
+  );
+}
 
     /* ===========================
        BOOT
