@@ -795,7 +795,7 @@
     const AUTH_URL        = `${PRAG_API_BASE}/auth`;
     const BILLING_PROFILE_URL  = `${PRAG_API_BASE}/billing/profile`;
     const CHECKOUT_SESSION_URL = `${PRAG_API_BASE}/billing/checkout-session`;
-    const AGREEMENT_MD_URL = "https://fortiviewholdings.com/docs/PragOptics-Subscriber-Agreement.md";
+    const AGREEMENT_MD_URL = "https://pragoptics.com/docs/PragOptics-Subscriber-Agreement.md";
 
     /* ===========================
        STATE
@@ -1112,52 +1112,15 @@
        DEV CONSOLE FUNCTIONS
        =========================== */
     function setOutput(obj) {
-        // Raw JSON stays exactly the same
-        document.getElementById("po-output").textContent =
-          JSON.stringify(obj, null, 2);
+  document.getElementById("po-output").textContent = JSON.stringify(obj, null, 2);
 
-        // ✅ Render visual if we have a ping payload (either as response or as obj.ping)
-        const maybePing =
-          (obj?.endpoint === "/ping" && obj?.response) ? obj.response :
-          (obj?.ping ? obj.ping : null);
+  const ping = (obj?.endpoint === "/ping" && obj?.response)
+    ? obj.response
+    : (obj?.ping || null);
 
-        if (maybePing) renderPingVisual(maybePing);
-
-        // ✅ Optional: for other endpoints, show a generic visual summary
-        if (!maybePing && obj?.response) renderGenericVisual(obj.response);
-      }
-
-    function renderGenericVisual(payload) {
-  const host = document.getElementById("po-visual-view");
-  if (!host) return;
-
-  // Render a compact key/value card for unknown shapes
-  const entries = Object.entries(payload || {});
-  const rows = entries.slice(0, 24).map(([k, v]) => {
-    const val = (typeof v === "object") ? JSON.stringify(v) : String(v ?? "—");
-    return `
-      <div class="kv">
-        <div class="k">${escapeHtml(k)}</div>
-        <div class="v">${escapeHtml(val).slice(0, 260)}</div>
-      </div>
-    `;
-  }).join("");
-
-  host.innerHTML = `
-    <div class="login-panel" style="margin-bottom:12px;">
-      <strong>Visual Summary</strong>
-      <div class="hint">Generic view (first 24 fields)</div>
-    </div>
-    <div class="login-panel">
-      ${rows || `<div class="hint">No fields to display.</div>`}
-    </div>
-  `;
+  if (ping) renderPingVisual(ping);
 }
 
-// simple escape for the generic renderer
-function escapeHtml(s) {
-  return String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-}
     
     function renderPingVisual(ping) {
   const host = document.getElementById("po-visual-view");
@@ -1168,16 +1131,31 @@ function escapeHtml(s) {
     ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;" }[c])
   );
 
-  const pick = (...vals) => vals.find(v => v !== undefined && v !== null && v !== "");
+  const fmtTime = (iso) => {
+    if (!iso) return "—";
+    try {
+      const d = new Date(iso);
+      if (Number.isNaN(d.getTime())) return String(iso);
+      return d.toLocaleString();
+    } catch { return String(iso); }
+  };
+
+  const toneForStatus = (s) => {
+    s = String(s || "").toUpperCase();
+    if (s === "ACTIVE") return "good";
+    if (s.includes("PAST") || s.includes("DUE") || s.includes("PENDING")) return "warn";
+    if (s.includes("CANCEL") || s.includes("FAIL") || s.includes("ERROR")) return "bad";
+    return "neutral";
+  };
 
   const pill = (text, tone="neutral") => {
-    const tones = {
+    const styles = {
       good:   "border-color:rgba(33,188,165,.35); color:#a7fff1;",
       warn:   "border-color:rgba(255,190,120,.35); color:#ffd7b0;",
       bad:    "border-color:rgba(255,107,107,.35); color:#ffb3b3;",
       neutral:"border-color:rgba(255,255,255,.14); color:rgba(255,255,255,.92);"
     };
-    return `<span class="pill" style="${tones[tone] || tones.neutral}">${esc(text)}</span>`;
+    return `<span class="pill" style="${styles[tone] || styles.neutral}">${esc(text)}</span>`;
   };
 
   const kv = (k, v) => `
@@ -1187,74 +1165,61 @@ function escapeHtml(s) {
     </div>
   `;
 
-  // ---------- normalize likely schemas ----------
-  const bp = ping?.billingProfile || {};
-  const user = ping?.user || {};
+  const truthy = (v) => v === true ? "✅" : (v === false ? "—" : "—");
+
+  // ---------- extract from YOUR ping schema ----------
   const deployment = ping?.deployment || {};
-  const tenant = ping?.tenant || {};
-  const caps = ping?.capabilities || {};
+  const user = ping?.user || {};
+  const bp = ping?.billingProfile || {};
 
-  const service = pick(ping?.service, ping?.name, "pragoptics-api");
-  const timestamp = pick(ping?.timestamp, deployment?.timestamp, bp?.updatedAt, bp?.createdAt);
+  const lane = deployment.lane || "—";
+  const build = deployment.build || "—";
+  const service = ping?.service || "—";
+  const timestamp = ping?.timestamp || "—";
 
-  // Billing status: prefer billingProfile.status, else user.status/tier
-  const billingStatus = (pick(bp?.status, user?.billingStatus, user?.status) || "UNKNOWN").toString().toUpperCase();
-  const statusTone =
-    billingStatus === "ACTIVE" ? "good" :
-    (billingStatus.includes("PAST") || billingStatus.includes("DUE")) ? "warn" :
-    (billingStatus.includes("CANCEL") || billingStatus.includes("FAIL")) ? "bad" :
-    "neutral";
+  const userStatus = (user.status || "UNKNOWN").toUpperCase();
+  const bpStatus = (bp.status || "—").toUpperCase();
 
-  const tier = (pick(user?.tier, user?.role, bp?.tier) || "").toString().toUpperCase() || "—";
+  const requested = bp.requestedSubscription || {};
+  const addons = requested.addons || {};
+  const cadence = requested.cadence || "—";
+  const subType = requested.subType || "—";
 
-  const email = pick(user?.email, bp?.primaryEmail, bp?.email);
-  const name  = pick(bp?.customerName, user?.name, user?.displayName);
+  const needsProvisioning = !!ping?.needsProvisioning;
+  const env = ping?.environment || null; // only present when provisioned (non-admin)
+  const operatorResources = Array.isArray(ping?.operatorResources) ? ping.operatorResources : [];
 
-  const envId = pick(user?.environmentId, tenant?.environmentId, tenant?.id);
-  const lane  = pick(deployment?.lane, ping?.lane, tenant?.environment);
+  const hasCatalog = Array.isArray(ping?.productCatalog) && ping.productCatalog.length > 0;
 
-  const build = pick(deployment?.build, ping?.build, ping?.version);
-
-  const resources = Array.isArray(ping?.operatorResources) ? ping.operatorResources : [];
-  const resourceLines = resources
-    .map(r => r?.descriptor || r?.name || r?.id)
-    .filter(Boolean)
-    .slice(0, 8);
-
-  // Capabilities/usage (may not exist yet)
-  const apiAccess = pick(caps?.api, ping?.apiAccess);
-  const workflows = pick(caps?.workflows, ping?.workflows);
-  const storage   = pick(caps?.storage, ping?.storage);
-
-  const callsUsed = pick(caps?.callsUsed, ping?.callsUsed);
-  const callsRemaining = pick(caps?.callsRemaining, ping?.callsRemaining);
-
-  // ---------- render ----------
+  // ---------- build UI ----------
   host.innerHTML = `
     <div class="row">
 
       <div class="login-panel field">
         <strong>Status</strong>
-        <div style="margin-top:8px;">
-          ${pill(billingStatus, statusTone)}
-          ${tier !== "—" ? ` <span style="margin-left:8px">${pill(tier, tier==="FREE" ? "warn" : "good")}</span>` : ""}
+        <div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap;">
+          ${pill(userStatus, toneForStatus(userStatus))}
+          ${bpStatus !== "—" ? pill(`BILLING: ${bpStatus}`, toneForStatus(bpStatus)) : pill("BILLING: —", "neutral")}
+          ${needsProvisioning ? pill("NEEDS PROVISIONING", "warn") : pill("PROVISIONED", env ? "good" : "neutral")}
         </div>
-        <div class="hint" style="margin-top:8px;">Billing / access state</div>
-      </div>
-
-      <div class="login-panel field">
-        <strong>Account</strong>
-        ${kv("Name", name || "—")}
-        ${kv("Email", email || "—")}
-        ${kv("Billing Profile", pick(user?.billingProfileId, bp?.id, "—"))}
+        <div class="hint" style="margin-top:8px;">User + billing + routing state</div>
       </div>
 
       <div class="login-panel field">
         <strong>Deployment</strong>
         ${kv("Service", service)}
-        ${kv("Lane", lane || "—")}
-        ${kv("Build", build || "—")}
-        ${kv("Timestamp", timestamp || "—")}
+        ${kv("Lane", lane)}
+        ${kv("Build", build)}
+        ${kv("Timestamp", fmtTime(timestamp))}
+      </div>
+
+      <div class="login-panel field">
+        <strong>User</strong>
+        ${kv("Email", user.email || "—")}
+        ${kv("Tier", (user.tier || "—").toUpperCase())}
+        ${kv("Role", (user.role || "—").toUpperCase())}
+        ${kv("Admin", truthy(user.isAdmin))}
+        ${kv("Dev", truthy(user.isDev))}
       </div>
 
     </div>
@@ -1262,25 +1227,40 @@ function escapeHtml(s) {
     <div class="row" style="margin-top:12px;">
 
       <div class="login-panel field">
-        <strong>Environment</strong>
-        ${kv("Environment ID", envId || "—")}
-        ${kv("User Role", pick(user?.role, "—"))}
-        ${kv("User Status", pick(user?.status, "—"))}
+        <strong>Billing Profile</strong>
+        ${kv("BillingProfileId", bp.billingProfileId || user.billingProfileId || "—")}
+        ${kv("Plan", `${String(subType).toUpperCase()} • ${String(cadence).toUpperCase()}`)}
+        ${kv("Addons", (requested.addons ? [
+            addons.domains ? "domains" : null,
+            addons.storage ? "storage" : null,
+            addons.flows ? "flows" : null,
+            addons.api ? "api" : null
+          ].filter(Boolean).join(", ") || "none" : "—"))}
+        ${kv("Stripe Subscription", bp.stripeSubscriptionId || "—")}
+        ${kv("Default Payment Method", bp.stripeDefaultPaymentMethodId || "—")}
       </div>
 
       <div class="login-panel field">
-        <strong>Capabilities</strong>
-        ${kv("API Access", apiAccess === true ? "✅" : apiAccess === false ? "—" : "—")}
-        ${kv("Workflows", workflows === true ? "✅" : workflows === false ? "—" : "—")}
-        ${kv("Storage", storage || "—")}
+        <strong>Activity</strong>
+        ${kv("Last Login", fmtTime(user.lastLoginAt))}
+        ${kv("Last API Call", fmtTime(user.lastApiCallAt))}
+        ${kv("Last Updated", fmtTime(user.lastUpdatedAt))}
+        ${kv("EnvironmentId", user.environmentId || "—")}
       </div>
 
       <div class="login-panel field">
-        <strong>Usage</strong>
-        ${kv("Calls Used", callsUsed ?? "—")}
-        ${kv("Calls Remaining", callsRemaining ?? "—")}
-        ${resourceLines.length ? `<div class="hint" style="margin-top:10px;">Operator Resources</div>` : ""}
-        ${resourceLines.map(line => `<div class="hint">• ${esc(line)}</div>`).join("")}
+        <strong>Routing</strong>
+        ${
+          operatorResources.length
+            ? `<div class="hint" style="margin-top:6px;">Operator Resources</div>
+               ${operatorResources.slice(0,8).map(r => `<div class="hint">• ${esc(r.descriptor || r.id || "—")}</div>`).join("")}`
+            : env
+              ? `<div class="hint" style="margin-top:6px;">Environment</div>
+                 ${kv("PartitionKey", env.partitionKey || "—")}
+                 ${kv("RowKey", env.rowKey || "—")}`
+              : `<div class="hint" style="margin-top:6px;">No environment loaded (may be provisioning).</div>`
+        }
+        <div class="hint" style="margin-top:10px;">Catalog attached: ${hasCatalog ? "✅" : "—"}</div>
       </div>
 
     </div>
