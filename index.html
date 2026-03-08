@@ -445,7 +445,6 @@
         </p>
         <div style="display:flex; gap:12px; flex-wrap:wrap; margin-top:8px;">
           <button class="cta" onclick="openAgreementModal()">Get Started</button>
-          <button class="btn" onclick="openDocs()">Docs</button>
           <button class="btn" onclick="setAppMode('console')">Developer Console</button>
         </div>
         <div class="row" style="margin-top:18px;">
@@ -803,8 +802,6 @@
        NAV / ENTRY
        =========================== */
     document.getElementById("navLaunch").addEventListener("click", openAgreementModal);
-
-    function openDocs(){ window.open("https://docs.pragoptics.com", "_blank"); }
 
     /* ===========================
        DROPDOWN MENU (same behavior as devconsole)
