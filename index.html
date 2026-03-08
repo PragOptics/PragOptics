@@ -396,10 +396,40 @@
   .dna-track{ animation:none !important; }
 }
     
-#po-visual-view .login-panel{
-  min-height:90px;
-}
+#po-visual-view .login-panel{ min-height:90px;}
+    
 #po-visual-view pre { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; font-size: 12.5px; }
+/* ===== Responsive route input row ===== */
+.api-route-row{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  flex-wrap:wrap;              /* allow wrapping on small screens */
+}
+
+.api-route-prefix{
+  flex: 0 0 auto;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;     /* prevents prefix from pushing input off-screen */
+}
+
+#po-api-route{
+  flex: 1 1 220px;             /* input grows, but has a sane minimum */
+  min-width: 160px;
+}
+
+/* On very narrow screens: put prefix on its own line */
+@media (max-width: 520px){
+  .api-route-prefix{
+    width: 100%;
+  }
+  #po-api-route{
+    width: 100%;
+    flex-basis: 100%;
+  }
+} 
   </style>
 </head>
 
@@ -730,8 +760,8 @@
             style="width:100%; height:120px; padding:8px; border-radius:8px; border:1px solid var(--border); background:var(--glass-2); color:var(--ink); font-family:monospace;"></textarea>
         </div>
 
-        <div style="display:flex; align-items:center; gap:6px; margin-top:10px;">
-          <span style="font-size:0.85rem; color:var(--muted);">https://api.pragoptics.com/api/v1/</span>
+        <div class="api-route-row" style="margin-top:10px;">
+          <span class="api-route-prefix" style="font-size:0.85rem; color:var(--muted);">https://api.pragoptics.com/api/v1/</span>
           <input id="po-api-route" type="text" placeholder="ping"
             style="flex:1; padding:8px; border-radius:8px; border:1px solid var(--border); background:var(--glass-2); color:var(--ink);">
         </div>
