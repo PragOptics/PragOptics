@@ -1,0 +1,2806 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Instrument Calibration | AFAL</title>
+
+  <style>
+    :root{
+
+     --bg-deep:#000000cc;
+      --bg-accent:#101625cc;
+      --glass:#ffffff12;
+      --glass-2:#dcffbb12;
+      --glass-blur:#000000d0;
+      --border:#ffffff1a;
+      --ink:#e7ecff;
+      --muted:#c6d0f0a6;
+      --brand:#1ca490da;
+      --brand-600:#21bca5;
+      --aura:0 4px 8px rgba(17, 76, 67, 0.678);
+      --radius:16px;
+      --radius-sm:12px;
+      --maxw:1200px;
+      --grad:linear-gradient(135deg,#121b2d 0%,#060e1e 40%,#0f1824 100%);
+      --test: rgba(77, 171, 247, 0.55);
+      --test2: #e6c96b;
+
+
+      --navy-950:#000000;
+      --navy-900:#000000;
+      --navy-800:#000000;
+
+      --card-bg: rgba(255,255,255,0.06);
+      --card-bg-2: rgba(255,255,255,0.035);
+      --card-border: rgba(255,255,255,0.10);
+      --card: rgba(0, 0, 0, 0.603);
+
+      --gold:#1ca490da;
+      --gold-2:#21bca5;
+      --af: #a200ffc5;
+      --al: #1ca490da;
+      --tol: #00ff66;
+
+      --text:#e8ecf7;
+      --muted:#b8c0d9;
+
+      --glass-blur:12px;
+      --radius:14px;
+      --gap:16px;
+      --card-padding:16px;
+
+      --danger: rgba(255,60,60,0.12);
+      --danger-2: rgba(255,60,60,0.18);
+
+      --focus: rgba(23, 65, 58, 0.95);
+      --shadow: 0 4px 8px rgba(20, 59, 54, 0.678);
+
+      --tap: 48px;
+    }
+
+    *{ box-sizing:border-box; }
+    html,body{ height:100%; }
+    body{
+      margin:0;
+      font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial;
+      -webkit-font-smoothing: antialiased;
+      color: var(--text);
+
+      background: var(--navy-800);
+
+      padding: 16px 12px;
+      display:flex;
+      justify-content:center;
+    }
+
+    .app{
+      width:100%;
+      max-width: 980px;
+      display:flex;
+      flex-direction:column;
+      gap: var(--gap);
+    }
+
+    /* Topbar (mobile-first) */
+    .topbar{
+      display:flex;
+      flex-direction:column;
+      align-items:flex-start;
+      gap:10px;
+      padding: 4px 2px 8px;
+    }
+
+    .nav{ max-width:var(--maxw); margin:0 auto; padding:14px 20px; display:flex; align-items:center; justify-content:space-between; gap:12px; }
+
+    .brand{ display:flex; align-items:center; gap:10px; }
+    .logo { width:34px; height:34px; border-radius:10px; display:flex; align-items:center; justify-content:center; background:var(--navy-800)}
+    .logo img { width:100%; height:100%; object-fit:contain; display:block;}
+    .brand-title{ font-weight:700; }
+    .brand-sub{ font-size:.85rem; color:var(--muted); }
+
+    .brand svg{
+      flex:0 0 auto;
+      filter: drop-shadow(0 2px 8px rgba(0,0,0,0.45));
+    }
+
+    .brandText{ min-width:0; }
+    .brandText h1{
+      margin:0;
+      color: var(--gold);
+      font-size: 1.14rem;
+      letter-spacing: 0.01em;
+      line-height: 1.1;
+    }
+    .subtitle{
+      margin-top:4px;
+      color: var(--muted);
+      font-size: 0.92rem;
+      line-height:1.2;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      white-space:nowrap;
+      max-width: 92vw;
+    }
+    .metaLine{
+      color: var(--muted);
+      font-size: 0.88rem;
+      display:flex;
+      align-items:center;
+      gap:8px;
+    }
+
+    .metaDot{
+      width:6px;height:6px;border-radius:999px;
+      background: var(--al);
+      box-shadow: 0 0 0 3px var(--shadow);
+    }
+
+    /* Grid */
+    .grid{
+      display:grid;
+      grid-template-columns: 1fr;
+      gap: var(--gap);
+    }
+
+    /* Cards */
+    .card{
+      position:relative;
+      overflow:hidden;
+      border-radius: var(--radius);
+      padding: var(--card-padding);
+      background: var(--navy-800);
+      border: 1px solid var(--card-border);
+      box-shadow: var(--shadow);
+
+      backdrop-filter: blur(var(--glass-blur)) saturate(140%);
+      -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(140%);
+    }
+    .card{
+      max-height: none;
+      overflow: visible;
+    }
+    .card{
+      padding-bottom: calc(var(--card-padding) + 72px);
+    }
+
+    .card::before{
+      content:"";
+      position:absolute;
+      inset:0;
+      pointer-events:none;
+      background: linear-gradient(135deg,
+        rgba(0, 0, 0, 0.12) 0%,
+        rgba(0, 0, 0, 0.03) 28%,
+        transparent 58%);
+      mix-blend-mode: overlay;
+      transform: translateY(-18%);
+      opacity:0.9;
+    }
+
+    /* =========================
+   Card sticky footer (wizard buttons live here)
+   ========================= */
+.card{
+  /* ensures sticky footer layers correctly */
+  position: relative;
+}
+
+.card-footer{
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+
+  margin-top: 18px;
+  padding-top: 12px;
+  padding-bottom: 6px;
+
+  /* glassy footer plate */
+  background: linear-gradient(
+    180deg,
+    rgba(0,0,0,0) 0%,
+    rgba(0,0,0,0.55) 38%,
+    rgba(0,0,0,0.70) 100%
+  );
+
+  backdrop-filter: blur(var(--glass-blur)) saturate(140%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(140%);
+
+  border-top: 1px dashed rgba(255,255,255,0.10);
+}
+
+/* Keep footer buttons readable */
+.card-footer .btn-row{
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+}
+
+/* iOS safe area padding (optional, safe) */
+@supports (padding: env(safe-area-inset-bottom)){
+  .card-footer{ padding-bottom: calc(6px + env(safe-area-inset-bottom)); }
+}
+
+    .card::after{
+      content:"";
+      position:absolute;
+      inset:-1px;
+      border-radius:inherit;
+      pointer-events:none;
+      box-shadow: 0 0 0 1px rgba(255,255,255,0.02) inset;
+    }
+
+    .card h2{
+      margin:0 0 12px 0;
+      color: var(--gold-2);
+      font-size: 1.12rem;
+      border-bottom: 2px solid var(--card-border);
+      padding-bottom: 8px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+    }
+
+    h3{
+      margin: 14px 0 6px 0;
+      font-size: 0.92rem;
+      color: var(--gold-2);
+      letter-spacing: 0.02em;
+    }
+
+    label{
+      display:block;
+      margin-top: 10px;
+      font-weight: 650;
+      color: var(--gold-2);
+      font-size: 0.92rem;
+    }
+
+    .muted{ color: var(--muted); font-size: 0.9rem; }
+
+    .field-note{
+      display:block;
+      margin-top: 8px;
+      font-size: 0.84rem;
+      color: var(--muted);
+      line-height: 1.25;
+    }
+
+    /* Inputs */
+    input, select, textarea{
+      width:100%;
+      margin-top: 6px;
+      padding: 11px 12px;
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+      color: var(--text);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.03);
+      font-size: 0.96rem;
+      min-height: var(--tap);
+      outline: none;
+    }
+
+    input[readonly], input[disabled], textarea[readonly], textarea[disabled]{
+      opacity: 0.92;
+      background: rgba(255,255,255,0.02);
+    }
+
+    input:focus, select:focus, textarea:focus{
+      border-color: var(--focus);
+      box-shadow: 0 0 0 3px var(--shadow), inset 0 1px 0 rgba(255,255,255,0.03);
+    }
+
+    textarea#output{
+      min-height: 180px;
+      resize: vertical;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono", monospace;
+      font-size: 0.90rem;
+    }
+
+    /* Two-col rows -> stack mobile-first */
+    .form-row{
+      display:flex;
+      flex-direction:column;
+      gap: 10px;
+      margin-top: 6px;
+    }
+    .form-row .col{ flex:1; min-width:0; }
+
+    @media (min-width: 640px){
+      .form-row{ flex-direction:row; gap:12px; }
+    }
+
+    /* Generic card hide helper */
+    .wiz-hidden{
+      display: none !important;
+    }
+
+    /* Badges */
+    .badge{
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 0.78rem;
+      font-weight: 750;
+      background: var(--gold);
+      color: var(--gold-2);
+      border: 1px solid var(--card-border);
+      white-space:nowrap;
+    }
+
+    .badge.warn{
+      background: rgba(255,60,60,0.14);
+      color: #ffd1d1;
+      border-color: rgba(255,60,60,0.22);
+    }
+
+    /* Buttons */
+    .btn-row{
+      display:flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 4px;
+    }
+
+    .btn{
+      appearance:none;
+      border:none;
+      cursor:pointer;
+      border-radius: 12px;
+      font-weight: 750;
+      padding: 12px 16px;
+      min-height: var(--tap);
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      gap:10px;
+      user-select:none;
+    }
+
+    .btn.primary{
+      background: linear-gradient(180deg, var(--gold), var(--gold-2));
+      color: #071028;
+      box-shadow: 0 8px 22px var(--shadow);
+    }
+
+    .btn.secondary{
+      background: transparent;
+      border: 1px solid rgba(255,255,255,0.10);
+      color: var(--text);
+      box-shadow:none;
+    }
+
+    @media (max-width: 760px){
+      .btn-row{ flex-direction:column; }
+      .btn{ width:100%; }
+    }
+    /* ============================================================
+   Instrument Setup – internal responsive layout
+   ============================================================ */
+/* ============================================================
+   Button interaction states (hover / active / focus / disabled)
+   Drop-in: place AFTER your existing .btn/.btn.primary/.btn.secondary
+   ============================================================ */
+
+.btn{
+  transition:
+    transform 120ms ease,
+    box-shadow 160ms ease,
+    filter 160ms ease,
+    background-color 160ms ease,
+    border-color 160ms ease,
+    opacity 160ms ease;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+/* Keyboard focus ring (accessible) */
+.btn:focus-visible{
+  outline: none;
+  box-shadow:
+    0 0 0 3px rgba(33,188,165,0.35),
+    0 0 0 1px rgba(255,255,255,0.14) inset,
+    0 10px 24px rgba(20,59,54,0.35);
+}
+
+/* Hover (desktop/trackpad only) */
+@media (hover:hover) and (pointer:fine){
+  .btn:hover{
+    transform: translateY(-1px);
+    filter: brightness(1.05);
+  }
+
+  .btn.secondary:hover{
+    border-color: rgba(255,255,255,0.22);
+    background: rgba(255, 255, 255, 0.188);
+    box-shadow: 0 10px 22px rgba(0,0,0,0.22);
+  }
+
+  .btn.primary:hover{
+    box-shadow:
+      0 14px 30px rgba(20,59,54,0.45),
+      0 0 0 1px rgba(255,255,255,0.08) inset;
+  }
+}
+
+.btn:active{
+  transform: translateY(1px) scale(0.97);
+}
+
+.btn.primary:active{
+  box-shadow:
+    inset 0 3px 6px rgba(0,0,0,0.35),
+    0 4px 10px rgba(0,0,0,0.25);
+}
+
+/* Press / click */
+.btn:active{
+  transform: translateY(0px) scale(0.985);
+  filter: brightness(0.98);
+}
+
+/* Make primary feel “pressed in” */
+.btn.primary:active{
+  box-shadow:
+    0 6px 14px rgba(20,59,54,0.35),
+    inset 0 2px 0 rgba(0,0,0,0.10);
+}
+
+/* Make secondary feel “pressed in” */
+.btn.secondary:active{
+  background: rgba(255,255,255,0.035);
+  border-color: rgba(255,255,255,0.18);
+  box-shadow: inset 0 2px 0 rgba(0,0,0,0.10);
+}
+
+/* Disabled (works with disabled attribute + aria-disabled) */
+.btn:disabled,
+.btn[aria-disabled="true"]{
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+  filter: none;
+  box-shadow: none;
+  pointer-events: none;
+}
+
+/* Optional: “loading” feel if you add a .is-busy class later */
+.btn.is-busy{
+  cursor: progress;
+  opacity: 0.75;
+}
+
+
+
+
+.btn{
+  position: relative;
+  overflow: hidden; /* ripple stays inside button radius */
+}
+
+.btn::after{
+  content:"";
+  position:absolute;
+  inset:-2px;
+  background: radial-gradient(circle at var(--rx, 50%) var(--ry, 50%),
+    rgba(255,255,255,0.28) 0%,
+    rgba(255,255,255,0.10) 18%,
+    transparent 45%);
+  opacity: 0;
+  transition: opacity 180ms ease;
+  pointer-events:none;
+}
+
+.btn:active::after{
+  opacity: 1;
+}
+
+.card-footer .btn{
+  transform: translateZ(0); /* reduces flicker on sticky layers */
+}
+
+
+
+.setup-grid{
+  display:grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+
+/* Logical grouping blocks */
+.setup-group{
+  padding: 0;
+}
+
+/* Desktop: use horizontal space intelligently */
+@media (min-width: 920px){
+  .setup-grid{
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
+
+  /* Groups that should span full width */
+  .setup-span-full{
+    grid-column: 1 / -1;
+  }
+}
+
+/* Stage navigation inside cards */
+.card .btn-row{
+  margin-top: 18px;
+  padding-top: 12px;
+  border-top: 1px dashed rgba(255,255,255,0.08);
+}
+
+    /* Controls block */
+    .controls{
+      display:flex;
+      flex-direction:column;
+      gap: 10px;
+      margin-top: 10px;
+      align-items:stretch;
+    }
+
+    .controls .inline{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+
+    .check{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      font-weight: 650;
+      color: var(--gold-2);
+      font-size: 0.92rem;
+    }
+
+    .check input{
+      width:20px;
+      height:20px;
+      min-height:unset;
+      margin:0;
+      accent-color: var(--gold);
+    }
+
+    @media (min-width: 760px){
+      .controls{ flex-direction:row; align-items:center; justify-content:space-between; }
+      .controls .inline{ flex:1; }
+    }
+
+    /* Tables */
+    .table-wrap{
+      margin-top: 10px;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+    }
+
+    table{
+      width:100%;
+      border-collapse: collapse;
+    }
+
+    thead th{
+      text-align:left;
+      padding: 10px 10px;
+      font-size: 0.90rem;
+      background: rgba(255,255,255,0.03);
+      color: var(--gold);
+      font-weight: 800;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      white-space:nowrap;
+    }
+
+    tbody td{
+      padding: 10px 10px;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      font-size: 0.92rem;
+      vertical-align: top;
+    }
+
+    tbody tr:last-child td{ border-bottom:none; }
+
+    tr.fail td{
+      background: var(--danger);
+    }
+
+    /* Make the inputs inside table tighter */
+    td input{
+      margin-top: 0;
+      min-height: 44px;
+      padding: 10px 10px;
+      border-radius: 10px;
+      font-size: 0.95rem;
+    }
+
+    .dnaSwirl{
+  position: relative;
+  width: 100%;
+  height: 56px;
+  overflow: hidden;
+  border-radius: 14px;
+  background: transparent;
+  pointer-events: none; /* don’t block clicks */
+}
+
+    /* Mobile: table becomes “row cards” */
+    @media (max-width: 640px){
+      .table-wrap{ overflow: visible; }
+      table{ display:block; }
+      thead{ display:none; }
+      tbody{ display:block; }
+      tbody tr{
+        display:block;
+        padding: 10px;
+        border-bottom: 1px solid rgba(255,255,255,0.06);
+      }
+      tbody tr:last-child{ border-bottom:none; }
+      tbody td{
+        display:flex;
+        align-items:center;
+        justify-content:space-between;
+        gap: 12px;
+        padding: 8px 0;
+        border-bottom: 1px dashed rgba(255,255,255,0.06);
+      }
+      tbody td:last-child{ border-bottom:none; }
+      tbody td::before{
+        content: attr(data-label);
+        color: var(--muted);
+        font-weight: 700;
+        font-size: 0.82rem;
+        flex: 0 0 auto;
+        max-width: 44%;
+      }
+      tbody td:first-child{
+        padding-top: 2px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid rgba(255,255,255,0.06);
+        margin-bottom: 4px;
+      }
+      tbody td:first-child::before{ content:"Point"; }
+      tbody td:first-child{
+        justify-content:flex-start;
+        gap: 10px;
+        font-weight: 850;
+        color: var(--gold-2);
+      }
+      td input{
+        width: 52%;
+      }
+    }
+
+    /* As-Left hidden */
+    #asLeftCard.hidden{
+      display:none;
+      opacity:0;
+      height:0;
+      padding:0;
+      margin:0;
+      overflow:hidden;
+    }
+
+    /* Toasts */
+    .toast-wrap{
+      position:fixed;
+      left: 12px;
+      right: 12px;
+      bottom: 12px;
+      top: auto;
+      z-index: 9999;
+      display:flex;
+      flex-direction:column;
+      gap: 10px;
+      pointer-events:none;
+    }
+
+    .toast{
+      pointer-events:auto;
+      background: rgba(2,6,23,0.92);
+      color: var(--text);
+      padding: 10px 14px;
+      border-radius: 12px;
+      box-shadow: 0 10px 34px rgba(2,6,23,0.65);
+      font-weight: 700;
+      border-left: 4px solid var(--gold);
+      opacity: 1;
+      transform: translateY(0);
+      transition: opacity .18s ease, transform .18s ease;
+    }
+    .toast.warn{ border-left-color: #ff6b6b; }
+
+    /* Fix unreadable dropdowns on dark UI */
+select{
+  background: rgba(255,255,255,0.04);
+  color: var(--text);
+}
+select option{
+  background: #000000;   /* dark */
+  color: #e8ecf7;        /* light text */
+}
+
+select:focus{
+  outline:none;
+  background-color: var(--focus);
+  border-color: var(--focus);
+}
+/* ===== numeric: remove steppers (arrows) ===== */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button{
+  -webkit-appearance:none;
+  margin:0;
+}
+input[type="number"]{
+  -moz-appearance:textfield;
+}
+
+/* ===== As-Found / As-Left mobile-fit reading rows (no table, no scroll) ===== */
+.reading-grid{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  margin-top:10px;
+}
+
+.reading-row{
+  border:1px solid rgba(255,255,255,0.10);
+  border-radius:12px;
+  padding:12px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+}
+
+.reading-header{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:12px;
+}
+
+.reading-point{
+  font-weight:800;
+  color: var(--gold-2);
+  font-size:1rem;
+}
+
+.reading-expected{
+  font-size:0.80rem;
+  color: var(--muted);
+  text-align:right;
+  line-height:1.25;
+}
+
+.reading-inputs{
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  gap:10px;
+  margin-top:10px;
+}
+
+.reading-inputs label{
+  margin-top:0;
+  font-size:0.78rem;
+  font-weight:700;
+  color: var(--muted);
+}
+
+.reading-inputs input{
+  margin-top:6px;
+  min-height:44px;
+}
+
+.reading-footer{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-top:10px;
+  font-size:0.92rem;
+}
+
+.reading-error{ font-weight:800; }
+
+.reading-row.fail{
+  border-color: rgba(255,60,60,0.35);
+  background: linear-gradient(180deg, rgba(255,60,60,0.12), rgba(255,255,255,0.01));
+}
+.reading-row.pass { border-color: rgba(34,197,94,0.35); background: linear-gradient(180deg, rgba(34,197,94,0.12), rgba(255,255,255,0.01)); }
+
+/* ============================================================
+   NEW: Test Equipment blocks (Input / Output)
+   ============================================================ */
+
+#instrumentSetup h3 + label{
+  margin-top: 10px;
+}
+
+/* Search inputs for test equipment */
+#tagSearch,
+#inputEquipSearch,
+#outputEquipSearch{
+  background:
+    linear-gradient(180deg, var(--focus), var(--shadow));
+  border: 1px dashed rgba(255,255,255,0.14);
+}
+
+/* Equipment selects feel slightly more "authoritative" */
+#inputEquipSelect,
+#outputEquipSelect{
+  border-color: var(--card-border);
+}
+
+/* Visually group equipment sections */
+#inputEquipSearch,
+#inputEquipSelect,
+#outputEquipSearch,
+#outputEquipSelect{
+  margin-bottom: 6px;
+}
+
+/* ============================================================
+   FIX: Output Characteristic layout (nested form-row bug)
+   ============================================================ */
+
+/* Prevent nested .form-row from collapsing columns */
+#outputCharacteristic{
+  width: 100%;
+}
+
+#outputCharacteristic + .field-note{
+  margin-top: 6px;
+}
+
+/* Ensure Output Characteristic aligns with Output Type */
+#instrumentSetup .form-row > .col:has(#outputCharacteristic){
+  flex: 1;
+}
+
+/* ============================================================
+   POLISH: Search inputs visual affordance
+   ============================================================ */
+
+input[inputmode="search"]{
+  background-image: linear-gradient( 90deg, var(--shadow), rgba(255, 255, 255, 0));
+}
+
+/* Equipment search inputs – enhanced affordance */
+#tagSearch:focus,
+#inputEquipSearch:focus,
+#outputEquipSearch:focus{
+  border-color: var(--gold);
+  box-shadow:
+    0 0 0 1px var(--focus),
+    0 0 12px var(--shadow),
+    inset 0 1px 0 rgba(255,255,255,0.04);
+}
+
+/* ============================================================
+   NEW: Calibration Graph modal (matches glass UI)
+   ============================================================ */
+
+#calGraphModal{
+  animation: fadeIn 0.18s ease-out;
+}
+
+@keyframes fadeIn{
+  from{ opacity:0; transform: scale(0.985); }
+  to{ opacity:1; transform: scale(1); }
+}
+
+/* ============================================================
+   OPTIONAL: Better visual grouping inside Instrument Setup
+   ============================================================ */
+
+#instrumentSetup h3{
+  padding-top: 6px;
+  border-top: 1px dashed rgba(255,255,255,0.06);
+}
+
+/* ============================================================
+   SAFETY: Make sure selects stay readable on all platforms
+   ============================================================ */
+
+select option{
+  padding: 10px;
+}
+
+/* ============================================================
+   HARD FIX: prevent nested .form-row from breaking layout
+   ============================================================ */
+
+/* Ensure the Output Characteristic column participates correctly */
+#outputCharacteristic{
+  width: 100%;
+  max-width: 100%;
+}
+
+/* Safety: prevent any select/input from forcing overflow */
+.form-row select,
+.form-row input{
+  min-width: 0;
+}
+
+    /* Desktop: move toasts to top-right */
+    @media (min-width: 920px){
+      .toast-wrap{
+        left:auto;
+        right: 18px;
+        bottom:auto;
+        top: 18px;
+        width: 360px;
+      }
+    }
+
+    /* Reduced motion */
+    @media (prefers-reduced-motion: reduce){
+      *{ scroll-behavior:auto !important; transition:none !important; }
+    }
+
+    /* No-backdrop fallback */
+    @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))){
+      body{
+        background: linear-gradient(180deg, #0b1220, #0a1020);
+      }
+      .card{
+        background: rgba(255,255,255,0.92);
+        color: #071028;
+        border: 1px solid rgba(11,18,32,0.08);
+      }
+      .card h2{ color: #0b1220; }
+      label, h3{ color:#0b1220; }
+      .muted, .field-note{ color:#334155; }
+      input, select, textarea{ background:#f7f7f8; color:#071028; border:1px solid rgba(11,18,32,0.10); }
+      thead th{ color:#0b1220; }
+      .toast{ background: rgba(15,23,42,0.92); color: #fff; }
+    }
+  </style>
+</head>
+
+<body>
+<div class="app" id="app">
+  <header class="topbar">
+    <div class="brand">
+      <div class="brandText">
+        <h1>Prag<span style="color:var(--muted)">Optics</span>™</h1>
+        <div class="subtitle">As-Found | As-Left</div>
+      </div>
+    </div>
+
+    <div id="dnaSwirl" class="dnaSwirl" aria-hidden="true"></div>
+
+    <div class="metaLine">
+      <span class="metaDot" aria-hidden="true"></span>
+      <span>Last updated:</span>
+      <span id="ts" aria-live="polite">—</span>
+    </div>
+  </header>
+
+  <main class="grid" id="grid">
+
+    <!-- =========================================================
+         Instrument Setup (Stage 1)
+         ========================================================= -->
+    <section class="card" id="instrumentSetup" aria-label="Instrument Setup">
+      <h2>
+        <span style="color:var(--gold)">Instrument Setup</span>
+      </h2>
+
+      <!-- ✅ NEW: internal responsive grid -->
+      <div class="setup-grid">
+
+        <!-- ===== Identity ===== -->
+        <div class="setup-group">
+          <label style="color:var(--muted)" for="workOrder">Work Order Number</label>
+          <input id="workOrder" placeholder="Work Order" autocomplete="on">
+
+          <label style="color:var(--muted)" for="tagSearch">Search Tag</label>
+          <input id="tagSearch" placeholder="Type to filter tags…" autocomplete="off" inputmode="search">
+
+          <label style="color:var(--muted)" for="tagSelect">Tag Number</label>
+          <select id="tagSelect" aria-label="Tag number"></select>
+        </div>
+
+        <!-- ===== Input Configuration ===== -->
+        <div class="setup-group">
+          <h3>Input Configuration</h3>
+
+          <div class="form-row">
+            <div class="col">
+              <label style="color:var(--muted)" for="inputType">Input Type</label>
+              <select id="inputType" aria-label="Input type">
+                <option value="">Select...</option>
+                <option value="pressure">Pressure</option>
+                <option value="temperature">Temperature</option>
+                <option value="frequency">Frequency</option>
+                <option value="percent">Percent</option>
+                <option value="volts">Volts</option>
+                <option value="custom">Custom</option>
+              </select>
+            </div>
+
+            <div class="col">
+              <label style="color:var(--muted)" for="inputUOM">Input Units</label>
+              <select id="inputUOM" aria-label="Input units"></select>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="col">
+              <label style="color:var(--muted)" for="inputLRV">Input LRV</label>
+              <input id="inputLRV" type="number" step="any" inputmode="decimal" placeholder="e.g., 0">
+            </div>
+
+            <div class="col">
+              <label style="color:var(--muted)" for="inputURV">Input URV</label>
+              <input id="inputURV" type="number" step="any" inputmode="decimal" placeholder="e.g., 100">
+            </div>
+          </div>
+        </div>
+
+        <!-- ===== Input Test Equipment ===== -->
+        <div class="setup-group">
+          <h3>Input Test Equipment</h3>
+
+          <label style="color:var(--muted)" for="inputEquipSearch">Search Input Equipment</label>
+          <input
+            id="inputEquipSearch"
+            placeholder="Type to filter input equipment…"
+            autocomplete="off"
+            inputmode="search">
+
+          <label style="color:var(--muted)" for="inputEquipSelect">Input Equipment</label>
+          <select id="inputEquipSelect" aria-label="Input test equipment"></select>
+        </div>
+
+                <!-- ===== Output Test Equipment + Tolerance ===== -->
+        <div class="setup-group">
+          <h3>Output Test Equipment</h3>
+
+          <label style="color:var(--muted)" for="outputEquipSearch">Search Output Equipment</label>
+          <input
+            id="outputEquipSearch"
+            placeholder="Type to filter output equipment…"
+            autocomplete="off"
+            inputmode="search">
+
+          <label style="color:var(--muted)" for="outputEquipSelect">Output Equipment</label>
+          <select id="outputEquipSelect" aria-label="Output test equipment"></select>
+        </div>
+
+        <!-- ===== Output Configuration ===== -->
+        <div class="setup-group setup-span-full">
+          <h3>Output Configuration</h3>
+
+          <div class="form-row">
+            <div class="col">
+              <label style="color:var(--muted)" for="outputType">Output Type</label>
+              <select id="outputType" aria-label="Output type">
+                <option value="">Select…</option>
+                <option value="ma">mA</option>
+                <option value="psi">PSI</option>
+                <option value="percent">Percent</option>
+                <option value="volts">Volts</option>
+                <option value="custom">Custom</option>
+              </select>
+            </div>
+
+            <div class="col">
+              <label style="color:var(--muted)" for="outputUOM">Output Units</label>
+              <input id="outputUOM" readonly placeholder="Auto-filled">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="col">
+              <label style="color:var(--muted)" for="outputCharacteristic">Output Characteristic</label>
+              <select id="outputCharacteristic" aria-label="Output characteristic">
+                <option value="linear">Linear</option>
+                <option value="sqrt">Square Root</option>
+              </select>
+              <span class="field-note">
+                Linear or square‑root transfer function for expected output calculation.
+              </span>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="col">
+              <label style="color:var(--muted)" for="outputLRV">Output LRV</label>
+              <input id="outputLRV" type="number" step="any" inputmode="decimal" placeholder="e.g., 4">
+            </div>
+
+            <div class="col">
+              <label style="color:var(--muted)" for="outputURV">Output URV</label>
+              <input id="outputURV" type="number" step="any" inputmode="decimal" placeholder="e.g., 20">
+            </div>
+          </div>
+          <label for="tolerance">Tolerance (%)</label>
+          <input id="tolerance" type="number" inputmode="decimal" readonly>
+          <span class="field-note">
+            If any As‑Found row exceeds this tolerance, As‑Left becomes mandatory.
+          </span>
+        </div>
+
+      </div><!-- /.setup-grid -->
+
+      <!-- ✅ Card‑local wizard navigation (Stage 1 → Stage 2) -->
+    <div class="card-footer">
+      <div class="btn-row" style="margin-top:16px">
+        <button class="btn primary" id="toAsFoundBtn" type="button">
+          Enter As‑Found Data
+        </button>
+      </div>
+    </div>
+    </section>
+
+
+    <section class="card wiz-hidden" id="asFoundCard" aria-label="As-Found Readings">
+  <h2>
+    <span>As‑Found Readings</span>
+    <span id="afStatus" class="badge warn" style="display:none">OUT</span>
+  </h2>
+
+  <div id="asFoundGrid" class="reading-grid"></div>
+
+  <div class="card-footer">
+  <div class="btn-row">
+    <button class="btn secondary" id="backToSetupBtn" type="button">
+      Back to Setup
+    </button>
+    <button class="btn primary" id="toNextFromAfBtn" type="button">
+      Continue
+    </button>
+  </div>
+  </div>
+</section>
+
+<section class="card wiz-hidden" id="asLeftCard" aria-label="As-Left Readings">
+  <h2>
+    <span>As‑Left Readings</span>
+    <span id="alStatus" class="badge warn" style="display:none">REQUIRED</span>
+  </h2>
+
+  <div class="controls">
+    <div class="inline">
+      <label class="check">
+        <input type="checkbox" id="forceShowAsLeft">
+        Edit As‑Left
+      </label>
+      <button class="btn secondary" id="clearAsLeftBtn" type="button">Clear As‑Left</button>
+    </div>
+    <span class="muted">As‑Left mirrors As‑Found unless you enable editing or calibration is required.</span>
+  </div>
+
+  <div id="asLeftGrid" class="reading-grid"></div>
+
+  <div class="field-note">
+    If a row is out of tolerance, As‑Left fields for that row are cleared and editable.
+  </div>
+
+  <div class="card-footer">
+    <div class="btn-row">
+      <button class="btn secondary" id="backToAfBtn" type="button">Back to As‑Found</button>
+      <button class="btn primary" id="toFinalizeBtn" type="button">Finalize Report</button>
+    </div>
+  </div>
+</section>
+
+<section class="card wiz-hidden" id="techCard" aria-label="Technician and Notes">
+  <h2><span>Technician &amp; Notes</span></h2>
+
+  <label style="color:var(--muted)" for="tech">Technician Name</label>
+  <input id="tech" placeholder="Technician" autocomplete="name">
+
+  <label style="color:var(--muted)" for="comments">Comments</label>
+  <textarea id="comments" rows="4" placeholder="Notes…" maxlength="500"></textarea>
+  <div class="field-note" id="commentsCount">0 / 500</div>
+
+  <div class="card-footer">
+    <div class="btn-row" id="techActionsRow">
+      <button class="btn secondary" id="backToDataBtn" type="button">Back</button>
+      <button class="btn secondary" id="viewGraphBtn" type="button">View Graph</button>
+      <button class="btn secondary" id="resetBtn" type="button">Reset</button>
+      <button class="btn primary" id="generateBtn" type="button">Generate JSON</button>
+    </div>
+  </div>
+</section>
+
+    <!-- ✅ As‑Found, As‑Left, Tech cards remain exactly as‑is for now -->
+
+  </main>
+</div>
+
+<div class="toast-wrap" id="toastWrap" aria-live="polite" aria-atomic="true"></div>
+
+<script>
+  // ==========================================================
+  // Calibration Form Script (Refactored)
+  // Features:
+  // - Two-decimal formatting on blur for Actual Input/Output (AF+AL)
+  // - Numeric-only enforcement (sanitizes; keeps '-' and '.' while typing)
+  // - Expected Output computed from Actual Input using input/output ranges
+  // - Output characteristic: linear or square-root (sqrt)
+  // - As-Found fail highlight updates on blur
+  // - As-Left highlight based on As-Left output: red if fail, green if corrected
+  // - Optional Test Equipment selectors via test_equipment.json (input + output)
+  // - Popup line graph (AF vs AL) + tolerance band
+  // ==========================================================
+
+  // =========================
+  // Element refs + state
+  // =========================
+  let anyOutOfTolerance = false;
+  let lastAnyOut = false;
+
+  let gridsReady = false;
+
+  const tagSearch = document.getElementById('tagSearch');
+  const tagSelect = document.getElementById('tagSelect');
+  const workOrder = document.getElementById('workOrder');
+
+  const inputType = document.getElementById('inputType');
+  const inputLRV  = document.getElementById('inputLRV');
+  const inputURV  = document.getElementById('inputURV');
+  const inputUOM  = document.getElementById('inputUOM');
+
+  const outputType = document.getElementById('outputType');
+  const outputLRV  = document.getElementById('outputLRV');
+  const outputURV  = document.getElementById('outputURV');
+  const outputUOM  = document.getElementById('outputUOM');
+
+  const outputCharacteristic = document.getElementById('outputCharacteristic'); // optional
+
+  const tolerance = document.getElementById('tolerance');
+
+  const asFoundGrid = document.getElementById('asFoundGrid');
+  const asLeftGrid  = document.getElementById('asLeftGrid');
+
+  const forceShowAsLeft = document.getElementById('forceShowAsLeft');
+  const clearAsLeftBtn  = document.getElementById('clearAsLeftBtn');
+
+  const afStatus = document.getElementById('afStatus');
+  const alStatus = document.getElementById('alStatus');
+
+  const generateBtn = document.getElementById('generateBtn');
+  const resetBtn    = document.getElementById('resetBtn');
+
+  const outputEl = document.getElementById('output');
+  const copyBtn  = document.getElementById('copyBtn');
+
+  const ts = document.getElementById('ts');
+  const toastWrap = document.getElementById('toastWrap');
+
+  const points = [0,25,50,75,100];
+
+  const instrumentSetupCard = document.getElementById('instrumentSetup');
+  const asFoundCard = document.getElementById('asFoundCard');
+  const asLeftCard = document.getElementById('asLeftCard');
+  const techCard = document.getElementById('techCard');
+  const outputCard = document.getElementById('outputCard');
+
+
+
+let wizStep = 'setup';
+
+function setWizStep(step){
+  wizStep = step;
+
+  // Step visibility
+  instrumentSetupCard?.classList.toggle('wiz-hidden', step !== 'setup');
+  asFoundCard?.classList.toggle('wiz-hidden', step !== 'af');
+  asLeftCard?.classList.toggle('wiz-hidden', step !== 'al');
+  techCard?.classList.toggle('wiz-hidden', step !== 'final');
+
+  // Output is going away: hide always (you said print_report already covers this)
+  if (outputCard) outputCard.classList.add('wiz-hidden');
+
+
+  // Nice scroll behavior
+  const target =
+    (step === 'setup') ? instrumentSetupCard :
+    (step === 'af') ? asFoundCard :
+    (step === 'al') ? asLeftCard :
+    techCard;
+
+  requestAnimationFrame(() => {
+  requestAnimationFrame(() => {
+    target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+});
+}
+
+/* Minimal gating: keep it permissive, but warn */
+function isSetupSane(){
+  const inLRVn = Number(inputLRV?.value);
+  const inURVn = Number(inputURV?.value);
+  const outLRVn = Number(outputLRV?.value);
+  const outURVn = Number(outputURV?.value);
+
+  const okRanges =
+    !Number.isNaN(inLRVn) && !Number.isNaN(inURVn) && inURVn !== inLRVn &&
+    !Number.isNaN(outLRVn) && !Number.isNaN(outURVn) && outURVn !== outLRVn;
+
+  return okRanges;
+}
+
+function hasAllAsFoundData(){
+  return points.every(p => {
+    const aiEl = document.getElementById(`af_act_in_${p}`);
+    const aoEl = document.getElementById(`af_act_out_${p}`);
+
+    if (!aiEl || !aoEl) return false;
+
+    const ai = aiEl.value.trim();
+    const ao = aoEl.value.trim();
+
+    // Reject empty or mid-entry values
+    if (
+      ai === '' || ao === '' ||
+      ai === '-' || ao === '-' ||
+      ai === '.' || ao === '.' ||
+      ai === '-.' || ao === '-.' ||
+      ai.endsWith('.') || ao.endsWith('.')
+    ) {
+      return false;
+    }
+
+    // Reject non-numeric
+    if (Number.isNaN(Number(ai)) || Number.isNaN(Number(ao))) {
+      return false;
+    }
+
+    return true;
+  });
+}
+
+function shouldRequireAsLeft(){
+  // Leverage your existing state
+  return anyOutOfTolerance === true;
+}
+
+// =========================
+// Card-as-wizard navigation wiring (REQUIRED)
+// =========================
+
+// Setup → As-Found
+document.getElementById('toAsFoundBtn')?.addEventListener('click', () => {
+  if (!isSetupSane()) {
+    toast('Setup incomplete: enter valid input/output ranges first.', 'warn', 3600);
+    return;
+  }
+  setWizStep('af');
+});
+
+// As-Found → Setup
+document.getElementById('backToSetupBtn')?.addEventListener('click', () => {
+  setWizStep('setup');
+});
+
+// As-Found → As-Left OR Finalize
+document.getElementById('toNextFromAfBtn')?.addEventListener('click', () => {
+  flushCalculateAll();
+
+  if (!hasAllAsFoundData()) {
+  toast(
+    'Complete all As‑Found fields (Actual Input and Actual Output at every point) before continuing.',
+    'warn',
+    4200
+  );
+  return;
+}
+
+  setWizStep('al');
+});
+
+// As-Left → As-Found
+document.getElementById('backToAfBtn')?.addEventListener('click', () => {
+  setWizStep('af');
+});
+
+// As-Left → Finalize
+document.getElementById('toFinalizeBtn')?.addEventListener('click', () => {
+  flushCalculateAll();
+  setWizStep('final');
+});
+
+// Finalize → back to last data step
+document.getElementById('backToDataBtn')?.addEventListener('click', () => {
+  setWizStep('al');
+});
+
+function goNext(){
+  if (wizStep === 'setup'){
+    if (!isSetupSane()){
+      toast('Setup incomplete: enter valid input/output ranges first.', 'warn', 3600);
+      return;
+    }
+    setWizStep('af');
+    return;
+  }
+
+  if (wizStep === 'af'){
+  flushCalculateAll();
+
+  // ✅ REQUIRE all As‑Found fields (input + output at every point)
+  if (!hasAllAsFoundData()){
+    toast(
+      'Complete all As‑Found fields (Actual Input and Actual Output at every point) before continuing.',
+      'warn',
+      4200
+    );
+    return;
+  }
+
+  // ✅ ALWAYS go to As‑Left
+  // (editability is handled separately by anyOutOfTolerance / checkbox)
+  setWizStep('al');
+  return;
+}
+
+  if (wizStep === 'al'){
+    flushCalculateAll();
+    setWizStep('final');
+    return;
+  }
+
+  // final: no "next"
+  setWizStep('final');
+}
+
+function goBack(){
+  if (wizStep === 'af') return setWizStep('setup');
+  if (wizStep === 'al') return setWizStep('af');
+  if (wizStep === 'final'){
+    // If As‑Left was required, go back to it, else As‑Found
+    return setWizStep(shouldRequireAsLeft() ? 'al' : 'af');
+  }
+  setWizStep('setup');
+}
+
+
+// Init wizard on load
+setWizStep('setup');
+
+  // =========================
+// Graph display state
+// =========================
+const graphState = {
+  showAF: true,
+  showAL: true,
+  showBand: true
+};
+
+// Graph UI state (globals)
+let graphHitTargets = [];     // rebuilt every drawGraph()
+let graphTipLocked = false;   // tap to lock tooltip on mobile
+
+
+  // As-Left: per-point "tech edited" tracking (stops mirroring for that point)
+  const asLeftDirty = new Set();
+
+  // Optional test equipment elements (safe if missing)
+  const inputEquipSearch = document.getElementById('inputEquipSearch');
+  const inputEquipSelect = document.getElementById('inputEquipSelect');
+  const outputEquipSearch = document.getElementById('outputEquipSearch');
+  const outputEquipSelect = document.getElementById('outputEquipSelect');
+
+  // =========================
+  // Debounced recalculation
+  // =========================
+  let calcTimer = null;
+  function scheduleCalculateAll(){
+    if (!gridsReady) return;
+    if (calcTimer) clearTimeout(calcTimer);
+    calcTimer = setTimeout(() => {
+      calcTimer = null;
+      calculateAll();
+    }, 160);
+  }
+  function flushCalculateAll(){
+    if (!gridsReady) return;
+    if (calcTimer) {
+      clearTimeout(calcTimer);
+      calcTimer = null;
+    }
+    calculateAll();
+  }
+
+  // =========================
+  // Toast helper
+  // =========================
+  function toast(message, type='info', ttl=3200){
+    if (!toastWrap) return;
+    const t = document.createElement('div');
+    t.className = `toast ${type === 'warn' ? 'warn' : ''}`.trim();
+    t.textContent = message;
+    toastWrap.appendChild(t);
+
+    const fadeAt = Math.max(300, ttl - 240);
+    setTimeout(() => { t.style.opacity='0'; t.style.transform='translateY(-6px)'; }, fadeAt);
+    setTimeout(() => { t.remove(); }, ttl);
+  }
+
+  // =========================
+  // Tolerance mapping
+  // =========================
+  const CLASS_TOL = {
+    DEFAULT: 2.0,
+    CE: 1.0,
+    QCE: 0.5,
+    SCE: 0.25,
+    ECE: 0.1
+  };
+  function setToleranceByClass(cls){
+    const key = (cls || '').toString().trim().toUpperCase();
+    const tol = (key && CLASS_TOL[key] != null) ? CLASS_TOL[key] : CLASS_TOL.DEFAULT;
+    if (tolerance) tolerance.value = tol.toFixed(2);
+  }
+
+  // =========================
+  // Tag library (tag + desc + class)
+  // =========================
+  let tagLibrary = [];
+  function populateTagDropdown(tags){
+    if (!tagSelect) return;
+    tagSelect.innerHTML = '';
+    const placeholder = document.createElement('option');
+    placeholder.value = '';
+    placeholder.textContent = '-- select tag --';
+    tagSelect.appendChild(placeholder);
+
+    tags.forEach(t => {
+      const tag = (t && typeof t === 'object') ? t.tag : t;
+      if (!tag) return;
+
+      const desc = (t && typeof t === 'object') ? (t.desc || t.description || '') : '';
+      const opt = document.createElement('option');
+      opt.value = tag;
+      opt.textContent = desc ? `${tag} — ${desc}` : tag;
+      tagSelect.appendChild(opt);
+    });
+  }
+
+  fetch('tags.json')
+    .then(r => r.ok ? r.json() : [])
+    .then(tags => {
+      tagLibrary = Array.isArray(tags) ? tags : [];
+      populateTagDropdown(tagLibrary);
+      setToleranceByClass(null);
+      scheduleCalculateAll();
+    })
+    .catch(() => {
+      populateTagDropdown([]);
+      setToleranceByClass(null);
+      scheduleCalculateAll();
+    });
+
+  if (tagSearch) {
+    tagSearch.addEventListener('input', () => {
+      const q = tagSearch.value.trim().toLowerCase();
+      const filtered = tagLibrary.filter(t => {
+        const tag = (t && typeof t === 'object') ? (t.tag || '') : (t || '');
+        const desc = (t && typeof t === 'object') ? (t.desc || t.description || '') : '';
+        return (tag + ' ' + desc).toLowerCase().includes(q);
+      });
+      populateTagDropdown(filtered);
+    });
+  }
+
+  if (tagSelect) {
+    tagSelect.addEventListener('change', () => {
+      const selected = tagSelect.value;
+      const obj = tagLibrary.find(t => t && typeof t === 'object' && t.tag === selected);
+      setToleranceByClass(obj?.class);
+      scheduleCalculateAll();
+    });
+  }
+
+  // =========================
+  // Test Equipment (optional) — test_equipment.json
+  // Shape supported:
+  // [
+  //   {"id":"DPI-620G","name":"Druck DPI 620G","desc":"Calibrator","role":"input|output|both"},
+  //   {"id":"Fluke-754","name":"Fluke 754","role":"both"}
+  // ]
+  // =========================
+  let equipLibrary = [];
+  function equipLabel(e){
+  const id   = (e?.id ?? '').toString().trim();
+  const name = (e?.name ?? '').toString().trim();
+  const desc = (e?.desc ?? e?.description ?? '').toString().trim();
+
+  // Display: "ID — Name — Desc" (skip missing parts)
+  const parts = [];
+  if (id) parts.push(id);
+  if (name && name !== id) parts.push(name);
+  if (desc) parts.push(desc);
+
+  return parts.join(' — ') || '';
+}
+  function populateEquip(selectEl, list){
+    if (!selectEl) return;
+    selectEl.innerHTML = '';
+    const ph = document.createElement('option');
+    ph.value = '';
+    ph.textContent = '-- select equipment --';
+    selectEl.appendChild(ph);
+
+    list.forEach(e => {
+      if (!e) return;
+      const id = (e?.id ?? '').toString().trim() || (e?.name ?? '').toString().trim();
+      if (!id) return;
+      const opt = document.createElement('option');
+      opt.value = id;
+      opt.textContent = equipLabel(e);
+      selectEl.appendChild(opt);
+    });
+  }
+  function equipFilterByRole(role){
+    return equipLibrary.filter(e => {
+      const r = (e?.role || e?.type || 'both').toString().toLowerCase();
+      return r === 'both' || r === role;
+    });
+  }
+
+  // Only fetch if at least one equipment element exists
+  if (inputEquipSelect || outputEquipSelect || inputEquipSearch || outputEquipSearch) {
+    fetch('test_equipment.json')
+      .then(r => r.ok ? r.json() : [])
+      .then(list => {
+        equipLibrary = Array.isArray(list) ? list : [];
+        populateEquip(inputEquipSelect, equipFilterByRole('input'));
+        populateEquip(outputEquipSelect, equipFilterByRole('output'));
+      })
+      .catch(() => {
+        equipLibrary = [];
+        populateEquip(inputEquipSelect, []);
+        populateEquip(outputEquipSelect, []);
+      });
+
+    if (inputEquipSearch) {
+      inputEquipSearch.addEventListener('input', () => {
+        const q = inputEquipSearch.value.trim().toLowerCase();
+        const base = equipFilterByRole('input');
+        const filtered = !q ? base : base.filter(e => {
+        const id   = (e?.id ?? '').toString().toLowerCase();
+        const name = (e?.name ?? '').toString().toLowerCase();
+        const desc = (e?.desc ?? e?.description ?? '').toString().toLowerCase();
+        return (id + ' ' + name + ' ' + desc).includes(q);
+      });
+        populateEquip(inputEquipSelect, filtered);
+      });
+    }
+    if (outputEquipSearch) {
+      outputEquipSearch.addEventListener('input', () => {
+        const q = outputEquipSearch.value.trim().toLowerCase();
+        const base = equipFilterByRole('output');
+        const filtered = !q ? base : base.filter(e => equipLabel(e).toLowerCase().includes(q));
+        populateEquip(outputEquipSelect, filtered);
+      });
+    }
+  }
+
+  // =========================
+  // Input Type -> Input Units mapping
+  // =========================
+  const INPUT_UNIT_MAP = {
+    pressure: [
+      { value: 'psi',  label: 'PSI' },
+      { value: 'inH2O', label: 'inH₂O' },
+      { value: 'kPa',  label: 'kPa' },
+      { value: 'bar',  label: 'bar' }
+    ],
+    temperature: [
+      { value: 'F', label: '°F' },
+      { value: 'C', label: '°C' },
+      { value: 'K', label: 'K (Kelvin)' }
+    ],
+    frequency: [
+      { value: 'Hz',  label: 'Hz' },
+      { value: 'kHz', label: 'kHz' }
+    ],
+    percent: [{ value: '%', label: '%' }],
+    volts:   [{ value: 'V', label: 'V' }],
+    custom:  [{ value: '', label: '(custom)' }]
+  };
+
+  function populateUnits(selectEl, units, placeholder='Select units...'){
+    if (!selectEl) return;
+    selectEl.innerHTML = '';
+    const ph = document.createElement('option');
+    ph.value = '';
+    ph.textContent = placeholder;
+    selectEl.appendChild(ph);
+
+    (units || []).forEach(u => {
+      const opt = document.createElement('option');
+      opt.value = u.value;
+      opt.textContent = u.label;
+      selectEl.appendChild(opt);
+    });
+  }
+
+  if (inputType) {
+    inputType.addEventListener('change', () => {
+      const type = inputType.value;
+      populateUnits(inputUOM, INPUT_UNIT_MAP[type], type ? 'Select units...' : 'Select input type first...');
+      if (inputUOM) inputUOM.value = '';
+      scheduleCalculateAll();
+    });
+  }
+  if (inputUOM) inputUOM.addEventListener('change', scheduleCalculateAll);
+  populateUnits(inputUOM, [], 'Select input type first...');
+
+  // Output defaults
+  if (outputType) {
+    outputType.addEventListener('change', () => {
+      const type = outputType.value;
+
+      if (type === 'ma') {
+        outputLRV.value = 4;
+        outputURV.value = 20;
+        outputUOM.value = 'mA';
+      } else if (type === 'psi') {
+        outputLRV.value = 3;
+        outputURV.value = 15;
+        outputUOM.value = 'PSI';
+      } else if (type === 'percent') {
+        outputLRV.value = 0;
+        outputURV.value = 100;
+        outputUOM.value = '%';
+      } else if (type === 'volts') {
+        outputLRV.value = 0;
+        outputURV.value = 5;
+        outputUOM.value = 'V';
+      } else {
+        outputLRV.value = '';
+        outputURV.value = '';
+        outputUOM.value = '';
+      }
+
+      scheduleCalculateAll();
+    });
+  }
+
+  if (outputCharacteristic) outputCharacteristic.addEventListener('change', scheduleCalculateAll);
+
+  // =========================
+  // Numeric formatting (2 decimals)
+  // =========================
+  function isMidEntryNumber(raw){
+    return raw === '' || raw === '-' || raw === '.' || raw === '-.' || raw.endsWith('.');
+  }
+
+  function sanitizeNumericTyping(raw){
+    // allow digits, one '-', one '.', keep mid-entry states
+    raw = (raw ?? '').toString();
+    // Keep leading '-' if present
+    const neg = raw.startsWith('-');
+    raw = raw.replace(/[^0-9.]/g, '');
+    // keep only first '.'
+    const parts = raw.split('.');
+    if (parts.length > 2) raw = parts[0] + '.' + parts.slice(1).join('');
+    return neg ? '-' + raw : raw;
+  }
+
+  function formatTo2(el){
+    if (!el) return;
+    const raw = (el.value ?? '').toString().trim();
+    if (raw === '') return; // allow empty
+    if (isMidEntryNumber(raw)) return; // don't force while mid-entry
+    const n = Number(raw);
+    if (Number.isNaN(n)) return;
+    el.value = n.toFixed(2);
+  }
+
+  // Attach blur formatter for any AF/AL actual input/output field
+  function attach2dpBlurFormatting(){
+    const all = document.querySelectorAll(
+      '[id^="af_act_in_"],[id^="af_act_out_"],[id^="al_act_in_"],[id^="al_act_out_"]'
+    );
+    all.forEach(el => {
+      if (!(el instanceof HTMLInputElement)) return;
+
+      // sanitize on input (numeric only feel)
+      el.addEventListener('input', () => {
+        const raw = el.value;
+        const cleaned = sanitizeNumericTyping(raw);
+        if (cleaned !== raw) el.value = cleaned;
+      });
+
+      // enforce 2dp on blur
+      el.addEventListener('blur', () => {
+        formatTo2(el);
+        flushCalculateAll();
+      });
+    });
+  }
+
+  // =========================
+  // Build 5-point reading grids
+  // =========================
+  function buildReadingGrid(container, prefix, disabled){
+    if (!container) return;
+    container.innerHTML = '';
+
+    points.forEach(p => {
+      const row = document.createElement('div');
+      row.className = 'reading-row';
+      row.dataset.point = p;
+
+      row.innerHTML = `
+        <div class="reading-header">
+          <div class="reading-point">${p}%</div>
+          <div class="reading-expected">
+            <div>Exp In: <span id="${prefix}_exp_in_${p}">—</span></div>
+            <div>Exp Out: <span id="${prefix}_exp_out_${p}">—</span></div>
+          </div>
+        </div>
+
+        <div class="reading-inputs">
+          <div>
+            <label for="${prefix}_act_in_${p}">Actual Input</label>
+            <input id="${prefix}_act_in_${p}" type="text" inputmode="decimal" autocomplete="off" ${disabled ? 'disabled' : ''}>
+          </div>
+          <div>
+            <label for="${prefix}_act_out_${p}">Actual Output</label>
+            <input id="${prefix}_act_out_${p}" type="text" inputmode="decimal" autocomplete="off" ${disabled ? 'disabled' : ''}>
+          </div>
+        </div>
+
+        <div class="reading-footer">
+          <div class="muted">Error (%)</div>
+          <div class="reading-error" id="${prefix}_err_${p}">—</div>
+        </div>
+      `;
+
+      container.appendChild(row);
+    });
+  }
+
+  buildReadingGrid(asFoundGrid, 'af', false);
+  buildReadingGrid(asLeftGrid,  'al', true);
+  attach2dpBlurFormatting();
+  gridsReady = true;
+
+  // =========================
+  // Events: debounce while typing, flush on blur
+  // =========================
+  if (asFoundGrid) {
+    asFoundGrid.addEventListener('input', (e) => {
+      if (!e.target || !(e.target instanceof HTMLInputElement)) return;
+      scheduleCalculateAll();
+    });
+    asFoundGrid.addEventListener('blur', (e) => {
+      if (!e.target || !(e.target instanceof HTMLInputElement)) return;
+      flushCalculateAll();
+    }, true);
+  }
+
+  if (asLeftGrid) {
+    asLeftGrid.addEventListener('input', (e) => {
+      if (!e.target || !(e.target instanceof HTMLInputElement)) return;
+
+      const m = e.target.id.match(/^al_act_(in|out)_(\d+)$/);
+      if (m) asLeftDirty.add(Number(m[2]));
+
+      scheduleCalculateAll();
+    });
+    asLeftGrid.addEventListener('blur', (e) => {
+      if (!e.target || !(e.target instanceof HTMLInputElement)) return;
+      flushCalculateAll();
+    }, true);
+  }
+
+  // =========================
+  // Checkbox toggles edit mode (no hiding)
+  // =========================
+  if (forceShowAsLeft) {
+    forceShowAsLeft.addEventListener('change', () => {
+      if (anyOutOfTolerance && !forceShowAsLeft.checked) {
+        forceShowAsLeft.checked = true;
+        toast('Calibration required — As‑Left editing is required.', 'warn', 4000);
+        return;
+      }
+
+      if (!forceShowAsLeft.checked) {
+        asLeftDirty.clear();
+        points.forEach(p => {
+          const ai = document.getElementById(`al_act_in_${p}`);
+          const ao = document.getElementById(`al_act_out_${p}`);
+          if (ai) ai.value = '';
+          if (ao) ao.value = '';
+        });
+      }
+
+      scheduleCalculateAll();
+    });
+  }
+
+  if (clearAsLeftBtn) {
+    clearAsLeftBtn.addEventListener('click', () => {
+      asLeftDirty.clear();
+      asLeftGrid?.querySelectorAll('input').forEach(i => {
+        i.value = '';
+        i.disabled = false;
+      });
+      toast('As‑Left fields cleared.', 'info', 2400);
+      scheduleCalculateAll();
+    });
+  }
+
+  // =========================
+  // Output characteristic helpers
+  // =========================
+  function getOutputCharacteristic(){
+    const v = (outputCharacteristic?.value || 'linear').toString().toLowerCase();
+    return (v === 'sqrt' || v === 'squareroot' || v === 'square_root') ? 'sqrt' : 'linear';
+  }
+
+  // Convert input value -> percent of span (can be <0 or >1 if out of range; we keep it)
+  function normalizePercent(actualIn, inLRVn, inURVn){
+    const span = (inURVn - inLRVn);
+    if (!span) return null;
+    return (actualIn - inLRVn) / span;
+  }
+
+  // Given percent (0..1 nominal), compute output for characteristic
+  function outputFromPercent(percent, outLRVn, outURVn, characteristic){
+    const outSpan = outURVn - outLRVn;
+    if (!outSpan) return null;
+
+    if (characteristic === 'sqrt') {
+      // Standard square-root: output is proportional to sqrt(percent)
+      // Clamp percent to >=0 for sqrt domain (negative percent -> treat as 0)
+      const p = Math.max(0, percent);
+      return outLRVn + outSpan * Math.sqrt(p);
+    }
+    // linear
+    return outLRVn + outSpan * percent;
+  }
+
+  // Percent error over output span
+  function calcPercentError(actualOut, expectedOut, outLRVn, outURVn){
+    const span = outURVn - outLRVn;
+    if (!span) return null;
+    return ((actualOut - expectedOut) / span) * 100;
+  }
+
+  // === UI-consistent rounding (match 2dp displayed values) ===
+function roundTo(n, dp = 2){
+  const x = Number(n);
+  if (Number.isNaN(x)) return NaN;
+  const f = Math.pow(10, dp);
+  return Math.round((x + Number.EPSILON) * f) / f;
+}
+
+  // =========================
+  // Core calculation (two-pass)
+  // =========================
+  function calculateAll(){
+    const inLRVn  = Number(inputLRV?.value);
+    const inURVn  = Number(inputURV?.value);
+    const outLRVn = Number(outputLRV?.value);
+    const outURVn = Number(outputURV?.value);
+    const tolVal  = Number(tolerance?.value) || 0;
+
+    const characteristic = getOutputCharacteristic();
+
+    // As-Found failing points (for As-Left green "corrected")
+    const afFailPoints = new Set();
+
+    // PASS 1: expected displays + As-Found fails
+    const afErrMap = new Map();
+
+    points.forEach(p => {
+      // Expected input based on percent point (still shown)
+      const expInPct = p / 100;
+      const expIn = (!Number.isNaN(inLRVn) && !Number.isNaN(inURVn)) ? (inLRVn + expInPct * (inURVn - inLRVn)) : NaN;
+
+      // AF actual input for this row
+      const afActInEl = document.getElementById(`af_act_in_${p}`);
+      const afActOutEl = document.getElementById(`af_act_out_${p}`);
+      const rawAfIn = (afActInEl?.value ?? '').toString().trim();
+      const rawAfOut = (afActOutEl?.value ?? '').toString().trim();
+
+      const afActIn = isMidEntryNumber(rawAfIn) ? NaN : Number(rawAfIn);
+      const afActOut = isMidEntryNumber(rawAfOut) ? NaN : Number(rawAfOut);
+
+      // Expected output computed from AF actual input if provided, else from expected input
+      let expectedOutAF = NaN;
+      if (!Number.isNaN(inLRVn) && !Number.isNaN(inURVn) && !Number.isNaN(outLRVn) && !Number.isNaN(outURVn)) {
+        const baseIn = Number.isNaN(afActIn) ? expIn : afActIn;
+        const pct = normalizePercent(baseIn, inLRVn, inURVn);
+        expectedOutAF = (pct == null) ? NaN : outputFromPercent(pct, outLRVn, outURVn, characteristic);
+      }
+
+      // Fill expected displays (AF)
+      const afExpInEl  = document.getElementById(`af_exp_in_${p}`);
+      const afExpOutEl = document.getElementById(`af_exp_out_${p}`);
+      const alExpInEl  = document.getElementById(`al_exp_in_${p}`);
+
+      if (afExpInEl)  afExpInEl.textContent  = Number.isNaN(expIn) ? '—' : expIn.toFixed(2);
+      if (afExpOutEl) afExpOutEl.textContent = (expectedOutAF == null || Number.isNaN(expectedOutAF)) ? '—' : expectedOutAF.toFixed(2);
+      if (alExpInEl)  alExpInEl.textContent  = Number.isNaN(expIn) ? '—' : expIn.toFixed(2);
+
+      // As-Found error
+      let errText = '—';
+      let isFail = false;
+
+      if (!Number.isNaN(afActOut) && !Number.isNaN(expectedOutAF) &&
+    !Number.isNaN(outLRVn) && !Number.isNaN(outURVn) && (outURVn - outLRVn) !== 0) {
+
+  // ✅ round BOTH sides to what the tech sees (2dp)
+  const afActOut_2dp     = roundTo(afActOut, 2);
+  const expectedOutAF_2dp = roundTo(expectedOutAF, 2);
+
+  const err = calcPercentError(
+    afActOut_2dp,
+    expectedOutAF_2dp,
+    outLRVn,
+    outURVn
+  );
+
+  errText = (err == null) ? '—' : err.toFixed(2);
+
+  const focused = (document.activeElement === afActOutEl);
+  isFail = focused ? false : (Math.abs(err) > tolVal);
+
+  if (!focused && isFail) afFailPoints.add(p);
+}
+
+      afErrMap.set(p, { errText, isFail, expectedOutAF });
+    });
+
+    anyOutOfTolerance = afFailPoints.size > 0;
+
+    // PASS 2: As-Found highlight + As-Left mirror/edit + As-Left expected output + As-Left fail/pass
+    points.forEach(p => {
+      const { errText, isFail, expectedOutAF } = afErrMap.get(p);
+
+      const afRow = asFoundGrid?.querySelector(`.reading-row[data-point="${p}"]`);
+      const alRow = asLeftGrid?.querySelector(`.reading-row[data-point="${p}"]`);
+
+      // As-Found highlight + error text
+      if (afRow) afRow.classList.toggle('fail', isFail);
+      const afErrEl = document.getElementById(`af_err_${p}`);
+      if (afErrEl) afErrEl.textContent = errText;
+
+      // Mirror source
+      const afInEl  = document.getElementById(`af_act_in_${p}`);
+      const afOutEl = document.getElementById(`af_act_out_${p}`);
+      const afInVal  = (afInEl?.value ?? '').toString();
+      const afOutVal = (afOutEl?.value ?? '').toString();
+
+      // As-Left inputs
+      const alInEl  = document.getElementById(`al_act_in_${p}`);
+      const alOutEl = document.getElementById(`al_act_out_${p}`);
+      const alErrEl = document.getElementById(`al_err_${p}`);
+
+      const editMode = anyOutOfTolerance || (forceShowAsLeft?.checked === true);
+
+      // Reset As-Left row classes each pass
+      if (alRow) { alRow.classList.remove('fail'); alRow.classList.remove('pass'); }
+
+      if (!editMode) {
+        // Mirror + lock
+        if (alInEl)  { alInEl.value  = afInVal;  alInEl.disabled  = true; }
+        if (alOutEl) { alOutEl.value = afOutVal; alOutEl.disabled = true; }
+
+        // Expected Out for AL mirrors AF expected out in this mode
+        const alExpOutEl = document.getElementById(`al_exp_out_${p}`);
+        if (alExpOutEl) alExpOutEl.textContent = (expectedOutAF == null || Number.isNaN(expectedOutAF)) ? '—' : expectedOutAF.toFixed(2);
+
+        // AL error mirrors AF error in this mode
+        if (alErrEl) alErrEl.textContent = errText;
+        return;
+      }
+
+      // Editable mode
+      if (alInEl)  alInEl.disabled = false;
+      if (alOutEl) alOutEl.disabled = false;
+
+      // Live mirror until tech edits this point
+      if (!asLeftDirty.has(p)) {
+        if (alInEl)  alInEl.value  = afInVal;
+        if (alOutEl) alOutEl.value = afOutVal;
+      }
+
+      // Compute AL expected output based on AL actual input (or expected input if AL actual input empty)
+      const expInText = document.getElementById(`al_exp_in_${p}`)?.textContent ?? '—';
+      const expInNum = Number(expInText);
+      const rawAlIn = (alInEl?.value ?? '').toString().trim();
+      const alActIn = isMidEntryNumber(rawAlIn) ? NaN : Number(rawAlIn);
+      const baseInAL = Number.isNaN(alActIn) ? (Number.isNaN(expInNum) ? NaN : expInNum) : alActIn;
+
+      let expectedOutAL = NaN;
+      if (!Number.isNaN(inLRVn) && !Number.isNaN(inURVn) && !Number.isNaN(outLRVn) && !Number.isNaN(outURVn) && !Number.isNaN(baseInAL)) {
+        const pct = normalizePercent(baseInAL, inLRVn, inURVn);
+        expectedOutAL = (pct == null) ? NaN : outputFromPercent(pct, outLRVn, outURVn, characteristic);
+      }
+
+      const alExpOutEl = document.getElementById(`al_exp_out_${p}`);
+      if (alExpOutEl) {
+        alExpOutEl.textContent =
+          (expectedOutAL == null || Number.isNaN(expectedOutAL))
+            ? '—'
+            : roundTo(expectedOutAL, 2).toFixed(2);
+      }
+      // Compute AL error from AL actual output vs expectedOutAL
+      const rawAlOut = (alOutEl?.value ?? '').toString().trim();
+      const alActOut = isMidEntryNumber(rawAlOut) ? NaN : Number(rawAlOut);
+
+      let alErr = null;
+      let alErrText = '—';
+
+      if (!Number.isNaN(alActOut) && !Number.isNaN(expectedOutAL) &&
+    !Number.isNaN(outLRVn) && !Number.isNaN(outURVn) &&
+    (outURVn - outLRVn) !== 0) {
+
+  // ✅ round BOTH sides to the same 2dp contract the user sees
+  const alActOut_2dp       = roundTo(alActOut, 2);
+  const expectedOutAL_2dp  = roundTo(expectedOutAL, 2);
+
+  alErr = calcPercentError(
+    alActOut_2dp,
+    expectedOutAL_2dp,
+    outLRVn,
+    outURVn
+  );
+
+  alErrText = (alErr == null) ? '—' : alErr.toFixed(2);
+}
+
+      if (alErrEl) alErrEl.textContent = alErrText;
+
+      // As-Left highlight:
+      // - red if AL out of tol
+      // - green if AF was out of tol at this point AND AL now within tol
+      if (alErr != null && alRow) {
+        const alFail = Math.abs(alErr) > tolVal;
+        if (alFail) {
+          alRow.classList.add('fail');
+        } else if (afFailPoints.has(p)) {
+          alRow.classList.add('pass');
+        }
+      }
+    });
+
+    // Badges + toast
+    if (anyOutOfTolerance) {
+      if (afStatus) afStatus.style.display = 'inline-flex';
+      if (alStatus) alStatus.style.display = 'inline-flex';
+
+      // force edit mode ON
+      if (forceShowAsLeft) forceShowAsLeft.checked = true;
+
+      if (!lastAnyOut) {
+        toast('As‑Found out of tolerance — calibration required. Enter As‑Left values.', 'warn', 4200);
+      }
+    } else {
+      if (afStatus) afStatus.style.display = 'none';
+      if (alStatus) alStatus.style.display = 'none';
+    }
+
+    lastAnyOut = anyOutOfTolerance;
+    if (ts) ts.textContent = new Date().toLocaleString();
+  }
+
+  // =========================
+  // Collect + actions
+  // =========================
+  function collectTable(prefix){
+    return points.map(p => {
+      const expectedInput  = document.getElementById(`${prefix}_exp_in_${p}`)?.textContent || null;
+      const actualInput    = document.getElementById(`${prefix}_act_in_${p}`)?.value || null;
+      const expectedOutput = document.getElementById(`${prefix}_exp_out_${p}`)?.textContent || null;
+      const actualOutput   = document.getElementById(`${prefix}_act_out_${p}`)?.value || null;
+      const errorPercent   = document.getElementById(`${prefix}_err_${p}`)?.textContent || null;
+
+      return { point: p, expectedInput, actualInput, expectedOutput, actualOutput, errorPercent };
+    });
+  }
+
+  function submitForm(){
+    const asFound = collectTable('af');
+
+    const tol = Number(tolerance?.value) || 0;
+    const anyFail = asFound.some(r => r.errorPercent && r.errorPercent !== '—' && Math.abs(Number(r.errorPercent)) > tol);
+
+    let asLeft;
+    if (!forceShowAsLeft?.checked && !anyFail) {
+      asLeft = JSON.parse(JSON.stringify(asFound));
+    } else {
+      asLeft = collectTable('al');
+    }
+
+    const payload = {
+      tag: tagSelect?.value || null,
+      workOrder: workOrder?.value || null,
+
+      input: {
+        type: inputType?.value || null,
+        LRV: inputLRV?.value || null,
+        URV: inputURV?.value || null,
+        UOM: inputUOM?.value || null,
+        testEquipment: inputEquipSelect?.value || null
+      },
+
+      output: {
+        type: outputType?.value || null,
+        characteristic: getOutputCharacteristic(),
+        LRV: outputLRV?.value || null,
+        URV: outputURV?.value || null,
+        UOM: outputUOM?.value || null,
+        testEquipment: outputEquipSelect?.value || null
+      },
+
+      tolerance: tolerance?.value || null,
+      technician: document.getElementById('tech')?.value || null,
+      comments: document.getElementById('comments')?.value || null,
+
+      asFound,
+      asLeft,
+      timestamp: new Date().toISOString()
+    };
+
+    if (outputEl) outputEl.value = JSON.stringify(payload, null, 2);
+    toast('JSON generated successfully.', 'info', 2000);
+
+    openPrintableReport(payload);
+  }
+
+
+  function resetForm(){
+    document.querySelectorAll('input').forEach(i => {
+      if (i.type === 'checkbox') return;
+      if (i.hasAttribute('readonly')) return;
+      i.value = '';
+    });
+
+    document.querySelectorAll('select').forEach(s => {
+      // leave characteristic selection if you want; otherwise reset all
+      s.selectedIndex = 0;
+    });
+
+    const comments = document.getElementById('comments');
+    const tech = document.getElementById('tech');
+    if (comments) comments.value = '';
+    if (tech) tech.value = '';
+    if (outputEl) outputEl.value = '';
+
+    asLeftDirty.clear();
+    anyOutOfTolerance = false;
+    lastAnyOut = false;
+    if (forceShowAsLeft) forceShowAsLeft.checked = false;
+
+    buildReadingGrid(asFoundGrid, 'af', false);
+    buildReadingGrid(asLeftGrid,  'al', true);
+    attach2dpBlurFormatting();
+    gridsReady = true;
+
+    setToleranceByClass(null);
+    scheduleCalculateAll();
+
+    toast('Form reset.', 'info', 1400);
+
+    setWizStep('setup');
+  }
+
+  // =========================
+  // Graph modal (AF vs AL + tolerance band)
+  // =========================
+  function ensureGraphModal(){
+    if (document.getElementById('calGraphModal')) return;
+
+    const modal = document.createElement('div');
+    modal.id = 'calGraphModal';
+    modal.style.cssText = `
+      position:fixed; inset:0; display:none; z-index:99999;
+      background: var(--card); backdrop-filter: blur(6px);
+      align-items:center; justify-content:center; padding:16px;
+    `;
+
+    modal.innerHTML = `
+      <div style="
+        width:min(980px, 96vw);
+        background:  var(--card);
+        border: 1px solid var(--card-border);
+        border-radius: 14px;
+        box-shadow: 0 18px 60px var(--shadow);
+        overflow:hidden;
+      ">
+        <div style="display:flex; align-items:center; justify-content:space-between; padding:12px 14px; border-bottom:1px solid rgba(255,255,255,0.08);">
+          <div style="color:#21bca5; font-weight:800;">Calibration Plot (As‑Found vs As‑Left)</div>
+          <button id="calGraphClose" type="button" style="
+            border:none; cursor:pointer; color:#071028;
+            background: linear-gradient(180deg, #1ca490da, #21bca5);
+            border-radius:10px; padding:8px 12px; font-weight:800;
+          ">Close</button>
+        </div>
+        <div style="padding:12px 14px; position:relative;">
+  <canvas id="calGraphCanvas" width="920" height="420" style="width:100%; height:auto; display:block;"></canvas>
+
+  <div id="calGraphTip" style="
+    position:absolute;
+    display:none;
+    max-width:min(320px, 80vw);
+    background: rgba(2,6,23,0.92);
+    color: #e8ecf7;
+    border: 1px solid var(--card-border);
+    border-left: 4px solid #21bca5;
+    border-radius: 12px;
+    box-shadow: 0 10px 34px var(--shadow);
+    padding: 10px 12px;
+    font-size: 12px;
+    line-height: 1.25;
+    pointer-events:none;
+    z-index: 5;
+  "></div>
+          <div style="margin-top:10px; color: var(--card); font-size:12px; display:flex; gap:14px; flex-wrap:wrap;">
+            <div id="calLegend" style="margin-top:10px; color: var(--muted); font-size:12px; display:flex; gap:14px; flex-wrap:wrap;">
+            <button type="button" data-series="af" style="all:unset; cursor:pointer; display:inline-flex; align-items:center;">
+              <span style="display:inline-block;width:10px;height:10px;background:#a200ffc5;border-radius:2px;margin-right:6px;"></span>
+              As‑Found
+            </button>
+
+            <button type="button" data-series="al" style="all:unset; cursor:pointer; display:inline-flex; align-items:center;">
+              <span style="display:inline-block;width:10px;height:10px;background:#1ca490da;border-radius:2px;margin-right:6px;"></span>
+              As‑Left
+            </button>
+
+            <button type="button" data-series="band" style="all:unset; cursor:pointer; display:inline-flex; align-items:center;">
+              <span style="display:inline-block;width:10px;height:10px;border:2px dashed var(--tol);border-radius:2px;margin-right:6px;"></span>
+              Tolerance band
+            </button>
+          </div>
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) modal.style.display = 'none';
+    });
+    modal.querySelector('#calGraphClose').addEventListener('click', () => {
+      modal.style.display = 'none';
+    });
+
+    const canvas = modal.querySelector('#calGraphCanvas');
+const tip = modal.querySelector('#calGraphTip');
+
+function hideTip(){
+  if (!tip) return;
+  tip.style.display = 'none';
+}
+
+function showTipAt(x, y, html){
+  if (!tip) return;
+  tip.innerHTML = html;
+  tip.style.display = 'block';
+
+  // keep tip inside container bounds
+  const pad = 10;
+  const w = tip.offsetWidth || 220;
+  const h = tip.offsetHeight || 80;
+
+  const container = tip.parentElement;
+  const maxX = (container?.clientWidth || 0) - w - pad;
+  const maxY = (container?.clientHeight || 0) - h - pad;
+
+  tip.style.left = Math.max(pad, Math.min(x + 12, maxX)) + 'px';
+  tip.style.top  = Math.max(pad, Math.min(y - h - 12, maxY)) + 'px';
+}
+
+function fmt2(v){
+  const n = Number(v);
+  return (v == null || v === '' || Number.isNaN(n)) ? '—' : n.toFixed(2);
+}
+
+function hitTest(px, py){
+  // find nearest dot within radius
+  let best = null;
+  let bestD2 = Infinity;
+  for (const t of graphHitTargets) {
+    const dx = px - t.x, dy = py - t.y;
+    const d2 = dx*dx + dy*dy;
+    if (d2 <= t.r*t.r && d2 < bestD2) {
+      best = t; bestD2 = d2;
+    }
+  }
+  return best;
+}
+
+const SERIES_THEME = {
+  af: { accent: '#a200ffc5', title: '#a200ffc5' },  // As‑Found
+  al: { accent: '#1ca490da', title: '#1ca490da' }   // As‑Left
+  // band not needed for dot tooltips
+};
+
+function buildTooltip(hit){
+  const p = hit.point;
+  const prefix = hit.series; // 'af' or 'al'
+  const inU = (inputUOM?.value || '').trim();
+  const outU = (outputUOM?.value || '').trim();
+
+  const ai = document.getElementById(`${prefix}_act_in_${p}`)?.value ?? '';
+  const ao = document.getElementById(`${prefix}_act_out_${p}`)?.value ?? '';
+
+  // Pull accent from the legend swatch (single source of truth)
+const swatch = modal?.querySelector(`#calLegend button[data-series="${prefix}"] span`);
+const accent = swatch ? getComputedStyle(swatch).backgroundColor : '#1ca490da';
+
+// Theme the tooltip border + title to match series
+if (tip) tip.style.borderLeftColor = accent;
+
+
+  return `
+    <div style="font-weight:800; color:${accent}; margin-bottom:6px;">
+      ${hit.label} — ${p}%
+    </div>
+    <div><span style="opacity:.75;">Actual Input:</span> <b>${fmt2(ai)}</b> ${inU}</div>
+    <div><span style="opacity:.75;">Actual Output:</span> <b>${fmt2(ao)}</b> ${outU}</div>
+  `;
+}
+
+function canvasPointFromEvent(ev){
+  const rect = canvas.getBoundingClientRect();
+  // translate CSS pixels -> canvas pixels
+  const scaleX = canvas.width / rect.width;
+  const scaleY = canvas.height / rect.height;
+  return {
+    x: (ev.clientX - rect.left) * scaleX,
+    y: (ev.clientY - rect.top) * scaleY,
+    cx: (ev.clientX - rect.left),  // css px for tooltip placement
+    cy: (ev.clientY - rect.top)
+  };
+}
+
+if (canvas && !canvas.dataset.tipWired) {
+  canvas.dataset.tipWired = '1';
+
+  canvas.addEventListener('pointermove', (ev) => {
+    if (graphTipLocked) return;
+    const {x,y,cx,cy} = canvasPointFromEvent(ev);
+    const hit = hitTest(x,y);
+    if (!hit) return hideTip();
+    showTipAt(cx, cy, buildTooltip(hit));
+  });
+
+  canvas.addEventListener('pointerleave', () => {
+    if (!graphTipLocked) hideTip();
+  });
+
+  // Tap/click to lock/unlock tooltip (mobile-friendly)
+  canvas.addEventListener('pointerdown', (ev) => {
+    const {x,y,cx,cy} = canvasPointFromEvent(ev);
+    const hit = hitTest(x,y);
+    if (!hit) {
+      graphTipLocked = false;
+      hideTip();
+      return;
+    }
+    graphTipLocked = !graphTipLocked;
+    showTipAt(cx, cy, buildTooltip(hit));
+  });
+}
+
+    // Legend toggle wiring (one-time)
+const legend = modal.querySelector('#calLegend');
+if (legend && !legend.dataset.wired) {
+  legend.dataset.wired = '1';
+
+  const syncLegendUI = () => {
+    legend.querySelectorAll('button[data-series]').forEach(btn => {
+      const k = btn.dataset.series;
+      const on = (k === 'af') ? graphState.showAF
+              : (k === 'al') ? graphState.showAL
+              : graphState.showBand;
+
+      btn.style.opacity = on ? '1' : '0.35';
+      btn.style.textDecoration = on ? 'none' : 'line-through';
+    });
+  };
+
+  legend.addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-series]');
+    if (!btn) return;
+
+    const k = btn.dataset.series;
+    if (k === 'af') graphState.showAF = !graphState.showAF;
+    if (k === 'al') graphState.showAL = !graphState.showAL;
+    if (k === 'band') graphState.showBand = !graphState.showBand;
+
+    syncLegendUI();
+    drawGraph(); // redraw with new visibility
+  });
+
+  syncLegendUI();
+}
+  }
+
+  function getSeries(prefix, field){
+    // field: 'in' or 'out'
+    return points.map(p => {
+      const el = document.getElementById(`${prefix}_act_${field}_${p}`);
+      const raw = (el?.value ?? '').toString().trim();
+      if (isMidEntryNumber(raw)) return null;
+      const n = Number(raw);
+      return Number.isNaN(n) ? null : n;
+    });
+  }
+
+  function getExpectedOutCurve(){
+    // expected curve based on percent points (stable reference)
+    const inLRVn  = Number(inputLRV?.value);
+    const inURVn  = Number(inputURV?.value);
+    const outLRVn = Number(outputLRV?.value);
+    const outURVn = Number(outputURV?.value);
+    const ch = getOutputCharacteristic();
+    if ([inLRVn,inURVn,outLRVn,outURVn].some(Number.isNaN)) return points.map(() => null);
+
+    return points.map(p => {
+      const expIn = inLRVn + (p/100) * (inURVn - inLRVn);
+      const pct = normalizePercent(expIn, inLRVn, inURVn);
+      const y = (pct == null) ? null : outputFromPercent(pct, outLRVn, outURVn, ch);
+      return (y == null || Number.isNaN(y)) ? null : y;
+    });
+  }
+
+  function drawGraph(){
+    ensureGraphModal();
+    const modal = document.getElementById('calGraphModal');
+    const canvas = document.getElementById('calGraphCanvas');
+    if (!modal || !canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    const W = canvas.width, H = canvas.height;
+
+    ctx.clearRect(0,0,W,H);
+
+    // Data
+    const af = getSeries('af', 'out');
+    const al = getSeries('al', 'out');
+    const exp = getExpectedOutCurve();
+
+    // Determine Y range from output LRV/URV (fallback to data bounds)
+    let yMin = Number(outputLRV?.value);
+    let yMax = Number(outputURV?.value);
+
+    const allVals = [...af, ...al, ...exp].filter(v => v != null && !Number.isNaN(v));
+    if (Number.isNaN(yMin) || Number.isNaN(yMax) || yMin === yMax) {
+      if (allVals.length) {
+        yMin = Math.min(...allVals);
+        yMax = Math.max(...allVals);
+      } else {
+        yMin = 0; yMax = 1;
+      }
+    }
+
+    const pad = (yMax - yMin) * 0.08 || 1;
+    yMin -= pad; yMax += pad;
+
+    const m = { l: 54, r: 18, t: 18, b: 44 };
+    const x0 = m.l, x1 = W - m.r;
+    const y0 = H - m.b, y1 = m.t;
+
+    const xScale = (p) => x0 + (p/100) * (x1 - x0);
+    const yScale = (v) => y0 - ((v - yMin) / (yMax - yMin)) * (y0 - y1);
+    
+    graphHitTargets = [];
+    const dotR = 10; // hit radius (bigger than the visible dot helps mobile)
+
+    // Grid
+    ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+    ctx.lineWidth = 1;
+    [0,25,50,75,100].forEach(p => {
+      const x = xScale(p);
+      ctx.beginPath(); ctx.moveTo(x, y1); ctx.lineTo(x, y0); ctx.stroke();
+    });
+    for (let i=0;i<=4;i++){
+      const y = y0 - i*(y0-y1)/4;
+      ctx.beginPath(); ctx.moveTo(x0, y); ctx.lineTo(x1, y); ctx.stroke();
+    }
+
+    // Axes
+    ctx.strokeStyle = 'rgba(255,255,255,0.22)';
+    ctx.beginPath(); ctx.moveTo(x0,y0); ctx.lineTo(x1,y0); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x0,y1); ctx.lineTo(x0,y0); ctx.stroke();
+
+    // Labels X
+    ctx.fillStyle = 'rgba(232,236,247,0.75)';
+    ctx.font = '12px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+    [0,25,50,75,100].forEach(p => {
+      const x = xScale(p);
+      ctx.fillText(`${p}%`, x-10, H-18);
+    });
+
+    // Labels Y (min/max)
+    ctx.fillText(`${yMin.toFixed(2)}`, 8, y0+4);
+    ctx.fillText(`${yMax.toFixed(2)}`, 8, y1+10);
+
+    // Tolerance band around expected curve (+/- tol% of span)
+    const tolVal = Number(tolerance?.value) || 0;
+    const outSpan = (Number(outputURV?.value) - Number(outputLRV?.value)) || (yMax - yMin);
+
+    if (graphState.showBand && exp.some(v => v != null)) {
+      const upper = exp.map(v => (v == null ? null : v + (tolVal/100)*outSpan));
+      const lower = exp.map(v => (v == null ? null : v - (tolVal/100)*outSpan));
+
+      ctx.setLineDash([8,6]);
+      ctx.strokeStyle = '#00ff66';
+      ctx.lineWidth = 2.5;
+
+      drawLine(ctx, upper, xScale, yScale);
+      drawLine(ctx, lower, xScale, yScale);
+
+      ctx.setLineDash([]);
+    }
+
+    // Series lines
+    ctx.lineWidth = 2.5;
+  
+  if (graphState.showAF) {
+  ctx.strokeStyle = '#a200ffc5';
+  drawLine(ctx, af, xScale, yScale);
+  drawDots(ctx, af, xScale, yScale, '#a200ffc5');
+
+  af.forEach((v, idx) => {
+    if (v == null || Number.isNaN(v)) return;
+    const p = points[idx];
+    graphHitTargets.push({
+      series: 'af',
+      label: 'As‑Found',
+      point: p,
+      value: v,
+      x: xScale(p),
+      y: yScale(v),
+      r: dotR
+    });
+  });
+}
+
+  if (graphState.showAL) {
+  ctx.strokeStyle = '#1ca490da';
+  drawLine(ctx, al, xScale, yScale);
+  drawDots(ctx, al, xScale, yScale, '#1ca490da');
+
+  al.forEach((v, idx) => {
+    if (v == null || Number.isNaN(v)) return;
+    const p = points[idx];
+    graphHitTargets.push({
+      series: 'al',
+      label: 'As‑Left',
+      point: p,
+      value: v,
+      x: xScale(p),
+      y: yScale(v),
+      r: dotR
+    });
+  });
+}
+
+    modal.style.display = 'flex';
+  }
+
+  function drawLine(ctx, series, xScale, yScale){
+    let started = false;
+    for (let i=0;i<points.length;i++){
+      const v = series[i];
+      if (v == null || Number.isNaN(v)) { started = false; continue; }
+      const x = xScale(points[i]);
+      const y = yScale(v);
+      if (!started){
+        ctx.beginPath();
+        ctx.moveTo(x,y);
+        started = true;
+      } else {
+        ctx.lineTo(x,y);
+      }
+    }
+    if (started) ctx.stroke();
+  }
+
+  function drawDots(ctx, series, xScale, yScale, color){
+    ctx.fillStyle = color;
+    for (let i=0;i<points.length;i++){
+      const v = series[i];
+      if (v == null || Number.isNaN(v)) continue;
+      const x = xScale(points[i]);
+      const y = yScale(v);
+      ctx.beginPath();
+      ctx.arc(x,y,4,0,Math.PI*2);
+      ctx.fill();
+    }
+  }
+
+// Wire View Graph button (now in Tech/Actions row)
+const viewGraphBtn = document.getElementById('viewGraphBtn');
+if (viewGraphBtn) {
+  viewGraphBtn.addEventListener('click', () => {
+    flushCalculateAll();
+    drawGraph();
+  });
+}
+
+const commentsEl = document.getElementById('comments');
+const commentsCount = document.getElementById('commentsCount');
+if (commentsEl && commentsCount) {
+  const syncCount = () => {
+    const n = (commentsEl.value || '').length;
+    commentsCount.textContent = `${n} / 500`;
+  };
+  commentsEl.addEventListener('input', syncCount);
+  syncCount();
+}
+
+    // =========================
+  // Print Report
+  // =========================
+  function captureGraphImage(){
+  const canvas = document.getElementById('calGraphCanvas');
+  if (!canvas) return null;
+  return canvas.toDataURL('image/png', 1.0);
+}
+
+
+  // =========================
+  // Wire actions
+  // =========================
+  if (generateBtn) generateBtn.addEventListener('click', submitForm);
+  if (resetBtn) resetBtn.addEventListener('click', resetForm);
+
+  if (copyBtn) {
+    copyBtn.addEventListener('click', async () => {
+      if (!outputEl || !outputEl.value) return toast('Nothing to copy yet.', 'warn', 2400);
+      try {
+        await navigator.clipboard.writeText(outputEl.value);
+        toast('Copied to clipboard.', 'info', 1700);
+      } catch {
+        outputEl.focus();
+        outputEl.select();
+        document.execCommand('copy');
+        toast('Copied (fallback).', 'info', 1700);
+      }
+    });
+  }
+
+  [inputLRV, inputURV, outputLRV, outputURV].forEach(el => el && el.addEventListener('input', scheduleCalculateAll));
+
+  // Init
+  setToleranceByClass(null);
+  scheduleCalculateAll();
+</script>
+<script src="print_report.js"></script>
+<script type="module">
+  import { mountDnaSwirl } from './dna_swirl.js';
+
+  mountDnaSwirl('#dnaSwirl', {
+    /* === Visual smoothness === */
+    dotSpacingPx: 4.6,        // smooth strands on desktop
+    idleShimmerMul: 0.22,     // calm idle (no sparkle breakup)
+    glowBridge: true,         // visually connects dots into strands
+
+    /* === Logo behavior === */
+    logoMask: false,          // DNA runs fully behind logo (no dimming)
+    logoFadeInSecs: 0.30,     // fast logo reveal
+
+    /* === Intro speed (THIS is what you were missing) === */
+    buildDotsPerSec: 240,     // faster assembly
+    holdSecs: 0.25,           // barely pause before shedding
+    shedDotsPerSec: 280,      // fast center-out breakup
+
+    /* === Convergence feel === */
+    snapEps: 1.1,             // lock dots sooner
+    easeToAnchor: 0.18        // stronger pull into strands
+  });
+</script>
+</body>
+</html>
