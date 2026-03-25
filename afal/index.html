@@ -8,14 +8,14 @@
   <style>
     :root{
 
-     --bg-deep:#000000cc;
+      --bg-deep:#000000;
       --bg-accent:#101625cc;
       --glass:#ffffff12;
       --glass-2:#dcffbb12;
       --glass-blur:#000000d0;
       --border:#ffffff1a;
       --ink:#e7ecff;
-      --muted:#c6d0f0a6;
+      --muted:#d6defab2;
       --brand:#1ca490da;
       --brand-600:#21bca5;
       --aura:0 4px 8px rgba(17, 76, 67, 0.678);
@@ -23,27 +23,15 @@
       --radius-sm:12px;
       --maxw:1200px;
       --grad:linear-gradient(135deg,#121b2d 0%,#060e1e 40%,#0f1824 100%);
-      --test: rgba(77, 171, 247, 0.55);
-      --test2: #e6c96b;
 
-
-      --navy-950:#000000;
-      --navy-900:#000000;
-      --navy-800:#000000;
+      --af: #a200ffc5;
+      --al: #1ca490da;
+      --tol: #00ff66;
 
       --card-bg: rgba(255,255,255,0.06);
       --card-bg-2: rgba(255,255,255,0.035);
       --card-border: rgba(255,255,255,0.10);
       --card: rgba(0, 0, 0, 0.603);
-
-      --gold:#1ca490da;
-      --gold-2:#21bca5;
-      --af: #a200ffc5;
-      --al: #1ca490da;
-      --tol: #00ff66;
-
-      --text:#e8ecf7;
-      --muted:#b8c0d9;
 
       --glass-blur:12px;
       --radius:14px;
@@ -65,9 +53,9 @@
       margin:0;
       font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial;
       -webkit-font-smoothing: antialiased;
-      color: var(--text);
+      color: var(--ink);
 
-      background: var(--navy-800);
+      background: var(--bg-deep);
 
       padding: 16px 12px;
       display:flex;
@@ -94,7 +82,7 @@
     .nav{ max-width:var(--maxw); margin:0 auto; padding:14px 20px; display:flex; align-items:center; justify-content:space-between; gap:12px; }
 
     .brand{ display:flex; align-items:center; gap:10px; }
-    .logo { width:34px; height:34px; border-radius:10px; display:flex; align-items:center; justify-content:center; background:var(--navy-800)}
+    .logo { width:34px; height:34px; border-radius:10px; display:flex; align-items:center; justify-content:center; background:var(--bg-deep)}
     .logo img { width:100%; height:100%; object-fit:contain; display:block;}
     .brand-title{ font-weight:700; }
     .brand-sub{ font-size:.85rem; color:var(--muted); }
@@ -107,7 +95,7 @@
     .brandText{ min-width:0; }
     .brandText h1{
       margin:0;
-      color: var(--gold);
+      color: var(--brand);
       font-size: 1.14rem;
       letter-spacing: 0.01em;
       line-height: 1.1;
@@ -149,7 +137,7 @@
       overflow:hidden;
       border-radius: var(--radius);
       padding: var(--card-padding);
-      background: var(--navy-800);
+      background: var(--bg-deep);
       border: 1px solid var(--card-border);
       box-shadow: var(--shadow);
 
@@ -232,7 +220,7 @@
 
     .card h2{
       margin:0 0 12px 0;
-      color: var(--gold-2);
+      color: var(--brand-600);
       font-size: 1.12rem;
       border-bottom: 2px solid var(--card-border);
       padding-bottom: 8px;
@@ -245,7 +233,7 @@
     h3{
       margin: 14px 0 6px 0;
       font-size: 0.92rem;
-      color: var(--gold-2);
+      color: var(--brand-600);
       letter-spacing: 0.02em;
     }
 
@@ -253,7 +241,7 @@
       display:block;
       margin-top: 10px;
       font-weight: 650;
-      color: var(--gold-2);
+      color: var(--brand-600);
       font-size: 0.92rem;
     }
 
@@ -275,7 +263,7 @@
       border-radius: 10px;
       border: 1px solid rgba(255,255,255,0.08);
       background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
-      color: var(--text);
+      color: var(--ink);
       box-shadow: inset 0 1px 0 rgba(255,255,255,0.03);
       font-size: 0.96rem;
       min-height: var(--tap);
@@ -326,8 +314,8 @@
       border-radius: 999px;
       font-size: 0.78rem;
       font-weight: 750;
-      background: var(--gold);
-      color: var(--gold-2);
+      background: var(--brand);
+      color: var(--brand-600);
       border: 1px solid var(--card-border);
       white-space:nowrap;
     }
@@ -362,7 +350,7 @@
     }
 
     .btn.primary{
-      background: linear-gradient(180deg, var(--gold), var(--gold-2));
+      background: linear-gradient(180deg, var(--brand), var(--brand-600));
       color: #071028;
       box-shadow: 0 8px 22px var(--shadow);
     }
@@ -370,7 +358,7 @@
     .btn.secondary{
       background: transparent;
       border: 1px solid rgba(255,255,255,0.10);
-      color: var(--text);
+      color: var(--ink);
       box-shadow:none;
     }
 
@@ -475,8 +463,6 @@
 }
 
 
-
-
 .btn{
   position: relative;
   overflow: hidden; /* ripple stays inside button radius */
@@ -557,7 +543,7 @@
       align-items:center;
       gap:10px;
       font-weight: 650;
-      color: var(--gold-2);
+      color: var(--brand-600);
       font-size: 0.92rem;
     }
 
@@ -566,7 +552,7 @@
       height:20px;
       min-height:unset;
       margin:0;
-      accent-color: var(--gold);
+      accent-color: var(--brand);
     }
 
     @media (min-width: 760px){
@@ -593,7 +579,7 @@
       padding: 10px 10px;
       font-size: 0.90rem;
       background: rgba(255,255,255,0.03);
-      color: var(--gold);
+      color: var(--brand);
       font-weight: 800;
       border-bottom: 1px solid rgba(255,255,255,0.05);
       white-space:nowrap;
@@ -671,7 +657,7 @@
         justify-content:flex-start;
         gap: 10px;
         font-weight: 850;
-        color: var(--gold-2);
+        color: var(--brand-600);
       }
       td input{
         width: 52%;
@@ -705,12 +691,12 @@
     .toast{
       pointer-events:auto;
       background: rgba(2,6,23,0.92);
-      color: var(--text);
+      color: var(--ink);
       padding: 10px 14px;
       border-radius: 12px;
       box-shadow: 0 10px 34px rgba(2,6,23,0.65);
       font-weight: 700;
-      border-left: 4px solid var(--gold);
+      border-left: 4px solid var(--brand);
       opacity: 1;
       transform: translateY(0);
       transition: opacity .18s ease, transform .18s ease;
@@ -720,7 +706,7 @@
     /* Fix unreadable dropdowns on dark UI */
 select{
   background: rgba(255,255,255,0.04);
-  color: var(--text);
+  color: var(--ink);
 }
 select option{
   background: #000000;   /* dark */
@@ -766,7 +752,7 @@ input[type="number"]{
 
 .reading-point{
   font-weight:800;
-  color: var(--gold-2);
+  color: var(--brand-600);
   font-size:1rem;
 }
 
@@ -873,7 +859,7 @@ input[inputmode="search"]{
 #tagSearch:focus,
 #inputEquipSearch:focus,
 #outputEquipSearch:focus{
-  border-color: var(--gold);
+  border-color: var(--brand);
   box-shadow:
     0 0 0 1px var(--focus),
     0 0 12px var(--shadow),
@@ -988,7 +974,7 @@ select option{
          ========================================================= -->
     <section class="card" id="instrumentSetup" aria-label="Instrument Setup">
       <h2>
-        <span style="color:var(--gold)">Instrument Setup</span>
+        <span style="color:var(--brand)">Instrument Setup</span>
       </h2>
 
       <!-- ✅ NEW: internal responsive grid -->
@@ -1332,7 +1318,7 @@ function setWizStep(step){
   asLeftCard?.classList.toggle('wiz-hidden', step !== 'al');
   techCard?.classList.toggle('wiz-hidden', step !== 'final');
 
-  // Output is going away: hide always (you said print_report already covers this)
+  // Output is going away: hide always (print_report already covers this)
   if (outputCard) outputCard.classList.add('wiz-hidden');
 
 
@@ -1872,11 +1858,51 @@ outputUOMCustom?.addEventListener('input', scheduleCalculateAll);
     el.value = n.toFixed(2);
   }
 
+  // =========================
+  // Actual Input constraint (per-row tolerance band)
+  // - Applies ONLY to *_act_in_* fields (AF + AL)
+  // - Band is centered on the Expected Input for that point
+  // - Band width = ±(tolerance% of input span)
+  // =========================
+  function getExpectedInputForPoint(pointPct, inLRVn, inURVn){
+    if (Number.isNaN(inLRVn) || Number.isNaN(inURVn)) return NaN;
+    return inLRVn + (pointPct / 100) * (inURVn - inLRVn);
+  }
+
+  function getAllowedActualInputBand(pointPct){
+    const inLRVn = Number(inputLRV?.value);
+    const inURVn = Number(inputURV?.value);
+    const tolPct = Number(tolerance?.value) || 0;
+
+    // Guard: ranges must be valid and span non-zero
+    if (Number.isNaN(inLRVn) || Number.isNaN(inURVn) || inURVn === inLRVn) return null;
+
+    const span = (inURVn - inLRVn);
+    const expIn = getExpectedInputForPoint(pointPct, inLRVn, inURVn);
+
+    // Guard: expected must be numeric
+    if (Number.isNaN(expIn)) return null;
+
+    const delta = Math.abs(span) * (tolPct / 100); // tolerance band in INPUT units
+    return {
+      expIn,
+      min: expIn - delta,
+      max: expIn + delta,
+      tolPct,
+      span
+    };
+  }
+
+  function clamp(n, min, max){
+    return Math.max(min, Math.min(max, n));
+  }
+
   // Attach blur formatter for any AF/AL actual input/output field
   function attach2dpBlurFormatting(){
     const all = document.querySelectorAll(
       '[id^="af_act_in_"],[id^="af_act_out_"],[id^="al_act_in_"],[id^="al_act_out_"]'
     );
+
     all.forEach(el => {
       if (!(el instanceof HTMLInputElement)) return;
 
@@ -1887,14 +1913,56 @@ outputUOMCustom?.addEventListener('input', scheduleCalculateAll);
         if (cleaned !== raw) el.value = cleaned;
       });
 
-      // enforce 2dp on blur
+      // enforce 2dp on blur + constrain Actual Input band (AF/AL act_in only)
       el.addEventListener('blur', () => {
+        // 1) normalize to 2dp first (so comparisons align with UI contract)
         formatTo2(el);
+
+        // 2) If this is an Actual Input field, enforce per-row tolerance band
+        // IDs: af_act_in_<point> or al_act_in_<point>
+        const m = el.id.match(/^(af|al)_act_in_(\d+)$/);
+        if (m) {
+          const prefix = m[1];               // 'af' | 'al'
+          const pointPct = Number(m[2]);     // 0/25/50/75/100
+
+          // Parse the now-formatted value
+          const raw = (el.value ?? '').toString().trim();
+          if (!isMidEntryNumber(raw) && raw !== '') {
+            const val = Number(raw);
+            if (!Number.isNaN(val)) {
+              const band = getAllowedActualInputBand(pointPct);
+
+              if (band) {
+                const { expIn, min, max, tolPct } = band;
+
+                if (val < min || val > max) {
+                  const clamped = clamp(val, min, max);
+
+                  // Write back clamped value in the same 2dp contract
+                  el.value = clamped.toFixed(2);
+
+                  // Toast with clear, operator-friendly info
+                  const uom = getInputUOMValue() || '';
+                  toast(
+                    `Actual Input @ ${pointPct}% must be within ${min.toFixed(2)}–${max.toFixed(2)} ${uom} (±${Number(tolPct).toFixed(2)}% of span). Adjusted.`,
+                    'warn',
+                    4200
+                  );
+
+                  // If this was As-Left, ensure this point is considered "tech edited"
+                  // (so mirroring won't overwrite after the user interacted)
+                  if (prefix === 'al') asLeftDirty.add(pointPct);
+                }
+              }
+            }
+          }
+        }
+
+        // 3) Recompute everything after potential adjustment
         flushCalculateAll();
       });
     });
   }
-
   // =========================
   // Build 5-point reading grids
   // =========================
