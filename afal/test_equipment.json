@@ -1,0 +1,20 @@
+[
+  {
+    "id": "ID-1234",
+    "name": "Fluke Temperature Calibrator",
+    "desc": "Multifunction temperature calibrator",
+    "role": "both"
+  },
+  {
+    "id": "ID-2345",
+    "name": "Fluke 700RG07",
+    "desc": "0-500 PSI Gauge",
+    "role": "both"
+  },
+  {
+    "id": "ID-3456",
+    "name": "Fluke 789",
+    "desc": "Process Meter",
+    "role": "both"
+  }
+]
