@@ -1287,6 +1287,7 @@ select option{
 
 
 let wizStep = 'setup';
+let suppressWizardScroll = true;
 
 function setWizStep(step){
   wizStep = step;
@@ -1307,12 +1308,13 @@ function setWizStep(step){
     (step === 'af') ? asFoundCard :
     (step === 'al') ? asLeftCard :
     techCard;
-
+if (!suppressWizardScroll) {
   requestAnimationFrame(() => {
   requestAnimationFrame(() => {
     target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
   });
-});
+}
 }
 
 /* Minimal gating: keep it permissive, but warn */
@@ -1466,6 +1468,7 @@ function goBack(){
 
 // Init wizard on load
 setWizStep('setup');
+suppressWizardScroll = false;
 
   // =========================
 // Graph display state
@@ -2405,14 +2408,20 @@ function fmt2(v){
 }
 
 function hitTest(px, py){
-  // find nearest dot within radius
   let best = null;
   let bestD2 = Infinity;
+
+  // allow a little extra forgiveness (magnet zone)
+  const magnetMul = 1.35;
+
   for (const t of graphHitTargets) {
     const dx = px - t.x, dy = py - t.y;
     const d2 = dx*dx + dy*dy;
-    if (d2 <= t.r*t.r && d2 < bestD2) {
-      best = t; bestD2 = d2;
+
+    const rr = (t.r * magnetMul);
+    if (d2 <= rr*rr && d2 < bestD2) {
+      best = t;
+      bestD2 = d2;
     }
   }
   return best;
@@ -2562,6 +2571,14 @@ if (legend && !legend.dataset.wired) {
 
     const ctx = canvas.getContext('2d');
     const W = canvas.width, H = canvas.height;
+    const rect = canvas.getBoundingClientRect();
+
+    const scaleX = canvas.width / rect.width; // canvas px per CSS px
+    const isCoarse = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+
+    // radius in CSS px (finger size), then convert to canvas px
+    const hitRadiusCss = isCoarse ? 22 : 12;
+    const dotR = hitRadiusCss * scaleX;
 
     ctx.clearRect(0,0,W,H);
 
@@ -2595,7 +2612,6 @@ if (legend && !legend.dataset.wired) {
     const yScale = (v) => y0 - ((v - yMin) / (yMax - yMin)) * (y0 - y1);
     
     graphHitTargets = [];
-    const dotR = 10; // hit radius (bigger than the visible dot helps mobile)
 
     // Grid
     ctx.strokeStyle = 'rgba(255,255,255,0.08)';
