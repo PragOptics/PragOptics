@@ -2190,11 +2190,17 @@ function roundTo(n, dp = 2){
 
   errText = (err == null) ? '—' : err.toFixed(2);
 
-  const focused = (document.activeElement === afActOutEl);
-  isFail = focused ? false : (Math.abs(err) > tolVal);
+      // ✅ Compare using the same 2dp contract the user sees
+    const err2 = roundTo(err, 2);
+    const tol2 = roundTo(tolVal, 2);
 
-  if (!focused && isFail) afFailPoints.add(p);
-}
+    // FAIL rule: >= tolerance is out of tolerance
+    isFail = Math.abs(err2) >= tol2;
+
+    if (isFail) afFailPoints.add(p);
+
+      if (!focused && isFail) afFailPoints.add(p);
+    }
 
       afErrMap.set(p, { errText, isFail, expectedOutAF });
     });
@@ -2300,14 +2306,20 @@ function roundTo(n, dp = 2){
 
       if (alErrEl) alErrEl.textContent = alErrText;
 
-      // As-Left highlight:
-      // - red if AL out of tol
-      // - green if AF was out of tol at this point AND AL now within tol
+
+      // As-Left highlight (use SAME 2dp contract as UI + As-Found):
+      // - FAIL if |err2| >= tol2
+      // - CORRECTED (green) only if AF failed and AL is strictly inside tol
       if (alErr != null && alRow) {
-        const alFail = Math.abs(alErr) > tolVal;
+       const err2 = roundTo(alErr, 2);
+        const tol2 = roundTo(tolVal, 2);
+
+       const alFail = Math.abs(err2) >= tol2;
+
         if (alFail) {
-          alRow.classList.add('fail');
+         alRow.classList.add('fail');
         } else if (afFailPoints.has(p)) {
+          // AL is strictly inside tolerance (because fail is >=)
           alRow.classList.add('pass');
         }
       }
