@@ -1027,6 +1027,15 @@ select option{
             <div class="col">
               <label style="color:var(--muted)" for="inputUOM">Input Units</label>
               <select id="inputUOM" aria-label="Input units"></select>
+
+              
+            <!-- NEW: only used when Input Type = Custom -->
+            <input id="inputUOMCustom"
+                  class="wiz-hidden"
+                  type="text"
+                  placeholder="Enter custom input units (e.g., gpm, rpm)"
+                  autocomplete="off" />
+
             </div>
           </div>
 
@@ -1093,6 +1102,15 @@ select option{
             <div class="col">
               <label style="color:var(--muted)" for="outputUOM">Output Units</label>
               <input id="outputUOM" readonly placeholder="Auto-filled">
+
+              
+            <!-- NEW: only used when Output Type = Custom -->
+            <input id="outputUOMCustom"
+                  class="wiz-hidden"
+                  type="text"
+                  placeholder="Enter custom output units (e.g., in/s, mV)"
+                  autocomplete="off" />
+
             </div>
           </div>
 
@@ -1206,7 +1224,7 @@ select option{
       <button class="btn secondary" id="backToDataBtn" type="button">Back</button>
       <button class="btn secondary" id="viewGraphBtn" type="button">View Graph</button>
       <button class="btn secondary" id="resetBtn" type="button">Reset</button>
-      <button class="btn primary" id="generateBtn" type="button">Generate JSON</button>
+      <button class="btn primary" id="generateBtn" type="button">Generate Report</button>
     </div>
   </div>
 </section>
@@ -1248,11 +1266,13 @@ select option{
   const inputLRV  = document.getElementById('inputLRV');
   const inputURV  = document.getElementById('inputURV');
   const inputUOM  = document.getElementById('inputUOM');
+  const inputUOMCustom = document.getElementById('inputUOMCustom');
 
   const outputType = document.getElementById('outputType');
   const outputLRV  = document.getElementById('outputLRV');
   const outputURV  = document.getElementById('outputURV');
   const outputUOM  = document.getElementById('outputUOM');
+  const outputUOMCustom = document.getElementById('outputUOMCustom');
 
   const outputCharacteristic = document.getElementById('outputCharacteristic'); // optional
 
@@ -1283,6 +1303,20 @@ select option{
   const asLeftCard = document.getElementById('asLeftCard');
   const techCard = document.getElementById('techCard');
   const outputCard = document.getElementById('outputCard');
+
+  function getInputUOMValue(){
+  if ((inputType?.value || '') === 'custom') {
+    return (inputUOMCustom?.value || '').trim() || null;
+  }
+  return (inputUOM?.value || '').trim() || null;
+}
+
+function getOutputUOMValue(){
+  if ((outputType?.value || '') === 'custom') {
+    return (outputUOMCustom?.value || '').trim() || null;
+  }
+  return (outputUOM?.value || '').trim() || null;
+}
 
 
 
@@ -1730,46 +1764,82 @@ let graphTipLocked = false;   // tap to lock tooltip on mobile
   }
 
   if (inputType) {
-    inputType.addEventListener('change', () => {
-      const type = inputType.value;
+  inputType.addEventListener('change', () => {
+    const type = inputType.value;
+
+    const isCustom = (type === 'custom');
+
+    // Show text input for custom units; otherwise show select
+    if (inputUOMCustom) inputUOMCustom.classList.toggle('wiz-hidden', !isCustom);
+    if (inputUOM)       inputUOM.classList.toggle('wiz-hidden', isCustom);
+
+    if (isCustom) {
+      // Clear select; let user type
+      if (inputUOM) inputUOM.value = '';
+      if (inputUOMCustom) inputUOMCustom.value = '';
+    } else {
       populateUnits(inputUOM, INPUT_UNIT_MAP[type], type ? 'Select units...' : 'Select input type first...');
       if (inputUOM) inputUOM.value = '';
-      scheduleCalculateAll();
-    });
-  }
+    }
+
+    scheduleCalculateAll();
+  });
+}
+
+// When user types custom UOM, recalc
+inputUOMCustom?.addEventListener('input', scheduleCalculateAll);
+
   if (inputUOM) inputUOM.addEventListener('change', scheduleCalculateAll);
   populateUnits(inputUOM, [], 'Select input type first...');
 
   // Output defaults
   if (outputType) {
-    outputType.addEventListener('change', () => {
-      const type = outputType.value;
+  outputType.addEventListener('change', () => {
+    const type = outputType.value;
+    const isCustom = (type === 'custom');
 
-      if (type === 'ma') {
-        outputLRV.value = 4;
-        outputURV.value = 20;
-        outputUOM.value = 'mA';
-      } else if (type === 'psi') {
-        outputLRV.value = 3;
-        outputURV.value = 15;
-        outputUOM.value = 'PSI';
-      } else if (type === 'percent') {
-        outputLRV.value = 0;
-        outputURV.value = 100;
-        outputUOM.value = '%';
-      } else if (type === 'volts') {
-        outputLRV.value = 0;
-        outputURV.value = 5;
-        outputUOM.value = 'V';
-      } else {
-        outputLRV.value = '';
-        outputURV.value = '';
-        outputUOM.value = '';
-      }
+    // ✅ NEW: toggle visibility between auto-filled outputUOM and custom input
+    if (outputUOM)       outputUOM.classList.toggle('wiz-hidden', isCustom);
+    if (outputUOMCustom) outputUOMCustom.classList.toggle('wiz-hidden', !isCustom);
 
-      scheduleCalculateAll();
-    });
-  }
+    if (type === 'ma') {
+      outputLRV.value = 4;
+      outputURV.value = 20;
+      outputUOM.value = 'mA';
+      if (outputUOMCustom) outputUOMCustom.value = '';
+    } else if (type === 'psi') {
+      outputLRV.value = 3;
+      outputURV.value = 15;
+      outputUOM.value = 'PSI';
+      if (outputUOMCustom) outputUOMCustom.value = '';
+    } else if (type === 'percent') {
+      outputLRV.value = 0;
+      outputURV.value = 100;
+      outputUOM.value = '%';
+      if (outputUOMCustom) outputUOMCustom.value = '';
+    } else if (type === 'volts') {
+      outputLRV.value = 0;
+      outputURV.value = 5;
+      outputUOM.value = 'V';
+      if (outputUOMCustom) outputUOMCustom.value = '';
+    } else if (isCustom) {
+      outputLRV.value = '';
+      outputURV.value = '';
+      outputUOM.value = '';          // keep auto field empty while hidden
+      if (outputUOMCustom) outputUOMCustom.value = '';
+    } else {
+      outputLRV.value = '';
+      outputURV.value = '';
+      outputUOM.value = '';
+      if (outputUOMCustom) outputUOMCustom.value = '';
+    }
+
+    scheduleCalculateAll();
+  });
+}
+
+// When user types custom output UOM, recalc
+outputUOMCustom?.addEventListener('input', scheduleCalculateAll);
 
   if (outputCharacteristic) outputCharacteristic.addEventListener('change', scheduleCalculateAll);
 
@@ -2231,7 +2301,7 @@ function roundTo(n, dp = 2){
         type: inputType?.value || null,
         LRV: inputLRV?.value || null,
         URV: inputURV?.value || null,
-        UOM: inputUOM?.value || null,
+        UOM: getInputUOMValue(),
         testEquipment: inputEquipSelect?.value || null
       },
 
@@ -2240,7 +2310,7 @@ function roundTo(n, dp = 2){
         characteristic: getOutputCharacteristic(),
         LRV: outputLRV?.value || null,
         URV: outputURV?.value || null,
-        UOM: outputUOM?.value || null,
+        UOM: getOutputUOMValue(),
         testEquipment: outputEquipSelect?.value || null
       },
 
@@ -2436,8 +2506,8 @@ const SERIES_THEME = {
 function buildTooltip(hit){
   const p = hit.point;
   const prefix = hit.series; // 'af' or 'al'
-  const inU = (inputUOM?.value || '').trim();
-  const outU = (outputUOM?.value || '').trim();
+  const inU = getInputUOMValue();
+  const outU = getOutputUOMValue();
 
   const ai = document.getElementById(`${prefix}_act_in_${p}`)?.value ?? '';
   const ao = document.getElementById(`${prefix}_act_out_${p}`)?.value ?? '';
@@ -2793,6 +2863,12 @@ if (commentsEl && commentsCount) {
   // Init
   setToleranceByClass(null);
   scheduleCalculateAll();
+
+  // Sync unit input visibility on load (in case browser restores selects)
+if (inputType?.value) inputType.dispatchEvent(new Event('change'));
+if (outputType?.value) outputType.dispatchEvent(new Event('change'));
+
+
 </script>
 <script src="print_report.js"></script>
 <script type="module">
