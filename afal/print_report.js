@@ -78,7 +78,10 @@
         --radius:12px;
       }
 
-      *{ box-sizing:border-box; }
+      *{ box-sizing:border-box; 
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+      }
       html,body{ height:100%; }
       body{
         margin: 24px;
@@ -243,6 +246,10 @@
       }
       tr.fail td{ background: rgba(217,48,37,.06); }
       tr.pass td{ background: rgba(15,157,88,.06); }
+      /* Print-safe indicators: borders usually survive even if backgrounds are suppressed */
+
+      tr.fail td:first-child { border-left: 6px solid var(--bad); }
+      tr.pass td:first-child { border-left: 6px solid var(--good); }
 
       /* Comments */
       .commentsBox{
@@ -371,11 +378,24 @@
               function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
 
               function parseRows(rows){
-                return (Array.isArray(rows) ? rows : []).map(r => ({
-                  point: num(r && r.point),
-                  actOut: num(r && r.actualOutput),
-                  expOut: num(r && r.expectedOutput)
-                })).filter(r => Number.isFinite(r.point));
+                const inLRV = num(REPORT_DATA?.input?.LRV);
+                const inURV = num(REPORT_DATA?.input?.URV);
+                const span = (Number.isFinite(inLRV) && Number.isFinite(inURV)) ? (inURV - inLRV) : NaN;
+
+                return (Array.isArray(rows) ? rows : []).map(r => {
+                  const actIn  = num(r && r.actualInput);
+                  const actOut = num(r && r.actualOutput);
+                  const nomPt  = num(r && r.point); // fallback
+
+                  let xPct = NaN;
+                  if (Number.isFinite(actIn) && Number.isFinite(span) && span !== 0) {
+                    xPct = ((actIn - inLRV) / span) * 100;
+                  } else if (Number.isFinite(nomPt)) {
+                  xPct = nomPt; // fallback to nominal step percent
+                  }
+
+                  return { nomPt, xPct, actOut };
+                }).filter(p => Number.isFinite(p.xPct) && Number.isFinite(p.actOut));
               }
 
               function drawGraph(){
@@ -398,6 +418,26 @@
                 const af = parseRows(REPORT_DATA.asFound);
                 const al = parseRows(REPORT_DATA.asLeft);
 
+                // ===== X domain (mirror Y-axis behavior) =====
+                let xMin = 0;
+                let xMax = 100;
+
+               const xVals = []
+                .concat(af.map(p => p.xPct), al.map(p => p.xPct))
+                .filter(v => Number.isFinite(v));
+
+                if (xVals.length) {
+                xMin = Math.min(0, ...xVals);
+               xMax = Math.max(100, ...xVals);
+              }
+
+              // Pad X domain (~8%, minimum 2%)
+              const xSpan = (xMax - xMin) || 100;
+              const xPad  = Math.max(xSpan * 0.08, 2);
+
+              xMin -= xPad;
+              xMax += xPad;
+
                 const outLRV = num(REPORT_DATA?.output?.LRV);
                 const outURV = num(REPORT_DATA?.output?.URV);
                 const tol = num(REPORT_DATA?.tolerance) || 0;
@@ -405,7 +445,7 @@
                 // Use output range if valid, else infer from data
                 let yMin = outLRV, yMax = outURV;
                 const all = []
-                  .concat(af.map(p=>p.actOut), al.map(p=>p.actOut), af.map(p=>p.expOut), al.map(p=>p.expOut))
+                  .concat(af.map(p => p.actOut), al.map(p => p.actOut))
                   .filter(v => Number.isFinite(v));
 
                 if (!Number.isFinite(yMin) || !Number.isFinite(yMax) || yMin === yMax) {
@@ -426,7 +466,8 @@
                 const x0 = m.l, x1 = W - m.r;
                 const y0 = H - m.b, y1 = m.t;
 
-                const xScale = (pct) => x0 + (pct/100) * (x1 - x0);
+                const xScale = (pct) =>
+                x0 + ((pct - xMin) / (xMax - xMin)) * (x1 - x0);
                 const yScale = (v) => y0 - ((v - yMin) / (yMax - yMin)) * (y0 - y1);
 
                 // Background
@@ -477,32 +518,39 @@
                   ctx.fillText(text, 10, y + 4);
                 }
 
-                // Expected curve (from AF expectedOut if present)
-                // Prefer expOut from AF rows; if missing, fall back to AL expOut.
-                const expMap = new Map();
-                af.forEach(p => { if (Number.isFinite(p.expOut)) expMap.set(p.point, p.expOut); });
-                al.forEach(p => { if (!expMap.has(p.point) && Number.isFinite(p.expOut)) expMap.set(p.point, p.expOut); });
 
-                const expPts = [0,25,50,75,100].map(pt => {
-                  const v = expMap.get(pt);
-                  return Number.isFinite(v) ? v : NaN;
-                });
+              // Expected curve from transfer function vs X (% span)
+              // (reuse outLRV/outURV/tol already declared above in drawGraph)
+              const characteristic = (REPORT_DATA?.output?.characteristic || 'linear').toString().toLowerCase();
+              const outSpan = (Number.isFinite(outLRV) && Number.isFinite(outURV)) ? (outURV - outLRV) : NaN;
 
-                // Tolerance band around expected curve (+/- tol% of output span)
-                const span = (Number.isFinite(outLRV) && Number.isFinite(outURV) && outURV !== outLRV) ? (outURV-outLRV) : (yMax-yMin);
-                const tolDelta = (tol/100) * span;
+              // tol band thickness in output units = tol% of output span (fallback to plotted span)
+              const tolDelta = (Number.isFinite(outSpan) ? (tol/100) * outSpan : (tol/100) * (yMax - yMin));
 
-                if (expPts.some(v => Number.isFinite(v))) {
-                  const upper = expPts.map(v => Number.isFinite(v) ? (v + tolDelta) : NaN);
-                  const lower = expPts.map(v => Number.isFinite(v) ? (v - tolDelta) : NaN);
+              function expectedOutAtPct(pct){
+                if (!Number.isFinite(outLRV) || !Number.isFinite(outURV) || outURV === outLRV) return NaN;
+                if (!Number.isFinite(outSpan)) return NaN;
 
-                  ctx.setLineDash([8,6]);
-                  ctx.strokeStyle = 'rgba(0,170,85,0.95)';
-                  ctx.lineWidth = 2;
-                  drawLine(upper);
-                  drawLine(lower);
-                  ctx.setLineDash([]);
-                }
+                const p = pct / 100;
+                if (characteristic === 'sqrt') {
+                 return outLRV + outSpan * Math.sqrt(Math.max(0, p));
+               }
+               return outLRV + outSpan * p;
+              }
+
+// Draw tolerance band on nominal curve at standard ticks (0/25/50/75/100)
+const expPts = [0,25,50,75,100].map(p => expectedOutAtPct(p));
+if (expPts.some(v => Number.isFinite(v))) {
+  const upper = expPts.map(v => Number.isFinite(v) ? (v + tolDelta) : NaN);
+  const lower = expPts.map(v => Number.isFinite(v) ? (v - tolDelta) : NaN);
+
+  ctx.setLineDash([8,6]);
+  ctx.strokeStyle = 'rgba(0,170,85,0.95)';
+  ctx.lineWidth = 2;
+  drawLine(upper);
+  drawLine(lower);
+  ctx.setLineDash([]);
+}
 
                 // AF and AL series
                 ctx.lineWidth = 2.6;
@@ -537,13 +585,12 @@
                 }
 
                 function drawSeriesLine(rows){
-                  // sort by point
-                  const r = rows.slice().sort((a,b)=>a.point-b.point);
+                  const r = rows.slice().sort((a,b)=>a.xPct-b.xPct);
                   ctx.beginPath();
                   let started = false;
                   r.forEach(p => {
                     if (!Number.isFinite(p.actOut)) { started = false; return; }
-                    const x = xScale(p.point);
+                    const x = xScale(p.xPct);
                     const y = yScale(p.actOut);
                     if (!started){ ctx.moveTo(x,y); started=true; }
                     else ctx.lineTo(x,y);
@@ -552,11 +599,11 @@
                 }
 
                 function drawSeriesDots(rows, color){
-                  const r = rows.slice().sort((a,b)=>a.point-b.point);
+                  const r = rows.slice().sort((a,b)=>a.xPct-b.xPct);
                   ctx.fillStyle = color;
                   r.forEach(p => {
                     if (!Number.isFinite(p.actOut)) return;
-                    const x = xScale(p.point);
+                    const x = xScale(p.xPct);
                     const y = yScale(p.actOut);
                     ctx.beginPath();
                     ctx.arc(x,y,4,0,Math.PI*2);
@@ -718,7 +765,7 @@
         ${corrPill}
       </div>
       <div class="muted small" style="margin-top:10px;">
-        Rule: If any As‑Found point exceeds tolerance, As‑Left becomes mandatory.
+        Rule: If any As‑Found point meets or exceeds tolerance, As‑Left becomes mandatory.
       </div>
     `;
   }
@@ -755,37 +802,46 @@ function absErr2dp(err){
   }
 
   function countFails(rows, tol) {
-    const t = Number(tol);
-    if (!Number.isFinite(t)) return 0;
-    let c = 0;
-    for (const r of (rows || [])) {
-      const e = Number(r?.errorPercent);
-      if (Number.isFinite(e) && Math.abs(e) >= t) c++;
-    }
-    return c;
+  const t = toNum(tol);
+  if (!Number.isFinite(t)) return 0;
+
+  let c = 0;
+  for (const r of (rows || [])) {
+    const e2 = absErr2dp(r?.errorPercent);
+    if (!Number.isFinite(e2)) continue;
+
+    // FAIL rule: >= tolerance is FAIL
+    if (e2 >= t) c++;
+  }
+  return c;
+}
+
+function countCorrected(afRows, alRows, tol) {
+  const t = toNum(tol);
+  if (!Number.isFinite(t)) return 0;
+
+  // AF fail map by point
+  const afFail = new Map();
+  for (const r of (afRows || [])) {
+    const p = toNum(r?.point);
+    const e2 = absErr2dp(r?.errorPercent);
+    if (!Number.isFinite(p) || !Number.isFinite(e2)) continue;
+
+    // FAIL rule: >= tolerance is FAIL
+    afFail.set(p, e2 >= t);
   }
 
-  function countCorrected(afRows, alRows, tol) {
-    const t = Number(tol);
-    if (!Number.isFinite(t)) return 0;
+  // Corrected = AF failed AND AL now strictly inside tolerance (< tol)
+  let corrected = 0;
+  for (const r of (alRows || [])) {
+    const p = toNum(r?.point);
+    const e2 = absErr2dp(r?.errorPercent);
+    if (!Number.isFinite(p) || !Number.isFinite(e2)) continue;
 
-    const afFail = new Map();
-    for (const r of (afRows || [])) {
-      const p = Number(r?.point);
-      const e = Number(r?.errorPercent);
-      if (Number.isFinite(p) && Number.isFinite(e)) afFail.set(p, Math.abs(e) > t);
-    }
-
-    let corrected = 0;
-    for (const r of (alRows || [])) {
-      const p = Number(r?.point);
-      const e = Number(r?.errorPercent);
-      if (!Number.isFinite(p) || !Number.isFinite(e)) continue;
-      const e2 = Math.round(Math.abs(e) * 100) / 100;
-      if (afFail.get(p) === true && e2 < t) corrected++;
-    }
-    return corrected;
+    if (afFail.get(p) === true && e2 < t) corrected++;
   }
+  return corrected;
+}
 
   function safeJsonForInlineScript(obj) {
     // Prevent </script> injection and keep safe in HTML context
