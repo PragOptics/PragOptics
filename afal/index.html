@@ -2887,6 +2887,55 @@ if (legend && !legend.dataset.wired) {
     });
   }
 
+  function getXYSeries(prefix){
+  const inLRVn = Number(inputLRV?.value);
+  const inURVn = Number(inputURV?.value);
+  const span = (inURVn - inLRVn);
+
+  return points.map(pt => {
+    const inEl  = document.getElementById(`${prefix}_act_in_${pt}`);
+    const outEl = document.getElementById(`${prefix}_act_out_${pt}`);
+
+    const rawIn  = (inEl?.value ?? '').toString().trim();
+    const rawOut = (outEl?.value ?? '').toString().trim();
+
+    const actIn  = isMidEntryNumber(rawIn) ? NaN : Number(rawIn);
+    const actOut = isMidEntryNumber(rawOut) ? NaN : Number(rawOut);
+
+    // X percent from actual input; fallback to nominal step if missing
+    let xPct = pt;
+    if (!Number.isNaN(actIn) && span && !Number.isNaN(inLRVn) && !Number.isNaN(inURVn)) {
+      const pct = normalizePercent(actIn, inLRVn, inURVn);
+      if (pct != null && !Number.isNaN(pct)) xPct = pct * 100;
+    }
+
+    return { pt, xPct, y: actOut };
+  }).filter(p => p.y != null && !Number.isNaN(p.y) && p.xPct != null && !Number.isNaN(p.xPct));
+}
+
+function drawLineXY(ctx, pts, xScale, yScale){
+  const r = pts.slice().sort((a,b)=>a.xPct-b.xPct);
+  let started = false;
+  for (const p of r){
+    const x = xScale(p.xPct);
+    const y = yScale(p.y);
+    if (!started){ ctx.beginPath(); ctx.moveTo(x,y); started = true; }
+    else ctx.lineTo(x,y);
+  }
+  if (started) ctx.stroke();
+}
+
+function drawDotsXY(ctx, pts, xScale, yScale, color){
+  ctx.fillStyle = color;
+  for (const p of pts){
+    const x = xScale(p.xPct);
+    const y = yScale(p.y);
+    ctx.beginPath();
+    ctx.arc(x,y,4,0,Math.PI*2);
+    ctx.fill();
+  }
+}
+
   function drawGraph(){
     ensureGraphModal();
     const modal = document.getElementById('calGraphModal');
@@ -2906,16 +2955,44 @@ if (legend && !legend.dataset.wired) {
 
     ctx.clearRect(0,0,W,H);
 
-    // Data
-    const af = getSeries('af', 'out');
-    const al = getSeries('al', 'out');
-    const exp = getExpectedOutCurve();
+
+    // Data (Standard 1)
+    // - Points are plotted at X = Actual Input (% span), Y = Actual Output
+    const afPts = getXYSeries('af');
+    const alPts = getXYSeries('al');
+
+    // ===== X domain (mirror Y-axis behavior) =====
+    let xMin = 0;
+    let xMax = 100;
+
+    const xVals = [
+     ...afPts.map(p => p.xPct),
+      ...alPts.map(p => p.xPct)
+    ].filter(v => Number.isFinite(v));
+
+    if (xVals.length) {
+      xMin = Math.min(0, ...xVals);
+      xMax = Math.max(100, ...xVals);
+    }
+
+    // Pad X domain (~8%, minimum 2%)
+    const xSpan = (xMax - xMin) || 100;
+    const xPad  = Math.max(xSpan * 0.08, 2);
+
+    xMin -= xPad;
+    xMax += xPad;
+
+    const exp = getExpectedOutCurve(); // keep this for tolerance band + reference curve if you want
 
     // Determine Y range from output LRV/URV (fallback to data bounds)
     let yMin = Number(outputLRV?.value);
     let yMax = Number(outputURV?.value);
 
-    const allVals = [...af, ...al, ...exp].filter(v => v != null && !Number.isNaN(v));
+    const allVals = [
+      ...afPts.map(p => p.y),
+      ...alPts.map(p => p.y),
+      ...exp
+    ].filter(v => v != null && !Number.isNaN(v));
     if (Number.isNaN(yMin) || Number.isNaN(yMax) || yMin === yMax) {
       if (allVals.length) {
         yMin = Math.min(...allVals);
@@ -2932,7 +3009,8 @@ if (legend && !legend.dataset.wired) {
     const x0 = m.l, x1 = W - m.r;
     const y0 = H - m.b, y1 = m.t;
 
-    const xScale = (p) => x0 + (p/100) * (x1 - x0);
+    const xScale = (p) =>
+      x0 + ((p - xMin) / (xMax - xMin)) * (x1 - x0);
     const yScale = (v) => y0 - ((v - yMin) / (yMax - yMin)) * (y0 - y1);
     
     graphHitTargets = [];
@@ -2989,19 +3067,17 @@ if (legend && !legend.dataset.wired) {
   
   if (graphState.showAF) {
   ctx.strokeStyle = '#a200ffc5';
-  drawLine(ctx, af, xScale, yScale);
-  drawDots(ctx, af, xScale, yScale, '#a200ffc5');
+  drawLineXY(ctx, afPts, xScale, yScale);
+  drawDotsXY(ctx, afPts, xScale, yScale, '#a200ffc5');
 
-  af.forEach((v, idx) => {
-    if (v == null || Number.isNaN(v)) return;
-    const p = points[idx];
+  afPts.forEach(p => {
     graphHitTargets.push({
       series: 'af',
       label: 'As‑Found',
-      point: p,
-      value: v,
-      x: xScale(p),
-      y: yScale(v),
+      point: p.pt,       // keep nominal step for tooltip label
+      value: p.y,
+      x: xScale(p.xPct), // ACTUAL X position
+      y: yScale(p.y),
       r: dotR
     });
   });
@@ -3009,19 +3085,17 @@ if (legend && !legend.dataset.wired) {
 
   if (graphState.showAL) {
   ctx.strokeStyle = '#1ca490da';
-  drawLine(ctx, al, xScale, yScale);
-  drawDots(ctx, al, xScale, yScale, '#1ca490da');
+  drawLineXY(ctx, alPts, xScale, yScale);
+  drawDotsXY(ctx, alPts, xScale, yScale, '#1ca490da');
 
-  al.forEach((v, idx) => {
-    if (v == null || Number.isNaN(v)) return;
-    const p = points[idx];
+  alPts.forEach(p => {
     graphHitTargets.push({
       series: 'al',
       label: 'As‑Left',
-      point: p,
-      value: v,
-      x: xScale(p),
-      y: yScale(v),
+      point: p.pt,
+      value: p.y,
+      x: xScale(p.xPct),
+      y: yScale(p.y),
       r: dotR
     });
   });
