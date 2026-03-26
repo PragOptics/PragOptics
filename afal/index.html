@@ -703,6 +703,8 @@
     }
     .toast.warn{ border-left-color: #ff6b6b; }
 
+
+
     /* Fix unreadable dropdowns on dark UI */
 select{
   background: rgba(255,255,255,0.04);
@@ -922,6 +924,18 @@ select option{
         width: 360px;
       }
     }
+
+    /* Mobile: stack from top, under header */
+@media (max-width: 919px){
+  .toast-wrap{
+    top: calc(env(safe-area-inset-top, 0px) + 64px); /* header height */
+    bottom: auto;
+
+    /* optional: tighter width control */
+    left: 12px;
+    right: 12px;
+  }
+}
 
     /* Reduced motion */
     @media (prefers-reduced-motion: reduce){
@@ -2198,7 +2212,7 @@ function roundTo(n, dp = 2){
     isFail = Math.abs(err2) >= tol2;
 
     if (isFail) afFailPoints.add(p);
-    
+
     }
 
       afErrMap.set(p, { errText, isFail, expectedOutAF });
