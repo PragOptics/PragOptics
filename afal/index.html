@@ -204,6 +204,49 @@
   border-top: none;
 }
 
+/* =========================
+   Card title shimmer (one-shot)
+   ========================= */
+
+.card h2 {
+  position: relative;
+  overflow: hidden;
+}
+
+/* Shimmer effect */
+.card h2.shimmer-once::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -120%;
+  width: 120%;
+  height: 100%;
+  background: linear-gradient(
+    120deg,
+    transparent 0%,
+    rgba(255,255,255,0.08) 35%,
+    rgba(33,188,165,0.35) 50%,
+    rgba(255,255,255,0.08) 65%,
+    transparent 100%
+  );
+  animation: titleShimmer 900ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation-delay: 120ms;
+  pointer-events: none;
+}
+
+@keyframes titleShimmer {
+  to {
+    left: 120%;
+  }
+}
+
+/* Respect reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .card h2.shimmer-once::after {
+    animation: none;
+  }
+}
+
 /* iOS safe area padding (optional, safe) */
 @supports (padding: env(safe-area-inset-bottom)){
   .card-footer{ padding-bottom: calc(6px + env(safe-area-inset-bottom)); }
@@ -304,6 +347,25 @@
     .wiz-hidden{
       display: none !important;
     }
+
+    /* Wizard animation base */
+.wiz-anim {
+  will-change: opacity, transform;
+  transition: opacity 180ms ease, transform 180ms ease;
+}
+
+/* Exit */
+.wiz-exit-left  { opacity: 0; transform: translateX(-16px); }
+.wiz-exit-right { opacity: 0; transform: translateX(16px); }
+
+/* Enter */
+.wiz-enter-left  { opacity: 0; transform: translateX(-16px); }
+.wiz-enter-right { opacity: 0; transform: translateX(16px); }
+
+.wiz-enter-active {
+  opacity: 1;
+  transform: translateX(0);
+}
 
     /* Badges */
     .badge{
@@ -1253,6 +1315,7 @@ select option{
   // =========================
   // Element refs + state
   // =========================
+
   let anyOutOfTolerance = false;
   let lastAnyOut = false;
 
@@ -1304,6 +1367,15 @@ select option{
   const techCard = document.getElementById('techCard');
   const outputCard = document.getElementById('outputCard');
 
+  if ('scrollRestoration' in history) {
+  history.scrollRestoration = 'manual';
+}
+
+// Runs on normal load AND bfcache restore
+window.addEventListener('pageshow', () => {
+  scrollPageToTop(true);
+});
+
   function getInputUOMValue(){
   if ((inputType?.value || '') === 'custom') {
     return (inputUOMCustom?.value || '').trim() || null;
@@ -1323,31 +1395,105 @@ function getOutputUOMValue(){
 let wizStep = 'setup';
 let suppressWizardScroll = true;
 
+function transitionWizardCards(fromEl, toEl, direction = 'forward') {
+  if (!fromEl || !toEl || fromEl === toEl) return;
+
+  const exitClass  = direction === 'back' ? 'wiz-exit-right' : 'wiz-exit-left';
+  const enterClass = direction === 'back' ? 'wiz-enter-left' : 'wiz-enter-right';
+
+  // Prepare entering card
+  toEl.classList.remove('wiz-hidden');
+  toEl.classList.add('wiz-anim', enterClass);
+
+  // Animate out current card
+  fromEl.classList.add('wiz-anim', exitClass);
+
+  // Trigger enter animation
+  requestAnimationFrame(() => {
+    toEl.classList.add('wiz-enter-active');
+  });
+
+  // Cleanup after animation
+  setTimeout(() => {
+    fromEl.classList.add('wiz-hidden');
+    fromEl.classList.remove('wiz-anim', exitClass);
+
+    toEl.classList.remove('wiz-anim', enterClass, 'wiz-enter-active');
+  }, 200);
+}
+
+function scrollPageToTop(force = false) {
+  // iOS/mobile: if an input is focused, scrolling often won't move
+  if (document.activeElement && typeof document.activeElement.blur === 'function') {
+    document.activeElement.blur();
+  }
+
+  // Force all common scroll roots
+  const root = document.scrollingElement || document.documentElement;
+  root.scrollTop = 0;
+  document.documentElement.scrollTop = 0;
+  document.body.scrollTop = 0;
+
+  // Also tell the viewport (belt + suspenders)
+  window.scrollTo(0, 0);
+
+  // Optional: do it again next frame for stubborn mobile WebViews
+  if (force) {
+    requestAnimationFrame(() => {
+      const r = document.scrollingElement || document.documentElement;
+      r.scrollTop = 0;
+      window.scrollTo(0, 0);
+    });
+  }
+}
+
+function shimmerCardTitle(cardEl) {
+  if (!cardEl) return;
+  const title = cardEl.querySelector('h2');
+  if (!title) return;
+
+  // Restart animation safely
+  title.classList.remove('shimmer-once');
+  void title.offsetWidth; // force reflow
+  title.classList.add('shimmer-once');
+}
+
 function setWizStep(step){
+  const prevStep = wizStep;
+
+  const stepMap = {
+    setup: instrumentSetupCard,
+    af: asFoundCard,
+    al: asLeftCard,
+    final: techCard
+  };
+
+  const fromEl = stepMap[prevStep];
+  const toEl   = stepMap[step];
+
+  // Determine direction (matches your navigation semantics)
+  const direction =
+    (prevStep === 'af' && step === 'setup') ||
+    (prevStep === 'al' && step === 'af') ||
+    (prevStep === 'final' && step === 'al')
+      ? 'back'
+      : 'forward';
+
+  // Animate transition
+  transitionWizardCards(fromEl, toEl, direction);
+
+  shimmerCardTitle(toEl);
+
+  // Update state AFTER animation kickoff
   wizStep = step;
 
-  // Step visibility
-  instrumentSetupCard?.classList.toggle('wiz-hidden', step !== 'setup');
-  asFoundCard?.classList.toggle('wiz-hidden', step !== 'af');
-  asLeftCard?.classList.toggle('wiz-hidden', step !== 'al');
-  techCard?.classList.toggle('wiz-hidden', step !== 'final');
-
-  // Output is going away: hide always (print_report already covers this)
+  // Output is going away: hide always
   if (outputCard) outputCard.classList.add('wiz-hidden');
 
-
-  // Nice scroll behavior
-  const target =
-    (step === 'setup') ? instrumentSetupCard :
-    (step === 'af') ? asFoundCard :
-    (step === 'al') ? asLeftCard :
-    techCard;
-if (!suppressWizardScroll) {
-  requestAnimationFrame(() => {
-  requestAnimationFrame(() => {
-    target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    });
-  });
+  // Existing scroll behavior (unchanged)
+  const target = toEl;
+  if (!suppressWizardScroll) {
+  scrollPageToTop(true);
 }
 }
 
@@ -1503,6 +1649,9 @@ function goBack(){
 // Init wizard on load
 setWizStep('setup');
 suppressWizardScroll = false;
+
+scrollPageToTop();
+shimmerCardTitle(instrumentSetupCard);
 
   // =========================
 // Graph display state
@@ -2204,14 +2353,17 @@ function roundTo(n, dp = 2){
 
   errText = (err == null) ? '—' : err.toFixed(2);
 
-      // ✅ Compare using the same 2dp contract the user sees
+    // ✅ Compare using the same 2dp contract the user sees
     const err2 = roundTo(err, 2);
     const tol2 = roundTo(tolVal, 2);
 
-    // FAIL rule: >= tolerance is out of tolerance
-    isFail = Math.abs(err2) >= tol2;
+    // ✅ Restore “don’t flag while typing in Actual Output”
+    const focusedOut = (document.activeElement === afActOutEl);
 
-    if (isFail) afFailPoints.add(p);
+    // FAIL rule: >= tolerance is out of tolerance (but only once field is not focused)
+    isFail = focusedOut ? false : (Math.abs(err2) >= tol2);
+
+    if (!focusedOut && isFail) afFailPoints.add(p);
 
     }
 
@@ -2324,18 +2476,27 @@ function roundTo(n, dp = 2){
       // - FAIL if |err2| >= tol2
       // - CORRECTED (green) only if AF failed and AL is strictly inside tol
       if (alErr != null && alRow) {
-       const err2 = roundTo(alErr, 2);
-        const tol2 = roundTo(tolVal, 2);
+      const err2 = roundTo(alErr, 2);
+      const tol2 = roundTo(tolVal, 2);
 
-       const alFail = Math.abs(err2) >= tol2;
+      // ✅ Restore “don’t flag while typing in Actual Output”
+     const focusedOut = (document.activeElement === alOutEl);
 
-        if (alFail) {
-         alRow.classList.add('fail');
-        } else if (afFailPoints.has(p)) {
-          // AL is strictly inside tolerance (because fail is >=)
-          alRow.classList.add('pass');
-        }
+     // While focused, leave row neutral (no fail/pass) so the tech can type
+      if (focusedOut) {
+        // keep uncolored while editing output
+        return;
       }
+
+      const alFail = Math.abs(err2) >= tol2;
+
+      if (alFail) {
+        alRow.classList.add('fail');
+      } else if (afFailPoints.has(p)) {
+       // Corrected only when AF failed and AL is now strictly inside tol
+        alRow.classList.add('pass');
+      }
+    }
     });
 
     // Badges + toast
