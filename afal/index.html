@@ -2198,8 +2198,7 @@ function roundTo(n, dp = 2){
     isFail = Math.abs(err2) >= tol2;
 
     if (isFail) afFailPoints.add(p);
-
-      if (!focused && isFail) afFailPoints.add(p);
+    
     }
 
       afErrMap.set(p, { errText, isFail, expectedOutAF });
