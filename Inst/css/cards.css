@@ -1,0 +1,172 @@
+/* =========================
+   Cards
+   ========================= */
+
+.card{
+  position: relative;
+  overflow: visible;
+  border-radius: var(--radius);
+  padding: var(--card-padding);
+  padding-bottom: calc(var(--card-padding) + 72px);
+  background: var(--bg-deep);
+  border: 1px solid var(--card-border);
+  box-shadow: var(--shadow);
+
+  backdrop-filter: blur(var(--glass-blur)) saturate(140%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(140%);
+}
+
+.card::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  background: linear-gradient(135deg,
+    rgba(0, 0, 0, 0.12) 0%,
+    rgba(0, 0, 0, 0.03) 28%,
+    transparent 58%);
+  mix-blend-mode: overlay;
+  transform: translateY(-18%);
+  opacity:0.9;
+}
+
+.card::after{
+  content:"";
+  position:absolute;
+  inset:-1px;
+  border-radius:inherit;
+  pointer-events:none;
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.02) inset;
+}
+
+/* =========================
+   Card header
+   ========================= */
+
+.card h2{
+  margin:0 0 12px 0;
+  color: var(--brand-600);
+  font-size: 1.12rem;
+  border-bottom: 2px solid var(--card-border);
+  padding-bottom: 8px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+
+  position: relative;
+  overflow: hidden;
+}
+
+/* =========================
+   Card title shimmer (one-shot)
+   ========================= */
+
+.card h2.shimmer-once::after{
+  content:"";
+  position:absolute;
+  top:0;
+  left:-120%;
+  width:120%;
+  height:100%;
+  background: linear-gradient(
+    120deg,
+    transparent 0%,
+    rgba(255,255,255,0.08) 35%,
+    rgba(33,188,165,0.35) 50%,
+    rgba(255,255,255,0.08) 65%,
+    transparent 100%
+  );
+  animation: titleShimmer 900ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation-delay: 120ms;
+  pointer-events:none;
+}
+
+@keyframes titleShimmer{
+  to{ left:120%; }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce){
+  .card h2.shimmer-once::after{
+    animation:none;
+  }
+}
+
+/* =========================
+   Card sticky footer
+   ========================= */
+
+.card-footer{
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+
+  margin-top: 18px;
+  padding-top: 12px;
+  padding-bottom: 6px;
+
+  background: linear-gradient(
+    180deg,
+    rgba(0,0,0,0) 0%,
+    rgba(0,0,0,0.55) 38%,
+    rgba(0,0,0,0.70) 100%
+  );
+
+  backdrop-filter: blur(var(--glass-blur)) saturate(140%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(140%);
+
+  border-top: 1px dashed rgba(255,255,255,0.10);
+}
+
+/* Keep footer buttons readable */
+.card-footer .btn-row{
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+}
+
+/* Stage navigation inside cards */
+.card .btn-row{
+  margin-top: 18px;
+  padding-top: 12px;
+  border-top: 1px dashed rgba(255,255,255,0.08);
+}
+
+.card-footer .btn{
+  transform: translateZ(0); /* reduces flicker on sticky layers */
+}
+
+/* iOS safe-area support */
+@supports (padding: env(safe-area-inset-bottom)){
+  .card-footer{
+    padding-bottom: calc(6px + env(safe-area-inset-bottom));
+  }
+}
+
+/* =========================
+   No-backdrop fallback
+   ========================= */
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))){
+  body{
+    background: linear-gradient(180deg, #0b1220, #0a1020);
+  }
+
+  .card{
+    background: rgba(255,255,255,0.92);
+    color: #071028;
+    border: 1px solid rgba(11,18,32,0.08);
+  }
+
+  .card h2{ color:#0b1220; }
+  label, h3{ color:#0b1220; }
+  .muted, .field-note{ color:#334155; }
+  input, select, textarea{
+    background:#f7f7f8;
+    color:#071028;
+    border:1px solid rgba(11,18,32,0.10);
+  }
+  thead th{ color:#0b1220; }
+  .toast{ background: rgba(15,23,42,0.92); color:#fff; }
+}

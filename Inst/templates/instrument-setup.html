@@ -1,0 +1,170 @@
+<section class="card" id="instrumentSetup" aria-label="Instrument Setup">
+      <h2>
+        <span style="color:var(--brand)">Instrument Setup</span>
+      </h2>
+
+      <!-- ✅ NEW: internal responsive grid -->
+      <div class="setup-grid">
+
+        <!-- ===== Identity ===== -->
+        <div class="setup-group">
+          <label style="color:var(--muted)" for="workOrder">Work Order Number</label>
+          <input id="workOrder" placeholder="Work Order" autocomplete="on">
+
+          <label style="color:var(--muted)" for="tagSearch">Search Tag</label>
+          <input id="tagSearch" placeholder="Type to filter tags…" autocomplete="off" inputmode="search">
+
+          <label style="color:var(--muted)" for="tagSelect">Tag Number</label>
+          <select id="tagSelect" aria-label="Tag number"></select>
+        </div>
+
+        <!-- ===== Input Configuration ===== -->
+        <div class="setup-group">
+          <h3>Input Configuration</h3>
+
+          <div class="form-row">
+            <div class="col">
+              <label style="color:var(--muted)" for="inputType">Input Type</label>
+              <select id="inputType" aria-label="Input type">
+                <option value="">Select...</option>
+                <option value="pressure">Pressure</option>
+                <option value="temperature">Temperature</option>
+                <option value="frequency">Frequency</option>
+                <option value="percent">Percent</option>
+                <option value="volts">Volts</option>
+                <option value="custom">Custom</option>
+              </select>
+            </div>
+
+            <div class="col">
+              <label style="color:var(--muted)" for="inputUOM">Input Units</label>
+              <select id="inputUOM" aria-label="Input units"></select>
+
+              
+            <!-- NEW: only used when Input Type = Custom -->
+            <input id="inputUOMCustom"
+                  class="wiz-hidden"
+                  type="text"
+                  placeholder="Enter custom input units (e.g., gpm, rpm)"
+                  autocomplete="off" />
+
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="col">
+              <label style="color:var(--muted)" for="inputLRV">Input LRV</label>
+              <input id="inputLRV" type="number" step="any" inputmode="decimal" placeholder="e.g., 0">
+            </div>
+
+            <div class="col">
+              <label style="color:var(--muted)" for="inputURV">Input URV</label>
+              <input id="inputURV" type="number" step="any" inputmode="decimal" placeholder="e.g., 100">
+            </div>
+          </div>
+        </div>
+
+        <!-- ===== Input Test Equipment ===== -->
+        <div class="setup-group">
+          <h3>Input Test Equipment</h3>
+
+          <label style="color:var(--muted)" for="inputEquipSearch">Search Input Equipment</label>
+          <input
+            id="inputEquipSearch"
+            placeholder="Type to filter input equipment…"
+            autocomplete="off"
+            inputmode="search">
+
+          <label style="color:var(--muted)" for="inputEquipSelect">Input Equipment</label>
+          <select id="inputEquipSelect" aria-label="Input test equipment"></select>
+        </div>
+
+                <!-- ===== Output Test Equipment + Tolerance ===== -->
+        <div class="setup-group">
+          <h3>Output Test Equipment</h3>
+
+          <label style="color:var(--muted)" for="outputEquipSearch">Search Output Equipment</label>
+          <input
+            id="outputEquipSearch"
+            placeholder="Type to filter output equipment…"
+            autocomplete="off"
+            inputmode="search">
+
+          <label style="color:var(--muted)" for="outputEquipSelect">Output Equipment</label>
+          <select id="outputEquipSelect" aria-label="Output test equipment"></select>
+        </div>
+
+        <!-- ===== Output Configuration ===== -->
+        <div class="setup-group setup-span-full">
+          <h3>Output Configuration</h3>
+
+          <div class="form-row">
+            <div class="col">
+              <label style="color:var(--muted)" for="outputType">Output Type</label>
+              <select id="outputType" aria-label="Output type">
+                <option value="">Select…</option>
+                <option value="ma">mA</option>
+                <option value="psi">PSI</option>
+                <option value="percent">Percent</option>
+                <option value="volts">Volts</option>
+                <option value="custom">Custom</option>
+              </select>
+            </div>
+
+            <div class="col">
+              <label style="color:var(--muted)" for="outputUOM">Output Units</label>
+              <input id="outputUOM" readonly placeholder="Auto-filled">
+
+              
+            <!-- NEW: only used when Output Type = Custom -->
+            <input id="outputUOMCustom"
+                  class="wiz-hidden"
+                  type="text"
+                  placeholder="Enter custom output units (e.g., in/s, mV)"
+                  autocomplete="off" />
+
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="col">
+              <label style="color:var(--muted)" for="outputCharacteristic">Output Characteristic</label>
+              <select id="outputCharacteristic" aria-label="Output characteristic">
+                <option value="linear">Linear</option>
+                <option value="sqrt">Square Root</option>
+              </select>
+              <span class="field-note">
+                Linear or square‑root transfer function for expected output calculation.
+              </span>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="col">
+              <label style="color:var(--muted)" for="outputLRV">Output LRV</label>
+              <input id="outputLRV" type="number" step="any" inputmode="decimal" placeholder="e.g., 4">
+            </div>
+
+            <div class="col">
+              <label style="color:var(--muted)" for="outputURV">Output URV</label>
+              <input id="outputURV" type="number" step="any" inputmode="decimal" placeholder="e.g., 20">
+            </div>
+          </div>
+          <label for="tolerance">Tolerance (%)</label>
+          <input id="tolerance" type="number" inputmode="decimal" readonly>
+          <span class="field-note">
+            If any As‑Found row exceeds this tolerance, As‑Left becomes mandatory.
+          </span>
+        </div>
+
+      </div><!-- /.setup-grid -->
+
+      <!-- ✅ Card‑local wizard navigation (Stage 1 → Stage 2) -->
+    <div class="card-footer">
+      <div class="btn-row" style="margin-top:16px">
+        <button class="btn primary" id="toAsFoundBtn" type="button">
+          Enter As‑Found Data
+        </button>
+      </div>
+    </div>
+</section>

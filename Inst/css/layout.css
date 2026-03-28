@@ -1,0 +1,114 @@
+/* =========================
+   Topbar / Header
+   ========================= */
+
+.topbar{
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+  gap:10px;
+  padding: 4px 2px 8px;
+}
+
+.nav{
+  max-width:var(--maxw);
+  margin:0 auto;
+  padding:14px 20px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+}
+
+/* =========================
+   Brand
+   ========================= */
+
+.brand{
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+
+.logo{
+  width:34px;
+  height:34px;
+  border-radius:10px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:var(--bg-deep);
+}
+
+.logo img{
+  width:100%;
+  height:100%;
+  object-fit:contain;
+  display:block;
+}
+
+.brandText{
+  min-width:0;
+}
+
+.brandText h1{
+  margin:0;
+  color: var(--brand);
+  font-size: 1.14rem;
+  letter-spacing: 0.01em;
+  line-height: 1.1;
+}
+
+.subtitle{
+  margin-top:4px;
+  color: var(--muted);
+  font-size:0.92rem;
+  line-height:1.2;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  max-width:92vw;
+}
+
+/* =========================
+   Meta line
+   ========================= */
+
+.metaLine{
+  color: var(--muted);
+  font-size:0.88rem;
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+
+.metaDot{
+  width:6px;
+  height:6px;
+  border-radius:999px;
+  background: var(--al);
+  box-shadow: 0 0 0 3px var(--shadow);
+}
+
+/* =========================
+   Main grid
+   ========================= */
+
+.grid{
+  display:grid;
+  grid-template-columns: 1fr;
+  gap: var(--gap);
+}
+
+/* =========================
+   DNA Swirl container
+   ========================= */
+
+.dnaSwirl{
+  position: relative;
+  width: 100%;
+  height: 56px;
+  overflow: hidden;
+  border-radius: 14px;
+  pointer-events:none;
+}

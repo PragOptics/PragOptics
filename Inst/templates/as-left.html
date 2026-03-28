@@ -1,0 +1,30 @@
+<section class="card wiz-hidden" id="asLeftCard" aria-label="As-Left Readings">
+  <h2>
+    <span>As‑Left Readings</span>
+    <span id="alStatus" class="badge warn" style="display:none">REQUIRED</span>
+  </h2>
+
+  <div class="controls">
+    <div class="inline">
+      <label class="check">
+        <input type="checkbox" id="forceShowAsLeft">
+        Edit As‑Left
+      </label>
+      <button class="btn secondary" id="clearAsLeftBtn" type="button">Clear As‑Left</button>
+    </div>
+    <span class="muted">As‑Left mirrors As‑Found unless you enable editing or calibration is required.</span>
+  </div>
+
+  <div id="asLeftGrid" class="reading-grid"></div>
+
+  <div class="field-note">
+    If a row is out of tolerance, As‑Left fields for that row are cleared and editable.
+  </div>
+
+  <div class="card-footer">
+    <div class="btn-row">
+      <button class="btn secondary" id="backToAfBtn" type="button">Back to As‑Found</button>
+      <button class="btn primary" id="toFinalizeBtn" type="button">Finalize Report</button>
+    </div>
+  </div>
+</section>

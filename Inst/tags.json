@@ -1,0 +1,4 @@
+[
+  { "tag": "PT-1023", "desc": "Pressure Transmitter - West Rack", "class": "QCE" },
+  { "tag": "TT-0441", "desc": "Temp Transmitter - Unit 3", "class": "CE" }
+]

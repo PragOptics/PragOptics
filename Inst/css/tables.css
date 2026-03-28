@@ -1,0 +1,232 @@
+/* =========================
+   Tables (desktop)
+   ========================= */
+
+.table-wrap{
+  margin-top: 10px;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: linear-gradient(
+    180deg,
+    rgba(255,255,255,0.02),
+    rgba(255,255,255,0.01)
+  );
+}
+
+table{
+  width:100%;
+  border-collapse: collapse;
+}
+
+thead th{
+  text-align:left;
+  padding: 10px 10px;
+  font-size: 0.90rem;
+  background: rgba(255,255,255,0.03);
+  color: var(--brand);
+  font-weight: 800;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  white-space:nowrap;
+}
+
+tbody td{
+  padding: 10px 10px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  font-size: 0.92rem;
+  vertical-align: top;
+}
+
+tbody tr:last-child td{
+  border-bottom:none;
+}
+
+tr.fail td{
+  background: var(--danger);
+}
+
+/* Tighter inputs inside tables */
+td input{
+  margin-top: 0;
+  min-height: 44px;
+  padding: 10px 10px;
+  border-radius: 10px;
+  font-size: 0.95rem;
+}
+
+/* =========================
+   Mobile table → row cards
+   ========================= */
+
+@media (max-width: 640px){
+  .table-wrap{
+    overflow: visible;
+  }
+
+  table{
+    display:block;
+  }
+
+  thead{
+    display:none;
+  }
+
+  tbody{
+    display:block;
+  }
+
+  tbody tr{
+    display:block;
+    padding: 10px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+
+  tbody tr:last-child{
+    border-bottom:none;
+  }
+
+  tbody td{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap: 12px;
+    padding: 8px 0;
+    border-bottom: 1px dashed rgba(255,255,255,0.06);
+  }
+
+  tbody td:last-child{
+    border-bottom:none;
+  }
+
+  tbody td::before{
+    content: attr(data-label);
+    color: var(--muted);
+    font-weight: 700;
+    font-size: 0.82rem;
+    flex: 0 0 auto;
+    max-width: 44%;
+  }
+
+  tbody td:first-child{
+    padding-top: 2px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    margin-bottom: 4px;
+    justify-content:flex-start;
+    gap: 10px;
+    font-weight: 850;
+    color: var(--brand-600);
+  }
+
+  tbody td:first-child::before{
+    content:"Point";
+  }
+
+  td input{
+    width: 52%;
+  }
+}
+
+/* =========================
+   Reading grid (As‑Found / As‑Left)
+   ========================= */
+
+.reading-grid{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  margin-top:10px;
+}
+
+.reading-row{
+  border:1px solid rgba(255,255,255,0.10);
+  border-radius:12px;
+  padding:12px;
+  background: linear-gradient(
+    180deg,
+    rgba(255,255,255,0.03),
+    rgba(255,255,255,0.01)
+  );
+}
+
+.reading-header{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:12px;
+}
+
+.reading-point{
+  font-weight:800;
+  color: var(--brand-600);
+  font-size:1rem;
+}
+
+.reading-expected{
+  font-size:0.80rem;
+  color: var(--muted);
+  text-align:right;
+  line-height:1.25;
+}
+
+.reading-inputs{
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  gap:10px;
+  margin-top:10px;
+}
+
+.reading-inputs label{
+  margin-top:0;
+  font-size:0.78rem;
+  font-weight:700;
+  color: var(--muted);
+}
+
+.reading-inputs input{
+  margin-top:6px;
+  min-height:44px;
+}
+
+.reading-footer{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-top:10px;
+  font-size:0.92rem;
+}
+
+.reading-error{
+  font-weight:800;
+}
+
+.reading-row.fail{
+  border-color: rgba(255,60,60,0.35);
+  background: linear-gradient(
+    180deg,
+    rgba(255,60,60,0.12),
+    rgba(255,255,255,0.01)
+  );
+}
+
+.reading-row.pass{
+  border-color: rgba(34,197,94,0.35);
+  background: linear-gradient(
+    180deg,
+    rgba(34,197,94,0.12),
+    rgba(255,255,255,0.01)
+  );
+}
+
+/* =========================
+   As‑Left hidden helper
+   ========================= */
+
+#asLeftCard.hidden{
+  display:none;
+  opacity:0;
+  height:0;
+  padding:0;
+  margin:0;
+  overflow:hidden;
+}

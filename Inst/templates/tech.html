@@ -1,0 +1,19 @@
+<section class="card wiz-hidden" id="techCard" aria-label="Technician and Notes">
+  <h2><span>Technician &amp; Notes</span></h2>
+
+  <label style="color:var(--muted)" for="tech">Technician Name</label>
+  <input id="tech" placeholder="Technician" autocomplete="name">
+
+  <label style="color:var(--muted)" for="comments">Comments</label>
+  <textarea id="comments" rows="4" placeholder="Notes…" maxlength="500"></textarea>
+  <div class="field-note" id="commentsCount">0 / 500</div>
+
+  <div class="card-footer">
+    <div class="btn-row" id="techActionsRow">
+      <button class="btn secondary" id="backToDataBtn" type="button">Back</button>
+      <button class="btn secondary" id="viewGraphBtn" type="button">View Graph</button>
+      <button class="btn secondary" id="resetBtn" type="button">Reset</button>
+      <button class="btn primary" id="generateBtn" type="button">Generate Report</button>
+    </div>
+  </div>
+</section>

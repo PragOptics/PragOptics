@@ -1,0 +1,49 @@
+/* =========================
+   Wizard visibility helpers
+   ========================= */
+
+.wiz-hidden{
+  display: none !important;
+}
+
+/* =========================
+   Wizard animation base
+   ========================= */
+
+.wiz-anim{
+  will-change: opacity, transform;
+  transition: opacity 180ms ease, transform 180ms ease;
+}
+
+/* =========================
+   Wizard exit states
+   ========================= */
+
+.wiz-exit-left{
+  opacity: 0;
+  transform: translateX(-16px);
+}
+
+.wiz-exit-right{
+  opacity: 0;
+  transform: translateX(16px);
+}
+
+/* =========================
+   Wizard enter states
+   ========================= */
+
+.wiz-enter-left{
+  opacity: 0;
+  transform: translateX(-16px);
+}
+
+.wiz-enter-right{
+  opacity: 0;
+  transform: translateX(16px);
+}
+
+.wiz-enter-active{
+  opacity: 1;
+  transform: translateX(0);
+}
