@@ -1,0 +1,11 @@
+# Local HTTPS dev certs (mkcert)
+*.pem
+*.key
+
+# Local dev environment files
+.env
+.env.local
+local.settings.json
+
+# Node
+node_modules/
