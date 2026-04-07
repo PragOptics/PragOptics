@@ -2,6 +2,7 @@
 :root{
       --bg-deep:#000000 !important;
       --grad:linear-gradient(130deg,#000000 0%,#18042527 50%,#0218127e 100%);
+      --menu:#000000e1 ;
       --glass:#0000006e;
       --glass-2:#11101012;
       --border:#ffffff1a;
@@ -19,7 +20,8 @@
         
       --radius:16px;
       --radius-sm:12px;
-      --maxw:1200px;
+      --maxw: clamp(1200px, 90vw, 1600px);
+      --nav-maxw: clamp(1200px, 96vw, 1900px);
 
     }
     *{box-sizing:border-box}
@@ -35,7 +37,7 @@
 
     /* ====== HEADER ====== */
     header{ position:sticky; top:0; z-index:50; -webkit-backdrop-filter:saturate(140%) blur(10px); backdrop-filter:saturate(140%) blur(10px); background:var(--glass); border-bottom:1px solid var(--border); }
-    .nav{ max-width:var(--maxw); margin:0 auto; padding:14px 20px; display:flex; align-items:center; justify-content:space-between; gap:12px; }
+    .nav{ max-width:var(--nav-maxw); margin:0 auto; padding:14px 20px; display:flex; align-items:center; justify-content:space-between; gap:12px; }
     .brand{ display:flex; align-items:center; gap:10px; }
     .logo { width:34px; height:34px; border-radius:10px; display:flex; align-items:center; justify-content:center; background:transparent; box-shadow: 0 0 0 2px rgba(92,140,69,.25), 0 10px 20px rgba(92,140,69,.18);}
     .logo img { width:100%; height:100%; object-fit:contain; display:block;}
@@ -85,7 +87,7 @@
     .dropdown-toggle:hover{ background:none; border: none; transform: translateY(-2px); }
     .dropdown-menu{
       display:none; position:absolute; top:110%; right:0;
-      background:var(--glass); border:1px solid rgba(255,255,255,0.12);
+      background:var(--menu); border:1px solid rgba(255,255,255,0.12);
       border-radius:var(--radius-sm); box-shadow:var(--aura);
       min-width:240px; padding:8px 0; z-index:100;
       -webkit-backdrop-filter: blur(14px) saturate(160%);
@@ -110,7 +112,7 @@
     }
 
     /* ====== PAGE LAYOUT ====== */
-    .page{ max-width:var(--maxw); margin:32px auto; padding:0 20px 40px; }
+    .page{ max-width:var(--maxw); margin:48px auto; padding:0 20px 40px; }
     .glass{ background:var(--glass); border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--aura); }
     .panel{ padding:20px; display:flex; flex-direction:column; gap:16px; background:var(--glass-2); -webkit-backdrop-filter: blur(14px) saturate(160%); backdrop-filter: blur(14px) saturate(160%); }
     .row{ display:flex; gap:16px; flex-wrap:wrap; }
