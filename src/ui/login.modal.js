@@ -457,7 +457,6 @@ function bindLoginModal(modal) {
     const emailVal  = email.value.trim();
     const pwdVal    = pwd.value;
     const pwd2Val   = pwd2.value;
-    const codeVal   = codeInput?.value?.trim() || "";
     const sms       = !!smsOptIn?.checked;
     const phoneVal  = phoneInput?.value?.trim() || "";
     const requestId = modal.dataset.requestId || "";
