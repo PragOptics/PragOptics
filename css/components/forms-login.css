@@ -1,0 +1,321 @@
+/* /css/components/forms-login.css */
+
+/* ===== Login Form ===== */
+.login-form{
+  display:flex;
+  flex-direction:column;
+  gap:18px;
+  padding:18px 22px;
+}
+
+.form-field{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+
+.form-field label{
+  font-size:.8rem;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+  color:var(--brand-600);
+  font-weight:500;
+}
+
+.form-field input{
+  background:var(--grad);
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:10px 12px;
+  color:var(--ink);
+  font-size:.95rem;
+  outline:none;
+}
+
+.form-field input::placeholder{
+  color:rgba(198,208,240,.45);
+}
+
+.form-field input:focus{
+  border-color:rgba(33,188,165,.45);
+  box-shadow:
+    0 0 0 1px rgba(33,188,165,.25),
+    0 0 16px rgba(131, 33, 188, 0.15);
+}
+
+.field-hint{
+  font-size:.85rem;
+  color:var(--muted);
+  transition: opacity 160ms ease;
+}
+
+.field-hint.hidden{
+  opacity:0;
+  pointer-events:none;
+}
+
+/* ===== Password visibility ===== */
+.password-wrap{
+  position:relative;
+  display:flex;
+  gap: 8px;
+  align-items:center;
+  z-index: 1;
+}
+
+.password-wrap input{
+  padding-right:42px;
+
+  flex: 1 1 auto;   /* input gets priority */
+  min-width: 0;
+}
+
+
+.pw-toggle{
+  position:absolute;
+  right:5px;
+  height:28px;
+  width:28px;
+  border:none;
+  background:transparent;
+  cursor:pointer;
+  z-index: 2;
+  pointer-events: auto;
+}
+
+/* Eye icon (closed by default) */
+.pw-toggle::before{
+  content:"";
+  display:block;
+  width:16px;
+  height:16px;
+  margin:auto;
+  background:
+    radial-gradient(circle at center, var(--muted) 42%, transparent 44%),
+    linear-gradient(
+      to bottom right,
+      transparent 45%,
+      var(--muted) 45%,
+      var(--muted) 55%,
+      transparent 55%
+    );
+  opacity:.6;
+}
+
+/* Eye open state */
+.pw-toggle[data-state="visible"]::before{
+  background:
+    radial-gradient(
+      circle at center,
+      transparent 0%,
+      var(--brand-purp) 5%,
+      var(--brand) 45%,
+      transparent 55%
+    );
+  opacity:.9;
+}
+
+.password-wrap input:disabled + .pw-toggle{
+  opacity: 0.4;
+}
+
+/* ===== Login actions ===== */
+.login-actions{
+  display:flex;
+  gap:12px;
+  flex-wrap:wrap;
+  margin-top:6px;
+  transition: transform 160ms ease, box-shadow 160ms ease;
+}
+
+.login-actions .btn.subtle{
+  background:transparent;
+  border-color:transparent;
+  color:var(--muted);
+}
+
+.login-actions .btn.subtle:hover{
+  color:var(--brand-600);
+  background:transparent;
+  transform:none;
+}
+
+/* =======================================================
+   PASSWORD STRENGTH + RULES
+   ======================================================= */
+
+/* Strength meter */
+.pw-strength{
+  position:relative;
+  margin-top:8px;
+  height:6px;
+  width:100%;
+  background:var(--bg-deep);
+  border-radius:6px;
+  overflow:hidden;
+}
+
+.pw-strength-bar{
+  position:relative;
+  height:100%;
+  width:0%;
+  border-radius:6px;
+  overflow:hidden;
+  transition: width 220ms ease;
+}
+.pw-strength-bar::before,
+.pw-strength-bar::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  border-radius:inherit;
+}
+.pw-strength-bar::before{
+  background:
+    linear-gradient(
+      120deg,
+      #ae5df0da,
+      #21bca5,
+      #ae5df0da
+    );
+  background-size: 200% 200%;
+  animation: plasmaFlow 3.6s ease-in-out infinite;
+}
+.pw-strength-bar::after{
+  background:
+    radial-gradient(
+      circle at 30% 50%,
+      rgba(255,255,255,0.25),
+      transparent 55%
+    ),
+    radial-gradient(
+      circle at 70% 50%,
+      rgba(0,0,0,0.35),
+      transparent 60%
+    );
+  mix-blend-mode: overlay;
+  opacity:0.55;
+  filter: blur(1px);
+  animation: plasmaDrift 5.2s ease-in-out infinite alternate;
+}
+
+.pw-strength-bar::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  border-radius:inherit;
+
+  background:
+    radial-gradient(
+      12px 10px at 96% 50%,
+      rgba(255,255,255,0.45),
+      rgba(255,255,255,0.15) 45%,
+      transparent 60%
+    ),
+    radial-gradient(
+      18px 14px at 92% 42%,
+      rgba(0,0,0,0.35),
+      transparent 65%
+    ),
+    radial-gradient(
+      16px 18px at 94% 62%,
+      rgba(0,0,0,0.25),
+      transparent 70%
+    );
+
+  mix-blend-mode: overlay;
+  filter: blur(2px);
+  opacity:0.75;
+
+  animation:
+    oozeWobble 4.6s ease-in-out infinite alternate;
+}
+
+@keyframes oozeWobble{
+  from {
+    background-position: 0% 50%;
+  }
+  to {
+    background-position: -6px 50%;
+  }
+}
+
+@keyframes plasmaFlow{
+  0%   { background-position:   0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position:   0% 50%; }
+}
+
+@keyframes plasmaDrift{
+  from { transform: translateX(-4%); }
+  to   { transform: translateX(4%); }
+}
+
+
+.pw-strength-bar[data-level="none"]{
+  background:none;
+}
+
+.pw-strength-bar[data-level="weak"],
+.pw-strength-bar[data-level="medium"],
+.pw-strength-bar[data-level="strong"]{
+  background:linear-gradient(to right,#ae5df0da,#21bca5);
+}
+
+.pw-strength-bar[data-level="valid"]{
+  box-shadow:
+    inset 0 0 10px rgba(33,188,165,0.45),
+    0 0 10px rgba(33,188,165,0.35);
+}
+
+.pw-strength-bar[data-level="valid"]::after{
+  filter: blur(3px);
+  opacity:0.9;
+}
+
+/* Password rules */
+.pw-rules{
+  list-style:none;
+  padding:0;
+  margin:10px 0 0;
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:6px 12px;
+  font-size:.75rem;
+  color:var(--muted);
+}
+
+.pw-rules li{
+  position:relative;
+  padding-left:18px;
+  transition:color 160ms ease;
+}
+
+.pw-rules li::before{
+  content:"✦";
+  position:absolute;
+  left:0;
+  color:rgba(255,255,255,.35);
+  transition:color 160ms ease;
+}
+
+.pw-rules li.ok{
+  color:#a7fff1;
+}
+
+.pw-rules li.ok::before{
+  content:"✓";
+  color:#21bca5;
+}
+
+/* Error emphasis */
+.field-error{
+  color:#da8aff;
+}
+
+.hint-inline {
+  display: flex;
+  align-items: center;
+  margin-top: 6px;
+  gap: 10px;
+}

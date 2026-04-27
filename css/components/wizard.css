@@ -1,0 +1,308 @@
+/* /css/components/wizard.css */
+
+/* ====== WIZARD ====== */
+.wizard{
+  display:none;
+  padding:20px;
+  border:1px solid var(--border);
+  border-radius:var(--radius-sm);
+  background:var(--glass-2);
+}
+.wizard-view{
+  display:flex; 
+  justify-content:space-between; 
+  align-items:center;
+}
+
+.wizard-view h2{
+  margin:0;
+}
+
+.wizard .step{
+  display:none;
+}
+
+.wizard .step.is-active{
+  display:block;
+}
+
+/* ===== Wizard primitives ===== */
+.badge{
+  display:inline-block;
+  padding:2px 8px;
+  border-radius:999px;
+  background:#ffffff12;
+  border:1px solid #ffffff22;
+  font-size:.8rem;
+  color:var(--muted);
+}
+
+.field{
+  flex:1 1 260px;
+}
+
+.hint{
+  color:var(--muted);
+  font-size:.9rem;
+}
+
+.wizard .hint{
+  margin-top:10px;
+  color:var(--muted);
+  font-size:.9rem;
+}
+
+/* ===== Key / Value rows ===== */
+.kv{
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+  padding:8px 0;
+  border-bottom:1px solid rgba(255,255,255,.08);
+}
+
+.kv:last-child{
+  border-bottom:none;
+}
+
+.k{
+  opacity:.75;
+  font-size:13px;
+}
+
+.v{
+  font-size:13px;
+  text-align:right;
+  overflow-wrap:anywhere;
+  max-width:65%;
+}
+
+.wizard .login-panel {
+  background: var(--grad);
+  transition:transform 160ms ease, box-shadow 160ms ease;
+}
+.wizard .login-panel:hover {
+  background: var(--grad);
+  box-shadow:0 0 5px rgba(184,255,237,.41);
+  transform:translateY(-2px);
+}
+
+.wizard .login-panel-paymentEl {
+  background: var(--grad);
+  text-align:left;
+  transition:transform 160ms ease, box-shadow 160ms ease;
+}
+.wizard .login-panel-paymentEl:hover {
+  background: var(--grad);
+  box-shadow:0 0 5px rgba(184,255,237,.41);
+  transform:translateY(-2px);
+}
+
+/* ===== Wizard Pricing Card ===== */
+.wizard .pricing-card {
+  background:
+    linear-gradient(
+      165deg,
+      rgba(255,255,255,.04) 0%,
+      rgba(0,0,0,.15) 100%
+    ),
+    var(--grad);
+
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 14px 16px;
+
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+
+  -webkit-backdrop-filter: blur(10px) saturate(140%);
+  backdrop-filter: blur(10px) saturate(140%);
+
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,.03),
+    0 10px 24px rgba(0,0,0,.35);
+
+  transition: transform 160ms ease, box-shadow 160ms ease;
+}
+
+.wizard .pricing-card:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,.06),
+    0 14px 32px rgba(31,180,165,.25),
+    0 0 18px rgba(162,0,255,.18);
+}
+
+.wizard .pricing-card > strong {
+  font-size: .9rem;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+
+  color: var(--brand-600);
+}
+.wizard #priceSummary {
+  font-size: .9rem;
+  line-height: 1.45;
+  color: var(--muted);
+  word-wrap: break-word;
+}
+
+/* ===== Pills ===== */
+.pill{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding:2px 10px;
+  border-radius:999px;
+  border:1px solid rgba(255,255,255,.14);
+  background:rgba(255,255,255,.06);
+  box-shadow:0 0 10px rgba(0,0,0,.18);
+  font-size:12px;
+  line-height:1;
+  opacity:.95;
+  white-space:nowrap;
+}
+
+.pill-enabled{
+  color:transparent;
+  border-color:var(--brand-600);
+  background:linear-gradient(
+    130deg,
+    var(--ink) 30%,
+    var(--brand-600) 60%,
+    var(--brand-purp) 95%
+  );
+  -webkit-background-clip:text;
+  background-clip:text;
+  box-shadow:var(--aura);
+}
+
+.pill-disabled{
+  color:var(--muted);
+  border-color:rgba(255,255,255,.12);
+  background:rgba(255,255,255,.03);
+  opacity:.6;
+}
+
+/* ===== Wizard step titles ===== */
+.wizard .step h3{
+  margin-top:0;
+  margin-bottom:10px;
+  font-size:1.1rem;
+  font-weight:800;
+  letter-spacing:.02em;
+  background:linear-gradient(
+    130deg,
+    var(--ink) 8%,
+    var(--brand-600) 35%,
+    var(--brand-purp) 85%
+  );
+  -webkit-background-clip:text;
+  background-clip:text;
+  color:transparent;
+}
+
+
+/* Wizard-specific title control */
+#wizardView #wizardTitle {
+  font-size: 1.3rem;
+  font-weight: 800;
+  background: linear-gradient(
+    130deg,
+    var(--ink) 5%,
+    var(--brand-600) 25%,
+    var(--brand-purp) 90%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+
+/* ===== Wizard pricing summary ===== */
+.pricing-summary{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+
+.pricing-title{
+  font-weight:700;
+  font-size:.9rem;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  color:var(--brand-600);
+}
+
+.pricing-body{
+  font-size:.9rem;
+  color:var(--muted);
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+
+/* Wizard form rows */
+.row{
+  display:grid;
+  grid-template-columns:repeat(auto-fit, minmax(240px, 1fr));
+  gap:16px;
+}
+
+/* ===== Wizard select styling ===== */
+.form-field select{
+  -webkit-appearance:none;
+  -moz-appearance:none;
+  appearance:none;
+
+  background:var(--grad);
+  border:1px solid var(--border);
+  border-radius:12px;
+
+  padding:10px 40px 10px 12px;
+  font-size:.95rem;
+  color:var(--ink);
+
+  outline:none;
+  cursor:pointer;
+
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--muted) 50%),
+    linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+  background-position:
+    calc(100% - 20px) 55%,
+    calc(100% - 15px) 55%;
+  background-size:5px 5px, 5px 5px;
+  background-repeat:no-repeat;
+}
+
+.form-field select:focus{
+  border-color:rgba(33,188,165,.45);
+  box-shadow:
+    0 0 0 1px rgba(33,188,165,.25),
+    0 0 16px rgba(131,33,188,.15);
+  background:black;
+}
+
+.form-field{
+  min-width:0;
+}
+
+.wizard .field,
+.wizard .form-field{
+  flex:unset;
+  margin-top: 10px;
+}
+
+/* Step 2 layout:
+   Remove add-on column entirely when no add-ons exist */
+.wizard .field:has(#addonSection.hidden) {
+  display: none;
+}
+
+/* When billing landing is rendered into #platformFlow, hide wizard steps */
+.wizard.mode-billing-landing .step {
+  display: none !important;
+}

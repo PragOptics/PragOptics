@@ -1,0 +1,18 @@
+/* /css/components/auth-indicator.css */
+.auth-status{
+  display:inline-flex;
+  gap:8px;
+  font-size:.85rem;
+  color:var(--muted);
+}
+
+.auth-indicator{
+  width:10px;
+  height:10px;
+  border-radius:999px;
+  background:var(--brand-purp);
+}
+
+.auth-indicator.signed-in{
+  background:var(--brand-600);
+}

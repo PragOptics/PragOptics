@@ -1,0 +1,219 @@
+  <!-- ===== Agreement Modal ===== -->
+  <div id="agreementMask" class="modal-overlay" aria-hidden="true"></div>
+  <div id="agreementModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="agreementTitle" aria-hidden="true">
+    <div class="modal-card" tabindex="-1">
+      <div class="modal-head">
+        <h3 id="agreementTitle" class="modal-title">PragOptics™ Agreement</h3>
+        <button class="modal-close" type="button" aria-label="Close" data-modal-action="agreement-close">✕</button>
+      </div>
+      <div class="modal-body">
+        <div id="mdContainer" class="md-view" aria-live="polite">
+          <p class="muted">Loading agreement…</p>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <label class="ack">
+          <input id="agreeChk" type="checkbox" />
+          <span>I have read and agree. I understand acceptance may be recorded.</span>
+        </label>
+        <div class="actions">
+          <button type="button" class="btn" data-modal-action="agreement-close">Cancel</button>
+          <button id="agreeGoBtn" type="button" class="cta primary" data-modal-action="agreement-submit" disabled>Continue</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+    <!-- ===== Native Login Modal ===== -->
+  <div id="loginMask" class="modal-overlay" aria-hidden="true"></div>
+
+  <div id="loginModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="loginTitle" aria-hidden="true">
+    <div class="modal-card" tabindex="-1">
+      <div class="modal-head">
+        <h3 id="loginTitle" class="modal-title">Sign in to PragOptics™</h3>
+        <button class="modal-close" type="button" aria-label="Close" data-modal-action="login-close">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <form id="loginForm" class="login-form" novalidate>
+
+          <!-- EMAIL -->
+          <div class="form-field">
+            <label for="loginEmail">Email</label>
+            <input
+              id="loginEmail"
+              type="email"
+              placeholder="you@company.com"
+              autocomplete="email"
+              required
+            >
+            <div class="field-hint">
+              Used to identify your PragOptics account.
+            </div>
+          </div>
+
+          <!-- PHONE + SMS (optional, used for signup/reset) -->
+          <div class="form-field hidden" id="loginPhoneBlock">
+            <label for="loginPhone">Phone (optional)</label>
+
+            <input
+              id="loginPhone"
+              type="tel"
+              inputmode="numeric"
+              autocomplete="tel"
+              pattern="[0-9]*"
+              placeholder="+1 (555) 555-5555"
+            >
+
+            <div class="hint hint-inline">
+              <input id="loginSmsOptIn" type="checkbox">
+              <label for="loginSmsOptIn">Use SMS verification (requires phone)</label>
+            </div>
+
+            <div class="field-hint">
+              Email verification is always available. SMS is optional.
+            </div>
+          </div>
+
+          
+          <!-- VERIFICATION CODE (signup/reset) -->
+          <div class="form-field hidden" id="loginCodeBlock">
+            <label for="loginCode">Verification code</label>
+
+            <div class="password-wrap">
+              <input
+                id="loginCode"
+                type="text"
+                inputmode="text"
+                autocomplete="one-time-code"
+                maxlength="6"
+                placeholder="a1B2c3"
+              >
+              <button
+                id="requestCodeBtn"
+                type="button"
+                class="codeBtn">
+                <span>Request Code</span>
+              </button>
+            </div>
+
+            <div class="field-hint">
+              We will send a one-time code to your email (and optionally SMS).
+            </div>
+          </div>
+
+                      <!-- HINT SURFACE -->
+            <div
+              id="codeError"
+              class="field-hint field-error hidden"
+              role="alert"
+              aria-live="polite"
+            >
+              Passwords do not match.
+            </div>
+
+
+          <!-- PASSWORD -->
+          <div class="form-field">
+            <label for="loginPassword">Password</label>
+
+            <div class="password-wrap">
+              <input
+                id="loginPassword"
+                type="password"
+                placeholder="✦✦✦✦✦✦✦✦"
+                autocomplete="current-password"
+                required
+                aria-describedby="passwordRules passwordStrength"
+              >
+              <button
+                type="button"
+                class="pw-toggle"
+                aria-label="Show password"
+                data-state="hidden"
+              ></button>
+            </div>
+
+            <!-- STRENGTH BAR -->
+            <div
+              id="passwordStrength"
+              class="pw-strength"
+              aria-hidden="true"
+            >
+              <div class="pw-strength-bar" data-level="none"></div>
+            </div>
+
+            <!-- LIVE RULES -->
+            <ul id="passwordRules" class="pw-rules">
+              <li data-rule="length">At least 12 characters</li>
+              <li data-rule="upper">Uppercase letter</li>
+              <li data-rule="lower">Lowercase letter</li>
+              <li data-rule="number">Number</li>
+              <li data-rule="symbol">Symbol</li>
+            </ul>
+          </div>
+
+          <!-- CONFIRM PASSWORD -->
+          <div class="form-field">
+            <label for="loginPasswordConfirm">Confirm password</label>
+
+            <div class="password-wrap">
+              <input
+                id="loginPasswordConfirm"
+                type="password"
+                placeholder="✦✦✦✦✦✦✦✦"
+                autocomplete="new-password"
+                required
+                aria-describedby="loginError"
+              >
+              <button
+                type="button"
+                class="pw-toggle"
+                aria-label="Show password"
+                data-state="hidden"
+              ></button>
+            </div>
+
+            <!-- ERROR SURFACE -->
+            <div
+              id="loginError"
+              class="field-hint field-error hidden"
+              role="alert"
+              aria-live="polite"
+            >
+              Passwords do not match.
+            </div>
+          </div>
+
+          <!-- ACTIONS -->
+          <div class="login-actions">
+            <button
+              type="submit"
+              class="cta"
+              id="loginSubmitBtn"
+            >
+              Sign in
+            </button>
+
+            <button
+              type="button"
+              class="btn subtle"
+              id="forgotPasswordBtn"
+            >
+              Forgot password?
+            </button>
+            
+            <button
+              type="button"
+              class="btn subtle hidden"
+              id="backToSignInBtn"
+            >
+              Sign in instead
+            </button>
+
+          </div>
+
+        </form>
+      </div>
+    </div>
+  </div>

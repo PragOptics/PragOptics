@@ -1,0 +1,203 @@
+/* /css/components/legal-viewer.css */
+
+.legal-mask{
+  position: fixed;
+  inset: 0;
+  z-index: 11000;
+  background: radial-gradient(1200px 800px at 50% 10%, rgba(28,164,144,0.10), transparent 55%),
+              radial-gradient(900px 650px at 80% 60%, rgba(165,85,255,0.10), transparent 60%),
+              rgba(0,0,0,0.72);
+  display: none;
+}
+
+.legal-panel{
+  position: fixed;
+  inset: 0;
+  z-index: 11001;
+  display: none;
+  place-items: center;
+  padding: 18px;
+}
+
+.legal-mask.is-open{ display:block; }
+.legal-panel.is-open{ display:grid; }
+
+.legal-panel > * { box-sizing: border-box; }
+
+.legal-head,
+.legal-body,
+.legal-foot{
+  width: min(980px, 94vw);
+}
+
+.legal-head{
+  display:flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 16px;
+  border: 1px solid rgba(255,255,255,0.10);
+  border-bottom: none;
+  border-radius: 16px 16px 0 0;
+  background: rgba(20,24,34,0.62);
+  -webkit-backdrop-filter: blur(14px) saturate(160%);
+  backdrop-filter: blur(14px) saturate(160%);
+}
+
+.legal-title{
+  margin:0;
+  font-weight: 850;
+  letter-spacing: 0.01em;
+  background: linear-gradient(130deg, rgba(255,255,255,0.92) 10%, rgba(28,164,144,0.92) 58%, rgba(165,85,255,0.86) 95%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.legal-hint{
+  margin-top: 3px;
+  font-size: 0.85rem;
+  opacity: 0.72;
+}
+
+.legal-close{
+  appearance: none;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.04);
+  color: rgba(255,255,255,0.88);
+  border-radius: 12px;
+  height: 38px;
+  width: 44px;
+  cursor: pointer;
+}
+
+.legal-body{
+  border: 1px solid rgba(255,255,255,0.10);
+  background: rgba(10,12,18,0.74);
+  -webkit-backdrop-filter: blur(14px) saturate(160%);
+  backdrop-filter: blur(14px) saturate(160%);
+  max-height: min(72vh, 760px);
+  overflow: auto;
+  padding: 16px;
+}
+
+.legal-loading{
+  font-size: 0.92rem;
+  opacity: 0.75;
+  padding: 8px 0 14px;
+}
+
+.legal-content{
+  font-size: 0.98rem;
+  line-height: 1.55;
+  color: rgba(225,235,250,0.86);
+}
+
+.legal-content h1, .legal-content h2, .legal-content h3{
+  margin: 16px 0 10px;
+  color: rgba(255,255,255,0.92);
+}
+
+.legal-content p{ margin: 10px 0; }
+.legal-content ul{ margin: 10px 0 10px 22px; }
+.legal-content li{ margin: 6px 0; }
+
+.legal-content code{
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  background: rgba(255,255,255,0.06);
+  padding: 0.1em 0.35em;
+  border-radius: 8px;
+}
+
+.legal-content pre{
+  margin: 12px 0;
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.04);
+  overflow: auto;
+}
+
+.legal-content a{
+  color: rgba(28,164,144,0.92);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(28,164,144,0.35);
+}
+
+.legal-foot{
+  display:flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 12px 22px;
+  border: 1px solid rgba(255,255,255,0.10);
+  border-top: none;
+  border-radius: 0 0 16px 16px;
+  background: rgba(20,24,34,0.62);
+  -webkit-backdrop-filter: blur(14px) saturate(160%);
+  backdrop-filter: blur(14px) saturate(160%);
+}
+#legalOpenRaw{
+  padding: 4px 8px;
+  border-radius: 8px;
+}
+
+#legalOpenRaw:hover{
+  background: rgba(255,255,255,0.04);
+}
+.legal-raw,
+.legal-closeLink{
+  font-size: 0.92rem;
+  color: rgba(225,235,250,0.82);
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  text-decoration: none;
+  opacity: 0.9;
+}
+
+.legal-sep{ opacity: 0.4; }
+
+.legal-card{
+  width: min(980px, 92vw);
+  max-height: 86vh;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  background: var(--glass);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--aura);
+  overflow: hidden;
+  -webkit-backdrop-filter: blur(14px) saturate(160%);
+  backdrop-filter: blur(14px) saturate(160%);
+}
+
+.legal-head{
+  padding: 14px 22px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--glass-2);
+}
+
+.legal-body{
+  overflow: auto;
+  background: var(--grad);
+}
+
+/* reuse existing markdown styles */
+.legal-body .md-view{
+  padding: 18px 22px;
+}
+
+.legal-foot{
+  padding: 12px 22px;
+  border-top: 1px solid var(--border);
+  background: var(--glass-2);
+  display: flex;
+  justify-content: flex-end;
+}
+.legal-head .modal-close{
+  margin-right: 4px; /* subtle inset from edge */
+}

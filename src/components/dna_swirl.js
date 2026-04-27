@@ -1,3 +1,5 @@
+import { getHelixSpeedMul } from './dna_swirl.speed.controller.js';
+
 export function mountDnaSwirl(target, opts = {}) {
   const host = typeof target === 'string' ? document.querySelector(target) : target;
   if (!host) return null;
@@ -496,8 +498,10 @@ export function mountDnaSwirl(target, opts = {}) {
     const dt = Math.max(0.001, (now - lastTs) / 1000);
     lastTs = now;
 
-    const speedMul = (phase === 'idle') ? cfg.idleSpeedMul : 1;
-    t += (0.022 * cfg.speed * speedMul) * (dt * 60);
+    const idleMul = (phase === 'idle') ? cfg.idleSpeedMul : 1;
+    const helixMul = getHelixSpeedMul(now);
+
+    t += (0.022 * cfg.speed * idleMul * helixMul) * (dt * 60);
 
     ctx.clearRect(0, 0, w, h);
     if (cfg.bgAlpha > 0) {

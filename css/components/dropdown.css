@@ -1,0 +1,110 @@
+/* /css/components/dropdown.css */
+.dev {
+  display:flex; 
+  align-items:center; 
+  gap:10px;
+}
+
+.dev-nav ul,
+.dev-nav li {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+
+.dropdown{position:relative}
+.dropdown-menu{
+  display:none;
+  position:absolute;
+  top:110%;
+  right:0;
+  background:var(--menu);
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:var(--radius-sm);
+  min-width:240px;
+}
+.dropdown.open .dropdown-menu{display:block}a/* /css/components/dropdown.css */
+
+/* ====== DROPDOWN ====== */
+.dev-nav ul{
+  list-style:none;
+  margin:0;
+  padding:0;
+}
+
+.dropdown{
+  position:relative;
+}
+
+.dropdown-toggle{
+  background:none;
+  border:none;
+  outline:none;
+  box-shadow:none;
+  -webkit-tap-highlight-color:transparent;
+  transition: transform 160ms ease, box-shadow 160ms ease;
+}
+
+.dropdown-toggle:focus,
+.dropdown-toggle:focus-visible{
+  outline:none;
+  box-shadow:none;
+}
+
+.dropdown-toggle:hover{
+  background:none;
+  border:none;
+  transform: translateY(-2px);
+}
+
+.dropdown-menu{
+  display:none;
+  position:absolute;
+  top:110%;
+  right:0;
+  background:var(--menu);
+  border:1px solid rgba(255,255,255,0.12);
+  border-radius:var(--radius-sm);
+  box-shadow:var(--aura);
+  min-width:240px;
+  padding:8px 0;
+  z-index:100;
+  -webkit-backdrop-filter: blur(14px) saturate(160%);
+  backdrop-filter: blur(14px) saturate(160%);
+  transition: transform 160ms ease, box-shadow 160ms ease;
+}
+
+.dropdown-menu li span.menu-section{
+  display:block;
+  padding:8px 16px 4px;
+  font-size:.8rem;
+  text-transform:uppercase;
+  letter-spacing:.08em;
+  color:var(--brand-600);
+  font-weight:700;
+  opacity:.9;
+}
+
+.dropdown-menu li a{
+  display:block;
+  padding:8px 16px;
+  color:var(--ink);
+  font-size:.9rem;
+  font-weight:500;
+  transition:.2s ease;
+}
+
+.dropdown-menu li a:hover{
+  background:rgba(151, 39, 216, 0.185);
+  color:var(--brand-600);
+}
+
+.dropdown.open .dropdown-menu{
+  display:block;
+}
+
+.dropdown-toggle svg,
+.dropdown-toggle path{
+  pointer-events:none;
+}

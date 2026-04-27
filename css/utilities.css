@@ -1,0 +1,10 @@
+/* /css/utilities.css */
+.kv{
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+  padding:8px 0;
+}
+
+.k{opacity:.75;font-size:13px}
+.v{font-size:13px;text-align:right}

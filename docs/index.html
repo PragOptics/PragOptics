@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PragOptics™ Codex</title>
+  <meta name="color-scheme" content="dark" />
+
+  <!-- Icons -->
+  <link rel="icon" type="image/x-icon" href="https://pragoptics.com/images/favicon.ico" sizes="48x48">
+  <link rel="icon" type="image/png" href="https://pragoptics.com/images/favicon.png" sizes="192x192">
+  <link rel="apple-touch-icon" href="https://pragoptics.com/images/apple-touch-icon.png">
+
+  <!-- Reuse site tokens + base so Codex matches platform -->
+  <link rel="stylesheet" href="/css/tokens.css">
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/utilities.css">
+
+  <!-- Reuse markdown styling you already trust -->
+  <link rel="stylesheet" href="/css/components/modals.css">
+
+  <!-- Codex runtime styles -->
+  <link rel="stylesheet" href="/docs/.codex/codex.css">
+</head>
+
+<body class="codex">
+  <div class="codex-shell">
+    <aside class="codex-nav" aria-label="Documentation navigation">
+      <div class="codex-nav-head">
+        <div class="codex-brand">PragOptics<span class="tm">™</span> Codex</div>
+        <button id="codexNavToggle" class="codex-nav-toggle" type="button" aria-label="Toggle navigation">
+          ☰
+        </button>
+      </div>
+
+      <div id="codexTree" class="codex-tree" role="tree" aria-label="Docs tree"></div>
+    </aside>
+
+    <main class="codex-main" aria-label="Documentation viewer">
+      <header class="codex-head">
+        <div class="codex-head-left">
+          <h1 id="codexTitle" class="codex-title">Documentation</h1>
+          <div id="codexPath" class="codex-path">Select a document</div>
+        </div>
+        <div class="codex-head-right">
+          <a id="codexOpenRaw" class="codex-raw" href="#" target="_blank" rel="noopener noreferrer">Open raw</a>
+        </div>
+      </header>
+
+      <section class="codex-body">
+        <div id="codexLoading" class="codex-loading">Loading…</div>
+        <article id="codexContent" class="md-view" aria-live="polite"></article>
+      </section>
+    </main>
+  </div>
+
+  <script type="module" src="/docs/.codex/codex.js"></script>
+</body>
+</html>

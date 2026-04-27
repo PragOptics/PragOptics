@@ -1,0 +1,195 @@
+/* /css/components/catalog.css */
+
+/* ===== Catalog Drawer + Cards (Ping Visual) ===== */
+.catalog-drawer{
+  margin-top:10px;
+  border:1px solid rgba(255,255,255,.10);
+  border-radius:12px;
+  background:rgba(255,255,255,.03);
+  overflow:hidden;
+}
+
+.catalog-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  padding:10px 12px;
+  background:rgba(255,255,255,.04);
+  border-bottom:1px solid rgba(255,255,255,.08);
+}
+
+.catalog-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit, minmax(220px,1fr));
+  gap:10px;
+  padding:12px;
+  max-height:320px;
+  overflow:auto;
+}
+
+.catalog-card{
+  border:1px solid rgba(255,255,255,.10);
+  border-radius:12px;
+  background:rgba(0,0,0,.18);
+  padding:12px;
+}
+
+.catalog-title{
+  font-weight:800;
+  color:rgba(255,255,255,.92);
+  margin-bottom:6px;
+  font-size:.95rem;
+}
+
+.catalog-meta{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  margin-bottom:10px;
+}
+
+.catalog-price{
+  font-weight:900;
+  font-size:1.1rem;
+  color:var(--brand-600);
+}
+
+.catalog-sub{
+  font-size:.85rem;
+  color:var(--muted);
+  margin-top:6px;
+}
+
+.catalog-actions{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  margin-top:10px;
+}
+
+/* ===== Capability / Path items ===== */
+.cap-item,
+.path-item{
+  width:100%;
+  text-align:center;
+  padding:8px 10px;
+  border-radius:8px;
+  border:1px solid var(--border);
+  background:var(--grad);
+  margin-top:6px;
+  cursor:pointer;
+  transition:background 160ms ease, transform 160ms ease;
+}
+
+.cap-item:hover,
+.path-item:hover{
+  transform:translateY(-1px);
+  box-shadow:0 0 10px rgba(255,255,255,.18);
+}
+
+.cap-item:hover .cap-title,
+.path-item:hover{
+  background:linear-gradient(
+    130deg,
+    var(--ink) 5%,
+    var(--brand) 25%,
+    var(--brand-600) 65%,
+    var(--brand-purp) 95%
+  );
+  -webkit-background-clip:text;
+  background-clip:text;
+  color:transparent;
+}
+
+.path-item.highlight{
+  border-color:rgba(33,188,165,.45);
+}
+
+/* ===== Fast path ===== */
+.fast-path-item{
+  width:100%;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  background:var(--grad);
+  border:1px solid var(--border);
+  border-radius:10px;
+  padding:10px 12px;
+  margin-top:6px;
+  cursor:pointer;
+  text-align:center !important;
+  transition:background 160ms ease, transform 160ms ease;
+}
+
+.fast-path-item:hover{
+  transform:translateY(-1px);
+  box-shadow:0 0 10px rgba(255,255,255,.18);
+  color:transparent;
+}
+
+.fast-path-item:hover .fp-title{
+  background:linear-gradient(
+    130deg,
+    var(--ink) 5%,
+    var(--brand) 25%,
+    var(--brand-600) 65%,
+    var(--brand-purp) 95%
+  );
+  -webkit-background-clip:text;
+  background-clip:text;
+  color:transparent;
+}
+
+.fp-title{
+  font-weight:600;
+  background:transparent;
+  color:var(--ink);
+}
+
+.fp-icon{
+  opacity:.35;
+}
+
+.fast-path-body{
+  max-height:0;
+  overflow:hidden;
+  transition:
+    max-height 260ms cubic-bezier(.22,.61,.36,1),
+    opacity 160ms ease;
+  opacity:0;
+  margin-left:4px;
+}
+
+.fast-path-body.open{
+  max-height:120px;
+  opacity:1;
+  margin-bottom:6px;
+}
+
+.fast-path-body .muted{
+  padding:6px 4px 10px 4px;
+  line-height:1.5;
+}
+
+/* ===== Capability body ===== */
+.cap-body{
+  max-height:0;
+  overflow:hidden;
+  opacity:0;
+  transition:
+    max-height 260ms cubic-bezier(.22,.61,.36,1),
+    opacity 160ms ease;
+}
+
+.cap-body.open{
+  max-height:140px;
+  opacity:1;
+  margin-bottom:8px;
+}
+
+.cap-title{
+  font-weight:600;
+  background:transparent;
+  color:var(--ink);
+}

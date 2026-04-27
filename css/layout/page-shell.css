@@ -1,0 +1,41 @@
+/* /css/layout/page-shell.css */
+
+/* ====== PAGE LAYOUT ====== */
+.page{
+  max-width:var(--maxw);
+  margin: 100px auto;
+  padding:0 20px 40px;
+}
+
+.glass{
+  background:var(--glass);
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  box-shadow:var(--aura);
+}
+
+.panel{
+  padding:20px;
+  display:flex;
+  flex-direction:column;
+  gap:16px;
+  background:var(--glass-2);
+  -webkit-backdrop-filter: blur(14px) saturate(160%);
+  backdrop-filter: blur(14px) saturate(160%);
+}
+
+.row{
+  display:flex;
+  gap:16px;
+  flex-wrap:wrap;
+}
+
+.col{
+  flex:1 1 320px;
+}
+
+.muted{
+  color:var(--muted);
+  margin:0; 
+  font-size:0.9rem;
+}

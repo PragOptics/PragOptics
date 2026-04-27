@@ -1,0 +1,15 @@
+{
+  "name": "pragoptics",
+  "version": "1.0.0",
+  "description": "web-api",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "serve:https": "http-server -S -C localhost+2.pem -K localhost+2-key.pem -p 8080"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}

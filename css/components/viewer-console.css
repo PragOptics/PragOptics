@@ -1,0 +1,1159 @@
+/* /css/components/viewer-console.css */
+
+/* ====== VIEWER / CONSOLE ====== */
+.console-view{
+  display:flex; 
+  justify-content:space-between; 
+  align-items:center;
+}
+
+.console-view h2{
+  background:linear-gradient(
+    130deg,
+    var(--ink) 2%,
+    var(--brand-600) 50%,
+    var(--brand-purp) 80%
+  );
+  -webkit-background-clip:text;
+  background-clip:text;
+  color:transparent;
+}
+
+.login-panel{
+  display: block;
+  padding:14px;
+  border-radius:var(--radius-sm);
+  background:var(--grad);
+  border:1px solid var(--border);
+  font-size:.9rem;
+  color: var(--ink);
+}
+
+#consoleView .login-panel strong{
+  color: var(--console-prop) !important;
+}
+
+.login-panel label {
+  margin-top:10px;
+  font-size:0.85rem; 
+  color:var(--muted);
+}
+
+.api-method-row select{
+  width:140px; 
+  padding:6px; 
+  border-radius:8px; 
+  border:1px solid var(--grad); 
+  background:black; 
+  color:var(--ink);
+}
+
+.login-panel-apiResponse{
+  display:flex; 
+  justify-content:space-between; 
+  align-items:center;
+}
+
+.login-panel-body{
+  display:none; 
+  margin-top:10px;
+}
+
+.login-panel-body label{
+  font-size:0.85rem; 
+  color:var(--muted);
+}
+
+.login-panel-body textarea{
+  width:100%; 
+  height:120px; 
+  padding:8px; 
+  border-radius:8px; 
+  border:1px solid var(--border); 
+  background:var(--glass-2); 
+  color:var(--ink); 
+  font-family:monospace;
+}
+
+.apiBtnContainer{
+  display:flex;
+  gap:10px; 
+  margin-top:10px; 
+  flex-wrap:wrap;
+}
+
+.viewer{
+  min-height:260px;
+  padding:16px;
+  max-height: 60vh;
+  background:var(--bg-deep);
+  border-radius:var(--radius-sm);
+  border:1px solid var(--border);
+  font-size:.9rem;
+  overflow:auto;
+  display: block;
+  contain: content;
+  color:var(--brand-600);
+  -webkit-backdrop-filter:blur(14px) saturate(160%);
+  backdrop-filter:blur(14px) saturate(160%);
+}
+
+
+#po-output{
+  display:block;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+
+  font-family: ui-monospace,
+               SFMono-Regular,
+               Menlo,
+               Monaco,
+               Consolas,
+               "Liberation Mono",
+               monospace;
+
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+pre{
+  white-space:pre-wrap;
+  word-break:break-word;
+  margin:0;
+}
+
+.copy-btn{
+  padding:6px 12px;
+  font-size:.85rem;
+  border-radius:12px;
+  border:1px solid var(--brand-600);
+  background:var(--glass-2);
+  color:var(--brand-600);
+  cursor:pointer;
+  transition:.2s ease, transform 160ms ease, box-shadow 160ms ease;
+}
+
+.copy-btn:hover{
+  background:rgba(33,188,165,0.12);
+  transform:translateY(-2px);
+}
+
+#po-api-body {
+  transition: border-color .2s, box-shadow .2s;
+}
+
+
+.json-status {
+  display: block;
+  margin-top: 6px;
+  font-size: .85rem;
+  opacity: .9;
+}
+
+.json-status.ok {
+  color: var(--console-succ);
+}
+
+.json-status.err {
+  color: var(--console-err);
+}
+
+/* === PragOptics JSON Editor Overlay === */
+.po-json-editor{
+  position: relative;
+  border-radius: 12px;
+  border: px solid var(--border);
+  background: var(--bg-deep);
+  max-height: 60vh;
+  overflow: hidden;            
+  box-sizing: border-box;
+
+  --po-json-scroll-gutter: 14px;
+}
+
+/* highlight layer (under textarea) */
+.po-json-highlight{
+  position: absolute;
+  inset: 0;
+  margin: 0;
+
+  padding: 10px calc(12px + var(--po-json-scroll-gutter)) 10px 12px; /* ✅ */
+  white-space: pre;
+  overflow: hidden;
+  word-break: normal;
+  pointer-events: none;
+  color: var(--ink);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.po-json-editor textarea{
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  min-height: 140px;
+  resize: vertical;
+  margin: 0;
+
+  padding: 10px calc(12px + var(--po-json-scroll-gutter)) 10px 12px; /* ✅ */
+
+  background: transparent;
+  color: transparent;
+  caret-color: var(--ink);
+
+  border: 0;
+  outline: none;
+
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 13px;
+  line-height: 1.45;
+}
+.po-json-editor{
+  --po-json-scroll-gutter: 14px; /* tweak 12–16px to taste */
+}
+
+
+/* keep selection visible (still works even with transparent text) */
+.po-json-editor textarea::selection {
+  background: color-mix(in srgb, var(--console-succ) 25%, transparent);
+}
+
+/* token colors (use your theme) */
+.po-json-highlight .tok-prop  { color: var(--console-prop); }
+.po-json-highlight .tok-val-str  { color: var(--console-str); }
+.po-json-highlight .tok-val-num  { color: var(--console-num); }     /* purple */
+.po-json-highlight .tok-val-bool { color: var(--console-bool); }      /* teal */
+.po-json-highlight .tok-val-null { color: var(--console-null); }     /* yellow */
+.po-json-highlight .tok-punc { color: var(--console-prop) } /* punctuation */
+
+/* error marker */
+.po-json-highlight .tok-err {
+  background: color-mix(in srgb, var(--console-ind) 25%, transparent);
+  color: var(--console-ind);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--console-ind) 60%, transparent);
+  border-radius: 4px;
+  padding: 0 2px;
+  font-weight: 600;
+}
+
+
+/* === OVERRIDE generic textarea styling INSIDE json editor === */
+.po-json-editor textarea#po-api-body{
+  position: relative;
+  z-index: 1;
+
+  width: 100%;
+  height: 100%;
+  min-height: 140px;
+
+  overflow: auto;              /* ✅ SCROLL LIVES HERE */
+  resize: vertical;            /* ✅ allow user resize if you want */
+
+  background: transparent !important;
+  color: transparent !important;
+  caret-color: var(--ink) !important;
+
+  border: 0 !important;
+  outline: none;
+
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 13px;
+  line-height: 1.45;
+
+  /* ✅ keep highlight/text aligned AND reserve room for scrollbar */
+  padding: 10px calc(12px + var(--po-json-scroll-gutter)) 10px 12px !important;
+  
+  letter-spacing: 0.025em; 
+
+}
+
+/* Frame owns validity state (textarea stays transparent/scroll owner) */
+.po-json-editor:has(textarea#po-api-body.json-valid){
+  border-color: var(--console-succ);
+  box-shadow: 0 0 0 1px rgba(33,188,165,.35);
+}
+
+.po-json-editor:has(textarea#po-api-body.json-invalid){
+  border-color: var(--console-err);
+  box-shadow: 0 0 0 1px rgba(255,107,107,.35);
+}
+
+
+#po-raw-view {
+  overflow:auto;
+}
+
+
+/* ===== Structural punctuation (depth rotation) ===== */
+.po-json-highlight .tok-brace,
+.po-json-highlight .tok-bracket {
+  font-weight: 700;
+  opacity: 0.95;
+}
+
+.po-json-highlight .tok-colon { color: rgba(255,255,255,.70); }
+.po-json-highlight .tok-comma { color: rgba(255,255,255,.55); }
+
+/* Depth palette (6-step rotation) */
+.po-json-highlight .d0 { color: var(--console-prop) }
+.po-json-highlight .d1 { color: var(--console-str); }
+.po-json-highlight .d2 { color: var(--console-num); }
+.po-json-highlight .d3 { color: var(--console-bool); }
+.po-json-highlight .d4 { color: var(--console-null); }
+
+
+/* ===== Render modes (pretty vs minified) ===== */
+
+/* Default / pretty: wrap lines, vertical scroll */
+.po-json-editor[data-json-mode="pretty"] .po-json-highlight,
+.po-json-editor[data-json-mode="pretty"] textarea#po-api-body {
+  white-space: pre-wrap;
+}
+
+/* Minified: no wrap, horizontal scroll */
+.po-json-editor[data-json-mode="minified"] .po-json-highlight,
+.po-json-editor[data-json-mode="minified"] textarea#po-api-body {
+  white-space: pre;
+}
+/* ===== Suggestion rail ===== */
+.po-json-suggest{
+  margin-top: 10px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.po-json-suggest.hidden{
+  display: none;
+}
+
+.po-json-chip{
+  border: 1px solid color-mix(in srgb, var(--console-succ) 35%, transparent);
+  background: color-mix(in srgb, var(--bg-deep) 75%, transparent);
+  color: var(--ink);
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: .82rem;
+  cursor: pointer;
+  -webkit-user-select: none;
+  user-select: none;
+  transition: transform 120ms ease, background 120ms ease;
+}
+
+.po-json-chip:hover{
+  transform: translateY(-1px);
+  background: color-mix(in srgb, var(--console-succ) 12%, transparent);
+}
+
+/* chip category tone */
+.po-json-chip[data-tone="key"]{ border-color: color-mix(in srgb, var(--console-str) 40%, transparent); }
+.po-json-chip[data-tone="val"]{ border-color: color-mix(in srgb, var(--console-num) 40%, transparent); }
+.po-json-chip[data-tone="shape"]{ border-color: color-mix(in srgb, var(--console-bool) 40%, transparent); }
+
+/* ===== Ghost suggestion (inline at caret) ===== */
+.po-json-highlight .tok-ghost{
+  color: rgba(255,255,255,.35);
+  font-style: italic;
+}
+/* =========================
+   RAW RESPONSE: make po-json-highlight behave like normal content
+   (keep classes, but disable overlay behavior)
+   ========================= */
+#po-output.po-json-highlight{
+  position: static;        /* undo absolute overlay */
+  inset: auto;             /* undo inset:0 */
+  overflow: visible;       /* let content contribute height */
+  pointer-events: auto;    /* allow scroll/select */
+  white-space: pre-wrap;   /* wrap like your raw view */
+  word-break: break-word;  /* safe for long tokens */
+}
+
+/* Floating ghost suggestion bubble */
+.po-json-ghost {
+  position: absolute;
+  z-index: 6;
+  pointer-events: none;
+
+  padding: 8px 10px;
+  border-radius: 14px;
+
+  background: color-mix(in srgb, var(--glass) 65%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+  box-shadow: var(--aura);
+
+  color: rgba(255,255,255,.85);
+  font-size: .82rem;
+  line-height: 1.25;
+  max-width: min(420px, 90%);
+  -webkit-backdrop-filter: blur(12px) saturate(160%);
+  backdrop-filter: blur(12px) saturate(160%);
+}
+
+.po-json-ghost.hidden { display:none; }
+
+.po-json-ghost code{
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  color: rgba(255,255,255,.92);
+  background: rgba(0,0,0,.35);
+  padding: 2px 6px;
+  border-radius: 8px;
+}
+/* =========================
+   CONSOLE BUTTONS (single authority)
+   ========================= */
+
+/* Action row */
+#consoleView .apiBtnContainer{
+  display:flex;
+  gap:14px;
+  margin-top:14px;
+  justify-content:flex-start;
+  flex-wrap:wrap; /* ok on desktop */
+}
+
+/* Make Send + Curl same footprint */
+#consoleView #po-api-send,
+#consoleView #po-api-curl{
+  min-width: 170px;
+}
+
+/* Send: meter-style plasma ooze (ID-scoped, does not touch global .btn) */
+#consoleView #po-api-send{
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  border: none;
+  color: #061311;
+  background: rgba(33,188,165,0.92);  
+  font-weight: 850;
+}
+
+#consoleView #po-api-send > *{
+  position: relative;
+  z-index: 3;
+}
+
+/* Plasma base layer */
+#consoleView #po-api-send::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  border-radius: inherit;
+  z-index: 0;
+
+  background: linear-gradient(
+    120deg,
+    #ae5df0da,
+    #21bca5,
+    #ae5df0da
+  );
+  background-size: 200% 200%;
+  opacity: 0;
+}
+
+/* Ooze overlay */
+#consoleView #po-api-send::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  border-radius: inherit;
+  z-index: 1;
+
+  background:
+    radial-gradient(18px 16px at 42% 42%, rgba(255, 255, 255, 0.233), transparent 60%),
+    radial-gradient(24px 20px at 50% 55%, rgba(0,0,0,0.35), transparent 65%),
+    radial-gradient(18px 16px at 58% 58%, rgba(0,0,0,0.25), transparent 70%);
+  mix-blend-mode: overlay;
+  filter: blur(2px);
+  opacity: 0;
+}
+
+/* Plasma activation – desktop hover OR keyboard focus */
+#consoleView #po-api-send:hover::before,
+#consoleView #po-api-send:focus-visible::before{
+  opacity: 0.65;
+  animation: poPlasmaFlow 6.8s ease-in-out infinite;
+}
+
+#consoleView #po-api-send:hover::after,
+#consoleView #po-api-send:focus-visible::after{
+  opacity: 0.45;
+  animation: poOozeDrift 2.3s ease-in-out infinite alternate;
+}
+
+#consoleView #po-api-send:hover,
+#consoleView #po-api-send:focus-visible{
+  color:black !important;
+  transform: translateY(-2px);
+}
+
+
+
+/* Hover: animate ooze (overrides global .btn:hover via ID specificity) */
+@media (hover:hover) and (pointer:fine){
+  #consoleView #po-api-send:hover{
+    color:black !important;
+    transform: translateY(-2px);
+  }
+  #consoleView #po-api-send:hover::before{
+    opacity: 0.65;
+    animation: poPlasmaFlow 6.8s ease-in-out infinite;
+  }
+  #consoleView #po-api-send:hover::after{
+    opacity: 0.45;
+    animation: poOozeDrift 2.3s ease-in-out infinite alternate;
+  }
+}
+
+@keyframes poPlasmaFlow{
+  0%{ background-position:0% 50%; }
+  50%{ background-position:100% 50%; }
+  100%{ background-position:0% 50%; }
+}
+
+@keyframes poOozeWobble{
+  from{ background-position:0% 50%; }
+  to{ background-position:-6px 50%; }
+}
+
+@keyframes poOozeDrift{
+  from { transform: translate(-6%, -4%); }
+  to   { transform: translate(6%, 4%); }
+}
+
+
+/* Curl: flatter utility (ID scoped) */
+#consoleView #po-api-curl{
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border);
+  color: var(--ink);
+  font-weight: 650;
+}
+#consoleView #po-api-curl:hover {
+  background: rgba(27, 37, 35, 0.575);
+  border: 1px solid var(--brand);
+  color: var(--muted);
+  font-weight: 650;      
+}
+
+
+/* Tool buttons: distinct from curl (ID scoped)
+   NOTE: works whether they live near Method or elsewhere */
+#consoleView #po-api-format,
+#consoleView #po-api-minify,
+#consoleView #po-api-repair {
+  padding: 6px 10px;
+  font-size: .72rem;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.03);
+  border: 1px dashed rgba(255,255,255,0.22);
+  color: var(--muted);
+}
+ #consoleView .api-method-controls .tool-row{
+  margin-top:12px;
+ }
+
+/* =========================
+   Response View Toggle (Pure Slider)
+   ========================= */
+
+#consoleView .po-view-toggle{
+  display:inline-flex;
+  align-items:center;
+  cursor:pointer;
+  -webkit-user-select: none;
+  user-select:none;
+}
+
+#consoleView .po-view-toggle-input{
+  position:absolute;
+  opacity:0;
+  pointer-events:none;
+}
+
+#consoleView .po-view-toggle-track{
+  position:relative;
+  width:37px;
+  height:18px;
+  bottom:2px;
+  border-radius:999px;
+  background: rgba(255,255,255,0.04);
+  border:1px solid var(--border);
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.04) inset;
+  -webkit-backdrop-filter: blur(10px) saturate(160%);
+  backdrop-filter: blur(10px) saturate(160%);
+}
+
+#consoleView .po-view-toggle-thumb{
+  position:absolute;
+  left:1px;
+  width:16px;
+  height:16px;
+  border-radius:999px;
+  background: linear-gradient(
+    120deg,
+    var(--brand-600),
+    var(--brand-purp)
+  );
+  box-shadow: 0 4px 12px rgba(0,0,0,.35);
+  transition:
+  transform 180ms cubic-bezier(.2,.9,.3,1.3),
+  box-shadow 120ms ease;
+}
+#consoleView .po-view-toggle-thumb:hover{
+  box-shadow: inset .125em var(--aura);
+}
+@keyframes jiggle{
+  0%{ transform:translateX(-1px); box-shadow: inset .125em var(--aura); }
+  33%{ transform:translateX(1px); box-shadow: inset .125em var(--aura);}
+  66%{ transform:translateX(-1px); box-shadow: inset .125em var(--aura); }
+  100%{ transform:translateX(1px); box-shadow: inset .125em var(--aura);}
+}
+/* checked = RAW view */
+#consoleView .po-view-toggle-input:checked
+  + .po-view-toggle-track
+  .po-view-toggle-thumb{
+  transform: translateX(20px);
+  animation: none !important;
+}
+
+#consoleView .po-view-toggle:active
+  .po-view-toggle-thumb{
+  transform: scale(0.92);
+}
+/* default / visual mode */
+#consoleView .po-view-toggle-track{
+  background: rgba(255,255,255,0.04);
+}
+
+/* RAW mode enabled */
+#consoleView .po-view-toggle-input:checked
+  + .po-view-toggle-track{
+  background: linear-gradient(
+    120deg,
+    rgba(33, 188, 165, 0.521),
+    rgba(162, 0, 255, 0.479)
+  );
+  border-color: rgba(33,188,165,0.55);
+}
+
+#consoleView .po-view-toggle-input:checked
+  + .po-view-toggle-track{
+  box-shadow:
+    0 0 0 1px rgba(33,188,165,0.4) inset,
+    0 0 14px rgba(33,188,165,0.35);
+}
+
+#consoleView .view-toggle-label{
+  position:relative;
+  top: -1px;
+  margin-right:4px;
+  color: color-mix(in srgb, var(--muted) 85%, var(--brand-purp) 15%);
+  opacity:.75;
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+
+/* ===== Tooltip (Console scoped) ===== */
+
+#consoleView .view-toggle-label{
+  position: relative;
+  cursor: help;
+}
+.view-toggle-label:hover ~ .po-view-toggle .po-view-toggle-thumb {
+  animation: jiggle 480ms ease;
+}
+
+
+
+/* tooltip bubble */
+#consoleView .view-toggle-label::after{
+  content: attr(data-tooltip);
+
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: -50%;
+  transform: translateX(-50%) translateY(4px);
+
+  padding: 6px 10px;
+  border-radius: 6px;
+
+  font-size: 0.75rem;
+  line-height: 1.2;
+  white-space: nowrap;
+
+  color: var(--ink);
+  background: color-mix(in srgb, var(--glass) 65%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border) 85%, transparent);
+  box-shadow: var(--bg-deep);
+
+  opacity: 0;
+  pointer-events: none;
+
+  transition:
+    opacity 120ms ease,
+    transform 120ms ease;
+}
+
+/* tooltip arrow */
+#consoleView .view-toggle-label::before{
+  content: "";
+
+  position: absolute;
+  bottom: calc(100% + 4px);
+  left: 50%;
+  transform: translateX(-50%);
+
+  width: 8px;
+  height: 8px;
+  background: color-mix(in srgb, var(--glass) 65%, transparent);
+  border-left: 1px solid color-mix(in srgb, var(--border) 85%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 85%, transparent);
+
+  rotate: 45deg;
+
+  opacity: 0;
+  pointer-events: none;
+
+  transition:
+    opacity 120ms ease,
+    transform 120ms ease;
+}
+
+/* hover / focus */
+#consoleView .view-toggle-label:hover::after,
+#consoleView .view-toggle-label:hover::before,
+#consoleView .view-toggle-label:focus-visible::after,
+#consoleView .view-toggle-label:focus-visible::before{
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+
+
+
+
+/* Row layout */
+#consoleView .login-panel-apiResponse{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* Group slider + label together on the right */
+#consoleView .view-toggle-group{
+  display: inline-flex;
+  align-items: center;
+}
+
+
+/* Inline code styling — Console only */
+#consoleView code{
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.85em;
+  padding: 2px 6px;
+  border-radius: 6px;
+
+  background: rgba(0,0,0,0.35);
+  border: 1px solid rgba(255,255,255,0.12);
+
+  color: var(--brand-600);
+  font-weight: 600;
+
+  white-space: nowrap;
+}
+
+
+/* =========================
+   Visual View Code Blocks
+   ========================= */
+
+#consoleView .po-code-block{
+  margin-top: 8px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(0,0,0,0.25);
+  overflow: auto;
+  white-space: pre;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ink);
+}
+
+/* Reuse existing palette variables */
+#consoleView .po-code-block .tok-kw{
+  color: var(--console-bool);   /* teal keyword vibe */
+  font-weight: 700;
+}
+
+#consoleView .po-code-block .tok-comment{
+  color: var(--muted);
+  opacity: 0.85;
+  font-style: italic;
+}
+
+#consoleView .po-code-block .tok-val-str  { color: var(--console-str); }
+#consoleView .po-code-block .tok-val-num  { color: var(--console-num); }
+#consoleView .po-code-block .tok-val-bool { color: var(--console-bool); }
+#consoleView .po-code-block .tok-val-null { color: var(--console-null); }
+#consoleView .po-code-block .tok-punc     { color: var(--console-prop); }
+
+
+/* =========================
+   API Console Header
+   ========================= */
+#consoleView .api-console-header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+}
+
+#consoleView strong {
+  color: color-mix(in srgb, var(--muted) 92%, var(--brand-purp) 8%);
+}
+
+/* Icon-only tuning */
+#consoleView .view-toggle-label svg{
+  stroke-width: 2.1px;        /* tiny optical boost */
+  opacity: 0.85;
+}
+
+#consoleView
+.view-toggle-group:first-of-type
+.view-toggle-label svg{
+  filter: drop-shadow(0 0 0 rgba(0,0,0,0)); /* intentionally none */
+}
+#consoleView
+.login-panel-apiResponse
+.view-toggle-label svg{
+  opacity: 0.8;
+}
+
+
+/* API mode – wider, structural */
+#consoleView .api-console-header .view-toggle-label svg{
+  width: 26px;
+  height: 26px;
+}
+
+/* View mode – slightly taller, kinetic */
+#consoleView .login-panel-apiResponse .view-toggle-label svg{
+  width: 22px;
+  height: 22px;
+}
+
+
+/* =========================
+   API METHOD SELECT – Console Styled
+   ========================= */
+
+#consoleView #po-api-method{
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+
+  width: 140px;
+  padding: 7px 34px 7px 12px;
+  border-radius: 10px;
+
+  border: 1px solid var(--border);
+
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255,255,255,0.06),
+      rgba(0,0,0,0.18)
+    ),
+    var(--bg-deep);
+
+  background-image:
+    linear-gradient(
+      45deg,
+      transparent 50%,
+      color-mix(in srgb, var(--brand-purp) 65%, var(--ink)) 50%
+    ),
+    linear-gradient(
+      -45deg,
+      transparent 50%,
+      color-mix(in srgb, var(--brand-purp) 65%, var(--ink)) 50%
+    );
+
+  background-repeat: no-repeat;
+  background-position:
+    calc(100% - 18px) 55%,
+    calc(100% - 12px) 55%;
+  background-size: 6px 6px;
+
+  color: var(--brand-600);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+
+  -webkit-backdrop-filter: blur(10px) saturate(160%);
+  backdrop-filter: blur(10px) saturate(160%);
+
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    transform 120ms ease;
+}
+
+
+/* hover */
+#consoleView #po-api-method:hover{
+  border-color: color-mix(in srgb, var(--brand) 55%, var(--border));
+  box-shadow:
+    0 0 0 1px rgba(162,0,255,0.25),
+    0 0 18px rgba(162,0,255,0.18);
+}
+/* focus */
+#consoleView #po-api-method:focus-visible{
+  outline: none;
+  border-color: var(--brand-600);
+  box-shadow:
+    0 0 0 1px rgba(162,0,255,0.45),
+    0 0 14px rgba(162,0,255,0.35);
+}
+
+/* active (press) */
+#consoleView #po-api-method:active{
+  transform: translateY(1px);
+}
+
+/* options (best-effort, browser-limited) */
+#consoleView #po-api-method option{
+  background: var(--bg-deep);
+  color: var(--brand-600);
+}
+
+/* =========================
+   API METHOD SELECT – OPTION LIST (Best-effort)
+   ========================= */
+
+/* options — works reliably on Windows, partially on macOS */
+#consoleView #po-api-method option{
+  background-color: var(--bg-deep);
+  color: var(--muted);
+  font-weight: 650;
+}
+
+/* selected option (Windows / Chromium-based) */
+#consoleView #po-api-method option:checked{
+  background-color: color-mix(
+    in srgb,
+    var(--brand-purp) 22%,
+    var(--bg-deep)
+  );
+  color: var(--brand-600);
+}
+
+/* hover (Windows / Chromium only; ignored elsewhere) */
+#consoleView #po-api-method option:hover{
+  background-color: color-mix(
+    in srgb,
+    var(--brand-purp) 18%,
+    var(--bg-deep)
+  );
+}
+
+
+
+/* ===== JSON editor scrollbar (textarea owns scroll) ===== */
+.po-json-editor textarea::-webkit-scrollbar{
+  width: 10px;
+  height: 10px;
+}
+
+.po-json-editor textarea::-webkit-scrollbar-track{
+  background: color-mix(in srgb, var(--bg-deep) 85%, transparent);
+}
+
+.po-json-editor textarea::-webkit-scrollbar-thumb{
+  background: var(--muted);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+.po-json-editor textarea::-webkit-scrollbar-thumb:hover{
+  background: var(--muted);
+}
+
+/* Firefox */
+.po-json-editor textarea{
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--muted) 55%, black)
+                   color-mix(in srgb, var(--bg-deep) 85%, transparent);
+}
+
+
+/* small, local animation (scoped name to avoid collisions) */
+@keyframes poPlasmaFlow{
+  0%{ background-position:0% 50%; }
+  50%{ background-position:100% 50%; }
+  100%{ background-position:0% 50%; }
+}
+/* Tool buttons must NOT use codeBtn scan overlay */
+#po-api-format::before,
+#po-api-minify::before,
+#po-api-repair::before {
+  content: none !important;
+}
+
+
+#consoleView #po-api-format:hover,
+#consoleView #po-api-minify:hover,
+#consoleView #po-api-repair:hover,
+#consoleView #po-api-format:focus-visible,
+#consoleView #po-api-minify:focus-visible,
+#consoleView #po-api-repair:focus-visible{
+  background: rgba(162,0,255,0.16) !important;
+  border-style: solid !important;
+  color: var(--json-mod) !important;
+  transform: translateY(-1px);
+}
+
+
+
+/* =========================
+   Copy Response button (new, isolated)
+   ========================= */
+#consoleView .copyResponse{
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  /* KEEP YOUR PLACEMENT TWEAK */
+  padding-bottom: 5px;
+  left: -10px;
+
+  width: 34px;
+  height: 28px;
+
+  border: none;
+  background: none;
+
+  color: var(--muted);
+  cursor: pointer;
+
+  transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease, background 160ms ease;
+}
+
+#consoleView .copyResponse:hover,
+#consoleView .copyResponse:focus-visible{
+  /* KEEP YOUR HOVER BEHAVIOR */
+  transform: translateY(-1px);
+}
+
+/* =========================
+   Tooltip (Copy Response) — MATCH .view-toggle-label tooltip EXACTLY
+   ========================= */
+
+/* tooltip bubble */
+#consoleView .copyResponse::after{
+  content: attr(data-tooltip);
+
+  position: absolute;
+  bottom: calc(100% + 8px);
+
+  /* match your existing tooltip positioning */
+  left: -50%;
+  transform: translateX(-50%) translateY(4px);
+
+  padding: 6px 10px;
+  border-radius: 6px;
+
+  font-size: 0.75rem;
+  line-height: 1.2;
+  white-space: nowrap;
+
+
+  color: var(--muted);
+
+  font-weight: 800;
+
+  background: color-mix(in srgb, var(--glass) 65%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border) 85%, transparent);
+  box-shadow: var(--bg-deep);
+
+  opacity: 0;
+  pointer-events: none;
+
+  transition:
+    opacity 120ms ease,
+    transform 120ms ease;
+}
+
+/* tooltip arrow */
+#consoleView .copyResponse::before{
+  content: "";
+
+  position: absolute;
+  bottom: calc(100% + 4px);
+  left: 50%;
+  transform: translateX(-50%);
+
+  width: 8px;
+  height: 8px;
+
+  background: color-mix(in srgb, var(--glass) 65%, transparent);
+  border-left: 1px solid color-mix(in srgb, var(--border) 85%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 85%, transparent);
+
+  rotate: 45deg;
+
+  opacity: 0;
+  pointer-events: none;
+
+  transition:
+    opacity 120ms ease,
+    transform 120ms ease;
+}
+
+/* hover / focus */
+#consoleView .copyResponse:hover::after,
+#consoleView .copyResponse:hover::before,
+#consoleView .copyResponse:focus-visible::after,
+#consoleView .copyResponse:focus-visible::before{
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+
+
+/* Mobile: center stack (Send/Curl) */
+@media (max-width: 640px){
+  #consoleView .apiBtnContainer{
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+  }
+  #consoleView .apiBtnContainer button{
+    width: min(420px, 100%);
+    justify-content: center;
+  }
+
+}
+
+@media (max-width: 720px){
+  #consoleView .api-method-controls{
+    display: flex;
+    flex-direction: column;
+    align-items: left;
+    gap: 10px;
+  }
+
+  #consoleView .api-method-controls .tool-row{
+    display: flex;
+    gap: 8px;
+    align-items: left;
+  }
+}

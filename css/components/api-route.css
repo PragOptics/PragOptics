@@ -1,0 +1,49 @@
+/* /css/components/api-route.css */
+.api-route{
+  flex:1; 
+  padding:8px; 
+  border-radius:8px; 
+  border:1px solid var(--border); 
+  background:var(--bg-deep); 
+  color:var(--brand-600);
+}
+
+.api-route:focus {
+  border-color: var(--brand);
+  outline: none;
+}
+
+
+.api-route-row{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  flex-wrap:wrap;
+
+  margin-top:10px;
+  padding:6px 8px;
+
+  border-radius:8px;
+  border:1px solid var(--bg-deep);
+
+  background: var(--grad);
+
+  box-shadow: var(--aura);
+}
+
+
+.api-route-prefix{
+  flex:0 0 auto;
+  max-width:100%;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  font-size:0.85rem; 
+  color:var(--muted);
+  opacity: .75;
+}
+
+#po-api-route{
+  flex:1 1 220px;
+  min-width:160px;
+}

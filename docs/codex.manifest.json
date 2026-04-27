@@ -1,0 +1,42 @@
+{
+  "title": "PragOptics Documentation",
+  "root": "/docs/",
+  "items": [
+    {
+      "type": "folder",
+      "name": "Legal",
+      "items": [
+        {
+          "type": "file",
+          "name": "Subscriber Agreement",
+          "path": "PragOptics-Subscriber-Agreement.md",
+          "format": "md"
+        },
+        {
+          "type": "file",
+          "name": "Privacy Policy",
+          "path": "PragOptics-Privacy.md",
+          "format": "md"
+        }
+      ]
+    },
+    {
+      "type": "folder",
+      "name": "Information",
+      "items": [
+        {
+          "type": "file",
+          "name": "API Console",
+          "path": "API-Console.md",
+          "format": "md"
+        },
+        {
+          "type": "file",
+          "name": "Syntax Engine",
+          "path": "Syntax-Engine.md",
+          "format": "md"
+        }
+      ]
+    }
+  ]
+}

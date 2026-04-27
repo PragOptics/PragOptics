@@ -11,7 +11,6 @@
   <link rel="canonical" href="https://pragoptics.com/">
 
   <!-- Theme -->
-  <meta name="theme-color" content="#000000">
   <meta name="color-scheme" content="dark">
 
   <!-- Icons -->
@@ -20,425 +19,75 @@
   <link rel="apple-touch-icon" href="https://pragoptics.com/images/apple-touch-icon.png">
 
   <!-- Stripe (publishable key injected below) -->
-  <script>
-    // ✅ set per environment (test vs live)
-    window.STRIPE_PUBLISHABLE_KEY = "";
-  </script>
+  <script type="module"> import { STRIPE_PUBLISHABLE_KEY } from "./src/runtime/config.js"; window.STRIPE_PUBLISHABLE_KEY = STRIPE_PUBLISHABLE_KEY;</script>
+
   <script src="https://js.stripe.com/v3"></script>
- 
-  <link rel="stylesheet" href="./styles/app.css"> 
-  
 
+<!-- ===== CSS: Tokens & Base ===== -->
+<link rel="stylesheet" href="./css/tokens.css">
+<link rel="stylesheet" href="./css/base.css">
+<link rel="stylesheet" href="./css/utilities.css">
 
+<!-- ===== CSS: Global Layout ===== -->
+<link rel="stylesheet" href="./css/layout/page-shell.css">
+<link rel="stylesheet" href="./css/layout/hero.css">
+
+<!-- ===== CSS: Components ===== -->
+<link rel="stylesheet" href="./css/components/header.css">
+<link rel="stylesheet" href="./css/components/buttons.css">
+<link rel="stylesheet" href="./css/components/pill-badges.css">
+
+<link rel ="stylesheet" href="./css/components/footer.css">
+
+<link rel="stylesheet" href="./css/components/forms.css">
+<link rel="stylesheet" href="./css/components/forms-login.css">
+
+<link rel="stylesheet" href="./css/components/dropdown.css">
+<link rel="stylesheet" href="./css/components/modals.css">
+<link rel="stylesheet" href="./css/components/legal-viewer.css">
+
+<link rel="stylesheet" href="./css/components/catalog.css">
+<link rel="stylesheet" href="./css/components/wizard.css">
+
+<link rel="stylesheet" href="./css/components/api-route.css">
+
+<link rel="stylesheet" href="./css/components/viewer-console.css">
+<link rel="stylesheet" href="./css/components/viewer-tweaks.css">
+
+<link rel="stylesheet" href="./css/components/status-auth.css">
+<link rel="stylesheet" href="./css/components/auth-indicator.css">
+
+<!-- ===== CSS: Effects ===== -->
+<link rel="stylesheet" href="./css/effects/starfield.css">
+
+<!-- IMPORTANT: use ONLY ONE dna-loader (components version) -->
+<link rel="stylesheet" href="./css/components/dna-loader.css">
+
+<!-- ===== CSS: Views ===== -->
+<link rel="stylesheet" href="./css/views/billing-landing.css">
+
+<!-- ===== CSS: Responsive Overrides (LAST) ===== -->
+<link rel="stylesheet" href="./css/responsive/mobile-overrides.css">
 
 </head>
 
 <body>
-  <div class="global-darken"></div>
-  <canvas id="bg-stars"></canvas>
-  <div class="bg"></div>
 
-  <header>
-    <div class="nav">
-    
-      <div id="dnaSwirl" class="dnaSwirl" aria-hidden="true"></div>
-      
-      <!-- Right side actions -->
-      <div style="display:flex; align-items:center; gap:10px;">
-      
-        <nav class="dev-nav">
-          <ul>
-            <li class="dropdown">
-              <button class="dropdown-toggle" aria-label="Menu">
-<svg width="24" height="24"
-     viewBox="0 0 24 24"
-     fill="none"
-     xmlns="http://www.w3.org/2000/svg">
+    <div id="view-bg"></div>
+    <div id="view-header"></div>
 
-  <defs>
-    <linearGradient id="hamburgerGrad"
-                    x1="0"
-                    y1="0"
-                    x2="24"
-                    y2="24"
-                    gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#a200ff"/>
-      <stop offset="75%" stop-color="#21bca5"/>
-      <stop offset="100%" stop-color="#1ca490"/>
-    </linearGradient>
-  </defs>
+    <main class="page">
+      <div id="view-landing"></div>
+      <div id="view-wizard"></div>
+      <div id="view-console"></div>
+      <div id="view-modals"></div>
+      <div id="view-legal"></div>
+    </main>
 
-  <path d="M3 6h18
-           M3 12h18
-           M3 18h18"
-        stroke="url(#hamburgerGrad)"
-        stroke-width="2"
-        stroke-linecap="round" />
-</svg>
-
-                </button>
-              <ul class="dropdown-menu">
-                <li><span class="menu-section">Platform</span></li>
-                <li><a href="#" onclick="event.preventDefault(); setAppMode('landing');">Landing</a></li>
-                <li><a href="#" onclick="event.preventDefault(); openAgreementModal();">Read Agreement</a></li>
-                <li><a href="#" onclick="event.preventDefault(); startPragOpticsLogin();">Login</a></li>
-                <li><a href="#" onclick="event.preventDefault(); logout();">Logout</a></li>
+    <div id="view-footer"></div>
 
 
-                <li><span class="menu-section">Developer</span></li>
-                <li><a href="#" onclick="event.preventDefault(); setAppMode('console');">Console</a></li>
-                <li><a href="#" onclick="event.preventDefault(); callPragOpticsPing();">Call /ping</a></li>
-                <li><a href="#" onclick="event.preventDefault(); callPragOpticsAuth();">Call /auth</a></li>
 
-                <li><span class="menu-section">Billing</span></li>
-                <li><a href="#" onclick="event.preventDefault(); openBillingFromMenu();">Billing</a></li>
-              </ul>
-            </li>
-          </ul>
-        </nav>
-      </div>
-    </div>
-  </header>
-
-  <main class="page">
-
-    <!-- ============ LANDING VIEW ============ -->
-    <section id="landingView" class="glass panel">
-      <div class="hero">
-        <h1>Build, deploy, and automate<br>solutions with one API.</h1>
-        <p>
-          PragOptics™ is your programmable control plane for websites, workflows, subscriptions,
-          and data‑driven systems. Authenticate, onboard, and ship production‑grade automation—fast.
-        </p>
-        <div style="display:flex; gap:12px; flex-wrap:wrap; margin-top:8px;">
-          <button class="cta" onclick="openAgreementModal()">Get Started</button>
-          <button class="btn" onclick="setAppMode('console')">Developer Console</button>
-        </div>
-        <div class="row" style="margin-top:18px;">
-          <div class="col login-panel">
-            <strong style="display:block; margin-bottom:6px;">What you get</strong>
-            <div class="muted">CIAM login + token-based API access</div>
-            <div class="muted">Subscription onboarding (User / Partner)</div>
-            <div class="muted">Stripe payment-method capture + webhooks</div>
-            <div class="muted">Dashboards + builders</div>
-          </div>
-          <div class="col login-panel">
-            <strong style="display:block; margin-bottom:6px;">Fast path</strong>
-            <div class="muted">Read & agree</div>
-            <div class="muted">Login</div>
-            <div class="muted">Complete billing wizard</div>
-            <div class="muted">Use console + dashboards</div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- ============ WIZARD VIEW ============ -->
-    <section id="wizardView" class="glass panel hidden">
-      <div style="display:flex; justify-content:space-between; align-items:center;">
-        <div>
-          <h2 id="wizardTitle" style="margin:0; color:var(--brand-600);">PragOptics™ Subscription Wizard</h2>
-          <div id="wizardHint" class="hint">Complete setup to activate your PragOptics subscription.</div>
-        </div>
-        <span class="badge" id="authBadge">Signed out</span>
-      </div>
-
-      <!-- Wizard container -->
-      <div id="platformFlow" class="wizard" style="display:none;" aria-live="polite">
-
-        <!-- Step 1 -->
-        <div id="step1" class="step is-active">
-          <h3>Step 1 — Choose Subscriber Type</h3>
-          <div class="row">
-            <label class="login-panel field" style="cursor:pointer;">
-              <input type="radio" name="subType" value="user" style="margin-right:10px;">
-              <strong>User</strong>
-              <div class="hint">Base: <strong>$7.50/user/month</strong> — 10k calls, 1GB storage, deploy tools.</div>
-            </label>
-            <label class="login-panel field" style="cursor:pointer;">
-              <input type="radio" name="subType" value="partner" style="margin-right:10px;">
-              <strong>Partner</strong>
-              <div class="hint">Base: <strong>$49/month</strong> — Partner tools + onboard users + pricing control.</div>
-            </label>
-          </div>
-          <div style="margin-top:12px;">
-            <button class="btn" id="toStep2" onclick="gotoStep2()" disabled>Next</button>
-          </div>
-        </div>
-
-        <!-- Step 2 -->
-        <div id="step2" class="step">
-          <h3>Step 2 — Select Plan & Add‑Ons</h3>
-          <div class="row">
-            <div class="field login-panel">
-              <label class="hint"><strong>Plan cadence</strong></label><br>
-              <label><input type="radio" name="cadence" value="monthly" checked> Monthly</label>&nbsp;&nbsp;
-              <label><input type="radio" name="cadence" value="annual"> Annual</label>
-            </div>
-          </div>
-
-          <div class="row" style="margin-top:10px;">
-            <div class="field">
-              <label class="hint"><strong>Add‑ons (user only)</strong></label>
-              <div class="option-card login-panel" style="text-align:left;">
-                <label><input type="checkbox" id="aoDomains"> Domains + Business Email ($7.50/user/mo)</label>
-              </div>
-              <div class="option-card login-panel" style="text-align:left;">
-                <label><input type="checkbox" id="aoStorage"> Additional Storage ($2 per 5GB/mo)</label>
-              </div>
-              <div class="option-card login-panel" style="text-align:left;">
-                <label><input type="checkbox" id="aoFlows"> Workflow Bundle ($3 per 10k exec)</label>
-              </div>
-              <div class="option-card login-panel" style="text-align:left;">
-                <label><input type="checkbox" id="aoApi"> API Bundle ($5 per 50k calls)</label>
-              </div>
-            </div>
-
-            <div class="field">
-              <div class="login-panel">
-                <strong>Pricing Summary</strong>
-                <div id="priceSummary" class="hint">Select options to view an estimate.</div>
-              </div>
-              <div class="hint" style="margin-top:8px;">Final billing is finalized in Stripe. Backend remains authoritative.</div>
-            </div>
-          </div>
-
-          <div style="margin-top:12px; display:flex; gap:10px;">
-            <button class="btn" onclick="gotoStep1()">Back</button>
-            <button class="btn" onclick="gotoStep3()">Next</button>
-          </div>
-        </div>
-
-        <!-- Step 3 -->
-        <div id="step3" class="step">
-          <h3>Step 3 — Billing Profile</h3>
-          <p class="hint">Contact details used to create your Stripe customer and BillingProfile.</p>
-
-          <form onsubmit="handleBillingProfile(event)">
-            <div class="row">
-              <div class="field">
-                <label>First Name<br>
-                  <input id="bpFirstName" type="text" required style="width:100%; padding:8px; margin:6px 0;">
-                </label>
-              </div>
-              <div class="field">
-                <label>Last Name<br>
-                  <input id="bpLastName" type="text" required style="width:100%; padding:8px; margin:6px 0;">
-                </label>
-              </div>
-              <div class="field">
-                <label>Email<br>
-                  <input id="bpEmail" type="email" required style="width:100%; padding:8px; margin:6px 0;">
-                </label>
-              </div>
-            </div>
-
-            <div class="row">
-              <div class="field">
-                <label>Phone<br>
-                  <input id="bpPhone" type="tel" style="width:100%; padding:8px; margin:6px 0;" onblur="formatPhone(this)">
-                </label>
-              </div>
-              <div class="field">
-                <label>Organization (optional)<br>
-                  <input id="bpOrg" type="text" style="width:100%; padding:8px; margin:6px 0;">
-                </label>
-              </div>
-            </div>
-
-            <div class="row">
-              <div class="field">
-                <label>Address Line 1<br>
-                  <input id="bpAddr1" type="text" required style="width:100%; padding:8px; margin:6px 0;">
-                </label>
-              </div>
-              <div class="field">
-                <label>Address Line 2 (optional)<br>
-                  <input id="bpAddr2" type="text" style="width:100%; padding:8px; margin:6px 0;">
-                </label>
-              </div>
-            </div>
-
-            <div class="row">
-              <div class="field">
-                <label>City<br>
-                  <input id="bpCity" type="text" required style="width:100%; padding:8px; margin:6px 0;">
-                </label>
-              </div>
-              <div class="field">
-                <label>Postal Code<br>
-                  <input id="bpPostal" type="text" required style="width:100%; padding:8px; margin:6px 0;">
-                </label>
-              </div>
-            </div>
-
-            <div class="row">
-              <div class="field">
-                <label>State<br>
-                  <select id="bpState" required style="width:100%; padding:8px; margin:6px 0;">
-                    <option value="">Select a state</option>
-                    <option value="TX">Texas</option>
-                    <option value="CA">California</option>
-                    <option value="FL">Florida</option>
-                    <!-- (keep your full state list in your real file) -->
-                  </select>
-                </label>
-              </div>
-              <div class="field">
-                <label>Country<br>
-                  <select id="bpCountry" required style="width:100%; padding:8px; margin:6px 0;">
-                    <option value="US" selected>United States</option>
-                  </select>
-                </label>
-              </div>
-            </div>
-
-            <div style="margin-top:12px; display:flex; gap:10px;">
-              <button class="btn" type="button" onclick="gotoStep2()">Back</button>
-              <button class="cta" type="submit">Create Billing Profile</button>
-            </div>
-          </form>
-        </div>
-
-        <!-- Step 4 -->
-        <div id="step4" class="step">
-          <h3>Step 4 — Payment Method</h3>
-          <p class="hint">Secure payment method capture powered by Stripe.</p>
-
-          <div class="login-panel" style="text-align:left;">
-            <div id="payment-element"></div>
-          </div>
-
-          <div style="margin-top:12px; display:flex; gap:10px;">
-            <button class="btn" type="button" onclick="gotoStep3()">Back</button>
-            <button class="cta" type="button" id="payNowBtn">Save Payment Method & Activate</button>
-          </div>
-
-          <div id="payMsg" class="hint" style="margin-top:10px;"></div>
-        </div>
-
-        <!-- Step 5 -->
-        <div id="step5" class="step">
-          <h3>Step 5 — Finalizing</h3>
-          <p class="hint">We’re confirming your subscription with Stripe. This usually takes a few seconds.</p>
-
-          <div class="login-panel dna-container" data-dna="idle">
-            <div class="dna-track" aria-hidden="true">
-              <span class="dna-strand strand-a"></span>
-              <span class="dna-strand strand-b"></span>
-
-              <!-- “beads” traveling along the helix -->
-              <div class="dna-nodes">
-                <span class="dna-node a n1"></span>
-                <span class="dna-node a n2"></span>
-                <span class="dna-node a n3"></span>
-                <span class="dna-node b n1"></span>
-                <span class="dna-node b n2"></span>
-                <span class="dna-node b n3"></span>
-              </div>
-            </div>
-
-            <div class="dna-text">
-              <div id="finalizeMsg" class="hint dna-label">Finalizing subscription…</div>
-              <div id="finalizeSub" class="hint dna-sub">Do not refresh — safe to leave open.</div>
-            </div>
-          </div>
-
-          <div style="margin-top:12px;">
-            <button class="btn" type="button" onclick="pollUntilResolved()">Refresh Status</button>
-          </div>
-        </div>
-
-      </div>
-    </section>
-
-    <!-- ============ CONSOLE VIEW (from Dev Console) ============ -->
-    <section id="consoleView" class="glass panel hidden">
-      <div>
-        <h2 style="margin:0 0 6px; color:var(--brand-600);">API <span class="muted">Console</span></h2>
-        <p class="muted" style="margin:0; font-size:0.9rem;">Authenticated tooling surface. Call endpoints and inspect responses.</p>
-      </div>
-
-      <div id="po-api-console" class="login-panel" style="display:block;">
-        <strong style="display:block; margin-bottom:6px;">Direct API Call</strong>
-
-        <div style="margin-top:10px;">
-          <label style="font-size:0.85rem; color:var(--muted);">Method</label><br>
-          <select id="po-api-method"
-            style="width:140px; padding:6px; border-radius:6px; border:1px solid var(--border); background:black; color:var(--ink);">
-            <option value="GET" selected>GET</option>
-            <option value="POST">POST</option>
-            <option value="PUT">PUT</option>
-            <option value="PATCH">PATCH</option>
-            <option value="DELETE">DELETE</option>
-          </select>
-        </div>
-
-        <div id="po-api-body-container" style="display:none; margin-top:10px;">
-          <label style="font-size:0.85rem; color:var(--muted);">Request Body (JSON)</label>
-          <textarea id="po-api-body"
-            placeholder="{ }"
-            style="width:100%; height:120px; padding:8px; border-radius:8px; border:1px solid var(--border); background:var(--glass-2); color:var(--ink); font-family:monospace;"></textarea>
-        </div>
-
-        <div class="api-route-row" style="margin-top:10px;">
-          <span class="api-route-prefix" style="font-size:0.85rem; color:var(--muted);">https://api.pragoptics.com/api/v1/</span>
-          <input id="po-api-route" type="text" placeholder="ping"
-            style="flex:1; padding:8px; border-radius:8px; border:1px solid var(--border); background:var(--glass-2); color:var(--ink);">
-        </div>
-
-        <div style="display:flex; gap:10px; margin-top:10px; flex-wrap:wrap;">
-          <button id="po-api-send" class="copy-btn">Send Request</button>
-          <button id="po-api-curl" class="copy-btn">Copy curl</button>
-        </div>
-      </div>
-
-      <div class="login-panel" style="display:flex; justify-content:space-between; align-items:center;">
-        <strong>API Response</strong>
-
-        <button
-          id="viewerToggle"
-          class="copy-btn"
-          type="button"
-          onclick="toggleViewerMode()">
-          Visual View
-        </button>
-      </div>
-
-      <div class="viewer" id="po-raw-view">
-        <pre id="po-output">{ "hint": "Login, then call /ping or /auth." }</pre>
-      </div>
-
-      <div class="viewer hidden" id="po-visual-view"></div>
-    </section>
-
-  </main>
-
-  <!-- ===== Agreement Modal ===== -->
-  <div id="agreementMask" class="modal-overlay" aria-hidden="true"></div>
-  <div id="agreementModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="agreementTitle" aria-hidden="true">
-    <div class="modal-card" tabindex="-1">
-      <div class="modal-head">
-        <h3 id="agreementTitle" class="modal-title">PragOptics™ Agreement</h3>
-        <button class="modal-close" type="button" aria-label="Close" onclick="closeAgreementModal()">✕</button>
-      </div>
-      <div class="modal-body">
-        <div id="mdContainer" class="md-view" aria-live="polite">
-          <p class="muted">Loading agreement…</p>
-        </div>
-      </div>
-      <div class="modal-foot">
-        <label class="ack">
-          <input id="agreeChk" type="checkbox" />
-          <span>I have read and agree. I understand acceptance may be recorded.</span>
-        </label>
-        <div class="actions">
-          <button type="button" class="btn" onclick="closeAgreementModal()">Cancel</button>
-          <button id="agreeGoBtn" type="button" class="cta primary" onclick="submitAgreementAck()" disabled>Continue</button>
-        </div>
-      </div>
-    </div>
-  </div>
     <script type="module" src="./src/runtime/bootstrap.js"></script>
   </body>
 </html>

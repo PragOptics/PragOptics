@@ -1,0 +1,36 @@
+/* /css/effects/starfield.css */
+
+/* ====== STARFIELD + BACKGROUND ====== */
+#bg-stars{
+  position:fixed;
+  inset:0;
+  width:100vw;
+  height:100vh;
+  z-index:-1;
+  pointer-events:none;
+  opacity:0;
+  animation: fvStarFade 3.7s ease forwards;
+}
+
+.bg{
+  position:fixed;
+  inset:0;
+  z-index:-2;
+  background:var(--grad);
+  filter:blur(6px) brightness(.9) saturate(1.05);
+  transform:scale(1.03);
+}
+
+.global-darken{
+  position:fixed;
+  inset:0;
+  z-index:-0.5;
+  background:rgba(0,0,0,0.25);
+  pointer-events:none;
+}
+
+@keyframes fvStarFade{
+  0%{opacity:0}
+  60%{opacity:.2}
+  100%{opacity:.55}
+}

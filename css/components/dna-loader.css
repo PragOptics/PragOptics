@@ -1,0 +1,253 @@
+/* /css/components/dna-loader.css */
+
+/* ===========================
+   DNA FINALIZATION LOADER
+   =========================== */
+.dnaSwirl{
+  position:relative;
+  width:100%;
+  height:56px;
+  overflow:hidden;
+  border-radius:14px;
+  pointer-events:none;
+}
+
+.dna-container{
+  display:flex;
+  align-items:center;
+  gap:18px;
+  padding:14px;
+  flex-wrap:wrap;
+}
+
+.dna-text{
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+}
+
+.dna-label{
+  white-space:nowrap;
+  font-size:.95rem;
+  color:var(--muted);
+}
+
+.dna-sub{
+  white-space:nowrap;
+  font-size:.82rem;
+  opacity:.75;
+}
+
+/* ===== Track ===== */
+.dna-track{
+  position:relative;
+  width:240px;
+  height:34px;
+  overflow:hidden;
+  border-radius:999px;
+  background:linear-gradient(
+    90deg,
+    rgba(255,255,255,.02),
+    rgba(255,255,255,0)
+  );
+  border:1px solid rgba(255,255,255,.10);
+  animation:dnaBreath 3.2s ease-in-out infinite;
+  flex:0 0 240px;
+}
+
+@keyframes dnaBreath{
+  0%,100%{ box-shadow:0 0 0 rgba(33,188,165,0); }
+  50%{ box-shadow:0 0 18px rgba(33,188,165,.14); }
+}
+
+.dna-container[data-dna="lock"] .dna-track{
+  border-color:rgba(33,188,165,.45);
+  box-shadow:0 0 22px rgba(33,188,165,.18);
+}
+
+/* ===== Strands ===== */
+.dna-strand{
+  position:absolute;
+  top:50%;
+  left:-60px;
+  width:380px;
+  height:0;
+  border-top:2px dotted rgba(33,188,165,.85);
+  filter:drop-shadow(0 0 7px rgba(33,188,165,.45));
+  will-change:transform,opacity;
+}
+
+.strand-a{ opacity:.95; }
+
+.strand-b{
+  opacity:.82;
+  border-top-color:rgba(108,92,231,.90);
+  filter:drop-shadow(0 0 9px rgba(108,92,231,.48));
+}
+
+/* ===== Helix motion ===== */
+.dna-container[data-dna="idle"] .strand-a{ animation:dnaWaveA 1.75s linear infinite; }
+.dna-container[data-dna="idle"] .strand-b{ animation:dnaWaveB 1.75s linear infinite; }
+
+.dna-container[data-dna="fast"] .strand-a{ animation:dnaWaveA 1.05s linear infinite; }
+.dna-container[data-dna="fast"] .strand-b{ animation:dnaWaveB 1.05s linear infinite; }
+
+.dna-container[data-dna="lock"] .strand-a,
+.dna-container[data-dna="lock"] .strand-b{
+  animation:none;
+  opacity:.95;
+  border-top-style:solid;
+  border-top-width:2px;
+}
+
+@keyframes dnaWaveA{
+  0%{ transform:translateY(-8px) translateX(0); }
+  50%{ transform:translateY(8px) translateX(60px); }
+  100%{ transform:translateY(-8px) translateX(120px); }
+}
+
+@keyframes dnaWaveB{
+  0%{ transform:translateY(8px) translateX(0); }
+  50%{ transform:translateY(-8px) translateX(60px); }
+  100%{ transform:translateY(8px) translateX(120px); }
+}
+
+/* ===== Nodes ===== */
+.dna-nodes{
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+}
+
+.dna-node{
+  position:absolute;
+  top:50%;
+  width:8px;
+  height:8px;
+  border-radius:999px;
+  transform:translate(-50%,-50%);
+  opacity:0;
+  will-change:left,transform,opacity,filter;
+}
+
+.dna-node.a{
+  background:radial-gradient(circle,
+    rgba(255,255,255,.95) 0%,
+    rgba(33,188,165,.95) 40%,
+    rgba(33,188,165,.15) 70%,
+    rgba(33,188,165,0) 100%
+  );
+  box-shadow:0 0 10px rgba(33,188,165,.55);
+}
+
+.dna-node.b{
+  background:radial-gradient(circle,
+    rgba(255,255,255,.92) 0%,
+    rgba(108,92,231,.88) 40%,
+    rgba(108,92,231,.18) 70%,
+    rgba(108,92,231,0) 100%
+  );
+  box-shadow:0 0 10px rgba(108,92,231,.38);
+}
+
+.dna-container[data-dna="idle"] .dna-node.a{ animation:dnaNodeA 1.75s linear infinite; }
+.dna-container[data-dna="idle"] .dna-node.b{ animation:dnaNodeB 1.75s linear infinite; }
+
+.dna-container[data-dna="fast"] .dna-node.a{ animation:dnaNodeA 1.05s linear infinite; }
+.dna-container[data-dna="fast"] .dna-node.b{ animation:dnaNodeB 1.05s linear infinite; }
+
+.dna-container[data-dna="lock"] .dna-node{
+  animation:dnaNodeLock .55s ease forwards;
+  opacity:1;
+  filter:blur(0) brightness(1.1);
+}
+
+.dna-node.a.n1{ animation-delay:0s; }
+.dna-node.a.n2{ animation-delay:.22s; }
+.dna-node.a.n3{ animation-delay:.44s; }
+
+.dna-node.b.n1{ animation-delay:.11s; }
+.dna-node.b.n2{ animation-delay:.33s; }
+.dna-node.b.n3{ animation-delay:.55s; }
+
+/* Train A: front at center */
+@keyframes dnaNodeA{
+  0%   { left:-10%; opacity:0; transform:translate(-50%,-50%) translateY(-9px) scale(.82);
+         filter:blur(.70px) brightness(.88) contrast(1); z-index:1; }
+  12%  { opacity:1; }
+
+  35%  { left:35%; transform:translate(-50%,-50%) translateY(-1px) scale(1.00);
+         filter:blur(.25px) brightness(1.02) contrast(1.05); z-index:2; }
+
+  50%  { left:50%; transform:translate(-50%,-50%) translateY( 9px) scale(1.22);
+         filter:blur(0px) brightness(1.30) contrast(1.18); z-index:4; }
+
+  65%  { left:65%; transform:translate(-50%,-50%) translateY(-1px) scale(1.00);
+         filter:blur(.25px) brightness(1.02) contrast(1.05); z-index:2; }
+
+  88%  { opacity:1; }
+  100% { left:110%; opacity:0; transform:translate(-50%,-50%) translateY(-9px) scale(.82);
+         filter:blur(.70px) brightness(.88) contrast(1); z-index:1; }
+}
+
+/* Train B: back at center (opposite depth) */
+@keyframes dnaNodeB{
+  0%   { left:-10%; opacity:0; transform:translate(-50%,-50%) translateY( 9px) scale(.82);
+         filter:blur(.70px) brightness(.84) contrast(1); z-index:1; }
+  12%  { opacity:1; }
+
+  35%  { left:35%; transform:translate(-50%,-50%) translateY( 1px) scale(1.00);
+         filter:blur(.30px) brightness(.96) contrast(1.02); z-index:2; }
+
+  /* center: B goes behind while A is in front */
+  50%  { left:50%; transform:translate(-50%,-50%) translateY(-9px) scale(.94);
+         filter:blur(.95px) brightness(.82) contrast(.98); z-index:0; }
+
+  65%  { left:65%; transform:translate(-50%,-50%) translateY( 1px) scale(1.00);
+         filter:blur(.30px) brightness(.96) contrast(1.02); z-index:2; }
+
+  88%  { opacity:1; }
+  100% { left:110%; opacity:0; transform:translate(-50%,-50%) translateY( 9px) scale(.82);
+         filter:blur(.70px) brightness(.84) contrast(1); z-index:1; }
+}
+
+/* ===== Fade out ===== */
+.dna-container.is-complete .dna-track{
+  animation:dnaFadeOut .45s ease forwards;
+}
+
+.dna-container.is-complete .dna-label{
+  color:rgba(167,255,241,.95);
+}
+
+@keyframes dnaFadeOut{
+  to{
+    opacity:0;
+    transform:scale(.98);
+    height:0;
+    width:0;
+    margin:0;
+    border:0;
+    padding:0;
+  }
+}
+
+@keyframes dnaNodeLock{
+  from{ opacity:0; transform:translate(-50%,-50%) scale(.9); }
+  to{ opacity:1; transform:translate(-50%,-50%) scale(1); }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion:reduce){
+  .dna-strand,
+  .dna-node{
+    animation:none !important;
+  }
+  .dna-node{
+    opacity:.85;
+    filter:none;
+  }
+  .dna-track{
+    animation:none !important;
+  }
+}

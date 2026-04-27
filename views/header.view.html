@@ -1,0 +1,57 @@
+  <header>
+    <div class="nav">
+    
+      <div id="dnaSwirl" class="dnaSwirl" aria-hidden="true"></div>
+      
+      <!-- Right side actions -->
+      <div class="dev">
+      
+        <nav class="dev-nav">
+          <ul>
+            <li class="dropdown">
+              <button class="dropdown-toggle" aria-label="Menu">
+                <svg width="24" height="24"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg">
+
+                <defs>
+                    <linearGradient id="hamburgerGrad"
+                                    x1="0"
+                                    y1="0"
+                                    x2="24"
+                                    y2="24"
+                                    gradientUnits="userSpaceOnUse">
+                    <stop offset="0%" stop-color="#a200ff"/>
+                    <stop offset="75%" stop-color="#21bca5"/>
+                    <stop offset="100%" stop-color="#1ca490"/>
+                    </linearGradient>
+                </defs>
+
+                <path d="M3 6h18
+                        M3 12h18
+                        M3 18h18"
+                        stroke="url(#hamburgerGrad)"
+                        stroke-width="2"
+                        stroke-linecap="round" />
+                </svg>
+
+                </button>
+              <ul class="dropdown-menu">
+                <li><span class="menu-section">Platform</span></li>
+                <li><a href="#" data-action="set-mode" data-mode="landing">Landing</a></li>              
+                <li><a href="#" data-action="set-mode" data-mode="console">API Console</a></li>
+
+
+                <li><span class="menu-section">Account</span></li>
+                <li><a href="#" data-action="open-billing">Billing</a></li>  
+                <li><a href="#" data-action="open-login">Login</a></li>
+                <li><a href="#" data-action="logout">Logout</a></li>
+
+              </ul>
+            </li>
+          </ul>
+        </nav>
+      </div>
+    </div>
+  </header>

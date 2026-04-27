@@ -1,0 +1,30 @@
+/* /css/components/pills-badges.css */
+.badge{
+  display:inline-block;
+  padding:2px 8px;
+  border-radius:999px;
+  background:#ffffff12;
+  border:1px solid #ffffff22;
+  font-size:.8rem;
+  color:var(--muted);
+}
+
+.pill{
+  display:inline-flex;
+  align-items:center;
+  padding:2px 10px;
+  border-radius:999px;
+  border:1px solid rgba(255,255,255,.14);
+  background:rgba(255,255,255,.06);
+  font-size:12px;
+}
+
+.pill-enabled{
+  border-color:var(--brand-600);
+  box-shadow:var(--aura);
+}
+
+.pill-disabled{
+  color:var(--muted);
+  opacity:.6;
+}

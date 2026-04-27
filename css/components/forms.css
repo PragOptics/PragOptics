@@ -1,0 +1,48 @@
+/* /css/components/forms.css */
+.login-form{
+  display:flex;
+  flex-direction:column;
+  gap:18px;
+  padding:18px 22px;
+}
+
+.form-field{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  min-width:0;
+}
+
+.form-field label{
+  font-size:.8rem;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+  color:var(--brand-600);
+  font-weight:500;
+}
+
+.form-field input,
+.form-field select{
+  background:var(--grad);
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:10px 12px;
+  color:var(--ink);
+  font-size:.95rem;
+  outline:none;
+}
+
+.form-field input::placeholder{
+  color:rgba(198,208,240,.45);
+}
+
+.form-field input:focus,
+.form-field select:focus{
+  border-color:rgba(33,188,165,.45);
+  box-shadow:
+    0 0 0 1px rgba(33,188,165,.25),
+    0 0 16px rgba(131,33,188,.15);
+}
+
+.field-hint{font-size:.85rem;color:var(--muted)}
+.field-error{color:#da8aff}

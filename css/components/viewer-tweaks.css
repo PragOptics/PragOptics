@@ -1,0 +1,14 @@
+/* /css/components/viewer-tweaks.css */
+
+#po-visual-view .login-panel{
+  min-height:90px;
+}
+
+#po-visual-view pre{
+  font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size:12.5px;
+}
+
+#consoleView {
+  background: var(--grad);
+}

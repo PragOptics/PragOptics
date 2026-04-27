@@ -1,0 +1,60 @@
+/* /css/components/header.css */
+
+/* ====== HEADER ====== */
+header{
+  position:fixed;
+  top:0;
+  left:0;
+  right:0;
+  z-index:50;
+  -webkit-backdrop-filter:saturate(140%) blur(10px);
+  backdrop-filter:saturate(140%) blur(10px);
+  background:var(--glass);
+  border-bottom:1px solid var(--border);
+}
+
+.nav{
+  max-width:var(--nav-maxw);
+  margin:0 auto;
+  padding:14px 20px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+}
+
+
+.brand{
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+
+.logo{
+  width:34px;
+  height:34px;
+  border-radius:10px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:transparent;
+  box-shadow:
+    0 0 0 2px rgba(92,140,69,.25),
+    0 10px 20px rgba(92,140,69,.18);
+}
+
+.logo img{
+  width:100%;
+  height:100%;
+  object-fit:contain;
+  display:block;
+}
+
+.brand-title{
+  font-weight:700;
+}
+
+.brand-sub{
+  font-size:.85rem;
+  color:var(--muted);
+}

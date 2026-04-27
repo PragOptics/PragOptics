@@ -1,0 +1,121 @@
+/* /css/components/status-auth.css */
+
+/* ===== Status Modal ===== */
+.po-status-modal{
+  position:fixed;
+  inset:0;
+  z-index:9999;
+}
+
+.po-status-modal.hidden{
+  display:none;
+}
+
+.po-status-message{
+  font-weight:600;
+  background:linear-gradient(
+    130deg,
+    var(--ink) 10%,
+    var(--brand-600) 30%,
+    var(--brand-purp) 95%
+  );
+  -webkit-background-clip:text;
+  background-clip:text;
+  color:transparent;
+}
+
+.po-status-backdrop{
+  position:absolute;
+  inset:0;
+  background:var(--grad);
+  -webkit-backdrop-filter:blur(6px);
+  backdrop-filter:blur(6px);
+}
+
+.po-status-card{
+  position:relative;
+  max-width:420px;
+  margin:12vh auto;
+  background:var(--grad);
+  border-radius:12px;
+  border:1px solid var(--brand);
+  box-shadow:0 0 20px rgba(255,255,255,.5);
+  padding:28px;
+  text-align:center;
+  color:var(--ink);
+}
+
+.po-status-close{
+  position:absolute;
+  top:8px;
+  right:8px;
+  width:32px;
+  height:32px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:none;
+  border:0;
+  color:var(--muted);
+  cursor:pointer;
+  font-weight:700;
+  border-radius:8px;
+  transition:transform 160ms ease, box-shadow 160ms ease;
+}
+
+.po-status-close:hover{
+  background:var(--brandsoft);
+  border:1px solid var(--brand);
+  transform:translateY(-2px);
+  color:var(--brandsoft-purp);
+  font-weight:800;
+}
+
+.po-status-icon{
+  font-size:42px;
+  margin-bottom:14px;
+}
+
+.po-status-icon.loading::after{
+  content:"⟳";
+  animation:spin 1.2s linear infinite;
+}
+
+.po-status-icon.success{ color:#3ddc97; }
+.po-status-icon.error{ color:#ff6b6b; }
+
+@keyframes spin{
+  from{ transform:rotate(0); }
+  to{ transform:rotate(360deg); }
+}
+
+/* ===== Auth Status Indicator ===== */
+.auth-status{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  font-size:.85rem;
+  color:var(--muted);
+}
+
+.auth-label{ opacity:.7; }
+
+.auth-indicator{
+  width:10px;
+  height:10px;
+  border-radius:999px;
+  background:var(--brand-purp);
+  box-shadow:0 0 0 0 rgba(162,0,255,.6);
+  animation:authPulse 2.8s ease-in-out infinite;
+}
+
+.auth-indicator.signed-in{
+  background:var(--brand-600);
+  box-shadow:0 0 0 0 rgba(33,188,165,.6);
+}
+
+@keyframes authPulse{
+  0%{ box-shadow:0 0 0 0 currentColor; opacity:.85; }
+  50%{ box-shadow:0 0 0 6px rgba(255,255,255,0); opacity:1; }
+  100%{ box-shadow:0 0 0 0 rgba(255,255,255,0); opacity:.85; }
+}

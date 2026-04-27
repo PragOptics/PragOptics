@@ -1,0 +1,37 @@
+/* /css/tokens.css */
+:root{
+      --bg-deep:#000000 !important;
+      --grad:linear-gradient(130deg,#000000 0%,#18042527 50%,#0218127e 100%);
+      --menu:#000000e1 ;
+      --glass:#0000006e;
+      --glass-2:#11101012;
+      --border:#ffffff1a;
+      --ink:#dcdbf0e1;
+      --muted:#c6d0f0a6;
+      --brand:#1ca490da;
+      --brand-600:#21bca5;
+      --brandsoft:#21bca53d;
+      --brand-purp: #a200ffc5;
+      --console-prop:#7fcdece1;
+      --console-num: #85e29ad7;
+      --console-bool: #fa79e9;
+      --console-str: #ec9345;
+      --console-null: #ffdd1dcc;
+      --json-mod: #ce7ffcd7;
+      --brand-warn: #ffcc00c5;
+      --console-err: #ff49d8;
+      --console-ind: #ff4545;
+      --console-succ: #2ccc69e8;
+      --brandsoft-purp: #7e09c37b;
+  
+      --aura:
+        0 4px 18px rgba(255, 255, 255, 0.123),
+        0 8px 18px rgba(33, 188, 165, 0.185),
+        1px 8px 18px rgba(162, 0, 255, 0.132);
+
+      --radius:16px;
+      --radius-sm:12px;
+      --maxw: clamp(1200px, 90vw, 1600px);
+      --nav-maxw: clamp(1200px, 96vw, 1900px);
+
+}

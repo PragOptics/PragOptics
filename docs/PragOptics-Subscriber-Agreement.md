@@ -1,199 +1,311 @@
-# PragOptics™ Subscriber & Partner Agreement
-### Effective: February 26, 2026
+# PragOptics™ Platform Agreement
 
-This Agreement summarizes the pricing, capabilities, and key terms for using the **PragOptics™ Platform**.  
-It applies to:
-
-- **Users** subscribing to PragOptics™ capabilities  
-- **Partners** building on or reselling PragOptics™ subscriptions  
-
-By subscribing or clicking **“I Agree”**, you accept this Agreement.
+**Version:** 2026-04  
+**Effective Date:** Upon electronic acceptance (“I Agree”)
 
 ---
 
-# 1. Pricing Overview (Primary Section)
+## 1. Purpose & Scope
 
-## 1.1 Base User Subscription
-**$7.50 per user per month**
+This Platform Agreement (“Agreement”) governs access to and use of the **PragOptics™ Platform** (“PragOptics” or the “Platform”), operated by **Fortiview Holdings LLC** (“FH”).
 
-Includes per user:
-- 10,000 API calls per month  
-- 1 GB storage  
-- Website builder + deployment  
-- Domain availability check  
-- Authentication (MAUs counted toward Entra free tier)  
-- Access to platform automation functions  
+PragOptics is a programmable control plane that enables authentication, routing, automation, orchestration, billing, storage, deployment, and API-driven workflows across one or more environments, tenants, or execution targets.
 
-*(Partners may set their own retail pricing.)*
+This Agreement applies to **any individual or entity** that accesses paid, restricted, or gated PragOptics capabilities, regardless of role, subscription tier, or operating context.
+
+By subscribing, using gated platform features, or clicking **“I Agree”**, you accept this Agreement.
 
 ---
 
-## 1.2 Partner Premium API Subscription
-**$49 per month**
+## 2. Roles, Accounts & Authority (Extensible)
 
-Includes:
-- Partner Resource Group  
-- Partner storage account  
-- Custom API namespace: `/v1/{brand}/*`  
-- Access to all public APIs  
-- Ability to onboard Users  
-- Freedom to set User pricing  
-- No per‑endpoint costs  
+PragOptics supports multiple roles, permission levels, subscription tiers, and operating modes, which may expand over time.
 
----
+The role descriptions below are illustrative and non-exhaustive.
 
-## 1.3 Add‑Ons (Optional)
-| Add‑On | Price | Notes |
-|--------|--------|-------|
-| Domains + Business Email | **$7.50/user/month** | Per user, per domain/email license |
-| Extra Storage | **$2.00 per 5GB/month** | Scales in increments |
-| Workflow Bundle | **$3.00 per 10,000 executions** | Automations & workflow tasks |
-| API Bundle | **$5.00 per 50,000 calls** | High‑volume API workloads |
+### 2.1 Platform Operator
 
-Partners may resell or mark up add‑ons.
+**FH** is the owner and operator of the PragOptics Platform and retains authority over platform architecture, security controls, provisioning logic, routing behavior, operational policies, and billing enforcement.
 
----
+### 2.2 Platform Participant
 
-## 1.4 Provider‑Level Free Thresholds (Azure‑Backed)
-These platform capabilities inherit global free quotas:
+A **Participant** is any authenticated account, entity, or system granted access to PragOptics capabilities under this Agreement.
 
-- **Microsoft Entra External ID:** 50,000 MAUs free  
-- **Azure Function Apps:** 1,000,000 executions free  
-- **DNS Queries:** First 1,000,000 queries free (region‑dependent)  
+Participants may include, without limitation:
+- End users
+- Developers
+- Administrators
+- Super users
+- Operators
+- Partners
+- Integrators
+- Delegated service accounts
+- Programmatic or automated actors
 
-When usage exceeds included or free amounts:
-- Overages are billed to **Partners**  
-- Partners may pass through surcharges to Users  
+Access is governed by role assignment, permissions, subscription state, and delegation — not by title alone.
 
----
+### 2.3 Partner Role
 
-# 2. Subscriber Types
+A **Partner** is a Participant authorized to build on top of the Platform, including:
+- Creating custom endpoints or API surfaces
+- Onboarding or managing other Participants
+- Delivering PragOptics-backed services to third parties
+- Defining commercial terms with downstream customers
 
-## 2.1 Users
-Users subscribe to access PragOptics™ capabilities directly or via a Partner.
+Partners operate under their own commercial and legal relationships with their customers, subject to this Agreement.
 
-Users receive:
-- Public API functions  
-- A dedicated storage account with standard tables (Products, Orders, Inventory, etc.)  
-- Website builder tools  
-- GitHub‑based auto‑deployment  
-- Optional add‑ons  
+### 2.4 Delegation & Elevation
+
+Certain roles or capabilities (including administrative, super-user, or external-tenant execution roles) may require explicit delegation, elevated permissions, or additional agreements.
+
+FH may grant, restrict, or revoke elevated privileges to protect platform integrity, security, or compliance.
 
 ---
 
-## 2.2 Partners
-Partners build on or resell PragOptics™.
+## 3. Platform Capabilities (High-Level)
 
-Partners receive:
-- A dedicated Partner Resource Group  
-- A Partner storage account  
-- A custom API namespace (`/v1/{brand}/*`)  
-- Ability to onboard and manage Users  
-- Full control over their own retail pricing  
-- Access to developer sandbox resources  
+PragOptics provides a unified API and runtime layer that may include:
 
----
+- Authentication and identity resolution
+- API routing and custom endpoint namespaces
+- Workflow automation and orchestration
+- State and metadata management
+- Storage provisioning and isolation
+- Deployment and traffic routing
+- Subscription enforcement and billing automation
 
-# 3. Platform Capabilities (Simplified Technical Overview)
+Capabilities may vary by role, subscription tier, environment, or delegation status.
 
-## 3.1 Authentication
-- OAuth2 Authorization Code + PKCE  
-- Microsoft Entra External ID  
-- Login flow: `/auth → /auth/login → /auth/callback`
+No capability is implied unless explicitly enabled for the Participant.
 
 ---
 
-## 3.2 API Surface
-Key public endpoints:
+## 4. Subscriptions & Commercial Model
 
-- **Authentication:**  
-  `/v1/auth`, `/v1/auth/login`, `/v1/auth/callback`  
-- **Health:**  
-  `/v1/ping`  
-- **Billing:**  
-  `/v1/billing/profile`  
-  `/v1/billing/checkout-session`  
-- **Partner Custom Namespaces:**  
-  `/v1/app/*`, `/v1/custom/*`, `/v1/{brand}/*`  
+### 4.1 Subscription-Based Access
 
-Partners may build entire SaaS experiences on these endpoints.
+Access to PragOptics is provided on a subscription basis. Subscription types, pricing, and included usage are defined at:
+- Checkout
+- An Order Form
+- A published Pricing Schedule
+- Or an in-platform billing surface
 
----
+Multiple subscription models may exist concurrently.
 
-## 3.3 Data & Storage
-Each User or Partner receives:
-- Isolated storage  
-- Standardized tables  
-- Encryption at rest and in transit  
-- Capacity scaling via add‑ons  
+### 4.2 Reference Pricing
 
----
+Pricing amounts, included usage, and limits displayed in documentation or marketing materials are informational only.
 
-## 3.4 Deployment Model
-PragOptics uses a four‑lane deployment system:
+The authoritative price and included usage for any Participant are those presented at the time of purchase, renewal, or modification.
 
-- **PROD** — live traffic  
-- **BLUE** — staging  
-- **GREEN** — staging  
-- **DEV** — development  
+### 4.3 Responsibility for Charges
 
-Global updates propagate through Azure Front Door in **~20–40 minutes**, with **no downtime** due to stateless architecture.
+Unless otherwise agreed in writing:
+- Charges incurred by delegated or downstream Participants roll up to the controlling account
+- Partners are financially responsible for usage generated by Participants they onboard
+- Participants subscribing directly are responsible for their own usage and overages
 
 ---
 
-# 4. Identity, Security & Privacy
-- Encrypted data in transit and at rest  
-- Secrets stored in Azure Key Vault  
-- Global routing & WAF protections via Azure Front Door  
-- Multi‑tenant isolation  
-- OAuth2 best‑practice security  
-- No payment card details stored on‑platform  
+## 5. Billing, Overages & Third-Party Costs
+
+## Platform Access Tiers (Illustrative, Non‑Binding)
+
+PragOptics supports multiple access tiers intended to cover a wide range of use cases, from individual developers to enterprise operators.  
+The tiers described below are **illustrative only** and do not constitute a promise of specific functionality, limits, or pricing.
+
+Actual capabilities, limits, and commercial terms are defined at purchase, renewal, or in an applicable Pricing Schedule.
+
+### Tier Overview
+
+| Tier | Intended Scope | Typical Use Cases |
+|-----|----------------|-------------------|
+| **User** | Individual or small team access | API exploration, integrations, small applications, consuming partner-built solutions |
+| **Partner** | Builders and resellers | Developing SPFx packages, onboarding users, delivering PragOptics-backed products |
+| **Super** | Enterprise and advanced operators | Large-scale integrations, multi-user orchestration, complex tenant or external-system execution |
 
 ---
 
-# 5. Support Model
+### Capability Alignment by Tier
 
-## Partner Tier‑1 Support
-Partners support their Users in:
-- Setup and onboarding  
-- UI/UX and workflow guidance  
-- First‑line troubleshooting  
+| Capability | User | Partner | Super |
+|-----------|------|---------|-------|
+| Access to public PragOptics APIs | ✔️ | ✔️ | ✔️ |
+| Ability to consume partner-built solutions | ✔️ | ✔️ | ✔️ |
+| SPFx-based interface access (consumption) | ✔️ | ✔️ | ✔️ |
+| One-time SPFx access purchase | ✔️ | ✔️ | ✔️ |
+| Ability to build SPFx solutions | ✖️ | ✔️ | ✔️ |
+| Ability to submit SPFx for platform hosting | ✖️ | ✔️ (subject to review) | ✔️ |
+| Revenue participation for SPFx sales | ✖️ | ✔️ | ✔️ |
+| Custom API namespace | ✖️ | ✔️ | ✔️ |
+| Ability to onboard additional users | ✖️ | ✔️ | ✔️ |
+| Bulk user onboarding | ✖️ | Limited | ✔️ |
+| Enterprise or external-tenant execution | ✖️ | ✖️ | ✔️ |
 
-## FH Tier‑2 Support
-FH supports:
-- Platform API issues  
-- Authentication problems  
-- Provisioning and billing engine issues  
-- Infrastructure availability incidents  
-
----
-
-# 6. Attribution Requirement
-Products or sites built using the platform must include:
-
-**“Powered by PragOptics™”**
-
-A small badge, footer, or attribution link satisfies this requirement.
+Notes:
+- SPFx submissions are subject to technical, security, and platform compatibility review.
+- Platform-hosted SPFx solutions may incur platform surcharges.
+- Revenue routing and settlement terms are defined outside this Agreement.
 
 ---
 
-# 7. Electronic Acceptance
+### Usage & Scaling Characteristics (Illustrative)
+
+| Characteristic | User | Partner | Super |
+|---------------|------|---------|-------|
+| Base subscription model | Individual | Platform builder | Enterprise operator |
+| Included users | Single account | Partner-defined | Includes a base number of users |
+| Additional users | N/A | Optional | Available at reduced bulk rates |
+| User management | Self | Partner-managed | Centralized multi-user control |
+| Azure Front Door routing | Shared | Shared | Priority and advanced routing |
+| Workflow and automation limits | Standard | Elevated | Enterprise scaling |
+| Support expectations | Self / community | Tiered | Dedicated / advanced |
+
+Notes:
+- Reduced bulk pricing for additional users is available at certain thresholds, which may change over time.
+- Azure Front Door behavior, routing priority, and performance characteristics vary by subscription, traffic profile, and region.
+- No specific throughput, latency, or availability guarantees are implied by this section.
+
+---
+
+### Important Clarifications
+
+- These tables describe **intent and alignment**, not contractual minimums.
+- Capabilities may be enabled, restricted, or expanded per account.
+- New tiers, sub-tiers, or role refinements may be introduced without requiring changes to this Agreement.
+- Enterprise or custom arrangements may override the examples above via written agreement.
+
+---
+
+*PragOptics operates on top of third-party infrastructure and services, including cloud compute, identity providers, networking, storage, and payment processors.*
+
+### 5.1 Usage-Based Costs
+
+Usage beyond included thresholds may result in overages, including but not limited to:
+- API execution
+- Storage usage
+- Workflow and orchestration execution
+- Identity events
+- Network traffic
+- Provider-level metered services
+
+### 5.2 Allocation & Pass-Through
+
+Overages may be billed directly to the Participant or allocated to a controlling account, depending on role configuration and subscription structure.
+
+FH may apply administrative surcharges or pass-through costs as disclosed at billing time.
+
+---
+
+## 6. Provisioning, Tenancy & Isolation
+
+PragOptics provisions resources dynamically using platform metadata rather than fixed infrastructure assumptions.
+
+Key principles include:
+- Logical, table-driven tenancy
+- Isolated routing and storage boundaries
+- Execution targets that may be internal or externally delegated
+- No required architectural rewrite when changing execution location
+
+Provisioning behavior may evolve to improve reliability, security, or scalability.
+
+---
+
+## 7. Acceptable Use & Platform Integrity
+
+Participants must not:
+- Circumvent authentication, authorization, or rate limits
+- Abuse shared infrastructure
+- Introduce malicious code or payloads
+- Use the Platform for unlawful purposes
+- Interfere with other Participants’ access
+
+FH may suspend or restrict access immediately to protect platform integrity, security, or availability.
+
+---
+
+## 8. Data, Security & Privacy
+
+### 8.1 Data Ownership
+
+Participants retain ownership of their data and content.
+
+FH processes platform metadata required for routing, billing, provisioning, auditing, and security enforcement.
+
+### 8.2 Security Controls
+
+PragOptics employs:
+- Encryption in transit and at rest
+- Secret management systems
+- Network and application-level protections
+- Role-based access controls
+
+Participants are responsible for safeguarding credentials and authorized access.
+
+---
+
+## 9. Availability, Maintenance & Dependencies
+
+PragOptics is designed for resilience and stateless operation but is **not** provided with a guaranteed availability level unless expressly agreed in writing.
+
+### 9.1 No SLA by Default
+
+FH does not guarantee uninterrupted or error-free service.
+
+### 9.2 Third-Party Dependencies
+
+Platform operation depends on third-party providers (including cloud infrastructure, identity providers, and payment processors). Outages or changes in those services may impact PragOptics.
+
+---
+
+## 10. Suspension & Termination
+
+### 10.1 Suspension
+
+FH may suspend access for:
+- Non-payment
+- Security concerns
+- Policy violations
+- Platform protection requirements
+
+### 10.2 Termination
+
+Either party may terminate participation by ending subscription renewal, subject to billing terms in effect at that time.
+
+Termination does not relieve responsibility for accrued charges.
+
+---
+
+## 11. Changes to Platform & Terms
+
+### 11.1 Platform Evolution
+
+PragOptics is an evolving platform. FH may add, modify, deprecate, or replace features.
+
+### 11.2 Agreement Updates
+
+FH may update this Agreement to reflect platform, security, operational, or regulatory changes.
+
+Material changes will be communicated through reasonable notice. Continued use constitutes acceptance of the updated Agreement.
+
+---
+
+## 12. Electronic Acceptance
+
 By clicking **“I Agree”**, you acknowledge that:
-- This Agreement is electronically binding  
-- Acceptance has the same effect as a handwritten signature  
-- Your subscription is governed by this Agreement and the current pricing at the time of purchase  
-
-Electronic acceptance complies with:
-- The U.S. **ESIGN Act**  
-- The **Uniform Electronic Transactions Act (UETA)**  
-- Comparable international digital signature standards  
+- Acceptance is legally binding
+- Electronic acceptance has the same effect as a handwritten signature
+- This Agreement governs your use of PragOptics
 
 ---
 
-# 8. Acceptance
-By subscribing or using the PragOptics™ Platform, you accept:
-1. This Agreement  
-2. The current subscription and pricing schedule  
-3. Any partner‑specific terms presented at checkout  
+## 13. Governing Law
+
+This Agreement is governed by the laws of the **State of Texas, USA**, without regard to conflict-of-law principles.
 
 ---
+
+## 14. Contact
+
+Platform operator: **Fortiview Holdings LLC**  
+Support: **support@fortiviewholdings.com**
