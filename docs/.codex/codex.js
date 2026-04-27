@@ -156,7 +156,7 @@ function basename(p) {
 
 async function loadManifest() {
   // codex.js is served from /docs/.codex/; manifest sits at /docs/
-  const res = await fetch("/docs/codex.manifest.json", { cache: "no-store" });
+  const res = await fetch("../codex.manifest.json", { cache: "no-store" });
   if (!res.ok) throw new Error("Failed to load /docs/codex.manifest.json");
   return res.json();
 }
@@ -263,7 +263,7 @@ async function openDoc(name, filePath) {
 }
 
 function findFirstFile(manifest) {
-  const root = manifest.root || "/docs/";
+  const root = manifest.root || "../";
 
   function walk(items) {
     for (const it of items || []) {
@@ -287,7 +287,7 @@ function findFirstFile(manifest) {
   if (!$tree || !$content) return;
 
   const manifest = await loadManifest();
-  const rootPath = manifest.root || "/docs/";
+  const rootPath = manifest.root || "../";
 
   buildTree(manifest.items || [], $tree, rootPath);
 

@@ -1,6 +1,6 @@
 {
   "title": "PragOptics Documentation",
-  "root": "/docs/",
+  "root": "../",
   "items": [
     {
       "type": "folder",
