@@ -1,6 +1,6 @@
 {
   "title": "PragOptics Documentation",
-  "root": "../",
+  "root": "https://pragoptics.com/docs/",
   "items": [
     {
       "type": "folder",

@@ -155,11 +155,11 @@ function basename(p) {
    ========================= */
 
 async function loadManifest() {
-  // codex.js is served from /docs/.codex/; manifest sits at /docs/
-  const res = await fetch("../codex.manifest.json", { cache: "no-store" });
-  if (!res.ok) throw new Error("Failed to load /docs/codex.manifest.json");
+  const res = await fetch("https://pragoptics.com/docs/codex.manifest.json", { cache: "no-store" });
+  if (!res.ok) throw new Error("Failed to load https://pragoptics.com/docs/codex.manifest.json");
   return res.json();
 }
+
 
 function clearActive() {
   document.querySelectorAll(".codex-node.is-active").forEach(n => n.classList.remove("is-active"));
@@ -263,7 +263,7 @@ async function openDoc(name, filePath) {
 }
 
 function findFirstFile(manifest) {
-  const root = manifest.root || "../";
+  const root = manifest.root || "https://pragoptics.com/docs/";
 
   function walk(items) {
     for (const it of items || []) {
@@ -287,7 +287,7 @@ function findFirstFile(manifest) {
   if (!$tree || !$content) return;
 
   const manifest = await loadManifest();
-  const rootPath = manifest.root || "../";
+  const rootPath = manifest.root || "https://pragoptics.com/docs/";
 
   buildTree(manifest.items || [], $tree, rootPath);
 
