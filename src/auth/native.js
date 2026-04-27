@@ -64,10 +64,12 @@ export async function submitNativeLogin(e) {
     const data = await postJson("/auth/login-password", { email, password });
 
     // Persist tokens the way bootstrap expects
-    if (data?.tokens) {
-      if (typeof window.setToken === "function") {
-        window.setToken(data.tokens);
-      }
+    if (!data?.tokens?.access_token) {
+      throw new Error("Login did not return access token.");
+    }
+
+    if (typeof window.setToken === "function") {
+      window.setToken(data.tokens);
     }
 
     closeLoginUi();

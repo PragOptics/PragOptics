@@ -8,6 +8,12 @@ export async function handleBillingProfile({
   pragopticsToken,
   buildRequestedSubscription,
   BILLING_PROFILE_URL,
+  CHECKOUT_SESSION_URL,
+  PING_URL,
+  setDnaMode,
+  gotoStep4,
+  gotoStep5,
+  pollUntilResolved,
   startPaymentStep
 }) {
   e.preventDefault();
@@ -67,7 +73,16 @@ export async function handleBillingProfile({
     body: JSON.stringify(payload)
   });
 
-  await startPaymentStep(accessToken);
+  await startPaymentStep({
+    accessToken,
+    CHECKOUT_SESSION_URL,
+    PING_URL,
+    getStoredTokens,
+    setDnaMode,
+    gotoStep4,
+    gotoStep5,
+    pollUntilResolved
+  });
 }
 
 
