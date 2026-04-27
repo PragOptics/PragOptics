@@ -65,14 +65,32 @@ export async function submitNativeLogin(e) {
 
     // Persist tokens the way bootstrap expects
     if (data?.tokens) {
-      sessionStorage.setItem("pragoptics_tokens", JSON.stringify(data.tokens));
+      if (typeof window.setToken === "function") {
+        window.setToken(data.tokens);
+      }
     }
 
     closeLoginUi();
 
-    // bootstrap still owns ping routing
-    if (typeof globalThis.callPragOpticsPing === "function") {
-      await globalThis.callPragOpticsPing();
+    // Follow the SAME post-login flow as CIAM
+    const res = await fetch(`${PRAG_API_BASE}/ping`, {
+      headers: {
+        Authorization: `Bearer ${data.tokens.access_token}`
+      }
+    });
+
+    if (!res.ok) {
+      throw new Error(`Ping failed: HTTP ${res.status}`);
+    }
+
+    const ping = await res.json();
+
+    // persist like CIAM path does
+    sessionStorage.setItem("pragoptics_ping", JSON.stringify(ping));
+
+    // route exactly the same way CIAM callback does
+    if (typeof globalThis.routePostLogin === "function") {
+      globalThis.routePostLogin({ ping });
     }
   } catch (err) {
     setCodeError(err?.message || "Invalid email or password.");
@@ -136,11 +154,26 @@ export async function submitNativeSignup({
   return postJson("/auth/signup", body);
 }
 
+
 // -------------------------------
-// RESET PASSWORD (stub)
+// RESET PASSWORD -> /auth/reset-password
 // -------------------------------
-export async function submitNativeResetStub() {
-  throw new Error("Reset password not wired yet.");
+export async function submitNativeResetPassword({
+  email,
+  password,
+  confirmPassword,
+  requestId,
+  verificationCode
+}) {
+  const body = {
+    email: normalizeEmail(email),
+    password: String(password || ""),
+    confirmPassword: String(confirmPassword || ""),
+    requestId: String(requestId || ""),
+    verificationCode: String(verificationCode || "")
+  };
+
+  return postJson("/auth/reset-password", body);
 }
 
 // -------------------------------
@@ -149,3 +182,4 @@ export async function submitNativeResetStub() {
 globalThis.pragRequestCode = requestNativeCode;
 globalThis.pragVerifyCode = verifyNativeCode;
 globalThis.pragSignup = submitNativeSignup;
+globalThis.pragResetPassword = submitNativeResetPassword;

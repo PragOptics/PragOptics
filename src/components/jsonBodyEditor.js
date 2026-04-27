@@ -26,6 +26,28 @@ export function initJsonBodyEditor({
     return editorRoot ? editorRoot.querySelector("#po-api-body-highlight") : null;
   }
 
+    function ensureHighlightInner() {
+    const host = getHighlightHost();
+    if (!host) return null;
+
+    // Create a stable inner layer once; host stays clipped, inner moves.
+    let inner = host.querySelector(".po-json-highlight-inner");
+    if (!inner) {
+      inner = document.createElement("div");
+      inner.className = "po-json-highlight-inner";
+
+      // Minimal inline styles so we do NOT depend on CSS edits.
+      inner.style.position = "relative";
+      inner.style.display = "block";
+      inner.style.willChange = "transform";
+
+      // Preserve host semantics (pre-like whitespace handled by host styles already)
+      host.innerHTML = "";
+      host.appendChild(inner);
+    }
+    return inner;
+  }
+
     function getSuggestHost() {
     // same container as textarea
     const panel = textarea.closest("#po-api-body-container") || textarea.parentElement;
@@ -373,14 +395,19 @@ export function initJsonBodyEditor({
     }
     }
 
-    highlightHost.innerHTML = out;
+    const inner = ensureHighlightInner();
+    if (inner) inner.innerHTML = out;
   }
 
+  
   function syncScroll() {
-    const highlightHost = getHighlightHost();
-    if (!highlightHost) return;
-    highlightHost.scrollTop = textarea.scrollTop;
-    highlightHost.scrollLeft = textarea.scrollLeft;
+    const inner = ensureHighlightInner();
+    if (!inner) return;
+
+    // Translate highlight content to match textarea scroll, while host stays clipped.
+    const x = -textarea.scrollLeft;
+    const y = -textarea.scrollTop;
+    inner.style.transform = `translate3d(${x}px, ${y}px, 0)`;
   }
 
   function setStatus(valid, message) {

@@ -14,6 +14,7 @@
 <style>
 :root{
   --hud-h: 112px;
+  --hud-scale:1.0;
 
   --bg0:#020406;
   --ink:#9ff;
@@ -42,38 +43,50 @@ html,body{
 
 /* ===== HUD SHELL ===== */
 #hud{
-  min-height:var(--hud-h);
-  padding:12px 18px;
+  padding:8px 16px;
   background:linear-gradient(180deg,rgba(10,22,30,.96),rgba(6,10,14,.96));
   border-bottom:1px solid var(--line);
   display:flex;
   flex-direction:column;
-  gap:10px;
+  gap:0;
+}
+
+#hudScale{
+  transform: scale(var(--hud-scale));
+  transform-origin: top center;
 }
 
 /* ===== TOP: TITLE + CONTROLS (CENTERED CONSOLE STYLE) ===== */
 #hudTop{
-  display:grid;
-  grid-template-columns:1fr auto 1fr;
-  align-items:center;
-  font-size:12px;
+  display:flex;
+  align-items:baseline;
+  justify-content:space-between;
+  width:100%;
+  gap:12px;
+  margin-bottom: 6px;
 }
 
+/* Left: game title */
 #hudTop .title{
-  grid-column:2;
-  justify-self:center;
   font-size:14px;
   font-weight:800;
-  letter-spacing:.7px;
+  letter-spacing:.6px;
+  white-space:nowrap;
 }
 
+/* Right: controls hint */
 #hudTop .muted{
-  grid-column:2;
-  margin-top:2px;
   font-size:11px;
-  text-align:center;
   color:var(--muted);
+  opacity:.85;
+  white-space:nowrap;
+  text-align:right;
 }
+#hudTop{
+  padding-bottom:4px;
+  border-bottom:1px dashed rgba(120,255,255,.15);
+}
+
 
 #hudTop > div:not(.title):not(.muted){
   display:none;
@@ -83,7 +96,7 @@ html,body{
 #hudMid{
   display:grid;
   grid-template-columns:1fr 1fr 1fr;
-  gap:24px;
+  gap:48px;
   font-size:11px;
   color:var(--muted);
   align-items:stretch;
@@ -182,10 +195,12 @@ html,body{
   gap:10px;
   font-size:11px;
   color:var(--muted);
+  margin-top: 6px;
 }
 #bossRow .track{
   width:100%;
-  max-width:420px;
+  max-width:none;
+  flex:1;
   height:10px;
   border:1px solid rgba(255,90,90,.35);
   background:rgba(30,8,10,.35);
@@ -217,6 +232,7 @@ canvas{
 <body>
 
 <header id="hud">
+  <div id="hudScale">
   <div id="hudTop">
     <div class="title">PRAGOPTICS :: VECTOR BREACH</div>
     <div class="muted">1–4 switch • Q/E cycle • Space fire • Arrows move • R reset</div>
@@ -228,7 +244,7 @@ canvas{
   <div class="hud-left">
     <div style="display:flex;align-items:center;gap:8px;">
       <div style="width:42px;">💚</div>
-      <div class="track" style="width:190px;border-color:rgba(42,255,138,.28);">
+      <div class="track" style="width:190px;border-color:rgba(42, 255, 70, 0.28);">
         <div class="fill" id="hpFill" style="background:var(--hp);width:100%"></div>
       </div>
       <div class="pct" id="hpText">100/100</div>
@@ -236,11 +252,36 @@ canvas{
 
     <div style="display:flex;align-items:center;gap:8px;">
       <div style="width:42px;">🛡️</div>
-      <div class="track" style="width:190px;border-color:rgba(120,255,255,.22);">
+      <div class="track" style="width:190px;border-color:rgba(102, 186, 255, 0.668);">
         <div class="fill" id="shFill" style="background:var(--shield);width:0%"></div>
       </div>
       <div class="pct" id="shText">0</div>
     </div>
+    <!-- ARMOR (hidden unless active) -->
+      <div id="armorRow" style="display:none;align-items:center;gap:8px;">
+        <div style="width:42px;">💟</div>
+        <div class="track" style="width:190px;border-color:rgba(187, 69, 255, 0.644);">
+          <div
+            class="fill"
+            id="arFill"
+            style="background:rgba(137, 28, 184, 0.332);width:0%">
+          </div>
+        </div>
+        <div class="pct" id="arText">0</div>
+      </div>
+      <!-- DMG BOOST (hidden unless active) -->
+    <div id="boostRow" style="display:none;align-items:center;gap:8px;">
+      <div style="width:42px;">🗡️</div>
+      <div class="track" style="width:190px;border-color:rgba(255, 212, 42, 0.70);">
+        <div
+          class="fill"
+          id="boostFill"
+          style="background:rgba(255, 212, 42, 0.55);width:0%">
+        </div>
+      </div>
+      <div class="pct" id="boostText">0s</div>
+    </div>
+
   </div>
 
   <!-- CENTER: LIVE READER -->
@@ -273,6 +314,7 @@ canvas{
     <div class="track"><div class="fill" id="bossFill" style="width:0%"></div></div>
     <div id="bossText">0/0</div>
   </div>
+  </div>
 </header>
 
 <main id="gameWrap">
@@ -294,12 +336,18 @@ function resize(){
   W = wrapEl.clientWidth | 0;
   H = wrapEl.clientHeight | 0;
   canvas.width = W * DPR;
-  canvas.height = H * DPR;
+  canvas.height = H * DPR
   ctx.setTransform(DPR,0,0,DPR,0,0);
 }
 
 function syncHudHeight(){
-  const h = document.getElementById("hud").offsetHeight;
+  const hud = document.getElementById("hud");
+  const scale = parseFloat(
+    getComputedStyle(document.documentElement)
+      .getPropertyValue("--hud-scale")
+  ) || 1;
+
+  const h = hud.offsetHeight * scale;
   document.documentElement.style.setProperty("--hud-h", h + "px");
 }
 
@@ -378,10 +426,22 @@ const CFG = {
 
   weapons:{
     minigun:{ cd:2, spread:0.05, sfx:[820,0.02,"square",0.035] },
-    burst:{ cd:30, sfx:[520,0.07,"sawtooth",0.05] },
+    burst:{ cd:30, dmg:5, seqGap:3, sfx:[520,0.07,"sawtooth",0.05] },
     fan:{ cd:40, sfx:[640,0.05,"triangle",0.05] },
     bomb:{ cd:180, radius:220, sfx:[120,0.28,"triangle",0.18] }
+  },
+  
+  powerups:{
+    armorMax: 80,
+    dmgBoostDur: 30 * 60,   // 30s @ ~60fps
+    dmgBoostMul: 1.6,
+    bossBoostChance: 0.55
+  },
+
+  progression:{
+    bossHpGain: 50
   }
+
 };
 
 /* ================= STATE ================= */
@@ -395,16 +455,25 @@ const S = {
   bossSet:[],            // array of boss objects when in boss phase
 
   shake:0,
+  bombRipples: [],
+  burstSeq: 0,
+  burstSeqGap: 0,
 
   ship:{
     x:0,y:0,a:0,vx:0,vy:0,
     hp:CFG.ship.maxHp,
-    shield:0,
+    shield:100,
+    armor:0,
     ifr:0
   },
 
   bullets:[],
   enemies:[],
+  powerups: [],
+
+  effects: {
+    dmgBoostT: 0
+  },
 
   weapon:"minigun",
   cd:{minigun:0,burst:0,fan:0,bomb:0},
@@ -422,6 +491,12 @@ const hpFill = document.getElementById("hpFill");
 const hpText = document.getElementById("hpText");
 const shFill = document.getElementById("shFill");
 const shText = document.getElementById("shText");
+const armorRow = document.getElementById("armorRow");
+const arFill   = document.getElementById("arFill");
+const arText   = document.getElementById("arText");
+const boostRow  = document.getElementById("boostRow");
+const boostFill = document.getElementById("boostFill");
+const boostText = document.getElementById("boostText");
 
 const barMini  = document.getElementById("barMini");
 const barBurst = document.getElementById("barBurst");
@@ -447,6 +522,14 @@ const bossText = document.getElementById("bossText");
 
 function applyDamage(dmg, srcX, srcY){
   if(S.ship.ifr > 0 || S.phase === "dead") return;
+
+  // armor absorbs first
+  if(S.ship.armor > 0){
+    const used = Math.min(S.ship.armor, dmg);
+    S.ship.armor -= used;
+    dmg -= used;
+  }
+
 
   // shield absorbs first
   if(S.ship.shield > 0){
@@ -483,7 +566,8 @@ function applyDamage(dmg, srcX, srcY){
 
 /* ================= SHOOTING ================= */
 
-function shootPlayer(angle, speed){
+
+function shootPlayer(angle, speed, dmg=1){
   if(S.bullets.length >= CFG.bullet.max) return;
   S.bullets.push({
     x: S.ship.x,
@@ -491,9 +575,11 @@ function shootPlayer(angle, speed){
     vx: Math.cos(angle) * speed + S.ship.vx,
     vy: Math.sin(angle) * speed + S.ship.vy,
     life: CFG.bullet.life,
-    r: 2
+    r: 2,
+    dmg
   });
 }
+
 
 function shootEnemy(x,y, angle, speed){
   // boss bullets
@@ -505,6 +591,165 @@ function shootEnemy(x,y, angle, speed){
     r: 3
   });
 }
+
+/* ================= POWERUPS (ARMOR ONLY - PHASE 1) ================= */
+
+function spawnArmorPickup(){
+  // Do not spawn if player already has armor
+  if (S.ship.armor > 0) return;
+
+  // Keep it to ONE armor pickup at a time
+  if (S.powerups.some(p => p.kind === "armor")) return;
+
+  S.powerups.push({
+    kind:"armor",
+    x: rand(40, W-40),
+    y: rand(80, H-80),
+    r: 14,
+    t: 0
+  });
+}
+
+function maybeSpawnArmorForLevel(){
+  // Armor becomes available only AFTER tier-4 boss wave is cleared.
+  // bossTier increments on boss wave cleared, so >= 4 means tier4 is done.
+  if(S.bossTier < 4) return;
+
+  // Spawn one armor pickup per level (player must fly over it)
+  spawnArmorPickup();
+}
+
+function spawnDmgPickup(){
+  // keep it to ONE dmg pickup at a time
+  if(S.powerups.some(p => p.kind === "dmg")) return;
+
+  S.powerups.push({
+    kind:"dmg",
+    x: rand(40, W-40),
+    y: rand(80, H-80),
+    r: 12,
+    t: 0
+  });
+}
+
+function maybeSpawnDmgForBossLevel(){
+  // Only after bosses gain movement (tier 5+ in your evolution model)
+  if(S.bossTier < 5) return;
+
+  // ALWAYS spawn at boss-level start (no randomness)
+  spawnDmgPickup();
+}
+
+function applyPowerup(p){
+  if(p.kind === "armor"){
+    S.ship.armor = CFG.powerups.armorMax;
+    addShake(4);
+    buzz(12);
+    beep(740, 0.06, "triangle", 0.07);
+    return;
+  }
+
+  if(p.kind === "dmg"){
+    S.effects.dmgBoostT = CFG.powerups.dmgBoostDur;
+    addShake(3);
+    buzz(10);
+    beep(980, 0.05, "square", 0.06);
+    return;
+  }
+}
+
+function updatePowerups(){
+  for(let i=S.powerups.length-1;i>=0;i--){
+    const p = S.powerups[i];
+    p.t++;
+
+    // gentle bob
+    p.y += Math.sin(p.t * 0.05) * 0.35;
+
+    // collect
+    if(dist(p.x,p.y,S.ship.x,S.ship.y) < (p.r + CFG.ship.r + 2)){
+      applyPowerup(p);
+      S.powerups.splice(i,1);
+    }
+  }
+  
+ // tick timed effects
+  if(S.effects.dmgBoostT > 0) S.effects.dmgBoostT--;
+
+}
+
+function drawPowerups(){
+  for(const p of S.powerups){
+
+    if(p.kind === "armor"){
+      // ring pickup (armor)
+      ctx.strokeStyle = "rgba(170,120,255,0.90)";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
+      ctx.stroke();
+
+      ctx.globalAlpha = 0.40;
+      ctx.strokeStyle = "rgba(200,160,255,0.55)";
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r + 6 + Math.sin(p.t*0.10)*2, 0, Math.PI*2);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+      continue;
+    }
+
+    if(p.kind === "dmg"){
+      // diamond pickup (damage boost) - gold/yellow (distinct from armor)
+      ctx.strokeStyle = "rgba(255,212,42,0.90)";
+      ctx.lineWidth = 2;
+
+      const bob = Math.sin(p.t * 0.10) * 2;
+
+      ctx.beginPath();
+      ctx.moveTo(p.x,       p.y - (10 + bob));
+      ctx.lineTo(p.x + 8,   p.y);
+      ctx.lineTo(p.x,       p.y + (10 + bob));
+      ctx.lineTo(p.x - 8,   p.y);
+      ctx.closePath();
+      ctx.stroke();
+
+      ctx.globalAlpha = 0.25;
+      ctx.beginPath();
+      ctx.moveTo(p.x,       p.y - (16 + bob));
+      ctx.lineTo(p.x + 12,  p.y);
+      ctx.lineTo(p.x,       p.y + (16 + bob));
+      ctx.lineTo(p.x - 12,  p.y);
+      ctx.closePath();
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+      continue;
+    }
+
+  }
+}
+
+function updateBombRipples(){
+  for(let i = S.bombRipples.length - 1; i >= 0; i--){
+    const r = S.bombRipples[i];
+    r.r += 18;
+    r.a -= 0.05;
+
+    if(r.a <= 0){
+      S.bombRipples.splice(i,1);
+    }
+  }
+}
+
+function drawBombRipples(){
+  for(const r of S.bombRipples){
+    ctx.strokeStyle = `rgba(255,140,80,${r.a})`;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(r.x, r.y, r.r, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+}
+
 
 /* ================= WAVE / BOSS EVOLUTION ================= */
 
@@ -626,6 +871,10 @@ function spawnWaveForLevel(){
   } else {
     setPhase("wave");
   }
+  // Armor pickup appears on level start (only after tier-4 cleared)
+  maybeSpawnArmorForLevel();
+  // Damage boost pickup appears on boss-level start only (only after tier-5 unlock)
+  if(bossLevel) maybeSpawnDmgForBossLevel();
 }
 
 function advanceLevel(){
@@ -635,6 +884,13 @@ function advanceLevel(){
 }
 
 function onBossWaveCleared(){
+  // === PROGRESSION: permanent hull upgrade ===
+  CFG.ship.maxHp += CFG.progression.bossHpGain;
+  S.ship.hp = Math.min(
+    CFG.ship.maxHp,
+    S.ship.hp + CFG.progression.bossHpGain
+  );
+
   // increment tier, then advance level
   S.bossTier++;
   // clear any leftover minions to prevent stall
@@ -647,7 +903,6 @@ function onBossWaveCleared(){
 
   advanceLevel();
 }
-
 /* ===== CHUNK 2 ends here on purpose. ===== */
 
 function clearPressed(){
@@ -669,7 +924,7 @@ function resetShip(){
   S.ship.vx = 0;
   S.ship.vy = 0;
   S.ship.hp = CFG.ship.maxHp;
-  S.ship.shield = 0;
+  S.ship.armor = 0;
   S.ship.ifr = 0;
 }
 
@@ -682,6 +937,8 @@ function resetRun(){
   S.bullets.length = 0;
   S.eBullets.length = 0;
   S.enemies.length = 0;
+  S.powerups.length = 0;
+  S.effects.dmgBoostT = 0;
   S.weapon = "minigun";
   for(const k in S.cd) S.cd[k] = 0;
   S.shake = 0;
@@ -846,7 +1103,8 @@ function updateBossSet(){
       const b = S.bullets[j];
       if(dist(boss.x,boss.y,b.x,b.y) < boss.r){
         S.bullets.splice(j,1);
-        boss.hp--;
+        const mul = (S.effects.dmgBoostT > 0) ? CFG.powerups.dmgBoostMul : 1;
+        boss.hp -= Math.max(1, Math.round((b.dmg || 1) * mul));
         if(boss.hp <= 0){
           S.score += 300 + boss.tier * 40;
           S.bossSet.splice(bi,1);
@@ -913,12 +1171,11 @@ function fireBurst(){
   if(S.cd.burst !== 0) return;
   if(!press.Space) return;
 
-  // Triple burst – same frame (kept simple & deterministic)
-  shootPlayer(S.ship.a, CFG.bullet.speed);
-  shootPlayer(S.ship.a, CFG.bullet.speed);
-  shootPlayer(S.ship.a, CFG.bullet.speed);
-
+  // Start a 3-round burst sequence (spaced, deterministic)
   S.cd.burst = CFG.weapons.burst.cd;
+  S.burstSeq = 3;
+  S.burstSeqGap = 0;
+
   const s = CFG.weapons.burst.sfx; beep(s[0],s[1],s[2],s[3]);
   addShake(3);
   buzz(8);
@@ -980,12 +1237,27 @@ function fireBomb(){
   addShake(16);
   buzz(35);
   const s = CFG.weapons.bomb.sfx; beep(s[0],s[1],s[2],s[3]);
+  // Bomb shockwave ripple (double pulse)
+  S.bombRipples.push(
+    { x: S.ship.x, y: S.ship.y, r: 0,  a: 1.0 },
+    { x: S.ship.x, y: S.ship.y, r: 0,  a: 0.6 }
+  );
 }
 
 /* Single dispatcher that never “forgets” weapons */
 function updateWeapons(){
   updateWeaponSelection();
   tickCooldowns();
+
+  // Burst sequencer: fires 3 rounds over a few frames (no overlap)
+  if(S.weapon === "burst" && S.burstSeq > 0){
+    S.burstSeqGap = Math.max(0, S.burstSeqGap - 1);
+    if(S.burstSeqGap === 0){
+      shootPlayer(S.ship.a, CFG.bullet.speed, CFG.weapons.burst.dmg);
+      S.burstSeq--;
+      S.burstSeqGap = CFG.weapons.burst.seqGap;
+    }
+  }
 
   if(S.phase === "dead") return;
 
@@ -1048,11 +1320,13 @@ function tick(){
 
   updateShip();
   updateWeapons();
+  updateBombRipples();
   updatePlayerBullets();
 
   updateBlocks();         // blocks move + collide + split + damage
   updateEnemyBullets();   // boss shots
   updateBossSet();        // boss set evolution + boss clears + spawns enemies
+  updatePowerups();
 
   maybeAdvanceFromWave();
 
@@ -1133,6 +1407,8 @@ function render(){
   drawGrid();
   drawBlocks();
   drawBosses();
+  drawBombRipples();
+  drawPowerups();
   drawEnemyBullets();
   drawPlayerBullets();
   drawShip();
@@ -1182,14 +1458,48 @@ function syncHUD(){
   hudLevel.textContent = S.level;
   hudWeapon.textContent = S.weapon.toUpperCase();
 
-  // HP/Shield
+  // HP
   const hpF = clamp(S.ship.hp / CFG.ship.maxHp, 0, 1);
   hpFill.style.width = (hpF * 100).toFixed(1) + "%";
   hpText.textContent = `${S.ship.hp}/${CFG.ship.maxHp}`;
 
+  // SHIELD
   const shF = clamp(S.ship.shield / CFG.ship.maxShield, 0, 1);
   shFill.style.width = (shF * 100).toFixed(1) + "%";
   shText.textContent = `${S.ship.shield}`;
+
+  // ARMOR (hidden when inactive)
+  if (S.ship.armor > 0) {
+    armorRow.style.display = "flex";
+
+    const af = clamp(
+      S.ship.armor / CFG.powerups.armorMax,
+      0,
+      1
+    );
+
+    arFill.style.width = (af * 100).toFixed(1) + "%";
+    arText.textContent = `${S.ship.armor}`;
+  } else {
+    armorRow.style.display = "none";
+  }
+
+  // DMG BOOST (hidden when inactive) — MUST BE INDEPENDENT OF ARMOR
+  if (S.effects && S.effects.dmgBoostT > 0) {
+    boostRow.style.display = "flex";
+
+    const bf = clamp(
+      S.effects.dmgBoostT / CFG.powerups.dmgBoostDur,
+      0,
+      1
+    );
+
+    boostFill.style.width = (bf * 100).toFixed(0) + "%";
+    boostText.textContent = `${Math.ceil(S.effects.dmgBoostT / 60)}s`;
+  } else {
+    boostRow.style.display = "none";
+  }
+
   // Weapon cooldown bars + active highlight
   setBar(barMini,  fillMini,  pctMini,  S.cd.minigun, CFG.weapons.minigun.cd, S.weapon==="minigun");
   setBar(barBurst, fillBurst, pctBurst, S.cd.burst,   CFG.weapons.burst.cd,   S.weapon==="burst");
@@ -1204,8 +1514,9 @@ function syncHUD(){
     bossFill.style.width = (f * 100).toFixed(1) + "%";
     bossFill.style.filter = `brightness(${1 + (1 - f) * 0.6})`;
     bossText.textContent = `${t.hp}/${t.max}`;
+  }
 }
-}
+
 
 })(); // 
 </script>

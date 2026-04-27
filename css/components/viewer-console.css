@@ -177,7 +177,7 @@ pre{
   inset: 0;
   margin: 0;
 
-  padding: 10px calc(12px + var(--po-json-scroll-gutter)) 10px 12px; /* ✅ */
+  padding: 19px calc(12px + var(--po-json-scroll-gutter)) 19px 12px; /* ✅ */
   white-space: pre;
   overflow: hidden;
   word-break: normal;
@@ -185,7 +185,9 @@ pre{
   color: var(--ink);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
   font-size: 13px;
-  line-height: 1.45;
+  line-height: 19px;
+  letter-spacing: 0.025em;
+  box-sizing: border-box;
 }
 
 .po-json-editor textarea{
@@ -196,7 +198,7 @@ pre{
   resize: vertical;
   margin: 0;
 
-  padding: 10px calc(12px + var(--po-json-scroll-gutter)) 10px 12px; /* ✅ */
+  padding: 19px calc(12px + var(--po-json-scroll-gutter)) 19px 12px; /* ✅ */
 
   background: transparent;
   color: transparent;
@@ -207,7 +209,8 @@ pre{
 
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
   font-size: 13px;
-  line-height: 1.45;
+  line-height: 19px;
+  box-sizing: border-box;
 }
 .po-json-editor{
   --po-json-scroll-gutter: 14px; /* tweak 12–16px to taste */
@@ -259,10 +262,10 @@ pre{
 
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
   font-size: 13px;
-  line-height: 1.45;
+  line-height: 19px;
 
   /* ✅ keep highlight/text aligned AND reserve room for scrollbar */
-  padding: 10px calc(12px + var(--po-json-scroll-gutter)) 10px 12px !important;
+  padding: 19px calc(12px + var(--po-json-scroll-gutter)) 19px 12px !important;
   
   letter-spacing: 0.025em; 
 

@@ -1,7 +1,7 @@
 export function initWizardForms() {
   const form = document.getElementById("billingProfileForm");
   if (form) {
-    form.addEventListener("submit", (e) => handleBillingProfile(e));
+    form.addEventListener("submit", (e) => window.handleBillingProfile?.(e));
   }
 
   document.addEventListener("blur", (e) => {

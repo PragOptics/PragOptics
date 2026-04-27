@@ -501,20 +501,27 @@ function bindLoginModal(modal) {
       }
     }
 
-        if (mode === "reset") {
-      showError(
-        "Password reset is coming soon. Your verification code and new password are ready."
-      );
+    if (mode === "reset") {
+      try {
+        const resp = await globalThis.pragResetPassword?.({
+          email: emailVal,
+          password: pwdVal,
+          confirmPassword: pwd2Val,
+          requestId,
+          verificationCode: codeVal
+        });
 
-      // OPTIONAL: log what WILL be sent later (for debugging)
-      console.info("[reset-stub]", {
-        email: emailVal,
-        newPassword: pwdVal,
-        requestId,
-        verificationCode: codeVal
-      });
+        // Reset successful → close modal and return user to login
+        closeLoginModal();
 
-      return;
+        // Reopen login cleanly so user can sign in with new password
+        openLoginModal("login");
+
+        return;
+      } catch (e) {
+        showError2(e?.message || "Password reset failed.");
+        return;
+      }
     }
   });
 

@@ -104,6 +104,8 @@
        STATE
        =========================== */
     let pragopticsToken = null;
+    // ✅ wizard lifecycle guard (authoritative)
+    window.__wizardInit = false;
 
 
 // ✅ authRouter contract: bootstrap owns token persistence
@@ -195,12 +197,11 @@ function applyPostLoginResolution({ ping }) {
 
     showWizardFlow();
 
-    // ✅ only reset if we had to rehydrate steps
-    if (flow && !flow.__wizardBound) {
-      window.__wizardInit = false;
+    // ✅ single, deterministic init gate
+    if (!window.__wizardInit) {
       initPostLoginWizard(token, ping);
-      flow.__wizardBound = true;
     }
+
 
     if (decision.banner === "canceled") {
       showCanceledBanner();
@@ -348,49 +349,43 @@ window.applyPostLoginResolution = applyPostLoginResolution;
 
     
    async function openBillingFromMenu() {
+    // Gate billing behind authentication
+    const token = getStoredTokens()?.access_token;
+    if (!token) {
+      showStatusModal({
+        mode: "info",
+        message: "Please sign in or click Get Started to access billing."
+      });
+      return;
+    }
 
-    
-  // Gate billing behind authentication
-  const token = getStoredTokens()?.access_token;
-  if (!token) {
-    showStatusModal({
-      mode: "info",
-      message: "Please sign in or click Get Started to access billing."
-    })
-    return;
+    // Always fetch latest ping before routing
+    let ping;
+    try {
+      ping = await fetchJson(PING_URL, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      sessionStorage.setItem("pragoptics_ping", JSON.stringify(ping));
+
+      // ✅ Force wizard re-init on menu entry
+      window.__wizardInit = false;
+
+    } catch {
+      ensureWizardVisibleAndBranded(null, {
+        title: "PragOptics™ Billing",
+        hint: "Sign in to manage billing.",
+        hasTokens: false
+      });
+      gotoStep1();
+      return;
+    }
+
+    if (!ping) return;
+
+    // ✅ Single authoritative entry point
+    applyPostLoginResolution({ ping });
   }
 
-  // Always fetch latest ping before routing
-let ping;
-try {
-  ping = await fetchJson(PING_URL, {
-    headers: { Authorization: `Bearer ${token}` }
-  });
-  sessionStorage.setItem("pragoptics_ping", JSON.stringify(ping));
-} catch {
-  ensureWizardVisibleAndBranded(null, {
-    title: "PragOptics™ Billing",
-    hint: "Sign in to manage billing.",
-    hasTokens: false
-  });
-  gotoStep1();
-  return;
-}
-
-  // No billing profile → onboarding wizard
-  if (!ping || !ping.billingProfile) {
-    ensureWizardVisibleAndBranded(ping, {
-      title: "PragOptics™ Subscription Wizard",
-      hint: "Complete setup to activate your PragOptics subscription.",
-      hasTokens: !!getStoredTokens()?.access_token
-    });
-    gotoStep1();
-    return;
-  }
-
-  applyPostLoginResolution({ ping });
-
-}
 
     function redirectToStripePortalWithDna(status, ping) {
   const isUrgent = String(status).toUpperCase() === "PAST_DUE";
@@ -454,10 +449,28 @@ function showWizardFlow() {
   flow.style.display = "block";   // ✅ DO NOT clear innerHTML
 }
 
+function handleBillingProfileSubmit(e) {
+  return handleBillingProfile({
+    e,
+    getStoredTokens,
+    pragopticsToken,
+    buildRequestedSubscription,
+    BILLING_PROFILE_URL,
+    CHECKOUT_SESSION_URL,
+    PING_URL,
+    setDnaMode,
+    gotoStep4,
+    gotoStep5,
+    pollUntilResolved,
+    startPaymentStep
+  });
+}
+
 
 
     // Expose only the handlers referenced by inline onclick="..." in index.html
 registerLegacyGlobals({
+  setToken,
   // menu + navigation
   setAppMode,
   
@@ -472,6 +485,8 @@ registerLegacyGlobals({
   openLoginModal,
   closeLoginModal,
   submitNativeLogin,
+
+  routePostLogin,
 
   // auth / api
   startPragOpticsLogin: launchLogin,
@@ -491,7 +506,7 @@ registerLegacyGlobals({
   gotoStep3,
   gotoStep4,
   gotoStep5,
-  handleBillingProfile,
+  handleBillingProfile: handleBillingProfileSubmit,
   pollUntilResolved,
   formatPhone
 });
