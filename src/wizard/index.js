@@ -114,7 +114,6 @@ export function prefillBillingProfileFromPing(ping) {
 
   set("bpEmail",  bp.primaryEmail);
   set("bpPhone",  bp.phone);
-  set("bpOrg",    bp.organizationName || "");
   set("bpAddr1",  bp.addressLine1);
   set("bpAddr2",  bp.addressLine2);
   set("bpCity",   bp.city);

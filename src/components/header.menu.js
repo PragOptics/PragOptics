@@ -20,6 +20,10 @@ export function initHeaderMenu() {
           window.openBillingFromMenu?.();
           break;
 
+        case 'open-wizard':
+          window.openWizardFromMenu?.();
+          break;
+
         case 'call-api':
           endpoint === 'ping'
             ? window.callPragOpticsPing?.()

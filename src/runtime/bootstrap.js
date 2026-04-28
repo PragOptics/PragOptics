@@ -187,6 +187,23 @@ function setToken(tokens) {
       }
     }
 
+    function getWizardMenuEl() {
+      return document.getElementById("navWizard");
+    }
+
+    function setWizardMenuVisible(on) {
+      const el = getWizardMenuEl();
+      if (!el) return;
+      el.classList.toggle("hidden", !on);
+    }
+
+    function updateWizardMenuFromPing(ping) {
+      const decision = resolvePostLoginUI({ ping });
+      const needsWizard = (decision.mode === "wizard" || decision.mode === "provisioningWizard");
+      setWizardMenuVisible(needsWizard);
+      return decision;
+    }
+
     // make it available to all view controllers
     window.isAccessTokenValid = isAccessTokenValid;
 
@@ -214,7 +231,7 @@ function launchLogin() {
 
 
 function applyPostLoginResolution({ ping }) {
-  const decision = resolvePostLoginUI({ ping });
+  const decision = updateWizardMenuFromPing(ping);
   const token = getStoredTokens()?.access_token;
 
   // Always start by cleaning secondary UI
@@ -274,44 +291,26 @@ function applyPostLoginResolution({ ping }) {
     return;
   }
 
+
   if (decision.mode === "billingLanding") {
-    setAppMode("wizard"); // still inside wizard view shell
+    showBillingLanding(ping, decision.urgent === true);
+    return;
+  }
 
-    const flow = document.getElementById("platformFlow");
-    if (flow) {
-      flow.style.display = "block";
-      flow.classList.add("mode-billing-landing");
-    }
-
-    ensureWizardVisibleAndBranded(ping, {
-      title: "PragOptics™ Billing",
-      hint: decision.urgent
-        ? "Payment action required."
-        : "Manage your subscription and billing details.",
-      hasTokens: true
-    });
-
-    renderBillingLanding({
-      containerId: "platformFlow",
-      billingProfile: ping.billingProfile,
-      catalog: ping.productCatalog
-    });
-
+  if (decision.mode === "provisioningWizard") {
+    showProvisioningShell(ping);
     return;
   }
 
   if (decision.mode === "console") {
     setAppMode("console");
-
     const flow = document.getElementById("platformFlow");
     if (flow) {
       flow.style.display = "none";
     }
-
     window.setConsoleAuthenticated?.();
     return;
   }
-
 }
 
 window.applyPostLoginResolution = applyPostLoginResolution;
@@ -408,6 +407,98 @@ window.applyPostLoginResolution = applyPostLoginResolution;
   host.prepend(banner);
 }
 
+    function showBillingLanding(ping, urgent = false) {
+      setAppMode("wizard");
+
+      // one authoritative wipe (global + platformFlow)
+      clearAllWizardSurfaces();
+
+      const flow = document.getElementById("platformFlow");
+      if (!flow) return;
+
+      flow.classList.add("mode-billing-landing");
+
+      ensureWizardVisibleAndBranded(ping, {
+        title: "PragOptics™ Billing",
+        hint: urgent
+          ? "Payment action required."
+          : "Manage your subscription and billing details.",
+        hasTokens: true
+      });
+
+      renderBillingLanding({
+        containerId: "platformFlow",
+        billingProfile: ping.billingProfile,
+        catalog: ping.productCatalog
+      });
+    }
+
+    function showProvisioningShell(ping) {
+      setAppMode("wizard");
+
+      // one authoritative wipe (global + platformFlow)
+      clearAllWizardSurfaces();
+
+      const flow = document.getElementById("platformFlow");
+      if (!flow) return;
+
+      flow.classList.remove("mode-billing-landing");
+      flow.style.display = "block";
+      flow.innerHTML = `
+        <div class="provisioning-shell">
+          <div class="login-panel">
+            <h3>Environment Setup</h3>
+            <p class="hint">Create your PragOptics environment and define the Azure Table resources your account will use.</p>
+
+            <div class="row">
+              <div class="form-field">
+                <label for="envDisplayName">Environment Name</label>
+                <input id="envDisplayName" type="text" placeholder="PragOptics Environment">
+              </div>
+              <div class="form-field">
+                <label for="envOrgName">Organization Name</label>
+                <input id="envOrgName" type="text" placeholder="Optional organization name">
+              </div>
+            </div>
+
+            <div class="row">
+              <div class="form-field">
+                <label for="envUsersTable">Users Table</label>
+                <input id="envUsersTable" type="text" value="Users">
+              </div>
+              <div class="form-field">
+                <label for="envEnvironmentTable">Environment Table</label>
+                <input id="envEnvironmentTable" type="text" value="Environment">
+              </div>
+            </div>
+
+            <div class="row">
+              <div class="form-field">
+                <label for="envDataTable">Primary Data Table</label>
+                <input id="envDataTable" type="text" placeholder="Your primary table name">
+              </div>
+              <div class="form-field">
+                <label for="envPrefix">Table Prefix</label>
+                <input id="envPrefix" type="text" placeholder="Optional naming prefix">
+              </div>
+            </div>
+
+            <div class="dblStepBtn">
+              <button class="btn" type="button" onclick="setAppMode('console')">Back to Console</button>
+              <button class="cta" type="button" disabled>Create Environment</button>
+            </div>
+          </div>
+        </div>
+      `;
+
+      ensureWizardVisibleAndBranded(ping, {
+        title: "PragOptics™ Environment",
+        hint: "Provision your environment resources to continue platform setup.",
+        hasTokens: true
+      });
+
+      syncWizardAuthIndicator();
+    }
     
    async function openBillingFromMenu() {
     // Gate billing behind authentication
@@ -443,7 +534,57 @@ window.applyPostLoginResolution = applyPostLoginResolution;
 
     if (!ping) return;
 
-    // ✅ Single authoritative entry point
+    const billingStatus = String(ping?.billingProfile?.status || "").toUpperCase();
+    const needsBillingSetup = ping?.needsBillingSetup === true;
+
+    // Billing menu must always go to billing surface when billing is already active.
+    // Provisioning is irrelevant here.
+    if (ping.billingProfile && !needsBillingSetup && (billingStatus === "ACTIVE" || billingStatus === "PAST_DUE")) {
+      showBillingLanding(ping, billingStatus === "PAST_DUE");
+      return;
+    }
+
+    // Otherwise, billing is incomplete → go to billing wizard (safe to reuse standard resolver)
+    applyPostLoginResolution({ ping });
+  }
+
+  async function openWizardFromMenu() {
+    const token = getStoredTokens()?.access_token;
+    if (!token) {
+      showStatusModal({
+        mode: "info",
+        message: "Please sign in to continue setup."
+      });
+      return;
+    }
+
+    let ping;
+    try {
+      ping = await fetchJson(PING_URL, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      sessionStorage.setItem("pragoptics_ping", JSON.stringify(ping));
+    } catch (e) {
+      showStatusModal({
+        mode: "error",
+        message: e?.message || "Unable to check setup status."
+      });
+      return;
+    }
+
+    const decision = updateWizardMenuFromPing(ping);
+
+    // If nothing is required, hide button and notify.
+    if (decision.mode === "console" || decision.mode === "none") {
+      setWizardMenuVisible(false);
+      showStatusModal({
+        mode: "success",
+        message: "You're all set."
+      });
+      return;
+    }
+
+    // Otherwise launch the next required wizard (billing wizard or provisioning wizard)
     applyPostLoginResolution({ ping });
   }
 
@@ -482,12 +623,26 @@ function resetForLanding() {
 }
 
 function clearBillingLandingOnly() {
+  clearAllWizardSurfaces();
+}
+
+function clearAllWizardSurfaces() {
+  // Remove any stray provisioning shells that may exist outside #platformFlow
+  document.querySelectorAll(".provisioning-shell").forEach(el => el.remove());
+
+  // Remove any stray billing landing cards that may exist outside #platformFlow
+  document.querySelectorAll(".billing-landing").forEach(el => el.remove());
+
+  // Remove banner wherever it ended up
+  document.querySelectorAll("#billingCanceledBanner").forEach(el => el.remove());
+
   const flow = document.getElementById("platformFlow");
   if (!flow) return;
 
+  // Reset the shared container completely
   flow.classList.remove("mode-billing-landing");
-  flow.querySelector(".billing-landing")?.remove();
-  flow.querySelector("#billingCanceledBanner")?.remove();
+  flow.innerHTML = "";
+  flow.style.display = "block";
 }
 
 function ensureWizardStepsPresent() {
@@ -570,6 +725,7 @@ registerLegacyGlobals({
 
   // billing menu entry
   openBillingFromMenu,
+  openWizardFromMenu,
 
   // console UX
   toggleViewerMode,

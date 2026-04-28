@@ -59,8 +59,6 @@ export async function handleBillingProfile({
     state: (document.getElementById("bpState")?.value || "").trim(),
     postalCode: document.getElementById("bpPostal")?.value?.trim(),
     country: document.getElementById("bpCountry")?.value?.trim(),
-    organizationName:
-      document.getElementById("bpOrg")?.value?.trim() || "",
     requestedSubscription
   };
 

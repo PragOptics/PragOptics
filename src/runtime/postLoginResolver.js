@@ -1,8 +1,16 @@
 // src/runtime/postLoginResolver.js
-
 export function resolvePostLoginUI({ ping }) {
-  // No ping or not authenticated
-  if (!ping || !ping.billingProfile) {
+  if (!ping) {
+    return {
+      mode: "none"
+    };
+  }
+
+  const billingStatus = String(ping?.billingProfile?.status || "").toUpperCase();
+  const needsBillingSetup = ping?.needsBillingSetup === true;
+  const needsProvisioning = ping?.needsProvisioning === true;
+
+  if (!ping.billingProfile || needsBillingSetup) {
     return {
       mode: "wizard",
       wizardStep: 1,
@@ -11,17 +19,7 @@ export function resolvePostLoginUI({ ping }) {
     };
   }
 
-  const status = String(ping.billingProfile.status || "").toUpperCase();
-
-  switch (status) {
-    case "PENDING_SUBSCRIPTION":
-      return {
-        mode: "wizard",
-        wizardStep: 1,
-        banner: null,
-        dna: null
-      };
-
+  switch (billingStatus) {
     case "PAYMENT_PENDING":
       return {
         mode: "wizard",
@@ -42,11 +40,25 @@ export function resolvePostLoginUI({ ping }) {
         dna: null
       };
 
+    case "PENDING_PROFILE":
+    case "PENDING_SUBSCRIPTION":
+      return {
+        mode: "wizard",
+        wizardStep: 1,
+        banner: null,
+        dna: null
+      };
+
     case "ACTIVE":
     case "PAST_DUE":
+      if (needsProvisioning) {
+        return {
+          mode: "provisioningWizard"
+        };
+      }
+
       return {
-        mode: "billingLanding",
-        urgent: status === "PAST_DUE"
+        mode: "console"
       };
 
     default:
