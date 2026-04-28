@@ -77,6 +77,11 @@ export function initConsoleController({
     if (authIndicator) authIndicator.classList.toggle("signed-in", !!token);
   }
 
+  // Allow bootstrap to force auth indicator re-sync
+    window.setConsoleAuthenticated = function () {
+      syncAuthIndicator();
+    };
+
   // ===== Copy Response (local-only, no imports) =====
 function ensureCopyResponseToastHost() {
   // scoped to consoleView only

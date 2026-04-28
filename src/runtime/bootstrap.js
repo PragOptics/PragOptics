@@ -100,6 +100,20 @@
       apiBase: PRAG_API_BASE,
       getStoredTokens
     });
+
+    // ✅ Rehydrate API console auth state from stored ping/token
+    try {
+      const storedTokens = getStoredTokens();
+      const storedPing = JSON.parse(
+        sessionStorage.getItem("pragoptics_ping") || "null"
+      );
+
+      if (storedTokens?.access_token && storedPing) {
+        window.setConsoleAuthenticated?.(storedPing);
+      }
+    } catch {
+      // noop – console will remain unauthenticated
+    }
     /* ===========================
        STATE
        =========================== */
@@ -200,6 +214,7 @@ function applyPostLoginResolution({ ping }) {
     // ✅ single, deterministic init gate
     if (!window.__wizardInit) {
       initPostLoginWizard(token, ping);
+      window.__wizardInit = true;
     }
 
 
@@ -264,6 +279,7 @@ window.applyPostLoginResolution = applyPostLoginResolution;
     setToken,
     onPingResolved: (ping) => {
       routePostLogin({ ping });
+      window.setConsoleAuthenticated?.();
     }
   });
 
@@ -472,7 +488,10 @@ function pollUntilResolvedSubmit() {
     getStoredTokens,
     pragopticsToken,
     setDnaMode,
-    onResolved: (ping) => applyPostLoginResolution({ ping })
+    onResolved: (ping) => {
+      applyPostLoginResolution({ ping });
+      window.setConsoleAuthenticated?.();
+    }
   });
 }
 

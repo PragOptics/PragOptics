@@ -4,22 +4,13 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>PragOptics™ :: BLOCK BLAST</title>
-<meta name="color-scheme" content="dark">
-
-<link rel="icon" type="image/x-icon" href="https://pragoptics.com/images/favicon.ico" sizes="48x48">
-<link rel="icon" type="image/png" href="https://pragoptics.com/images/favicon.png" sizes="192x192">
-<link rel="apple-touch-icon" href="https://pragoptics.com/images/apple-touch-icon.png">
 
 <style>
 :root{
   --bg0:#020406;
-  --bg1:#07121a;
   --ink:#9ff;
   --muted:rgba(160,220,220,.85);
   --line:rgba(120,255,255,.18);
-  --danger:#ff5a5a;
-  --good:#2aff8a;
-  --warn:#ffd42a;
 }
 
 html,body{
@@ -32,66 +23,48 @@ html,body{
   color:var(--ink);
 }
 
+/* HUD (UNCHANGED) */
 #hud{
   padding:10px 16px;
-  background:linear-gradient(180deg,rgba(10,22,30,.96),rgba(6,10,14,.96));
   border-bottom:1px solid var(--line);
 }
 
 #hudTop{
   display:flex;
   justify-content:space-between;
-  align-items:baseline;
   border-bottom:1px dashed rgba(120,255,255,.15);
-  padding-bottom:6px;
 }
-.title{font-weight:800;letter-spacing:.6px;font-size:14px;}
-.muted{font-size:11px;color:var(--muted);}
 
 #hudMid{
   margin-top:8px;
   display:grid;
   grid-template-columns:1fr 1fr 1fr;
-  gap:24px;
-  font-size:11px;
 }
 
-.card{
-  padding:10px;
-  border:1px solid rgba(120,255,255,.2);
-  border-radius:10px;
-  background:rgba(10,20,26,.5);
-}
+.card{padding:10px}
+.big{font-size:20px}
 
-.center{text-align:center}
-
-.stat{font-size:13px;color:#fff}
-.big{font-size:20px;font-weight:800}
-
+/* GAME */
 #gameWrap{
   width:100%;
-  height:calc(100vh - 128px);
-  display:flex;
-  justify-content:center;
-  align-items:center;
+  height:calc(100vh - 120px);
+  position:relative;
 }
 
 canvas{
-  background:var(--bg0);
-  border:1px solid rgba(120,255,255,.2);
+  position:absolute;
+  inset:0;
 }
 
+/* overlay */
 #overlay{
   position:absolute;
   inset:0;
   display:none;
   align-items:center;
   justify-content:center;
-  background:rgba(0,0,0,.65);
-  color:#fff;
-  font-size:22px;
+  background:rgba(0,0,0,.7);
   flex-direction:column;
-  gap:12px;
 }
 </style>
 </head>
@@ -100,34 +73,20 @@ canvas{
 
 <header id="hud">
   <div id="hudTop">
-    <div class="title">PRAGOPTICS™ :: BLOCK BLAST</div>
-    <div class="muted">Click blocks • Clear groups • R reset</div>
+    <div>BLOCK BLAST</div>
+    <div>Click • R reset</div>
   </div>
-
   <div id="hudMid">
-    <div class="card">
-      SCORE
-      <div class="stat big" id="score">0</div>
-    </div>
-    <div class="card center">
-      COMBO
-      <div class="stat big" id="combo">x1</div>
-    </div>
-    <div class="card">
-      BEST
-      <div class="stat big" id="best">0</div>
-    </div>
+    <div class="card">Score <div id="score" class="big">0</div></div>
+    <div class="card">Combo <div id="combo" class="big">x1</div></div>
+    <div class="card">Best <div id="best" class="big">0</div></div>
   </div>
 </header>
 
 <main id="gameWrap">
-  <canvas id="c" width="420" height="420"></canvas>
+  <canvas id="c"></canvas>
+  <div id="overlay">SYSTEM LOCK</div>
 </main>
-
-<div id="overlay">
-  <div>SYSTEM LOCK</div>
-  <div class="muted">Press R to restart</div>
-</div>
 
 <script>
 (()=>{
@@ -137,48 +96,67 @@ canvas{
 const canvas = document.getElementById("c");
 const ctx = canvas.getContext("2d");
 
+let W=0,H=0,SIZE=0,OFFSET_X=0,OFFSET_Y=0;
+const GRID=10;
+
+function resize(){
+  const wrap = document.getElementById("gameWrap");
+  W = wrap.clientWidth;
+  H = wrap.clientHeight;
+
+  canvas.width = W;
+  canvas.height = H;
+
+  const boardSize = Math.min(W,H);
+  SIZE = boardSize / GRID;
+
+  OFFSET_X = (W - boardSize)/2;
+  OFFSET_Y = (H - boardSize)/2;
+}
+addEventListener("resize",resize);
+
 /* ========= AUDIO ========= */
-const AC = new (window.AudioContext||window.webkitAudioContext)();
-let audioArmed=false;
-addEventListener("pointerdown",()=>{ if(!audioArmed){audioArmed=true;AC.resume();}});
-function beep(f,d=0.05,t="square",v=0.04){
-  if(!audioArmed) return;
+const AC=new (window.AudioContext||window.webkitAudioContext)();
+let armed=false;
+addEventListener("pointerdown",()=>{if(!armed){armed=true;AC.resume();}});
+function beep(f){
+  if(!armed) return;
   const o=AC.createOscillator(),g=AC.createGain();
-  o.type=t;o.frequency.value=f;g.gain.value=v;
+  o.frequency.value=f;
+  g.gain.value=0.05;
   o.connect(g).connect(AC.destination);
-  o.start();o.stop(AC.currentTime+d);
+  o.start();o.stop(AC.currentTime+0.05);
 }
 
-/* ========= GAME CONFIG ========= */
-const GRID=10;
-const SIZE=canvas.width/GRID;
+/* ========= STATE ========= */
 const COLORS=["#2aff8a","#ffd42a","#ff5a5a","#9ff"];
 
 const S={
   grid:[],
   score:0,
   combo:1,
-  best: Number(localStorage.blockBlastBest||0),
-  dead:false
+  best:Number(localStorage.blockBlastBest||0),
+  dead:false,
+  shake:0
 };
 
 /* ========= INIT ========= */
 function newGrid(){
   S.grid=[];
   for(let y=0;y<GRID;y++){
-    const r=[];
+    let r=[];
     for(let x=0;x<GRID;x++){
       r.push(Math.floor(Math.random()*COLORS.length));
     }
     S.grid.push(r);
   }
 }
-newGrid();
 
-/* ========= HELPERS ========= */
-const inb=(x,y)=>x>=0&&y>=0&&x<GRID&&y<GRID;
+/* ========= FLOOD ========= */
 function flood(x,y,t,seen){
-  if(!inb(x,y)||seen[y][x]||S.grid[y][x]!==t) return 0;
+  if(x<0||y<0||x>=GRID||y>=GRID) return 0;
+  if(seen[y][x]) return 0;
+  if(S.grid[y][x]!==t) return 0;
   seen[y][x]=1;
   return 1+
     flood(x+1,y,t,seen)+
@@ -186,8 +164,11 @@ function flood(x,y,t,seen){
     flood(x,y+1,t,seen)+
     flood(x,y-1,t,seen);
 }
+
 function clearFlood(x,y,t,seen){
-  if(!inb(x,y)||seen[y][x]||S.grid[y][x]!==t) return;
+  if(x<0||y<0||x>=GRID||y>=GRID) return;
+  if(seen[y][x]) return;
+  if(S.grid[y][x]!==t) return;
   seen[y][x]=1;
   S.grid[y][x]=null;
   clearFlood(x+1,y,t,seen);
@@ -205,16 +186,16 @@ function drop(){
   }
 }
 function slide(){
-  let write=0;
+  let w=0;
   for(let x=0;x<GRID;x++){
     if(S.grid[GRID-1][x]!=null){
-      if(x!==write){
+      if(x!==w){
         for(let y=0;y<GRID;y++){
-          S.grid[y][write]=S.grid[y][x];
+          S.grid[y][w]=S.grid[y][x];
           S.grid[y][x]=null;
         }
       }
-      write++;
+      w++;
     }
   }
 }
@@ -222,23 +203,29 @@ function slide(){
 /* ========= INPUT ========= */
 canvas.addEventListener("click",e=>{
   if(S.dead) return;
-  const r=canvas.getBoundingClientRect();
-  const x=((e.clientX-r.left)/SIZE)|0;
-  const y=((e.clientY-r.top)/SIZE)|0;
-  const t=S.grid[y]?.[x];
+
+  const rect=canvas.getBoundingClientRect();
+  const x=((e.clientX-rect.left-OFFSET_X)/SIZE)|0;
+  const y=((e.clientY-rect.top-OFFSET_Y)/SIZE)|0;
+
+  if(x<0||y<0||x>=GRID||y>=GRID) return;
+
+  const t=S.grid[y][x];
   if(t==null) return;
 
   const seen=Array.from({length:GRID},()=>Array(GRID).fill(0));
   const n=flood(x,y,t,seen);
-  if(n<2){ S.combo=1; return; }
+
+  if(n<2){S.combo=1;return;}
 
   clearFlood(x,y,t,Array.from({length:GRID},()=>Array(GRID).fill(0)));
-  drop(); slide();
+  drop();slide();
 
-  const gain = n*n*10*S.combo;
-  S.score+=gain;
+  S.score+=n*n*10*S.combo;
   S.combo++;
-  beep(200+n*20,0.06,"square",0.05);
+  S.shake=8;
+
+  beep(200+n*25);
 
   if(!hasMoves()){
     S.dead=true;
@@ -255,8 +242,8 @@ function hasMoves(){
   for(let y=0;y<GRID;y++)for(let x=0;x<GRID;x++){
     const t=S.grid[y][x];
     if(t==null) continue;
-    if(inb(x+1,y)&&S.grid[y][x+1]===t) return true;
-    if(inb(x,y+1)&&S.grid[y+1][x]===t) return true;
+    if(x<GRID-1&&S.grid[y][x+1]===t) return true;
+    if(y<GRID-1&&S.grid[y+1][x]===t) return true;
   }
   return false;
 }
@@ -272,13 +259,29 @@ addEventListener("keydown",e=>{
 
 /* ========= DRAW ========= */
 function draw(){
-  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.save();
+
+  if(S.shake){
+    ctx.translate((Math.random()-0.5)*S.shake,(Math.random()-0.5)*S.shake);
+    S.shake*=0.9;
+  }
+
+  ctx.clearRect(0,0,W,H);
+
   for(let y=0;y<GRID;y++)for(let x=0;x<GRID;x++){
     const v=S.grid[y][x];
     if(v==null) continue;
+
     ctx.fillStyle=COLORS[v];
-    ctx.fillRect(x*SIZE+2,y*SIZE+2,SIZE-4,SIZE-4);
+    ctx.fillRect(
+      OFFSET_X + x*SIZE +2,
+      OFFSET_Y + y*SIZE +2,
+      SIZE-4,
+      SIZE-4
+    );
   }
+
+  ctx.restore();
 }
 
 /* ========= LOOP ========= */
@@ -289,10 +292,13 @@ function loop(){
   document.getElementById("best").textContent=S.best;
   requestAnimationFrame(loop);
 }
+
+/* START */
+resize();
+newGrid();
 loop();
 
 })();
 </script>
-
 </body>
 </html>
