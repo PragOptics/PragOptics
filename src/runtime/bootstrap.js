@@ -159,9 +159,32 @@ function setToken(tokens) {
       catch { return null; }
     }
 
+    function isAccessTokenValid() {
+      try {
+        const raw = sessionStorage.getItem("pragoptics_tokens");
+        if (!raw) return false;
 
+        const { access_token } = JSON.parse(raw);
+        if (!access_token) return false;
 
+        const parts = access_token.split(".");
+        if (parts.length < 2) return false;
 
+        // base64url -> base64 (+ padding)
+        let b64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+        while (b64.length % 4) b64 += "=";
+
+        const payload = JSON.parse(atob(b64));
+        const now = Math.floor(Date.now() / 1000);
+
+        return Number(payload.exp) > now;
+      } catch {
+        return false;
+      }
+    }
+
+    // make it available to all view controllers
+    window.isAccessTokenValid = isAccessTokenValid;
 
     /* ===========================
        AGREEMENT MODAL

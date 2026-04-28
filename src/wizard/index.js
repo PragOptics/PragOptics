@@ -42,35 +42,36 @@ export function syncWizardAuthIndicator(getStoredTokens) {
   const indicator = document.getElementById("authIndicator");
   if (!indicator) return;
 
-  const token = getStoredTokens?.()?.access_token;
-  indicator.classList.toggle("signed-in", !!token);
-}
+  const ok =
+    typeof window.isAccessTokenValid === "function"
+      ? window.isAccessTokenValid()
+      : !!getStoredTokens?.()?.access_token;
 
+  indicator.classList.toggle("signed-in", ok);
+}
 
 export function initPostLoginWizard(accessToken, ping) {
   if (window.__wizardInit) return;
   window.__wizardInit = true;
 
-  const indicator = document.getElementById("authIndicator");
-  if (indicator) {
-    indicator.classList.add("signed-in");
-  }
+  // Initial auth indicator sync (TTL-aware)
+  syncWizardAuthIndicator(getStoredTokens);
 
   document.getElementById("platformFlow").style.display = "block";
 
-  // Build wizard catalog model from ping (authoritative)
   wizardCatalog = normalizeCatalog(ping?.productCatalog || []);
 
-  // Render Step 1 options from catalog
   renderSubTypeOptions(wizardCatalog, ping);
-
   renderAddonOptions();
 
-  document.querySelectorAll('input[name="cadence"]')
-  .forEach(r => r.addEventListener("change", () => {
-    updateAddonLabels();
-    updatePriceSummary();
-  }));
+  document
+    .querySelectorAll('input[name="cadence"]')
+    .forEach(r =>
+      r.addEventListener("change", () => {
+        updateAddonLabels();
+        updatePriceSummary();
+      })
+    );
 
   applySubTypeUI();
   updatePriceSummary();

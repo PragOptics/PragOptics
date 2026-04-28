@@ -73,8 +73,12 @@ export function initConsoleController({
   const authIndicator = view.querySelector("#authIndicator");
 
   function syncAuthIndicator() {
-    const token = getStoredTokens()?.access_token;
-    if (authIndicator) authIndicator.classList.toggle("signed-in", !!token);
+    const ok =
+      typeof window.isAccessTokenValid === "function"
+        ? window.isAccessTokenValid()
+        : !!getStoredTokens()?.access_token;
+
+    if (authIndicator) authIndicator.classList.toggle("signed-in", ok);
   }
 
   // Allow bootstrap to force auth indicator re-sync

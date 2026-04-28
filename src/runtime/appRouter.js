@@ -16,11 +16,14 @@ export function ensureWizardVisibleAndBranded(
   setAppMode("wizard");
 
   const indicator = document.getElementById("authIndicator");
-  const signedIn = !!ping?.user || hasTokens;
+  const signedIn =
+    typeof window.isAccessTokenValid === "function"
+      ? window.isAccessTokenValid()
+      : (!!ping?.user || hasTokens);
 
-if (indicator) {
-  indicator.classList.toggle("signed-in", signedIn);
-}
+  if (indicator) {
+    indicator.classList.toggle("signed-in", signedIn);
+  }
 
   const h2 = document.getElementById("wizardTitle");
   const sub = document.getElementById("wizardHint");
