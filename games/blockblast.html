@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>PragOptics™ :: BLOCK BLAST</title>
+<meta name="color-scheme" content="dark">
+
+<link rel="icon" type="image/x-icon" href="https://pragoptics.com/images/favicon.ico" sizes="48x48">
+<link rel="icon" type="image/png" href="https://pragoptics.com/images/favicon.png" sizes="192x192">
+<link rel="apple-touch-icon" href="https://pragoptics.com/images/apple-touch-icon.png">
+
+<style>
+:root{
+  --bg0:#020406;
+  --bg1:#07121a;
+  --ink:#9ff;
+  --muted:rgba(160,220,220,.85);
+  --line:rgba(120,255,255,.18);
+  --danger:#ff5a5a;
+  --good:#2aff8a;
+  --warn:#ffd42a;
+}
+
+html,body{
+  margin:0;
+  width:100%;
+  height:100%;
+  overflow:hidden;
+  background:radial-gradient(circle at top,#0e1620,#030609);
+  font-family:ui-monospace,monospace;
+  color:var(--ink);
+}
+
+#hud{
+  padding:10px 16px;
+  background:linear-gradient(180deg,rgba(10,22,30,.96),rgba(6,10,14,.96));
+  border-bottom:1px solid var(--line);
+}
+
+#hudTop{
+  display:flex;
+  justify-content:space-between;
+  align-items:baseline;
+  border-bottom:1px dashed rgba(120,255,255,.15);
+  padding-bottom:6px;
+}
+.title{font-weight:800;letter-spacing:.6px;font-size:14px;}
+.muted{font-size:11px;color:var(--muted);}
+
+#hudMid{
+  margin-top:8px;
+  display:grid;
+  grid-template-columns:1fr 1fr 1fr;
+  gap:24px;
+  font-size:11px;
+}
+
+.card{
+  padding:10px;
+  border:1px solid rgba(120,255,255,.2);
+  border-radius:10px;
+  background:rgba(10,20,26,.5);
+}
+
+.center{text-align:center}
+
+.stat{font-size:13px;color:#fff}
+.big{font-size:20px;font-weight:800}
+
+#gameWrap{
+  width:100%;
+  height:calc(100vh - 128px);
+  display:flex;
+  justify-content:center;
+  align-items:center;
+}
+
+canvas{
+  background:var(--bg0);
+  border:1px solid rgba(120,255,255,.2);
+}
+
+#overlay{
+  position:absolute;
+  inset:0;
+  display:none;
+  align-items:center;
+  justify-content:center;
+  background:rgba(0,0,0,.65);
+  color:#fff;
+  font-size:22px;
+  flex-direction:column;
+  gap:12px;
+}
+</style>
+</head>
+
+<body>
+
+<header id="hud">
+  <div id="hudTop">
+    <div class="title">PRAGOPTICS™ :: BLOCK BLAST</div>
+    <div class="muted">Click blocks • Clear groups • R reset</div>
+  </div>
+
+  <div id="hudMid">
+    <div class="card">
+      SCORE
+      <div class="stat big" id="score">0</div>
+    </div>
+    <div class="card center">
+      COMBO
+      <div class="stat big" id="combo">x1</div>
+    </div>
+    <div class="card">
+      BEST
+      <div class="stat big" id="best">0</div>
+    </div>
+  </div>
+</header>
+
+<main id="gameWrap">
+  <canvas id="c" width="420" height="420"></canvas>
+</main>
+
+<div id="overlay">
+  <div>SYSTEM LOCK</div>
+  <div class="muted">Press R to restart</div>
+</div>
+
+<script>
+(()=>{
+"use strict";
+
+/* ========= CANVAS ========= */
+const canvas = document.getElementById("c");
+const ctx = canvas.getContext("2d");
+
+/* ========= AUDIO ========= */
+const AC = new (window.AudioContext||window.webkitAudioContext)();
+let audioArmed=false;
+addEventListener("pointerdown",()=>{ if(!audioArmed){audioArmed=true;AC.resume();}});
+function beep(f,d=0.05,t="square",v=0.04){
+  if(!audioArmed) return;
+  const o=AC.createOscillator(),g=AC.createGain();
+  o.type=t;o.frequency.value=f;g.gain.value=v;
+  o.connect(g).connect(AC.destination);
+  o.start();o.stop(AC.currentTime+d);
+}
+
+/* ========= GAME CONFIG ========= */
+const GRID=10;
+const SIZE=canvas.width/GRID;
+const COLORS=["#2aff8a","#ffd42a","#ff5a5a","#9ff"];
+
+const S={
+  grid:[],
+  score:0,
+  combo:1,
+  best: Number(localStorage.blockBlastBest||0),
+  dead:false
+};
+
+/* ========= INIT ========= */
+function newGrid(){
+  S.grid=[];
+  for(let y=0;y<GRID;y++){
+    const r=[];
+    for(let x=0;x<GRID;x++){
+      r.push(Math.floor(Math.random()*COLORS.length));
+    }
+    S.grid.push(r);
+  }
+}
+newGrid();
+
+/* ========= HELPERS ========= */
+const inb=(x,y)=>x>=0&&y>=0&&x<GRID&&y<GRID;
+function flood(x,y,t,seen){
+  if(!inb(x,y)||seen[y][x]||S.grid[y][x]!==t) return 0;
+  seen[y][x]=1;
+  return 1+
+    flood(x+1,y,t,seen)+
+    flood(x-1,y,t,seen)+
+    flood(x,y+1,t,seen)+
+    flood(x,y-1,t,seen);
+}
+function clearFlood(x,y,t,seen){
+  if(!inb(x,y)||seen[y][x]||S.grid[y][x]!==t) return;
+  seen[y][x]=1;
+  S.grid[y][x]=null;
+  clearFlood(x+1,y,t,seen);
+  clearFlood(x-1,y,t,seen);
+  clearFlood(x,y+1,t,seen);
+  clearFlood(x,y-1,t,seen);
+}
+
+/* ========= GRAVITY ========= */
+function drop(){
+  for(let x=0;x<GRID;x++){
+    let col=[];
+    for(let y=GRID-1;y>=0;y--) if(S.grid[y][x]!=null) col.push(S.grid[y][x]);
+    for(let y=GRID-1;y>=0;y--) S.grid[y][x]=col[GRID-1-y]??null;
+  }
+}
+function slide(){
+  let write=0;
+  for(let x=0;x<GRID;x++){
+    if(S.grid[GRID-1][x]!=null){
+      if(x!==write){
+        for(let y=0;y<GRID;y++){
+          S.grid[y][write]=S.grid[y][x];
+          S.grid[y][x]=null;
+        }
+      }
+      write++;
+    }
+  }
+}
+
+/* ========= INPUT ========= */
+canvas.addEventListener("click",e=>{
+  if(S.dead) return;
+  const r=canvas.getBoundingClientRect();
+  const x=((e.clientX-r.left)/SIZE)|0;
+  const y=((e.clientY-r.top)/SIZE)|0;
+  const t=S.grid[y]?.[x];
+  if(t==null) return;
+
+  const seen=Array.from({length:GRID},()=>Array(GRID).fill(0));
+  const n=flood(x,y,t,seen);
+  if(n<2){ S.combo=1; return; }
+
+  clearFlood(x,y,t,Array.from({length:GRID},()=>Array(GRID).fill(0)));
+  drop(); slide();
+
+  const gain = n*n*10*S.combo;
+  S.score+=gain;
+  S.combo++;
+  beep(200+n*20,0.06,"square",0.05);
+
+  if(!hasMoves()){
+    S.dead=true;
+    document.getElementById("overlay").style.display="flex";
+    if(S.score>S.best){
+      S.best=S.score;
+      localStorage.blockBlastBest=S.best;
+    }
+  }
+});
+
+/* ========= CHECK ========= */
+function hasMoves(){
+  for(let y=0;y<GRID;y++)for(let x=0;x<GRID;x++){
+    const t=S.grid[y][x];
+    if(t==null) continue;
+    if(inb(x+1,y)&&S.grid[y][x+1]===t) return true;
+    if(inb(x,y+1)&&S.grid[y+1][x]===t) return true;
+  }
+  return false;
+}
+
+/* ========= RESET ========= */
+addEventListener("keydown",e=>{
+  if(e.code==="KeyR"){
+    S.score=0;S.combo=1;S.dead=false;
+    document.getElementById("overlay").style.display="none";
+    newGrid();
+  }
+});
+
+/* ========= DRAW ========= */
+function draw(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  for(let y=0;y<GRID;y++)for(let x=0;x<GRID;x++){
+    const v=S.grid[y][x];
+    if(v==null) continue;
+    ctx.fillStyle=COLORS[v];
+    ctx.fillRect(x*SIZE+2,y*SIZE+2,SIZE-4,SIZE-4);
+  }
+}
+
+/* ========= LOOP ========= */
+function loop(){
+  draw();
+  document.getElementById("score").textContent=S.score;
+  document.getElementById("combo").textContent="x"+S.combo;
+  document.getElementById("best").textContent=S.best;
+  requestAnimationFrame(loop);
+}
+loop();
+
+})();
+</script>
+
+</body>
+</html>

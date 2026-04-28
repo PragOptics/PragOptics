@@ -19,7 +19,7 @@ export function initWizardNavigation() {
       e.preventDefault();
 
       if (actionBtn.dataset.wizardAction === 'poll') {
-        pollUntilResolved();
+        window.pollUntilResolved?.();
       }
     }
   });
@@ -28,13 +28,13 @@ export function initWizardNavigation() {
 function gotoStep(step) {
   switch (step) {
     case '1':
-      gotoStep1();
+      window.gotoStep1?.();
       break;
     case '2':
-      gotoStep2();
+      window.gotoStep2?.();
       break;
     case '3':
-      gotoStep3();
+      window.gotoStep3?.();
       break;
   }
 }

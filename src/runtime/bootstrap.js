@@ -461,8 +461,18 @@ function handleBillingProfileSubmit(e) {
     setDnaMode,
     gotoStep4,
     gotoStep5,
-    pollUntilResolved,
+    pollUntilResolved: pollUntilResolvedSubmit,
     startPaymentStep
+  });
+}
+
+function pollUntilResolvedSubmit() {
+  return pollUntilResolved({
+    PING_URL,
+    getStoredTokens,
+    pragopticsToken,
+    setDnaMode,
+    onResolved: (ping) => applyPostLoginResolution({ ping })
   });
 }
 
@@ -507,6 +517,6 @@ registerLegacyGlobals({
   gotoStep4,
   gotoStep5,
   handleBillingProfile: handleBillingProfileSubmit,
-  pollUntilResolved,
+  pollUntilResolved: pollUntilResolvedSubmit,
   formatPhone
 });
