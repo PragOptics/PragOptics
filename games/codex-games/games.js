@@ -4,7 +4,6 @@
 const $tree    = document.getElementById("codexTree");
 const $title   = document.getElementById("codexTitle");
 const $path    = document.getElementById("codexPath");
-const $raw     = document.getElementById("codexOpenRaw");
 const $content = document.getElementById("codexContent");
 const $loading = document.getElementById("codexLoading");
 const $nav     = document.querySelector(".codex-nav");
@@ -151,12 +150,14 @@ function renderGamePanel(item, gameUrl) {
       </div>
 
       <div class="games-actions">
-        <button class="games-btn primary" id="gamesLaunchBtn" type="button">▶ Launch game</button>
-        <a class="games-btn" href="${url}" target="_blank" rel="noopener noreferrer">Open direct</a>
-      </div>
+        <button class="games-btn primary" id="gamesLaunchBtn" type="button">
+            ▶ Launch game
+        </button>
+     </div>
+
 
       <div class="games-note">
-        This library is iframe-safe. Games launch in a new window/tab by design.
+        Games launch in a new window
       </div>
     </div>
   `;
@@ -169,7 +170,6 @@ async function openGame(item, gameUrl) {
 
   if ($title) $title.textContent = item?.name || "Game";
   if ($path)  $path.textContent  = gameUrl;
-  if ($raw)   $raw.href          = gameUrl;
 
   setHashGamePath(gameUrl);
 
