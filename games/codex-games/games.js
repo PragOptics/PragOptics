@@ -84,7 +84,7 @@ function buildTree(items, rootEl, rootPath) {
 
   (items || []).forEach(item => {
     if (item.type === "folder") {
-      const folderNode = createNode({ icon: "➕", text: item.name });
+      const folderNode = createNode({ icon: "➖", text: item.name });
       folderNode.setAttribute("aria-expanded", "true");
 
       const children = document.createElement("div");
