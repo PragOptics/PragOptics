@@ -55,7 +55,7 @@ export function initPostLoginWizard(accessToken, ping) {
   window.__wizardInit = true;
 
   // Initial auth indicator sync (TTL-aware)
-  syncWizardAuthIndicator(getStoredTokens);
+  syncWizardAuthIndicator();
 
   document.getElementById("platformFlow").style.display = "block";
 

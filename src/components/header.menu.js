@@ -13,17 +13,17 @@ export function initHeaderMenu() {
 
       switch (action) {
         case 'set-mode':
-          setAppMode(mode);
+          window.setAppMode?.(mode);
           break;
 
         case 'open-billing':
-          openBillingFromMenu();
+          window.openBillingFromMenu?.();
           break;
 
         case 'call-api':
           endpoint === 'ping'
-            ? callPragOpticsPing()
-            : callPragOpticsAuth();
+            ? window.callPragOpticsPing?.()
+            : window.callPragOpticsAuth?.();
           break;
 
         case 'open-login':
@@ -31,7 +31,7 @@ export function initHeaderMenu() {
           break;
 
         case 'logout':
-          logout();
+          window.logout?.();
           break;
       }
     });

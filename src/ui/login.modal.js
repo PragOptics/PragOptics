@@ -480,21 +480,48 @@ function bindLoginModal(modal) {
         });
 
         // tokens come back from backend
-        if (resp?.tokens) {
-          sessionStorage.setItem(
-            "pragoptics_tokens",
-            JSON.stringify(resp.tokens)
-          );
-        }
+    if (!resp?.tokens?.access_token) {
+      showError2("Signup did not return access token.");
+      return;
+    }
 
-        closeLoginModal();
+    if (typeof globalThis.setToken === "function") {
+      globalThis.setToken(resp.tokens);
+    } else {
+      sessionStorage.setItem(
+        "pragoptics_tokens",
+        JSON.stringify(resp.tokens)
+      );
+    }
 
-        // hand control back to bootstrap
-        if (typeof globalThis.callPragOpticsPing === "function") {
-          await globalThis.callPragOpticsPing();
-        }
+    closeLoginModal();
 
-        return;
+    const pingRes = await fetch("https://api.pragoptics.com/api/v1/ping", {
+      headers: {
+        Authorization: `Bearer ${resp.tokens.access_token}`
+      }
+    });
+
+    if (!pingRes.ok) {
+      throw new Error(`Ping failed: HTTP ${pingRes.status}`);
+    }
+
+    const ping = await pingRes.json();
+    sessionStorage.setItem("pragoptics_ping", JSON.stringify(ping));
+
+    if (typeof globalThis.routePostLogin === "function") {
+      globalThis.routePostLogin({ ping });
+      return;
+    }
+
+    if (typeof globalThis.applyPostLoginResolution === "function") {
+      globalThis.applyPostLoginResolution({ ping });
+      return;
+    }
+
+    return;
+
+
       } catch (e) {
         showError2(e?.message || "Signup failed.");
         return;

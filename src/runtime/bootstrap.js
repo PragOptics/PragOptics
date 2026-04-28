@@ -11,7 +11,7 @@
     import { initDropdownMenu } from '../components/dropdown.js';
     import { toggleViewerMode, setOutput } from '../components/responseViewer.js';
     import { setAppMode, ensureWizardVisibleAndBranded } from '../runtime/appRouter.js';
-    import { startPragOpticsLogin, handlePragOpticsCallback, routePostLogin } from "../runtime/authRouter.js";
+    import { startPragOpticsLogin, handlePragOpticsCallback } from "../runtime/authRouter.js";
     import { formatPhone, gotoStep1, gotoStep2, gotoStep3, gotoStep4, gotoStep5, syncWizardAuthIndicator, initPostLoginWizard, buildRequestedSubscription } from "../wizard/index.js";
     import { handleBillingProfile, startPaymentStep, pollUntilResolved } from "../api/billing.js";
     import { setDnaMode } from "../components/dnaController.js";
@@ -28,6 +28,10 @@
     import { initFooter } from '../components/footer.js';
     import { initLegalViewer } from '../components/legalViewer.js';
 
+    // routePostLogin is now a thin forwarder only
+    function routePostLoginForward({ ping }) {
+      applyPostLoginResolution({ ping });
+    }
     
     
     await loadView('/views/header.view.html', 'view-header');
@@ -232,7 +236,7 @@ function applyPostLoginResolution({ ping }) {
       window.__wizardInit = true;
     }
     
-    syncWizardAuthIndicator(getStoredTokens);
+    syncWizardAuthIndicator();
 
     ensureWizardVisibleAndBranded(ping, {
       title: "PragOptics™ Billing",
@@ -295,6 +299,19 @@ function applyPostLoginResolution({ ping }) {
 
     return;
   }
+
+  if (decision.mode === "console") {
+    setAppMode("console");
+
+    const flow = document.getElementById("platformFlow");
+    if (flow) {
+      flow.style.display = "none";
+    }
+
+    window.setConsoleAuthenticated?.();
+    return;
+  }
+
 }
 
 window.applyPostLoginResolution = applyPostLoginResolution;
@@ -305,10 +322,11 @@ window.applyPostLoginResolution = applyPostLoginResolution;
     pingUrl: PING_URL,
     setToken,
     onPingResolved: (ping) => {
-      routePostLogin({ ping });
+      applyPostLoginResolution({ ping });
       window.setConsoleAuthenticated?.();
     }
   });
+
 
     /* ===========================
        DEV CONSOLE FUNCTIONS
@@ -542,7 +560,7 @@ registerLegacyGlobals({
   closeLoginModal,
   submitNativeLogin,
 
-  routePostLogin,
+  routePostLogin: routePostLoginForward,
 
   // auth / api
   startPragOpticsLogin: launchLogin,

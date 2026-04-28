@@ -4,10 +4,21 @@ export function initModalControls() {
     if (!btn) return;
 
     switch (btn.dataset.modalAction) {
-      case "agreement-open": openAgreementModal(); break;
-      case "agreement-close": closeAgreementModal(); break;
-      case "agreement-submit": submitAgreementAck(); break;
-      case "login-close": closeLoginModal(); break;
+      case "agreement-open":
+        window.openAgreementModal?.();
+        break;
+
+      case "agreement-close":
+        window.closeAgreementModal?.();
+        break;
+
+      case "agreement-submit":
+        window.submitAgreementAck?.();
+        break;
+
+      case "login-close":
+        window.closeLoginModal?.();
+        break;
     }
   });
 }

@@ -1,95 +1,61 @@
-// src/runtime/authRouter.js
+// src/runtime/postLoginResolver.js
 
-import { fetchJson } from "../api/client.js";
-import { setAppMode } from "./appRouter.js";
-
-export function startPragOpticsLogin({
-  mode,
-  ciamLoginInit,
-  passwordLoginInit
-}) {
-  const returnUrl = encodeURIComponent(`${location.origin}${location.pathname}`);
-
-  const endpoint =
-    mode === "ciam" ? ciamLoginInit :
-    mode === "password" ? passwordLoginInit :
-    null;
-
-  if (!endpoint) {
-    throw new Error("No login mode configured");
+export function resolvePostLoginUI({ ping }) {
+  // No ping yet — do not force UI transitions
+  if (!ping) {
+    return {
+      mode: "none"
+    };
   }
 
-  return fetchJson(`${endpoint}?returnUrl=${returnUrl}`)
-    .then(data => {
-      if (!data?.authorizeUrl) {
-        throw new Error("Missing authorizeUrl");
-      }
-      window.location = data.authorizeUrl;
-    });
-}
+  const userStatus = String(ping?.user?.status || "").toUpperCase();
+  const billingStatus = String(ping?.billingProfile?.status || "").toUpperCase();
 
-function extractAuthResultFromLocation() {
-  const params = new URLSearchParams(location.search);
+  const needsBillingSetup = ping?.needsBillingSetup === true;
+  const needsProvisioning = ping?.needsProvisioning === true;
 
-  let encoded = params.get("authResult");
-  if (encoded) return encoded;
 
-  const post = params.get("post");
-  if (post && post.includes("authResult=")) {
-    return post.split("authResult=")[1] || null;
+  if (needsBillingSetup || userStatus !== "ACTIVE") {
+    switch (billingStatus) {
+      case "PAYMENT_PENDING":
+        return {
+          mode: "wizard",
+          wizardStep: 5,
+          banner: null,
+          dna: {
+            speed: "fast",
+            title: "Finalizing subscription…",
+            subtitle: "Confirming with Stripe…"
+          }
+        };
+
+      case "CANCELED":
+        return {
+          mode: "wizard",
+          wizardStep: 1,
+          banner: "canceled",
+          dna: null
+        };
+
+      case "PENDING_PROFILE":
+      case "PENDING_SUBSCRIPTION":
+      default:
+        return {
+          mode: "wizard",
+          wizardStep: 1,
+          banner: null,
+          dna: null
+        };
+    }
   }
 
-  const idx = location.search.indexOf("authResult=");
-  if (idx >= 0) {
-    return location.search.slice(idx + "authResult=".length);
+  if (needsProvisioning) {
+    return {
+      mode: "provisioningWizard"
+    };
   }
 
-  return null;
-}
-
-export async function handlePragOpticsCallback({
-  pingUrl,
-  onPingResolved,
-  setToken
-}) {
-  const encoded = extractAuthResultFromLocation();
-  if (!encoded) return;
-
-  let auth;
-  try {
-    auth = JSON.parse(decodeURIComponent(encoded));
-  } catch {
-    alert("Login failed: invalid callback payload.");
-    return;
-  }
-
-  if (!auth.success) {
-    alert(`Login failed: ${auth.errorDescription || auth.error}`);
-    return;
-  }
-
-  const tokens = auth.tokens;
-  setToken(tokens);
-
-  // Clean URL
-  window.history.replaceState({}, document.title, location.pathname);
-
-  const ping = await fetchJson(pingUrl, {
-    headers: { Authorization: `Bearer ${tokens.access_token}` }
-  });
-
-  sessionStorage.setItem("pragoptics_ping", JSON.stringify(ping));
-  onPingResolved(ping);
-}
-
-export function routePostLogin({ ping }) {
-  // Auth router no longer owns UI decisions
-  // Bootstrap will centrally resolve post-login state
-  if (typeof window.applyPostLoginResolution === "function") {
-    window.applyPostLoginResolution({ ping });
-    return;
-  }
-
-  // Defensive fallback
-  setAppMode("console");
+  return {
+    mode: "console"
+  };
 }
