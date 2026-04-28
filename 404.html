@@ -25,7 +25,7 @@
       margin: 0;
       overflow: hidden;
       background: #020407;
-      color: var(--ink);
+      color: var(--brand-600);
       font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
     }
 
@@ -45,19 +45,12 @@
     }
 
     body::before {
-      background:
-        radial-gradient(1px 1px at 10% 20%, #9ff 50%, transparent 51%),
-        radial-gradient(1px 1px at 80% 30%, #9ff 50%, transparent 51%),
-        radial-gradient(1px 1px at 40% 70%, #9ff 50%, transparent 51%),
-        radial-gradient(2px 2px at 60% 80%, #c8f 50%, transparent 51%),
-        radial-gradient(1px 1px at 25% 50%, #9ff 50%, transparent 51%);
-      opacity: 0.35;
+      background: var(--grad);
     }
 
     body::after {
       background:
-        radial-gradient(circle at 20% 30%, rgba(33,188,165,.08), transparent 40%),
-        radial-gradient(circle at 80% 70%, rgba(170,120,255,.10), transparent 45%);
+        var(--grad);
     }
 
     /* ---------- Layout ---------- */

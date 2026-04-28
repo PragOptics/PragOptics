@@ -154,11 +154,6 @@ function renderGamePanel(item, gameUrl) {
             ▶ Launch game
         </button>
      </div>
-
-
-      <div class="games-note">
-        Games launch in a new window
-      </div>
     </div>
   `;
 }
