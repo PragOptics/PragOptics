@@ -413,7 +413,7 @@ for(const b of S.balls){
   // squash & stretch factors
   const extra = (b.squish || 0) * 0.05;
   const stretch = Math.min(1.8, 1 + speed * 0.08 + extra);
-  const squash  = Math.max(0.65, 1 - speed * 0.04 - extra);
+  const squash  = Math.max(0.65, 1 - speed * 0.04 - extra * 0.45);
 
   // direction bias
   const dx = vx !== 0 ? vx / speed || 0 : 0;
