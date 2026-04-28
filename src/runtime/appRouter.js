@@ -5,7 +5,13 @@ export function setAppMode(mode) {
     document.getElementById(id)?.classList.add("hidden")
   );
 
-  document.getElementById(mode + "View")?.classList.remove("hidden");
+  const view = document.getElementById(mode + "View");
+  view?.classList.remove("hidden");
+
+  // ✅ re-sync auth indicator when console becomes active
+  if (mode === "console" && typeof window.setConsoleAuthenticated === "function") {
+    window.setConsoleAuthenticated();
+  }
 }
 
 // appRouter.js

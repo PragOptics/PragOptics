@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>PragOptics™ 404 :: BREACH</title>
+<title>PragOptics™ 404 :: BLOCK BREACH</title>
 
 <meta name="color-scheme" content="dark">
 
@@ -153,7 +153,7 @@ function resetGame(){
   S.effects.slowT=0;
 
   S.paddle.x = W/2;
-  spawnBall();
+  spawnBall(true);
   spawnBricks();
 }
 
@@ -164,7 +164,8 @@ function spawnBall(stuck=true){
     y: H - 80,
     vx: 0,
     vy: 0,
-    stuck: !!stuck
+    stuck: !!stuck,
+    squish: 0
   });
 }
 
@@ -248,6 +249,11 @@ function updateBalls(){
 
   for(let i=S.balls.length-1;i>=0;i--){
     const b=S.balls[i];
+    // decay squish each frame
+    if (b.squish) {
+      b.squish *= 0.85;
+      if (b.squish < 0.05) b.squish = 0;
+    }
     if(b.stuck) continue;
 
     const slow = S.effects.slowT>0 ? 0.7 : 1;
@@ -267,6 +273,7 @@ function updateBalls(){
         b.vx = dx*6;
         b.vy = -Math.abs(b.vy);
         S.combo=1;
+        b.squish = 6;
         beep(400);
       }else if(b.y>H){
         S.balls.splice(i,1);
@@ -393,13 +400,63 @@ function draw(){
   ctx.fillStyle="#9ff";
   ctx.fillRect(S.paddle.x-pw/2,H-30,pw,CFG.paddle.h);
 
-  // balls
-  ctx.fillStyle="#fff";
-  for(const b of S.balls){
-    ctx.beginPath();
-    ctx.arc(b.x,b.y,CFG.ball.r,0,Math.PI*2);
-    ctx.fill();
-  }
+
+  // balls (squishy energy orbs)
+for(const b of S.balls){
+  const r = CFG.ball.r;
+
+  // velocity magnitude
+  const vx = b.vx || 0;
+  const vy = b.vy || 0;
+  const speed = Math.hypot(vx, vy);
+
+  // squash & stretch factors
+  const extra = (b.squish || 0) * 0.05;
+  const stretch = Math.min(1.8, 1 + speed * 0.08 + extra);
+  const squash  = Math.max(0.65, 1 - speed * 0.04 - extra);
+
+  // direction bias
+  const dx = vx !== 0 ? vx / speed || 0 : 0;
+  const dy = vy !== 0 ? vy / speed || 0 : 0;
+
+  ctx.save();
+  ctx.translate(b.x, b.y);
+
+  // align stretch to movement direction
+  ctx.rotate(Math.atan2(dy, dx));
+
+  // outer glow
+  ctx.globalAlpha = 0.35;
+  ctx.fillStyle = "#9ff";
+  ctx.beginPath();
+  ctx.ellipse(0, 0, r * stretch * 1.6, r * squash * 1.6, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // main body
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = "#ffffff";
+  ctx.beginPath();
+  ctx.ellipse(0, 0, r * stretch, r * squash, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // inner core (slight lag = squishy feel)
+  ctx.globalAlpha = 0.85;
+  ctx.fillStyle = "#dfffff";
+  ctx.beginPath();
+  ctx.ellipse(
+    -dx * 1.5,
+    -dy * 1.5,
+    r * 0.5,
+    r * 0.5,
+    0,
+    0,
+    Math.PI * 2
+  );
+  ctx.fill();
+
+  ctx.restore();
+}
+
 
   // bricks
   for(const br of S.bricks){
@@ -463,7 +520,10 @@ function syncHUD(){
 /* ================= LOOP ================= */
 
 function tick(){
-  if(S.phase==="dead") return;
+  if(S.phase==="dead"){
+    clearPress();
+    return;
+  }
 
   updatePaddle();
   updateBalls();
