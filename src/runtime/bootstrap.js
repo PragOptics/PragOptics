@@ -217,7 +217,17 @@ function applyPostLoginResolution({ ping }) {
       initPostLoginWizard(token, ping);
       window.__wizardInit = true;
     }
-
+    
+    ensureWizardVisibleAndBranded(ping, {
+      title: "PragOptics™ Billing",
+      hint:
+        decision.banner === "canceled"
+          ? "Your subscription was canceled. Restart billing anytime."
+          : decision.urgent
+          ? "Payment action required."
+          : "Manage your subscription and billing details.",
+      hasTokens: !!token
+    });
 
     if (decision.banner === "canceled") {
       showCanceledBanner();
