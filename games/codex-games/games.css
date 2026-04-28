@@ -1,0 +1,113 @@
+/* /games/codex-games/games.css */
+
+/* 1) Pull in the proven Codex skin (absolute URL, GitHub-safe) */
+@import url("https://pragoptics.com/docs/codex/codex.css");
+
+/* 2) Games-specific additions (keeps Codex structure intact) */
+body.games-codex{
+  margin:0;
+  background: transparent;
+  color: var(--ink);
+}
+
+/* Content area where we render the game launch panel */
+.games-content{
+  padding: 18px 22px;
+}
+
+/* Empty state */
+.games-empty{
+  padding: 26px 22px;
+  text-align:center;
+  color: rgba(225,235,250,0.82);
+}
+.games-empty-title{
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  margin-bottom: 8px;
+}
+.games-empty-sub{
+  color: var(--muted);
+}
+
+/* Launch card */
+.games-card{
+  border: 1px solid rgba(255,255,255,0.10);
+  background: rgba(0,0,0,0.22);
+  border-radius: 16px;
+  padding: 18px 18px;
+  box-shadow: 0 10px 26px rgba(0,0,0,0.35);
+}
+.games-card + .games-card{
+  margin-top: 12px;
+}
+
+.games-h1{
+  margin: 0;
+  font-weight: 950;
+  letter-spacing: 0.02em;
+  font-size: 1.25rem;
+  color: rgba(225,235,250,0.92);
+}
+
+.games-meta{
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 0.95rem;
+  line-height: 1.45;
+}
+
+/* Key/value block */
+.games-kv{
+  display:grid;
+  grid-template-columns: 140px 1fr;
+  gap: 8px 14px;
+  margin-top: 12px;
+  color: rgba(225,235,250,0.86);
+  font-size: 0.95rem;
+}
+.games-kv .k{
+  color: var(--muted);
+}
+
+/* Buttons */
+.games-actions{
+  margin-top: 14px;
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+}
+
+.games-btn{
+  appearance:none;
+  border: 1px solid rgba(255,255,255,0.14);
+  background: rgba(255,255,255,0.05);
+  color: rgba(225,235,250,0.92);
+  padding: 10px 12px;
+  border-radius: 14px;
+  cursor:pointer;
+  text-decoration:none;
+  display:inline-flex;
+  align-items:center;
+  gap: 8px;
+}
+.games-btn:hover{
+  background: rgba(255,255,255,0.08);
+}
+.games-btn.primary{
+  border-color: rgba(33,188,165,0.35);
+  background: rgba(33,188,165,0.12);
+}
+
+/* Helper note */
+.games-note{
+  margin-top: 10px;
+  font-size: 0.85rem;
+  color: rgba(225,235,250,0.62);
+  line-height: 1.45;
+}
+
+/* Small monospace URL block */
+.games-url{
+  word-break: break-all;
+}

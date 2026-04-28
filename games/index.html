@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PragOptics™ Games</title>
+  <meta name="color-scheme" content="dark" />
+
+  <!-- Icons -->
+  <link rel="icon" type="image/x-icon" href="https://pragoptics.com/images/favicon.ico" sizes="48x48">
+  <link rel="icon" type="image/png" href="https://pragoptics.com/images/favicon.png" sizes="192x192">
+  <link rel="apple-touch-icon" href="https://pragoptics.com/images/apple-touch-icon.png">
+
+  <!-- Reuse platform tokens + base (EXACTLY like Codex) -->
+  <link rel="stylesheet" href="https://pragoptics.com/css/tokens.css">
+  <link rel="stylesheet" href="https://pragoptics.com/css/base.css">
+  <link rel="stylesheet" href="https://pragoptics.com/css/utilities.css">
+  <link rel="stylesheet" href="https://pragoptics.com/css/components/modals.css">
+
+  <!-- Games Codex skin (parallel to /docs/codex/codex.css) -->
+  <link rel="stylesheet" href="https://pragoptics.com/games/codex-games/games.css">
+</head>
+
+<body class="codex games-codex">
+  <div class="codex-shell">
+
+    <!-- LEFT NAV (Codex‑identical) -->
+    <aside class="codex-nav" aria-label="Games navigation">
+      <div class="codex-nav-head">
+        <div class="codex-brand">
+          PragOptics<span class="tm">™</span> Games
+        </div>
+
+        <button
+          id="codexNavToggle"
+          class="codex-nav-toggle"
+          type="button"
+          aria-label="Toggle navigation">
+          ☰
+        </button>
+      </div>
+
+      <!-- Tree populated by games.js from games.manifest.json -->
+      <div
+        id="codexTree"
+        class="codex-tree"
+        role="tree"
+        aria-label="Games tree">
+      </div>
+    </aside>
+
+    <!-- MAIN PANEL (Codex‑identical container) -->
+    <main class="codex-main" aria-label="Game library">
+
+      <header class="codex-head">
+        <div class="codex-head-left">
+          <h1 id="codexTitle" class="codex-title">Games</h1>
+          <div id="codexPath" class="codex-path">
+            Select a game
+          </div>
+        </div>
+
+        <div class="codex-head-right">
+          <!-- Populated by runtime -->
+          <a
+            id="codexOpenRaw"
+            class="codex-raw"
+            href="#"
+            target="_blank"
+            rel="noopener noreferrer">
+            Open raw
+          </a>
+        </div>
+      </header>
+
+      <section class="codex-body">
+        <div id="codexLoading" class="codex-loading">
+          Loading…
+        </div>
+
+        <!-- Runtime injects launch panel here -->
+        <article
+          id="codexContent"
+          class="games-content"
+          aria-live="polite">
+          <div class="games-empty">
+            <div class="games-empty-title">SYSTEM READY</div>
+            <div class="games-empty-sub">
+              Choose a game from the left.
+            </div>
+          </div>
+        </article>
+      </section>
+    </main>
+  </div>
+
+  <!-- Games Codex runtime (parallel to /docs/codex/codex.js) -->
+  <script
+    type="module"
+    src="https://pragoptics.com/games/codex-games/games.js">
+  </script>
+</body>
+</html>
