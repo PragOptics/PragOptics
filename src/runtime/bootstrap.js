@@ -109,7 +109,8 @@
       );
 
       if (storedTokens?.access_token && storedPing) {
-        window.setConsoleAuthenticated?.(storedPing);
+        window.setConsoleAuthenticated?.();
+        applyPostLoginResolution({ ping: storedPing });
       }
     } catch {
       // noop – console will remain unauthenticated
