@@ -1,0 +1,1525 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>PragOptics™ 404 :: VECTOR BREACH</title>
+  
+<meta name="color-scheme" content="dark">
+
+  <!-- Icons -->
+  <link rel="icon" type="image/x-icon" href="https://pragoptics.com/images/favicon.ico" sizes="48x48">
+  <link rel="icon" type="image/png" href="https://pragoptics.com/images/favicon.png" sizes="192x192">
+  <link rel="apple-touch-icon" href="https://pragoptics.com/images/apple-touch-icon.png">
+<style>
+:root{
+  --hud-h: 112px;
+  --hud-scale:1.0;
+
+  --bg0:#020406;
+  --ink:#9ff;
+  --muted:rgba(160,220,220,0.90);
+  --line:rgba(120,255,255,0.18);
+
+  --mini:rgba(120,255,255,0.85);
+  --burst:rgba(255,212,42,0.85);
+  --fan:rgba(120,255,255,0.65);
+  --bomb:rgba(255,90,90,0.85);
+
+  --hp: rgba(42,255,138,0.90);
+  --shield: rgba(120,255,255,0.70);
+  --danger: rgba(255,90,90,0.90);
+}
+
+html,body{
+  margin:0;
+  width:100%;
+  height:100%;
+  overflow:hidden;
+  background:radial-gradient(circle at top,#0e1620,#030609);
+  font-family:ui-monospace,monospace;
+  color:var(--ink);
+}
+
+/* ===== HUD SHELL ===== */
+#hud{
+  padding:8px 16px;
+  background:linear-gradient(180deg,rgba(10,22,30,.96),rgba(6,10,14,.96));
+  border-bottom:1px solid var(--line);
+  display:flex;
+  flex-direction:column;
+  gap:0;
+}
+
+#hudScale{
+  transform: scale(var(--hud-scale));
+  transform-origin: top center;
+}
+
+/* ===== TOP: TITLE + CONTROLS (CENTERED CONSOLE STYLE) ===== */
+#hudTop{
+  display:flex;
+  align-items:baseline;
+  justify-content:space-between;
+  width:100%;
+  gap:12px;
+  margin-bottom: 6px;
+}
+
+/* Left: game title */
+#hudTop .title{
+  font-size:14px;
+  font-weight:800;
+  letter-spacing:.6px;
+  white-space:nowrap;
+}
+
+/* Right: controls hint */
+#hudTop .muted{
+  font-size:11px;
+  color:var(--muted);
+  opacity:.85;
+  white-space:nowrap;
+  text-align:right;
+}
+#hudTop{
+  padding-bottom:4px;
+  border-bottom:1px dashed rgba(120,255,255,.15);
+}
+
+
+#hudTop > div:not(.title):not(.muted){
+  display:none;
+}
+
+/* ===== MID: MAIN CONSOLE PANEL ===== */
+#hudMid{
+  display:grid;
+  grid-template-columns:1fr 1fr 1fr;
+  gap:48px;
+  font-size:11px;
+  color:var(--muted);
+  align-items:stretch;
+}
+
+/* ===== LEFT: STATUS (HP / SHIELD / FUTURE BUFFS) ===== */
+.hud-left{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+
+/* ===== CENTER: LIVE READER CARD ===== */
+.hud-center{
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  align-items:center;
+  gap:6px;
+  padding:10px 14px;
+  border-radius:10px;
+  background:rgba(10,20,26,.5);
+  border:1px solid rgba(120,255,255,.2);
+  box-shadow:
+    inset 0 0 0 1px rgba(120,255,255,.05),
+    0 0 20px rgba(0,0,0,.4);
+}
+
+.hud-center-title{
+  font-size:10px;
+  letter-spacing:.8px;
+  opacity:.7;
+}
+
+.hud-center-row{
+  font-size:12px;
+  color:var(--ink);
+  display:flex;
+  gap:10px;
+}
+
+/* ===== RIGHT: WEAPON STACK ===== */
+#hudBars{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  justify-content:center;
+}
+
+/* ===== BAR SYSTEM ===== */
+.track{
+  flex:1;
+  height:10px;
+  border:1px solid rgba(120,255,255,.25);
+  border-radius:8px;
+  background:rgba(10,20,26,.60);
+  overflow:hidden;
+}
+.fill{height:100%;width:100%;}
+.pct{
+  width:44px;
+  text-align:right;
+  color:var(--muted);
+}
+
+.bar{
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+.bar .label{
+  width:52px;
+}
+.bar .track{
+  flex:1;
+}
+
+.bar.active .track{
+  border-color:#fff;
+  box-shadow:0 0 0 2px #fff inset;
+}
+
+@keyframes cdPulse{
+  0%{filter:brightness(1);}
+  50%{filter:brightness(1.35);}
+  100%{filter:brightness(1);}
+}
+.bar.active .fill{
+  animation:cdPulse 1.2s ease-in-out infinite;
+}
+
+/* ===== BOSS ROW ===== */
+#bossRow{
+  display:none;
+  align-items:center;
+  gap:10px;
+  font-size:11px;
+  color:var(--muted);
+  margin-top: 6px;
+}
+#bossRow .track{
+  width:100%;
+  max-width:none;
+  flex:1;
+  height:10px;
+  border:1px solid rgba(255,90,90,.35);
+  background:rgba(30,8,10,.35);
+}
+#bossRow .fill{
+  background:var(--danger);
+}
+
+/* ===== GAME AREA ===== */
+#gameWrap{
+  width:100%;
+  height:calc(100vh - var(--hud-h));
+}
+canvas{
+  width:100%;
+  height:100%;
+  display:block;
+  background:var(--bg0);
+}
+/* ===== WEAPON FILL COLORS ===== */
+#fillMini  { background: var(--mini); }
+#fillBurst { background: var(--burst); }
+#fillFan   { background: var(--fan); }
+#fillBomb  { background: var(--bomb); }
+
+</style>
+</head>
+
+<body>
+
+<header id="hud">
+  <div id="hudScale">
+  <div id="hudTop">
+    <div class="title">PRAGOPTICS :: VECTOR BREACH</div>
+    <div class="muted">1–4 switch • Q/E cycle • Space fire • Arrows move • R reset</div>
+  </div>
+
+  <div id="hudMid">
+
+  <!-- LEFT: STATUS -->
+  <div class="hud-left">
+    <div style="display:flex;align-items:center;gap:8px;">
+      <div style="width:42px;">💚</div>
+      <div class="track" style="width:190px;border-color:rgba(42, 255, 70, 0.28);">
+        <div class="fill" id="hpFill" style="background:var(--hp);width:100%"></div>
+      </div>
+      <div class="pct" id="hpText">100/100</div>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:8px;">
+      <div style="width:42px;">🛡️</div>
+      <div class="track" style="width:190px;border-color:rgba(102, 186, 255, 0.668);">
+        <div class="fill" id="shFill" style="background:var(--shield);width:0%"></div>
+      </div>
+      <div class="pct" id="shText">0</div>
+    </div>
+    <!-- ARMOR (hidden unless active) -->
+      <div id="armorRow" style="display:none;align-items:center;gap:8px;">
+        <div style="width:42px;">💟</div>
+        <div class="track" style="width:190px;border-color:rgba(187, 69, 255, 0.644);">
+          <div
+            class="fill"
+            id="arFill"
+            style="background:rgba(137, 28, 184, 0.332);width:0%">
+          </div>
+        </div>
+        <div class="pct" id="arText">0</div>
+      </div>
+      <!-- DMG BOOST (hidden unless active) -->
+    <div id="boostRow" style="display:none;align-items:center;gap:8px;">
+      <div style="width:42px;">🗡️</div>
+      <div class="track" style="width:190px;border-color:rgba(255, 212, 42, 0.70);">
+        <div
+          class="fill"
+          id="boostFill"
+          style="background:rgba(255, 212, 42, 0.55);width:0%">
+        </div>
+      </div>
+      <div class="pct" id="boostText">0s</div>
+    </div>
+
+  </div>
+
+  <!-- CENTER: LIVE READER -->
+  <div class="hud-center">
+    <div class="hud-center-title">SYSTEM STATUS</div>
+    <div class="hud-center-row">
+      SCORE <span id="hudScore">0</span>
+    </div>
+    <div class="hud-center-row">
+      LEVEL <span id="hudLevel">1</span>
+    </div>
+    <div class="hud-center-row">
+      WEAPON <span id="hudWeapon">MINIGUN</span>
+    </div>
+  </div>
+
+  <!-- RIGHT: WEAPONS -->
+  <div id="hudBars">
+    <div class="bar" id="barMini"><div class="label">MINI</div><div class="track"><div class="fill" id="fillMini"></div></div><div class="pct" id="pctMini">100%</div></div>
+    <div class="bar" id="barBurst"><div class="label">BURST</div><div class="track"><div class="fill" id="fillBurst"></div></div><div class="pct" id="pctBurst">100%</div></div>
+    <div class="bar" id="barFan"><div class="label">FAN</div><div class="track"><div class="fill" id="fillFan"></div></div><div class="pct" id="pctFan">100%</div></div>
+    <div class="bar" id="barBomb"><div class="label">BOMB</div><div class="track"><div class="fill" id="fillBomb"></div></div><div class="pct" id="pctBomb">100%</div></div>
+  </div>
+
+</div>
+
+
+  <div id="bossRow">
+    <div>Boss HP</div>
+    <div class="track"><div class="fill" id="bossFill" style="width:0%"></div></div>
+    <div id="bossText">0/0</div>
+  </div>
+  </div>
+</header>
+
+<main id="gameWrap">
+  <canvas id="c"></canvas>
+</main>
+
+<script>
+(() => {
+"use strict";
+
+/* ================= CANVAS ================= */
+const canvas = document.getElementById("c");
+const wrapEl = document.getElementById("gameWrap");
+const ctx = canvas.getContext("2d");
+
+let W=0, H=0, DPR=1;
+function resize(){
+  DPR = window.devicePixelRatio || 1;
+  W = wrapEl.clientWidth | 0;
+  H = wrapEl.clientHeight | 0;
+  canvas.width = W * DPR;
+  canvas.height = H * DPR
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+}
+
+function syncHudHeight(){
+  const hud = document.getElementById("hud");
+  const scale = parseFloat(
+    getComputedStyle(document.documentElement)
+      .getPropertyValue("--hud-scale")
+  ) || 1;
+
+  const h = hud.offsetHeight * scale;
+  document.documentElement.style.setProperty("--hud-h", h + "px");
+}
+
+addEventListener("resize", () => {
+  resize();
+  syncHudHeight();
+});
+
+resize();
+syncHudHeight();
+
+/* ================= INPUT ================= */
+const down = Object.create(null);
+const press = Object.create(null);
+addEventListener("keydown", e => {
+  if(!down[e.code]) press[e.code] = 1;
+  down[e.code] = 1;
+  if(e.code === "Space" || e.code.startsWith("Arrow")) e.preventDefault();
+  armAudio(); // audio unlock on first gesture
+});
+addEventListener("keyup", e => down[e.code] = 0);
+
+/* ================= AUDIO + HAPTICS ================= */
+const AC = new (window.AudioContext || window.webkitAudioContext)();
+let audioArmed = false;
+
+function armAudio(){
+  if(audioArmed) return;
+  audioArmed = true;
+  try { AC.resume(); } catch(_) {}
+}
+
+function beep(freq=440, dur=0.04, type="square", vol=0.05){
+  if(!audioArmed) return;
+  const o = AC.createOscillator();
+  const g = AC.createGain();
+  o.type = type;
+  o.frequency.value = freq;
+  g.gain.value = vol;
+  o.connect(g).connect(AC.destination);
+  o.start();
+  o.stop(AC.currentTime + dur);
+}
+
+function buzz(ms=20){
+  if(navigator.vibrate) navigator.vibrate(ms);
+}
+
+/* ================= HELPERS ================= */
+const rand  = (a,b)=>a+Math.random()*(b-a);
+const dist  = (x,y,X,Y)=>Math.hypot(x-X,y-Y);
+const wrap  = (v,m)=>(v%m+m)%m;
+const clamp = (v,a,b)=>Math.max(a,Math.min(b,v));
+
+/* ================= CONFIG ================= */
+const CFG = {
+  ship:{
+    rot:0.07, thrust:0.12, damp:0.99, r:12,
+    maxHp:100,
+    maxShield:100,
+    iFrames:30,
+    hitKnock:0.7
+  },
+  bullet:{ speed:9, life:70, max:64 },
+  block:{ r:14, split:2 },
+
+  // Boss evolution:
+  // bossTier increments on each boss wave cleared.
+  // bossCount mirrors by tier: 1,2,3,4 then resets to 1 with abilities enabled.
+  boss:{
+    r:80,
+    enterY:120,
+    baseHp: 120,
+    hpScale: 22
+  },
+
+  weapons:{
+    minigun:{ cd:2, spread:0.05, sfx:[820,0.02,"square",0.035] },
+    burst:{ cd:30, dmg:5, seqGap:3, sfx:[520,0.07,"sawtooth",0.05] },
+    fan:{ cd:40, sfx:[640,0.05,"triangle",0.05] },
+    bomb:{ cd:180, radius:220, sfx:[120,0.28,"triangle",0.18] }
+  },
+  
+  powerups:{
+    armorMax: 80,
+    dmgBoostDur: 30 * 60,   // 30s @ ~60fps
+    dmgBoostMul: 1.6,
+    bossBoostChance: 0.55
+  },
+
+  progression:{
+    bossHpGain: 50
+  }
+
+};
+
+/* ================= STATE ================= */
+const S = {
+  phase:"wave",          // wave | boss | dead | transition
+  score:0,
+  level:1,
+
+  // Boss evolution state
+  bossTier:0,            // 0 before first boss wave clear
+  bossSet:[],            // array of boss objects when in boss phase
+
+  shake:0,
+  bombRipples: [],
+  burstSeq: 0,
+  burstSeqGap: 0,
+
+  ship:{
+    x:0,y:0,a:0,vx:0,vy:0,
+    hp:CFG.ship.maxHp,
+    shield:100,
+    armor:0,
+    ifr:0
+  },
+
+  bullets:[],
+  enemies:[],
+  powerups: [],
+
+  effects: {
+    dmgBoostT: 0
+  },
+
+  weapon:"minigun",
+  cd:{minigun:0,burst:0,fan:0,bomb:0},
+
+  // boss bullets (boss shooting phase later)
+  eBullets:[]
+};
+
+/* ================= HUD REFS ================= */
+const hudScore  = document.getElementById("hudScore");
+const hudLevel  = document.getElementById("hudLevel");
+const hudWeapon = document.getElementById("hudWeapon");
+
+const hpFill = document.getElementById("hpFill");
+const hpText = document.getElementById("hpText");
+const shFill = document.getElementById("shFill");
+const shText = document.getElementById("shText");
+const armorRow = document.getElementById("armorRow");
+const arFill   = document.getElementById("arFill");
+const arText   = document.getElementById("arText");
+const boostRow  = document.getElementById("boostRow");
+const boostFill = document.getElementById("boostFill");
+const boostText = document.getElementById("boostText");
+
+const barMini  = document.getElementById("barMini");
+const barBurst = document.getElementById("barBurst");
+const barFan   = document.getElementById("barFan");
+const barBomb  = document.getElementById("barBomb");
+
+const fillMini  = document.getElementById("fillMini");
+const fillBurst = document.getElementById("fillBurst");
+const fillFan   = document.getElementById("fillFan");
+const fillBomb  = document.getElementById("fillBomb");
+
+const pctMini  = document.getElementById("pctMini");
+const pctBurst = document.getElementById("pctBurst");
+const pctFan   = document.getElementById("pctFan");
+const pctBomb  = document.getElementById("pctBomb");
+
+const bossRow  = document.getElementById("bossRow");
+const bossFill = document.getElementById("bossFill");
+const bossText = document.getElementById("bossText");
+
+/* ===== CHUNK 1 ends here on purpose. ===== */
+/* ================= CORE HELPERS (gameplay) ================= DEATH ================= */
+
+function applyDamage(dmg, srcX, srcY){
+  if(S.ship.ifr > 0 || S.phase === "dead") return;
+
+  // armor absorbs first
+  if(S.ship.armor > 0){
+    const used = Math.min(S.ship.armor, dmg);
+    S.ship.armor -= used;
+    dmg -= used;
+  }
+
+
+  // shield absorbs first
+  if(S.ship.shield > 0){
+    const used = Math.min(S.ship.shield, dmg);
+    S.ship.shield -= used;
+    dmg -= used;
+  }
+
+  if(dmg > 0){
+    S.ship.hp -= dmg;
+    if(S.ship.hp < 0) S.ship.hp = 0;
+  }
+
+  // knockback away from source
+  const dx = S.ship.x - srcX;
+  const dy = S.ship.y - srcY;
+  const m = Math.hypot(dx,dy) || 1;
+  S.ship.vx += (dx/m) * CFG.ship.hitKnock;
+  S.ship.vy += (dy/m) * CFG.ship.hitKnock;
+
+  S.ship.ifr = CFG.ship.iFrames;
+
+  addShake(10);
+  buzz(25);
+  beep(160, 0.08, "triangle", 0.09);
+
+  if(S.ship.hp <= 0){
+    setPhase("dead");
+    addShake(18);
+    buzz(60);
+    beep(70, 0.22, "triangle", 0.15);
+  }
+}
+
+/* ================= SHOOTING ================= */
+
+
+function shootPlayer(angle, speed, dmg=1){
+  if(S.bullets.length >= CFG.bullet.max) return;
+  S.bullets.push({
+    x: S.ship.x,
+    y: S.ship.y,
+    vx: Math.cos(angle) * speed + S.ship.vx,
+    vy: Math.sin(angle) * speed + S.ship.vy,
+    life: CFG.bullet.life,
+    r: 2,
+    dmg
+  });
+}
+
+
+function shootEnemy(x,y, angle, speed){
+  // boss bullets
+  S.eBullets.push({
+    x, y,
+    vx: Math.cos(angle) * speed,
+    vy: Math.sin(angle) * speed,
+    life: 240,
+    r: 3
+  });
+}
+
+/* ================= POWERUPS (ARMOR ONLY - PHASE 1) ================= */
+
+function spawnArmorPickup(){
+  // Do not spawn if player already has armor
+  if (S.ship.armor > 0) return;
+
+  // Keep it to ONE armor pickup at a time
+  if (S.powerups.some(p => p.kind === "armor")) return;
+
+  S.powerups.push({
+    kind:"armor",
+    x: rand(40, W-40),
+    y: rand(80, H-80),
+    r: 14,
+    t: 0
+  });
+}
+
+function maybeSpawnArmorForLevel(){
+  // Armor becomes available only AFTER tier-4 boss wave is cleared.
+  // bossTier increments on boss wave cleared, so >= 4 means tier4 is done.
+  if(S.bossTier < 4) return;
+
+  // Spawn one armor pickup per level (player must fly over it)
+  spawnArmorPickup();
+}
+
+function spawnDmgPickup(){
+  // keep it to ONE dmg pickup at a time
+  if(S.powerups.some(p => p.kind === "dmg")) return;
+
+  S.powerups.push({
+    kind:"dmg",
+    x: rand(40, W-40),
+    y: rand(80, H-80),
+    r: 12,
+    t: 0
+  });
+}
+
+function maybeSpawnDmgForBossLevel(){
+  // Only after bosses gain movement (tier 5+ in your evolution model)
+  if(S.bossTier < 5) return;
+
+  // ALWAYS spawn at boss-level start (no randomness)
+  spawnDmgPickup();
+}
+
+function applyPowerup(p){
+  if(p.kind === "armor"){
+    S.ship.armor = CFG.powerups.armorMax;
+    addShake(4);
+    buzz(12);
+    beep(740, 0.06, "triangle", 0.07);
+    return;
+  }
+
+  if(p.kind === "dmg"){
+    S.effects.dmgBoostT = CFG.powerups.dmgBoostDur;
+    addShake(3);
+    buzz(10);
+    beep(980, 0.05, "square", 0.06);
+    return;
+  }
+}
+
+function updatePowerups(){
+  for(let i=S.powerups.length-1;i>=0;i--){
+    const p = S.powerups[i];
+    p.t++;
+
+    // gentle bob
+    p.y += Math.sin(p.t * 0.05) * 0.35;
+
+    // collect
+    if(dist(p.x,p.y,S.ship.x,S.ship.y) < (p.r + CFG.ship.r + 2)){
+      applyPowerup(p);
+      S.powerups.splice(i,1);
+    }
+  }
+  
+ // tick timed effects
+  if(S.effects.dmgBoostT > 0) S.effects.dmgBoostT--;
+
+}
+
+function drawPowerups(){
+  for(const p of S.powerups){
+
+    if(p.kind === "armor"){
+      // ring pickup (armor)
+      ctx.strokeStyle = "rgba(170,120,255,0.90)";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
+      ctx.stroke();
+
+      ctx.globalAlpha = 0.40;
+      ctx.strokeStyle = "rgba(200,160,255,0.55)";
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r + 6 + Math.sin(p.t*0.10)*2, 0, Math.PI*2);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+      continue;
+    }
+
+    if(p.kind === "dmg"){
+      // diamond pickup (damage boost) - gold/yellow (distinct from armor)
+      ctx.strokeStyle = "rgba(255,212,42,0.90)";
+      ctx.lineWidth = 2;
+
+      const bob = Math.sin(p.t * 0.10) * 2;
+
+      ctx.beginPath();
+      ctx.moveTo(p.x,       p.y - (10 + bob));
+      ctx.lineTo(p.x + 8,   p.y);
+      ctx.lineTo(p.x,       p.y + (10 + bob));
+      ctx.lineTo(p.x - 8,   p.y);
+      ctx.closePath();
+      ctx.stroke();
+
+      ctx.globalAlpha = 0.25;
+      ctx.beginPath();
+      ctx.moveTo(p.x,       p.y - (16 + bob));
+      ctx.lineTo(p.x + 12,  p.y);
+      ctx.lineTo(p.x,       p.y + (16 + bob));
+      ctx.lineTo(p.x - 12,  p.y);
+      ctx.closePath();
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+      continue;
+    }
+
+  }
+}
+
+function updateBombRipples(){
+  for(let i = S.bombRipples.length - 1; i >= 0; i--){
+    const r = S.bombRipples[i];
+    r.r += 18;
+    r.a -= 0.05;
+
+    if(r.a <= 0){
+      S.bombRipples.splice(i,1);
+    }
+  }
+}
+
+function drawBombRipples(){
+  for(const r of S.bombRipples){
+    ctx.strokeStyle = `rgba(255,140,80,${r.a})`;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(r.x, r.y, r.r, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+}
+
+
+/* ================= WAVE / BOSS EVOLUTION ================= */
+
+/*
+Boss evolution spec (based on bossTier+1, which increments each boss wave cleared):
+  tier 1  -> 1 boss (center)
+  tier 2  -> 2 bosses (mirrored)
+  tier 3  -> 3 bosses (third on right)
+  tier 4  -> 4 bosses (fourth on left)
+  tier 5+ -> back to 1 boss, but abilities turn on progressively:
+             5: moves
+             6: moves + shoots
+             7: moves + shoots + spawns enemies
+             8+: harder versions (faster / more frequent)
+*/
+
+function bossCountForTier(t){
+  if(t <= 4) return t;
+  return 1;
+}
+
+function bossPositionsForTier(t){
+  // Returns normalized X positions (0..1), mapped to W.
+  // Designed to satisfy: boss3 adds RIGHT, boss4 adds LEFT.
+  if(t === 1) return [0.50];
+  if(t === 2) return [0.35, 0.65];
+  if(t === 3) return [0.35, 0.65, 0.80];          // 3rd boss on right
+  if(t === 4) return [0.20, 0.35, 0.65, 0.80];    // 4th boss on left
+  return [0.50];
+}
+
+function abilitiesForTier(t){
+  // After tier 4, we re-enter with abilities.
+  if(t <= 4) return { move:false, shoot:false, spawn:false, speed:1, fireRate:1, spawnRate:1 };
+  const a = t - 4;
+  return {
+    move: true,
+    shoot: a >= 2,
+    spawn: a >= 3,
+    speed: 1 + Math.min(1.2, a * 0.12),
+    fireRate: 1 + Math.min(2.0, a * 0.18),
+    spawnRate: 1 + Math.min(2.0, a * 0.14)
+  };
+}
+
+function makeBoss(tier, idx, xNorm){
+  const abil = abilitiesForTier(tier);
+  const hp = CFG.boss.baseHp + (tier * CFG.boss.hpScale) + (idx * 18);
+
+  return {
+    id: `${tier}-${idx}`,
+    tier,
+    x: W * xNorm,
+    y: -CFG.boss.r * 1.2,
+    vx: 0,
+    vy: 0,
+    hp,
+    hpMax: hp,
+    r: CFG.boss.r,
+
+    // behavior toggles
+    move: abil.move,
+    shoot: abil.shoot,
+    spawn: abil.spawn,
+
+    // tuning
+    speed: abil.speed,
+    fireRate: abil.fireRate,
+    spawnRate: abil.spawnRate,
+
+    // internal timers
+    t: 0,
+    fireCd: 0,
+    spawnCd: 0,
+
+    // movement params (only used if move==true)
+    driftPhase: rand(0, Math.PI*2),
+    driftAmp: 0.20 + Math.min(0.35, (tier-4) * 0.05),
+    driftRate: 0.012 * abil.speed
+  };
+}
+
+function isBossLevel(level){
+  // Keep your “boss every 4 levels” cadence, but boss *shape* evolves by bossTier.
+  return (level % 4) === 0;
+}
+
+function spawnWaveForLevel(){
+  // Clears the field deterministically for a new level.
+  S.bullets.length = 0;
+  S.eBullets.length = 0;
+  S.enemies.length = 0;
+  S.bossSet.length = 0;
+
+  const bossLevel = isBossLevel(S.level);
+
+  // Spawn normal blocks always (even on boss levels) so "never ends" and boss can also spawn minions later.
+  // On boss levels, spawn fewer baseline blocks so bosses are the focus.
+  const baseCount = bossLevel ? (2 + Math.floor(S.level/8)) : (4 + S.level);
+  for(let i=0;i<baseCount;i++){
+    S.enemies.push({
+      x: rand(0,W), y: rand(0,H),
+      vx: rand(-1,1), vy: rand(-1,1),
+      s: 3
+    });
+  }
+
+  if(bossLevel){
+    setPhase("boss");
+    const tier = S.bossTier + 1; // first boss wave => tier 1
+    const xs = bossPositionsForTier(tier);
+    for(let i=0;i<xs.length;i++){
+      S.bossSet.push(makeBoss(tier, i, xs[i]));
+    }
+    // small entry feedback
+    addShake(6);
+    buzz(18);
+    beep(120, 0.12, "triangle", 0.10);
+  } else {
+    setPhase("wave");
+  }
+  // Armor pickup appears on level start (only after tier-4 cleared)
+  maybeSpawnArmorForLevel();
+  // Damage boost pickup appears on boss-level start only (only after tier-5 unlock)
+  if(bossLevel) maybeSpawnDmgForBossLevel();
+}
+
+function advanceLevel(){
+  // single authoritative advancement path to prevent “freeze”
+  S.level++;
+  spawnWaveForLevel();
+}
+
+function onBossWaveCleared(){
+  // === PROGRESSION: permanent hull upgrade ===
+  CFG.ship.maxHp += CFG.progression.bossHpGain;
+  S.ship.hp = Math.min(
+    CFG.ship.maxHp,
+    S.ship.hp + CFG.progression.bossHpGain
+  );
+
+  // increment tier, then advance level
+  S.bossTier++;
+  // clear any leftover minions to prevent stall
+  S.enemies.length = 0;
+  S.bossSet.length = 0;
+
+  addShake(10);
+  buzz(30);
+  beep(90, 0.18, "sawtooth", 0.12);
+
+  advanceLevel();
+}
+/* ===== CHUNK 2 ends here on purpose. ===== */
+
+function clearPressed(){
+  for(const k in press) delete press[k];
+}
+
+function addShake(amount){
+  S.shake = Math.max(S.shake, amount);
+}
+
+function setPhase(p){
+  S.phase = p;
+}
+
+function resetShip(){
+  S.ship.x = W * 0.5;
+  S.ship.y = H * 0.60;
+  S.ship.a = -Math.PI/2;
+  S.ship.vx = 0;
+  S.ship.vy = 0;
+  S.ship.hp = CFG.ship.maxHp;
+  S.ship.armor = 0;
+  S.ship.ifr = 0;
+}
+
+function resetRun(){
+  setPhase("wave");
+  S.score = 0;
+  S.level = 1;
+  S.bossTier = 0;
+  S.bossSet.length = 0;
+  S.bullets.length = 0;
+  S.eBullets.length = 0;
+  S.enemies.length = 0;
+  S.powerups.length = 0;
+  S.effects.dmgBoostT = 0;
+  S.weapon = "minigun";
+  for(const k in S.cd) S.cd[k] = 0;
+  S.shake = 0;
+  resetShip();
+  spawnWaveForLevel();
+  syncHUD(); // safe; exists later but fine to call after it’s defined too
+}
+
+
+/* ================= ENEMY BULLETS (boss projectiles) ================= */
+
+function updateEnemyBullets(){
+  for(let i=S.eBullets.length-1;i>=0;i--){
+    const b = S.eBullets[i];
+    b.x = wrap(b.x + b.vx, W);
+    b.y = wrap(b.y + b.vy, H);
+    b.life--;
+
+    // hit ship
+    if(S.phase !== "dead" && dist(b.x,b.y,S.ship.x,S.ship.y) < (b.r + CFG.ship.r)){
+      S.eBullets.splice(i,1);
+      applyDamage(10, b.x, b.y);
+      addShake(6);
+      buzz(18);
+      beep(140, 0.05, "triangle", 0.08);
+      continue;
+    }
+
+    if(b.life <= 0) S.eBullets.splice(i,1);
+  }
+}
+
+function updateBlocks(){
+  // move + bullet collisions + ship collisions
+  for(let i=S.enemies.length-1;i>=0;i--){
+    const e = S.enemies[i];
+    e.x = wrap(e.x + e.vx, W);
+    e.y = wrap(e.y + e.vy, H);
+
+    const er = enemyRadius(e);
+
+    // player bullets hit block
+    for(let j=S.bullets.length-1;j>=0;j--){
+      const b = S.bullets[j];
+      if(dist(e.x,e.y,b.x,b.y) < er){
+        S.bullets.splice(j,1);
+
+        // score
+        S.score += 10 * e.s;
+        addShake(4);
+        beep(300, 0.03, "square", 0.06);
+
+        // split + remove
+        splitBlock(e);
+        S.enemies.splice(i,1);
+        break;
+      }
+    }
+
+    // ship collision damage
+    if(S.phase !== "dead" && dist(e.x,e.y,S.ship.x,S.ship.y) < er + CFG.ship.r){
+      applyDamage(12 + e.s*2, e.x, e.y);
+    }
+  }
+}
+
+
+/* ================= SHIP UPDATE (movement + i-frames) ================= */
+
+function updateShip(){
+  if(S.phase === "dead") return;
+
+  if(S.ship.ifr > 0) S.ship.ifr--;
+
+  if(down.ArrowLeft)  S.ship.a -= CFG.ship.rot;
+  if(down.ArrowRight) S.ship.a += CFG.ship.rot;
+  if(down.ArrowUp){
+    S.ship.vx += Math.cos(S.ship.a) * CFG.ship.thrust;
+    S.ship.vy += Math.sin(S.ship.a) * CFG.ship.thrust;
+  }
+
+  S.ship.x = wrap(S.ship.x + S.ship.vx, W);
+  S.ship.y = wrap(S.ship.y + S.ship.vy, H);
+  S.ship.vx *= CFG.ship.damp;
+  S.ship.vy *= CFG.ship.damp;
+}
+
+/* ===== CHUNK 3 ends here on purpose. ===== */
+
+function enemyRadius(e){
+  // blocks only in this build (bosses separate)
+  return e.s * CFG.block.r;
+}
+
+function spawnBlock(s, x, y, vx, vy){
+  S.enemies.push({
+    x: x,
+    y: y,
+    vx: vx,
+    vy: vy,
+    s: s
+  });
+}
+
+function splitBlock(e){
+  if(e.s <= 1) return;
+  for(let k=0;k<CFG.block.split;k++){
+    spawnBlock(
+      e.s - 1,
+      e.x,
+      e.y,
+      rand(-1,1),
+      rand(-1,1)
+    );
+  }
+}
+
+
+/* ================= BOSS SET UPDATE ================= */
+
+function totalBossHp(){
+  let hp=0, max=0;
+  for(const b of S.bossSet){ hp += b.hp; max += b.hpMax; }
+  return { hp, max };
+}
+
+function updateBossSet(){
+  if(S.phase !== "boss") return;
+  if(S.bossSet.length === 0) return;
+
+  for(let bi=S.bossSet.length-1; bi>=0; bi--){
+    const boss = S.bossSet[bi];
+    boss.t++;
+
+    if(boss.y < CFG.boss.enterY){
+      boss.y += 1.2 * boss.speed;
+      if(boss.y > CFG.boss.enterY) boss.y = CFG.boss.enterY;
+    }
+
+    if(boss.move && boss.y >= CFG.boss.enterY){
+      const targetX =
+        (W * 0.5) +
+        Math.sin(boss.driftPhase + boss.t * boss.driftRate) * (W * boss.driftAmp);
+
+      boss.x += (targetX - boss.x) * 0.03 * boss.speed;
+
+      const pad = boss.r + 8;
+      if(boss.x < pad) boss.x = pad;
+      if(boss.x > W - pad) boss.x = W - pad;
+    }
+
+    if(boss.shoot && boss.y >= CFG.boss.enterY){
+      boss.fireCd = Math.max(0, boss.fireCd - 1);
+      if(boss.fireCd === 0){
+        const ang = Math.atan2(S.ship.y - boss.y, S.ship.x - boss.x);
+        shootEnemy(boss.x, boss.y, ang, 3.2 + 0.25 * boss.fireRate);
+        boss.fireCd = Math.max(10, Math.floor(44 / boss.fireRate));
+      }
+    }
+
+    for(let j=S.bullets.length-1;j>=0;j--){
+      const b = S.bullets[j];
+      if(dist(boss.x,boss.y,b.x,b.y) < boss.r){
+        S.bullets.splice(j,1);
+        const mul = (S.effects.dmgBoostT > 0) ? CFG.powerups.dmgBoostMul : 1;
+        boss.hp -= Math.max(1, Math.round((b.dmg || 1) * mul));
+        if(boss.hp <= 0){
+          S.score += 300 + boss.tier * 40;
+          S.bossSet.splice(bi,1);
+          break;
+        }
+      }
+    }
+
+    if(S.phase !== "dead" &&
+       dist(boss.x,boss.y,S.ship.x,S.ship.y) < boss.r + CFG.ship.r){
+      applyDamage(18, boss.x, boss.y);
+    }
+  }
+
+  if(S.bossSet.length === 0){
+    onBossWaveCleared();
+  }
+}
+
+        /* ================= WEAPON INPUT + FIRE PATTERNS ================= */
+
+function setWeapon(w){
+  if(S.weapon === w) return;
+  S.weapon = w;
+  beep(680, 0.03, "square", 0.05);
+}
+
+function cycleWeapon(d){
+  const order = ["minigun","burst","fan","bomb"];
+  let i = order.indexOf(S.weapon);
+  i = (i + d + order.length) % order.length;
+  setWeapon(order[i]);
+}
+
+function updateWeaponSelection(){
+  if(press.Digit1) setWeapon("minigun");
+  if(press.Digit2) setWeapon("burst");
+  if(press.Digit3) setWeapon("fan");
+  if(press.Digit4) setWeapon("bomb");
+  if(press.KeyQ) cycleWeapon(-1);
+  if(press.KeyE) cycleWeapon(+1);
+}
+
+function tickCooldowns(){
+  for(const k in S.cd){
+    if(S.cd[k] > 0) S.cd[k]--;
+  }
+}
+
+function fireMinigun(){
+  if(S.cd.minigun !== 0) return;
+  if(!down.Space) return;
+
+  shootPlayer(
+    S.ship.a + rand(-CFG.weapons.minigun.spread, CFG.weapons.minigun.spread),
+    CFG.bullet.speed
+  );
+
+  S.cd.minigun = CFG.weapons.minigun.cd;
+  const s = CFG.weapons.minigun.sfx; beep(s[0],s[1],s[2],s[3]);
+}
+
+function fireBurst(){
+  if(S.cd.burst !== 0) return;
+  if(!press.Space) return;
+
+  // Start a 3-round burst sequence (spaced, deterministic)
+  S.cd.burst = CFG.weapons.burst.cd;
+  S.burstSeq = 3;
+  S.burstSeqGap = 0;
+
+  const s = CFG.weapons.burst.sfx; beep(s[0],s[1],s[2],s[3]);
+  addShake(3);
+  buzz(8);
+}
+
+function fireFan(){
+  if(S.cd.fan !== 0) return;
+  if(!press.Space) return;
+
+  const offs = [-0.48,-0.32,-0.16,0,0.16,0.32,0.48];
+  for(const o of offs){
+    shootPlayer(S.ship.a + o, CFG.bullet.speed);
+  }
+
+  S.cd.fan = CFG.weapons.fan.cd;
+  const s = CFG.weapons.fan.sfx; beep(s[0],s[1],s[2],s[3]);
+  addShake(2);
+}
+
+function fireBomb(){
+  if(S.cd.bomb !== 0) return;
+  if(!press.Space) return;
+
+  const cx = S.ship.x;
+  const cy = S.ship.y;
+  const R = CFG.weapons.bomb.radius;
+
+  // clear/fragment blocks within radius
+  for(let i=S.enemies.length-1;i>=0;i--){
+    const e = S.enemies[i];
+    if(dist(cx,cy,e.x,e.y) < R + enemyRadius(e)){
+      // score + split
+      S.score += 10 * e.s;
+      splitBlock(e);
+      S.enemies.splice(i,1);
+    }
+  }
+
+  // damage bosses within radius
+  if(S.phase === "boss" && S.bossSet.length){
+    for(let i=S.bossSet.length-1;i>=0;i--){
+      const b = S.bossSet[i];
+      if(dist(cx,cy,b.x,b.y) < R + b.r){
+        // heavier bomb damage
+        b.hp -= 25;
+        if(b.hp <= 0){
+          S.score += 300 + b.tier * 40;
+          S.bossSet.splice(i,1);
+        }
+      }
+    }
+    // if bomb wiped the set, end boss wave deterministically
+    if(S.bossSet.length === 0){
+      onBossWaveCleared();
+    }
+  }
+
+  S.cd.bomb = CFG.weapons.bomb.cd;
+  addShake(16);
+  buzz(35);
+  const s = CFG.weapons.bomb.sfx; beep(s[0],s[1],s[2],s[3]);
+  // Bomb shockwave ripple (double pulse)
+  S.bombRipples.push(
+    { x: S.ship.x, y: S.ship.y, r: 0,  a: 1.0 },
+    { x: S.ship.x, y: S.ship.y, r: 0,  a: 0.6 }
+  );
+}
+
+/* Single dispatcher that never “forgets” weapons */
+function updateWeapons(){
+  updateWeaponSelection();
+  tickCooldowns();
+
+  // Burst sequencer: fires 3 rounds over a few frames (no overlap)
+  if(S.weapon === "burst" && S.burstSeq > 0){
+    S.burstSeqGap = Math.max(0, S.burstSeqGap - 1);
+    if(S.burstSeqGap === 0){
+      shootPlayer(S.ship.a, CFG.bullet.speed, CFG.weapons.burst.dmg);
+      S.burstSeq--;
+      S.burstSeqGap = CFG.weapons.burst.seqGap;
+    }
+  }
+
+  if(S.phase === "dead") return;
+
+  if(S.weapon === "minigun") fireMinigun();
+  else if(S.weapon === "burst") fireBurst();
+  else if(S.weapon === "fan") fireFan();
+  else if(S.weapon === "bomb") fireBomb();
+}
+
+/* ================= PLAYER BULLETS UPDATE ================= */
+
+function updatePlayerBullets(){
+  for(let i=S.bullets.length-1;i>=0;i--){
+    const b = S.bullets[i];
+    b.x = wrap(b.x + b.vx, W);
+    b.y = wrap(b.y + b.vy, H);
+    b.life--;
+    if(b.life <= 0) S.bullets.splice(i,1);
+  }
+}
+
+/* ================= PROGRESSION GATES ================= */
+
+function maybeAdvanceFromWave(){
+  // Only advance from wave phase when no blocks remain and not in boss phase
+  if(S.phase !== "wave") return;
+  if(S.enemies.length !== 0) return;
+
+  // reward shield drip on clear (keeps you alive later)
+  S.ship.shield = Math.min(CFG.ship.maxShield, S.ship.shield + 18);
+
+  addShake(6);
+  buzz(18);
+  beep(120, 0.06, "triangle", 0.08);
+
+  advanceLevel();
+}
+
+/* ================= MAIN UPDATE TICK ================= */
+
+function tick(){
+  // reset shortcut
+  if(press.KeyR){
+    resetRun();
+    clearPressed();
+    return;
+  }
+
+  if(S.phase === "dead"){
+    // no simulation when dead (keeps it deterministic)
+    clearPressed();
+    return;
+  }
+
+  // decay shake (camera effect)
+  if(S.shake){
+    S.shake *= 0.9;
+    if(S.shake < 0.2) S.shake = 0;
+  }
+
+  updateShip();
+  updateWeapons();
+  updateBombRipples();
+  updatePlayerBullets();
+
+  updateBlocks();         // blocks move + collide + split + damage
+  updateEnemyBullets();   // boss shots
+  updateBossSet();        // boss set evolution + boss clears + spawns enemies
+  updatePowerups();
+
+  maybeAdvanceFromWave();
+
+  clearPressed();
+}
+
+/* ================= RENDERING (game area only) ================= */
+
+function drawGrid(){
+  ctx.strokeStyle = "#0d1b22";
+  ctx.globalAlpha = 0.3;
+  for(let x=0;x<W;x+=60){ ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }
+  for(let y=0;y<H;y+=60){ ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
+  ctx.globalAlpha = 1;
+}
+
+function drawShip(){
+  // blink while invulnerable
+  const blink = (S.ship.ifr > 0) ? ((S.ship.ifr % 6) < 3) : false;
+  if(blink) return;
+
+  ctx.save();
+  ctx.translate(S.ship.x, S.ship.y);
+  ctx.rotate(S.ship.a);
+  ctx.strokeStyle = "#9ff";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(16,0);
+  ctx.lineTo(-10,-8);
+  ctx.lineTo(-6,0);
+  ctx.lineTo(-10,8);
+  ctx.closePath();
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawPlayerBullets(){
+  ctx.fillStyle = "#fff";
+  for(const b of S.bullets){
+    ctx.fillRect(b.x-1, b.y-1, 2, 2);
+  }
+}
+
+function drawEnemyBullets(){
+  ctx.fillStyle = "rgba(255,90,90,0.9)";
+  for(const b of S.eBullets){
+    ctx.fillRect(b.x-2, b.y-2, 4, 4);
+  }
+}
+
+function drawBlocks(){
+  for(const e of S.enemies){
+    ctx.strokeStyle = e.s===3 ? "#2aff8a" : e.s===2 ? "#ffd42a" : "#ff3b3b";
+    const r = e.s * CFG.block.r;
+    ctx.strokeRect(e.x-r, e.y-r, r*2, r*2);
+  }
+}
+
+function drawBosses(){
+  if(S.phase !== "boss") return;
+  for(const b of S.bossSet){
+    ctx.strokeStyle = "#ff3b3b";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(b.x, b.y, b.r, 0, Math.PI*2);
+    ctx.stroke();
+  }
+}
+
+function render(){
+  ctx.save();
+  if(S.shake && S.phase !== "dead"){
+    ctx.translate(rand(-S.shake,S.shake), rand(-S.shake,S.shake));
+  }
+
+  ctx.clearRect(0,0,W,H);
+
+  drawGrid();
+  drawBlocks();
+  drawBosses();
+  drawBombRipples();
+  drawPowerups();
+  drawEnemyBullets();
+  drawPlayerBullets();
+  drawShip();
+
+  // death overlay (in game area only)
+  if(S.phase === "dead"){
+    ctx.fillStyle = "rgba(0,0,0,0.6)";
+    ctx.fillRect(0,0,W,H);
+    ctx.fillStyle = "#ff3b3b";
+    ctx.font = "22px ui-monospace";
+    ctx.fillText("SYSTEM BREACH", W/2-90, H/2-10);
+    ctx.fillStyle = "#9ff";
+    ctx.font = "14px ui-monospace";
+    ctx.fillText("Press R to restart", W/2-70, H/2+18);
+  }
+
+  ctx.restore();
+}
+
+/* ================= GAME STARTUP ================= */
+
+// Initialize run state (start clean)
+resetRun();
+
+/* ================= MAIN LOOP ================= */
+
+function frame(){
+  tick();
+  render();
+  syncHUD();
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+
+/* ===== CHUNK 5 ends here on purpose. ===== */
+
+function setBar(barEl, fillEl, pctEl, cd, cdMax, active){
+  const f = clamp(1 - (cd / cdMax), 0, 1);
+  fillEl.style.width = (f * 100).toFixed(0) + "%";
+  pctEl.textContent = (f * 100).toFixed(0) + "%";
+  barEl.classList.toggle("active", !!active);
+}
+
+function syncHUD(){
+  bossRow.style.display = "none";
+  hudScore.textContent = S.score;
+  hudLevel.textContent = S.level;
+  hudWeapon.textContent = S.weapon.toUpperCase();
+
+  // HP
+  const hpF = clamp(S.ship.hp / CFG.ship.maxHp, 0, 1);
+  hpFill.style.width = (hpF * 100).toFixed(1) + "%";
+  hpText.textContent = `${S.ship.hp}/${CFG.ship.maxHp}`;
+
+  // SHIELD
+  const shF = clamp(S.ship.shield / CFG.ship.maxShield, 0, 1);
+  shFill.style.width = (shF * 100).toFixed(1) + "%";
+  shText.textContent = `${S.ship.shield}`;
+
+  // ARMOR (hidden when inactive)
+  if (S.ship.armor > 0) {
+    armorRow.style.display = "flex";
+
+    const af = clamp(
+      S.ship.armor / CFG.powerups.armorMax,
+      0,
+      1
+    );
+
+    arFill.style.width = (af * 100).toFixed(1) + "%";
+    arText.textContent = `${S.ship.armor}`;
+  } else {
+    armorRow.style.display = "none";
+  }
+
+  // DMG BOOST (hidden when inactive) — MUST BE INDEPENDENT OF ARMOR
+  if (S.effects && S.effects.dmgBoostT > 0) {
+    boostRow.style.display = "flex";
+
+    const bf = clamp(
+      S.effects.dmgBoostT / CFG.powerups.dmgBoostDur,
+      0,
+      1
+    );
+
+    boostFill.style.width = (bf * 100).toFixed(0) + "%";
+    boostText.textContent = `${Math.ceil(S.effects.dmgBoostT / 60)}s`;
+  } else {
+    boostRow.style.display = "none";
+  }
+
+  // Weapon cooldown bars + active highlight
+  setBar(barMini,  fillMini,  pctMini,  S.cd.minigun, CFG.weapons.minigun.cd, S.weapon==="minigun");
+  setBar(barBurst, fillBurst, pctBurst, S.cd.burst,   CFG.weapons.burst.cd,   S.weapon==="burst");
+  setBar(barFan,   fillFan,   pctFan,   S.cd.fan,     CFG.weapons.fan.cd,     S.weapon==="fan");
+  setBar(barBomb,  fillBomb,  pctBomb,  S.cd.bomb,    CFG.weapons.bomb.cd,    S.weapon==="bomb");
+
+  // Boss aggregate HP across boss set
+  if(S.phase === "boss" && S.bossSet.length){
+    bossRow.style.display = "flex";
+    const t = totalBossHp();
+    const f = t.max ? clamp(t.hp / t.max, 0, 1) : 0;
+    bossFill.style.width = (f * 100).toFixed(1) + "%";
+    bossFill.style.filter = `brightness(${1 + (1 - f) * 0.6})`;
+    bossText.textContent = `${t.hp}/${t.max}`;
+  }
+}
+
+
+})(); // 
+</script>
+
+</body>
+</html>

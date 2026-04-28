@@ -1,0 +1,30 @@
+{
+  "title": "PragOptics Games",
+  "root": "https://pragoptics.com/games/",
+  "items": [
+    {
+      "type": "folder",
+      "name": "Arcade",
+      "items": [
+        {
+          "type": "file",
+          "name": "Vector Breach",
+          "path": "vectorbreach.html",
+          "format": "html"
+        },
+        {
+          "type": "file",
+          "name": "Block Blast",
+          "path": "blockblast.html",
+          "format": "html"
+        },
+        {
+          "type": "file",
+          "name": "Block Breach",
+          "path": "blockbreach.html",
+          "format": "html"
+        }
+      ]
+    }
+  ]
+}

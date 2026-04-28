@@ -12,7 +12,7 @@
     import { toggleViewerMode, setOutput } from '../components/responseViewer.js';
     import { setAppMode, ensureWizardVisibleAndBranded } from '../runtime/appRouter.js';
     import { startPragOpticsLogin, handlePragOpticsCallback, routePostLogin } from "../runtime/authRouter.js";
-    import { formatPhone, gotoStep1, gotoStep2, gotoStep3, gotoStep4, gotoStep5, initPostLoginWizard, buildRequestedSubscription } from "../wizard/index.js";
+    import { formatPhone, gotoStep1, gotoStep2, gotoStep3, gotoStep4, gotoStep5, syncWizardAuthIndicator, initPostLoginWizard, buildRequestedSubscription } from "../wizard/index.js";
     import { handleBillingProfile, startPaymentStep, pollUntilResolved } from "../api/billing.js";
     import { setDnaMode } from "../components/dnaController.js";
     import { showStatusModal } from "../components/statusModal.js";
@@ -201,15 +201,6 @@ function applyPostLoginResolution({ ping }) {
 
     setAppMode("wizard");
 
-    ensureWizardVisibleAndBranded(ping, {
-      title: "PragOptics™ Billing",
-      hint:
-        decision.banner === "canceled"
-          ? "Your subscription was canceled. Restart billing anytime."
-          : "Complete setup to activate your PragOptics subscription.",
-      hasTokens: !!token
-    });
-
     showWizardFlow();
 
     // ✅ single, deterministic init gate
@@ -218,6 +209,8 @@ function applyPostLoginResolution({ ping }) {
       window.__wizardInit = true;
     }
     
+    syncWizardAuthIndicator(getStoredTokens);
+
     ensureWizardVisibleAndBranded(ping, {
       title: "PragOptics™ Billing",
       hint:

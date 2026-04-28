@@ -38,6 +38,15 @@ export function buildRequestedSubscription({ subType, cadence, addons }) {
   };
 }
 
+export function syncWizardAuthIndicator(getStoredTokens) {
+  const indicator = document.getElementById("authIndicator");
+  if (!indicator) return;
+
+  const token = getStoredTokens?.()?.access_token;
+  indicator.classList.toggle("signed-in", !!token);
+}
+
+
 export function initPostLoginWizard(accessToken, ping) {
   if (window.__wizardInit) return;
   window.__wizardInit = true;
