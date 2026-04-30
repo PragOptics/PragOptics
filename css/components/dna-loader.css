@@ -251,3 +251,32 @@
     animation:none !important;
   }
 }
+
+/* ===========================
+   DNA GLOBAL PROCESSING BLUR
+   =========================== */
+
+/* Blur + mute main application content during API calls */
+body.is-processing main {
+  filter: blur(2.5px) saturate(0.9);
+  pointer-events: none;
+  transition: filter 220ms ease;
+}
+
+/* Keep header visible, but prevent interaction */
+body.is-processing header {
+  pointer-events: none;
+}
+
+/* Optional: very light cinematic dim (NO collapse) */
+body.is-processing::after {
+  content: "";
+  position: fixed;
+  top: 56px;              /* height of your header */
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.06);
+  pointer-events: none;
+  transition: opacity 180ms ease;
+}

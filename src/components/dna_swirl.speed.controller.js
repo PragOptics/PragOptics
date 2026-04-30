@@ -11,6 +11,10 @@ let helixMulDur = 0;
 let helixHyperRefCount = 0;
 
 // ===== helpers =====
+function setProcessing(on) {
+  document.body.classList.toggle("is-processing", on);
+}
+
 function clamp(n, a, b) {
   return Math.max(a, Math.min(b, n));
 }
@@ -60,6 +64,7 @@ export function beginHyperHelix({
   helixHyperRefCount++;
 
   if (helixHyperRefCount === 1) {
+    setProcessing(true);
     setHelixSpeedMul(mul, rampUpMs);
   }
 
@@ -67,6 +72,7 @@ export function beginHyperHelix({
     helixHyperRefCount = Math.max(0, helixHyperRefCount - 1);
     if (helixHyperRefCount === 0) {
       setHelixSpeedMul(1, rampDownMs);
+      setProcessing(false);
     }
   };
 }

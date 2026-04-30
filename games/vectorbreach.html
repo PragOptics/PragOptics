@@ -213,6 +213,7 @@ html,body{
 #gameWrap{
   width:100%;
   height:calc(100vh - var(--hud-h));
+  position: relative;
 }
 canvas{
   width:100%;
@@ -220,6 +221,132 @@ canvas{
   display:block;
   background:var(--bg0);
 }
+
+/* ===== MOBILE / TOUCH SAFETY ===== */
+#gameWrap, canvas, #touchUI, #touchLayer { touch-action: none; } /* let JS own gestures */ /* [2](https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/touch-action) */
+canvas { -ms-touch-action: none; touch-action:none; }
+
+#touchUI{
+  position:absolute;
+  inset:0;
+  display:none;              /* enabled via media query below */
+  pointer-events:none;       /* buttons re-enable */
+}
+
+#touchUI .cluster{
+  position:absolute;
+  bottom:14px;
+  display:flex;
+  gap:10px;
+  pointer-events:auto;
+}
+
+#touchUI .cluster.left{ left:14px; }
+#touchUI .cluster.right{ right:14px; flex-direction:column; align-items:flex-end; }
+
+#touchUI .row{
+  display:flex;
+  gap:10px;
+  justify-content:flex-end;
+}
+
+#touchUI .tbtn{
+  border:1px solid rgba(120,255,255,.28);
+  background:rgba(6,10,14,.60);
+  color:var(--ink);
+  border-radius:14px;
+  padding:12px 14px;
+  font: 12px ui-monospace,monospace;
+  letter-spacing:.4px;
+  box-shadow: 0 10px 30px rgba(0,0,0,.35), inset 0 0 0 1px rgba(120,255,255,.06);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px); 
+  -webkit-user-select:none;
+   user-select:none;
+}
+
+#touchUI .tbtn:active{
+  transform: translateY(1px) scale(0.99);
+  border-color: rgba(255,255,255,.65);
+  box-shadow: 0 0 0 2px rgba(255,255,255,.25) inset, 0 10px 30px rgba(0,0,0,.35);
+}
+
+#touchUI .tbtn.fire{
+  padding:14px 16px;
+  border-color: rgba(255,212,42,.35);
+  background: rgba(255,212,42,.10);
+}
+
+#touchUI .tbtn.small{
+  padding:10px 12px;
+  border-radius:12px;
+  opacity:.95;
+}
+
+/* ===== JOYSTICK ===== */
+#touchLayer{
+  position:absolute;
+  inset:0;
+  display:none;
+  pointer-events:none;
+}
+
+#joy{
+  position:absolute;
+  left:14px;
+  bottom:14px;
+  width:168px;
+  height:168px;
+  pointer-events:auto;
+}
+
+#joyBase{
+  position:absolute;
+  inset:0;
+  border-radius:999px;
+  background:rgba(6,10,14,.35);
+  border:1px solid rgba(120,255,255,.22);
+}
+
+#joyRing{
+  position:absolute;
+  inset:14px;
+  border-radius:999px;
+  border:1px dashed rgba(120,255,255,.22);
+}
+
+#joyKnob{
+  position:absolute;
+  left:50%;
+  top:50%;
+  width:72px;
+  height:72px;
+  margin:-36px 0 0 -36px;
+  border-radius:999px;
+  background:rgba(120,255,255,.18);
+  transform:translate3d(0,0,0);
+}
+
+@media (pointer:coarse), (max-width:860px){
+  #touchLayer{ display:block; }
+}
+
+/* ===== RESPONSIVE HUD ===== */
+@media (max-width: 860px), (pointer:coarse){
+  :root{ --hud-scale: .92; }
+  #hud{ padding:8px 10px; }
+  #hudMid{ grid-template-columns: 1fr; gap:12px; }
+  #hudBars{ gap:8px; }
+  .bar .label{ width:46px; }
+  .pct{ width:40px; font-size:10px; }
+  #touchUI{ display:block; }
+}
+
+@media (max-width: 420px){
+  :root{ --hud-scale: .86; }
+  #hudTop .muted{ display:none; } /* save vertical space */
+}
+
 /* ===== WEAPON FILL COLORS ===== */
 #fillMini  { background: var(--mini); }
 #fillBurst { background: var(--burst); }
@@ -319,6 +446,41 @@ canvas{
 
 <main id="gameWrap">
   <canvas id="c"></canvas>
+
+  <!-- TOUCH CONTROLS (shown only on coarse pointers via CSS) -->
+
+  <div id="touchLayer" aria-hidden="true">
+  <div id="joy">
+    <div id="joyBase"></div>
+    <div id="joyRing"></div>
+    <div id="joyKnob"></div>
+  </div>
+</div>
+
+  <div id="touchUI" aria-hidden="true">
+    <div class="cluster left">
+      <button class="tbtn" data-hold="ArrowLeft">⟲</button>
+      <button class="tbtn" data-hold="ArrowUp">▲</button>
+      <button class="tbtn" data-hold="ArrowRight">⟳</button>
+    </div>
+
+    <div class="cluster right">
+      <button class="tbtn fire" data-hold="Space">FIRE</button>
+
+      <div class="row">
+        <button class="tbtn small" data-tap="Digit1">1</button>
+        <button class="tbtn small" data-tap="Digit2">2</button>
+        <button class="tbtn small" data-tap="Digit3">3</button>
+        <button class="tbtn small" data-tap="Digit4">4</button>
+      </div>
+
+      <div class="row">
+        <button class="tbtn small" data-tap="KeyQ">Q</button>
+        <button class="tbtn small" data-tap="KeyE">E</button>
+        <button class="tbtn small" data-tap="KeyR">R</button>
+      </div>
+    </div>
+  </div>
 </main>
 
 <script>
@@ -369,6 +531,161 @@ addEventListener("keydown", e => {
   armAudio(); // audio unlock on first gesture
 });
 addEventListener("keyup", e => down[e.code] = 0);
+
+/* ================= TOUCH / MOBILE CONTROLS ================= */
+const touchUI = document.getElementById("touchUI");
+
+/* iOS/Safari can still attempt to scroll/zoom unless we actively cancel touch on canvas */ /* [4](https://www.exchangetuts.com/disable-scrollswipe-action-for-html-canvas-drawing-on-ios-1640689024421433) */
+["touchstart","touchmove","touchend","touchcancel"].forEach(type => {
+  canvas.addEventListener(type, (e) => { e.preventDefault(); }, { passive:false });
+});
+
+/* Map on-screen buttons to existing key model */
+if(touchUI){
+  const holdBtns = touchUI.querySelectorAll("[data-hold]");
+  const tapBtns  = touchUI.querySelectorAll("[data-tap]");
+
+  const holdOn  = (code) => { if(!down[code]) press[code] = 1; down[code] = 1; };
+  const holdOff = (code) => { down[code] = 0; };
+
+  holdBtns.forEach(btn => {
+    const code = btn.getAttribute("data-hold");
+    btn.addEventListener("pointerdown", (e) => {
+      e.preventDefault();
+      armAudio();
+      holdOn(code);
+      try { btn.setPointerCapture(e.pointerId); } catch(_) {}
+    }, { passive:false });
+
+    btn.addEventListener("pointerup", (e) => { e.preventDefault(); holdOff(code); }, { passive:false });
+    btn.addEventListener("pointercancel", () => holdOff(code));
+    btn.addEventListener("lostpointercapture", () => holdOff(code));
+  });
+
+  tapBtns.forEach(btn => {
+    const code = btn.getAttribute("data-tap");
+    btn.addEventListener("pointerdown", (e) => {
+      e.preventDefault();
+      armAudio();
+      press[code] = 1;  // one-frame tap, cleared by your clearPressed()
+    }, { passive:false });
+  });
+
+  /* Keep HUD height correct on orientation changes */
+  addEventListener("orientationchange", () => {
+    setTimeout(() => { resize(); syncHudHeight(); }, 80);
+  });
+}
+
+
+/* ================= JOYSTICK ================= */
+const touchLayer = document.getElementById("touchLayer");
+const joyEl = document.getElementById("joy");
+const joyKnob = document.getElementById("joyKnob");
+
+const IS_TOUCH = matchMedia("(pointer:coarse)").matches;
+S.isTouch = IS_TOUCH;
+S.autoFire = IS_TOUCH;
+
+S.joy = {
+  active: false,
+  id: null,
+  baseX: 0,
+  baseY: 0,
+  dx: 0,
+  dy: 0,
+  mag: 0
+};
+
+const JOY_R = 68;
+const JOY_DEAD = 0.10;
+
+function setKnob(x, y){
+  joyKnob.style.transform = `translate3d(${x}px, ${y}px, 0)`;
+}
+
+function joyReset(){
+  S.joy.active = false;
+  S.joy.id = null;
+  S.joy.dx = 0;
+  S.joy.dy = 0;
+  S.joy.mag = 0;
+  setKnob(0, 0);
+
+  // return joystick to default corner
+  joyEl.style.left = "14px";
+  joyEl.style.bottom = "14px";
+  joyEl.style.top = "";
+}
+
+function joyMove(x, y){
+  let dx = x - S.joy.baseX;
+  let dy = y - S.joy.baseY;
+
+  const len = Math.hypot(dx, dy) || 1;
+  const cl = Math.min(len, JOY_R);
+
+  dx = (dx / len) * cl;
+  dy = (dy / len) * cl;
+
+  S.joy.dx = dx / JOY_R;
+  S.joy.dy = dy / JOY_R;
+  S.joy.mag = cl / JOY_R;
+
+  setKnob(dx, dy);
+}
+
+function canStartJoy(e){
+  const r = wrapEl.getBoundingClientRect();
+  return (
+    e.clientX < innerWidth * 0.6 &&
+    e.clientY > r.top + innerHeight * 0.35
+  );
+}
+
+if(touchLayer){
+  addEventListener("pointerdown", (e) => {
+    if(!S.isTouch) return;
+    if(e.pointerType !== "touch") return;
+    if(!canStartJoy(e)) return;
+
+    armAudio();
+
+    S.joy.active = true;
+    S.joy.id = e.pointerId;
+    S.joy.baseX = e.clientX;
+    S.joy.baseY = e.clientY;
+
+    // move joystick under thumb
+    joyEl.style.left = (e.clientX - 84) + "px";
+    joyEl.style.top  = (e.clientY - 84) + "px";
+    joyEl.style.bottom = "auto";
+
+    joyMove(e.clientX, e.clientY);
+
+    try { joyEl.setPointerCapture(e.pointerId); } catch(_) {}
+    e.preventDefault();
+
+  }, { passive:false });
+
+  addEventListener("pointermove", (e) => {
+    if(!S.joy.active) return;
+    if(e.pointerId !== S.joy.id) return;
+    joyMove(e.clientX, e.clientY);
+    e.preventDefault();
+  }, { passive:false });
+
+  addEventListener("pointerup", (e) => {
+    if(e.pointerId !== S.joy.id) return;
+    joyReset();
+  });
+
+  addEventListener("pointercancel", (e) => {
+    if(e.pointerId !== S.joy.id) return;
+    joyReset();
+  });
+}
+
 
 /* ================= AUDIO + HAPTICS ================= */
 const AC = new (window.AudioContext || window.webkitAudioContext)();
@@ -1008,20 +1325,37 @@ function updateBlocks(){
 
 /* ================= SHIP UPDATE (movement + i-frames) ================= */
 
+function rLerp(a,b,t){
+  return Math.atan2(
+    (1-t)*Math.sin(a)+t*Math.sin(b),
+    (1-t)*Math.cos(a)+t*Math.cos(b)
+  );
+}
+
 function updateShip(){
-  if(S.phase === "dead") return;
+  if(S.phase==="dead") return;
+  if(S.ship.ifr>0) S.ship.ifr--;
 
-  if(S.ship.ifr > 0) S.ship.ifr--;
+  if(S.isTouch && S.joy.active && S.joy.mag>JOY_DEAD){
+    const ta = Math.atan2(S.joy.dy,S.joy.dx);
+    S.ship.a = rLerp(S.ship.a, ta, 0.22);
 
-  if(down.ArrowLeft)  S.ship.a -= CFG.ship.rot;
-  if(down.ArrowRight) S.ship.a += CFG.ship.rot;
-  if(down.ArrowUp){
-    S.ship.vx += Math.cos(S.ship.a) * CFG.ship.thrust;
-    S.ship.vy += Math.sin(S.ship.a) * CFG.ship.thrust;
+    const thrust = CFG.ship.thrust *
+      clamp((S.joy.mag-JOY_DEAD)/(1-JOY_DEAD),0,1);
+
+    S.ship.vx += Math.cos(S.ship.a)*thrust;
+    S.ship.vy += Math.sin(S.ship.a)*thrust;
+  } else {
+    if(down.ArrowLeft)  S.ship.a -= CFG.ship.rot;
+    if(down.ArrowRight) S.ship.a += CFG.ship.rot;
+    if(down.ArrowUp){
+      S.ship.vx += Math.cos(S.ship.a)*CFG.ship.thrust;
+      S.ship.vy += Math.sin(S.ship.a)*CFG.ship.thrust;
+    }
   }
 
-  S.ship.x = wrap(S.ship.x + S.ship.vx, W);
-  S.ship.y = wrap(S.ship.y + S.ship.vy, H);
+  S.ship.x = wrap(S.ship.x+S.ship.vx,W);
+  S.ship.y = wrap(S.ship.y+S.ship.vy,H);
   S.ship.vx *= CFG.ship.damp;
   S.ship.vy *= CFG.ship.damp;
 }
@@ -1248,6 +1582,13 @@ function fireBomb(){
 function updateWeapons(){
   updateWeaponSelection();
   tickCooldowns();
+  if(S.isTouch && S.autoFire && S.phase!=="dead"){
+  down.Space = 1;
+
+  if(S.weapon==="burst" && S.cd.burst===0) press.Space=1;
+  if(S.weapon==="fan"   && S.cd.fan===0)   press.Space=1;
+  if(S.weapon==="bomb"  && S.cd.bomb===0)  press.Space=1;
+}
 
   // Burst sequencer: fires 3 rounds over a few frames (no overlap)
   if(S.weapon === "burst" && S.burstSeq > 0){

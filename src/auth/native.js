@@ -1,31 +1,18 @@
 // src/auth/native.js
 import { getAgreementAck } from "../runtime/state.js";
+import { fetchJsonWithDna } from "../api/apiWithDna.js";
 
 const PRAG_API_BASE = "https://api.pragoptics.com/api/v1";
 
 async function postJson(path, body) {
-  const res = await fetch(`${PRAG_API_BASE}${path}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body)
-  });
-
-  // Try to parse JSON if present
-  const text = await res.text();
-  let data = null;
-  try { data = text ? JSON.parse(text) : null; } catch { data = null; }
-
-  if (!res.ok) {
-    const msg =
-      (data && (data.error || data.message)) ||
-      `HTTP ${res.status}`;
-    const err = new Error(msg);
-    err.status = res.status;
-    err.payload = data;
-    throw err;
-  }
-
-  return data;
+  return fetchJsonWithDna(
+    `${PRAG_API_BASE}${path}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body)
+    }
+  );
 }
 
 function closeLoginUi() {

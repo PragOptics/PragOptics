@@ -187,6 +187,10 @@ function setToken(tokens) {
       }
     }
 
+    function isSessionActive() {
+      return !!getStoredTokens()?.access_token && isAccessTokenValid();
+    }
+
     function getWizardMenuEl() {
       return document.getElementById("navWizard");
     }
@@ -197,9 +201,46 @@ function setToken(tokens) {
       el.classList.toggle("hidden", !on);
     }
 
+    function invalidateSession(reason = "expired") {
+    // Clear all privileged UI
+    clearAllWizardSurfaces();
+    setWizardMenuVisible(false);
+
+    // Reset auth indicator explicitly
+    const indicator = document.getElementById("authIndicator");
+    if (indicator) indicator.classList.remove("signed-in");
+
+    // Restore landing CTAs (Get Started)
+    document.querySelectorAll(".hero .cta").forEach(el => {
+      el.classList.remove("hidden");
+    });
+
+    // Reset stored auth (frontend-only; backend remains authoritative)
+    sessionStorage.removeItem("pragoptics_tokens");
+
+    // Return app to safe baseline
+    setAppMode("landing");
+
+    // User feedback (once per action)
+    if (reason === "expired") {
+      showStatusModal({
+        mode: "info",
+        message: "Your session has expired. Please sign in again."
+      });
+    }
+  }
+
     function updateWizardMenuFromPing(ping) {
+      // expired token → wizard is meaningless
+      if (!isSessionActive()) {
+        setWizardMenuVisible(false);
+        return { mode: "expired" };
+      }
+
       const decision = resolvePostLoginUI({ ping });
-      const needsWizard = (decision.mode === "wizard" || decision.mode === "provisioningWizard");
+      const needsWizard =
+        (decision.mode === "wizard" || decision.mode === "provisioningWizard");
+
       setWizardMenuVisible(needsWizard);
       return decision;
     }
@@ -231,6 +272,12 @@ function launchLogin() {
 
 
 function applyPostLoginResolution({ ping }) {
+  if (!isSessionActive()) {
+    invalidateSession("expired");
+    return;
+  }
+
+
   const decision = updateWizardMenuFromPing(ping);
   const token = getStoredTokens()?.access_token;
 
@@ -500,7 +547,12 @@ window.applyPostLoginResolution = applyPostLoginResolution;
       syncWizardAuthIndicator();
     }
     
-   async function openBillingFromMenu() {
+   async function openBillingFromMenu() {    
+    if (!isSessionActive()) {
+      invalidateSession("expired");
+      return;
+    }
+
     // Gate billing behind authentication
     const token = getStoredTokens()?.access_token;
     if (!token) {
@@ -548,7 +600,13 @@ window.applyPostLoginResolution = applyPostLoginResolution;
     applyPostLoginResolution({ ping });
   }
 
-  async function openWizardFromMenu() {
+  async function openWizardFromMenu() { 
+    if (!isSessionActive()) {
+      invalidateSession("expired");
+      return;
+    }
+
+
     const token = getStoredTokens()?.access_token;
     if (!token) {
       showStatusModal({
