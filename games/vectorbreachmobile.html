@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>PragOptics™ 404 :: VECTOR BREACH</title>
+<title>PragOptics™ 404 :: VECTOR BREACH MOBILE</title>
   
 <meta name="color-scheme" content="dark">
 
@@ -242,7 +242,7 @@ canvas { -ms-touch-action: none; touch-action:none; }
 }
 
 #touchUI .cluster.left{ left:14px; }
-#touchUI .cluster.right{ right:14px; flex-direction:column; align-items:flex-end; }
+#touchUI .cluster.right{ bottom: 18px; right:14px; flex-direction:column; align-items:flex-end; }
 
 #touchUI .row{
   display:flex;
@@ -295,8 +295,8 @@ canvas { -ms-touch-action: none; touch-action:none; }
   position:absolute;
   left:14px;
   bottom:14px;
-  width:168px;
-  height:168px;
+  width:120px;
+  height:120px;
   pointer-events:auto;
 }
 
@@ -310,18 +310,28 @@ canvas { -ms-touch-action: none; touch-action:none; }
 
 #joyRing{
   position:absolute;
-  inset:14px;
+  inset:10px;
+  
+  opacity:0;
+  transition:opacity .12s ease;
+
   border-radius:999px;
   border:1px dashed rgba(120,255,255,.22);
 }
+
+
+#joy.active #joyRing{
+  opacity:1;
+}
+
 
 #joyKnob{
   position:absolute;
   left:50%;
   top:50%;
-  width:72px;
-  height:72px;
-  margin:-36px 0 0 -36px;
+  width:56px;
+  height:56px;
+  margin:-28px 0 0 -28px;
   border-radius:999px;
   background:rgba(120,255,255,.18);
   transform:translate3d(0,0,0);
@@ -341,7 +351,7 @@ canvas { -ms-touch-action: none; touch-action:none; }
 }
 
 @media (pointer:coarse) and (max-width: 420px){
-  :root{ --hud-scale: .86; }
+  :root{ --hud-scale: .45; }
   #hudTop .muted{ display:none; }
 }
 
@@ -456,26 +466,19 @@ canvas { -ms-touch-action: none; touch-action:none; }
 </div>
 
   <div id="touchUI" aria-hidden="true">
-    <div class="cluster left">
-      <button class="tbtn" data-hold="ArrowLeft">⟲</button>
-      <button class="tbtn" data-hold="ArrowUp">▲</button>
-      <button class="tbtn" data-hold="ArrowRight">⟳</button>
-    </div>
 
     <div class="cluster right">
-      <button class="tbtn fire" data-hold="Space">FIRE</button>
+      <button class="tbtn fire" data-hold="Space">🔥</button>
 
       <div class="row">
-        <button class="tbtn small" data-tap="Digit1">1</button>
-        <button class="tbtn small" data-tap="Digit2">2</button>
-        <button class="tbtn small" data-tap="Digit3">3</button>
-        <button class="tbtn small" data-tap="Digit4">4</button>
+        <button class="tbtn small" data-tap="Digit1">🔫</button>
+        <button class="tbtn small" data-tap="Digit2">💥</button>
+        <button class="tbtn small" data-tap="Digit3">🌀</button>
+        <button class="tbtn small" data-tap="Digit4">💣</button>
       </div>
 
       <div class="row">
-        <button class="tbtn small" data-tap="KeyQ">Q</button>
-        <button class="tbtn small" data-tap="KeyE">E</button>
-        <button class="tbtn small" data-tap="KeyR">R</button>
+        <button class="tbtn small" id="autoToggle">♾️</button>
       </div>
     </div>
   </div>
@@ -695,7 +698,7 @@ const joyKnob = document.getElementById("joyKnob");
 
 const IS_TOUCH = matchMedia("(pointer:coarse)").matches;
 S.isTouch = IS_TOUCH;
-S.autoFire = IS_TOUCH;
+S.autoFire = false; // explicit, user-controlled
 
 S.joy = {
   active: false,
@@ -721,6 +724,7 @@ function joyReset(){
   S.joy.dy = 0;
   S.joy.mag = 0;
   setKnob(0, 0);
+  joyEl.classList.remove("active");
 
   // return joystick to default corner
   joyEl.style.left = "14px";
@@ -762,6 +766,7 @@ if(touchLayer && joyEl && joyKnob){
     armAudio();
 
     S.joy.active = true;
+    joyEl.classList.add("active");
     S.joy.id = e.pointerId;
     S.joy.baseX = e.clientX;
     S.joy.baseY = e.clientY;
@@ -794,6 +799,18 @@ if(touchLayer && joyEl && joyKnob){
     if(e.pointerId !== S.joy.id) return;
     joyReset();
   });
+}
+
+const autoBtn = document.getElementById("autoToggle");
+
+if(autoBtn){
+  autoBtn.addEventListener("pointerdown", e=>{
+    e.preventDefault();
+    S.autoFire = !S.autoFire;
+    autoBtn.textContent = S.autoFire ? "♾️🔥" : "♾️";
+    buzz(12);
+    beep(520,0.04,"square",0.05);
+  }, {passive:false});
 }
 
 /* ================= HUD REFS ================= */
