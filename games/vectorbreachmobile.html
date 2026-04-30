@@ -50,10 +50,16 @@ html,body{
   flex-direction:column;
   gap:0;
 }
+#hud{
+  height: var(--hud-h);
+  overflow: hidden;
+}
 
 #hudScale{
   transform: scale(var(--hud-scale));
-  transform-origin: top center;
+  transform-origin: top left;
+  width: calc(100% / var(--hud-scale));
+  max-width: calc(100vw / var(--hud-scale));
 }
 
 /* ===== TOP: TITLE + CONTROLS (CENTERED CONSOLE STYLE) ===== */
@@ -95,7 +101,7 @@ html,body{
 /* ===== MID: MAIN CONSOLE PANEL ===== */
 #hudMid{
   display:grid;
-  grid-template-columns:1fr 1fr 1fr;
+  grid-template-columns: minmax(0,1.2fr) minmax(0,1fr) minmax(0,1.2fr);
   gap:48px;
   font-size:11px;
   color:var(--muted);
@@ -227,6 +233,9 @@ canvas{
 canvas { -ms-touch-action: none; touch-action:none; }
 
 #touchUI{
+  --btn: 48px;
+  --gap: 8px;
+  --padW: calc(var(--btn)*2 + var(--gap));
   position:absolute;
   inset:0;
   display:none;              /* enabled via media query below */
@@ -242,12 +251,42 @@ canvas { -ms-touch-action: none; touch-action:none; }
 }
 
 #touchUI .cluster.left{ left:14px; }
-#touchUI .cluster.right{ bottom: 18px; right:14px; flex-direction:column; align-items:flex-end; }
+
+#touchUI .cluster.right{
+  right: max(12px, env(safe-area-inset-right));
+  bottom: calc(22px + env(safe-area-inset-bottom));
+
+  display:flex;
+  flex-direction:column;   /* ⬅️ this is the fix */
+  align-items:flex-end;
+  gap:12px;
+}
+
+
 
 #touchUI .row{
   display:flex;
   gap:10px;
   justify-content:flex-end;
+}
+
+/* Weapon buttons: 2x2 grid */
+#touchUI .row.weaponsGrid{
+  display:grid;
+  grid-template-columns: repeat(2, var(--btn));
+  gap: var(--gap);
+  justify-content:end;
+  width: var(--padW);
+}
+
+/* Make touch targets consistent */
+#touchUI .row.weaponsGrid .tbtn.small{
+  width: var(--btn);
+  height: var(--btn);
+  padding: 0;
+  display:grid;
+  place-items:center;
+  font-size:18px;
 }
 
 #touchUI .tbtn{
@@ -283,6 +322,28 @@ canvas { -ms-touch-action: none; touch-action:none; }
   opacity:.95;
 }
 
+#touchUI .row.fireRow{
+  width: var(--padW);
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap: var(--gap);
+}
+
+/* auto-fire mode */
+#touchUI.autoOn .row.fireRow .tbtn.fire{
+  display:none;
+}
+
+#touchUI.autoOn .row.fireRow #autoToggle{
+  width: var(--padW);
+  height: var(--btn);
+  padding: 0;
+  display:grid;
+  place-items:center;
+  font-size:16px;
+}
+
 /* ===== JOYSTICK ===== */
 #touchLayer{
   position:absolute;
@@ -290,15 +351,65 @@ canvas { -ms-touch-action: none; touch-action:none; }
   display:none;
   pointer-events:none;
 }
+#deathUI{
+  position:absolute;
+  inset:0;
+  display:none;
+  place-items:center;
+  background:rgba(0,0,0,0.55);
+  pointer-events:auto;
+}
+
+#deathUI .panel{
+  padding:14px 16px;
+  border-radius:14px;
+  background:rgba(6,10,14,.70);
+  border:1px solid rgba(255,90,90,.35);
+  box-shadow: 0 10px 40px rgba(0,0,0,.55);
+  text-align:center;
+  min-width: 220px;
+}
+
+#deathUI .t1{
+  color:#ff3b3b;
+  font: 800 18px ui-monospace,monospace;
+  letter-spacing:.6px;
+  margin-bottom:10px;
+}
+
+#deathUI .btn{
+  border:1px solid rgba(120,255,255,.28);
+  background:rgba(6,10,14,.60);
+  color:var(--ink);
+  border-radius:12px;
+  padding:10px 14px;
+  font: 12px ui-monospace,monospace;
+  letter-spacing:.4px;
+}
+#deathUI .btn:active{
+  transform: translateY(1px) scale(0.99);
+}
 
 #joy{
   position:absolute;
-  left:14px;
-  bottom:14px;
+
+  /* parking position (only used while hidden) */
+  left: max(12px, env(safe-area-inset-left));
+  bottom: calc(22px + env(safe-area-inset-bottom));
+
   width:120px;
   height:120px;
+
+  opacity:1;
+  pointer-events:none;
+  transition: opacity .12s ease;
+}
+
+#joy.active{
+  opacity:0;
   pointer-events:auto;
 }
+
 
 #joyBase{
   position:absolute;
@@ -337,12 +448,12 @@ canvas { -ms-touch-action: none; touch-action:none; }
   transform:translate3d(0,0,0);
 }
 
-@media (pointer:coarse){
+@media (pointer:coarse), (max-width: 860px){
   #touchLayer{ display:block; }
 
-  :root{ --hud-scale: .92; }
+  :root{ --hud-scale: .80; }
   #hud{ padding:8px 10px; }
-  #hudMid{ grid-template-columns: 1fr; gap:12px; }
+  #hudMid{ gap:12px; }
   #hudBars{ gap:8px; }
   .bar .label{ width:46px; }
   .pct{ width:40px; font-size:10px; }
@@ -351,10 +462,43 @@ canvas { -ms-touch-action: none; touch-action:none; }
 }
 
 @media (pointer:coarse) and (max-width: 420px){
-  :root{ --hud-scale: .45; }
+  :root{ --hud-scale: .62; }
   #hudTop .muted{ display:none; }
 }
 
+@media (pointer:coarse) and (max-height: 430px){
+  :root{ --hud-scale: .70; }
+
+  #hud{ padding:6px 10px; }
+  #hudMid{ gap:12px; }
+}
+@media (pointer:coarse){
+  /* Allow left HUD bars to shrink instead of blocking right column */
+  .hud-left > div{
+    display:grid;
+    grid-template-columns: 28px 1fr min-content;
+    align-items:center;
+    column-gap:6px;
+  }
+
+  .hud-left > div > div:first-child{
+    width:auto !important;          /* emoji column */
+    min-width:24px;
+    text-align:center;
+  }
+
+  .hud-left .track{
+    width:auto !important;           /* kill 190px */
+    min-width:0;                     /* CRITICAL */
+  }
+
+  .hud-left .pct{
+    width:auto !important;           /* kill 44px */
+    min-width:28px;
+    font-size:10px;
+    white-space:nowrap;
+  }
+}
 /* ===== WEAPON FILL COLORS ===== */
 #fillMini  { background: var(--mini); }
 #fillBurst { background: var(--burst); }
@@ -455,6 +599,13 @@ canvas { -ms-touch-action: none; touch-action:none; }
 <main id="gameWrap">
   <canvas id="c"></canvas>
 
+<div id="deathUI" aria-hidden="true">
+  <div class="panel">
+    <div class="t1">SYSTEM BREACH</div>
+    <button id="restartBtn" class="btn">RESTART</button>
+  </div>
+</div>
+
   <!-- TOUCH CONTROLS (shown only on coarse pointers via CSS) -->
 
   <div id="touchLayer" aria-hidden="true">
@@ -468,17 +619,16 @@ canvas { -ms-touch-action: none; touch-action:none; }
   <div id="touchUI" aria-hidden="true">
 
     <div class="cluster right">
-      <button class="tbtn fire" data-hold="Space">🔥</button>
+      <div class="row fireRow">
+        <button class="tbtn fire" data-hold="Space">🔥</button>
+        <button class="tbtn small" id="autoToggle">♾️</button>
+      </div>
 
-      <div class="row">
+      <div class="row weaponsGrid">
         <button class="tbtn small" data-tap="Digit1">🔫</button>
         <button class="tbtn small" data-tap="Digit2">💥</button>
         <button class="tbtn small" data-tap="Digit3">🌀</button>
         <button class="tbtn small" data-tap="Digit4">💣</button>
-      </div>
-
-      <div class="row">
-        <button class="tbtn small" id="autoToggle">♾️</button>
       </div>
     </div>
   </div>
@@ -505,12 +655,20 @@ function resize(){
 
 function syncHudHeight(){
   const hud = document.getElementById("hud");
+  const hudScaleEl = document.getElementById("hudScale");
+
   const scale = parseFloat(
     getComputedStyle(document.documentElement)
       .getPropertyValue("--hud-scale")
   ) || 1;
 
-  const h = hud.offsetHeight * scale;
+  // Measure the unscaled content height (not the constrained #hud)
+  const prev = hud.style.height;
+  hud.style.height = "auto";
+  const raw = hudScaleEl.offsetHeight;
+  hud.style.height = prev;
+
+  const h = raw * scale;
   document.documentElement.style.setProperty("--hud-h", h + "px");
 }
 
@@ -578,7 +736,15 @@ if(touchUI){
   });
 }
 
+const deathUI = document.getElementById("deathUI");
+const restartBtn = document.getElementById("restartBtn");
 
+if(restartBtn){
+  restartBtn.addEventListener("pointerdown", (e)=>{
+    e.preventDefault();
+    resetRun();
+  }, {passive:false});
+}
 /* ================= AUDIO + HAPTICS ================= */
 const AC = new (window.AudioContext || window.webkitAudioContext)();
 let audioArmed = false;
@@ -726,10 +892,7 @@ function joyReset(){
   setKnob(0, 0);
   joyEl.classList.remove("active");
 
-  // return joystick to default corner
-  joyEl.style.left = "14px";
-  joyEl.style.bottom = "14px";
-  joyEl.style.top = "";
+  // DO NOT reposition on release (prevents snapping back to bottom-left)
 }
 
 function joyMove(x, y){
@@ -768,13 +931,12 @@ if(touchLayer && joyEl && joyKnob){
     S.joy.active = true;
     joyEl.classList.add("active");
     S.joy.id = e.pointerId;
-    S.joy.baseX = e.clientX;
-    S.joy.baseY = e.clientY;
 
     // move joystick under thumb
-    joyEl.style.left = (e.clientX - 84) + "px";
-    joyEl.style.top  = (e.clientY - 84) + "px";
-    joyEl.style.bottom = "auto";
+    // fixed joystick: base is the center of the parked joystick
+    const jr = joyEl.getBoundingClientRect();
+    S.joy.baseX = jr.left + jr.width * 0.5;
+    S.joy.baseY = jr.top  + jr.height * 0.5;
 
     joyMove(e.clientX, e.clientY);
 
@@ -801,12 +963,29 @@ if(touchLayer && joyEl && joyKnob){
   });
 }
 
+
 const autoBtn = document.getElementById("autoToggle");
 
 if(autoBtn){
   autoBtn.addEventListener("pointerdown", e=>{
     e.preventDefault();
+
     S.autoFire = !S.autoFire;
+
+    // If turning OFF auto-fire, force-release Space so it can't stay latched.
+    if(!S.autoFire){
+      down.Space = 0;
+      delete press.Space;
+    }
+
+    // Toggle a CSS mode class for proportional sizing + hide/show
+    if(touchUI) touchUI.classList.toggle("autoOn", S.autoFire);
+
+    const fireBtn = document.querySelector('#touchUI .tbtn.fire');
+    if(fireBtn){
+      fireBtn.style.display = S.autoFire ? "none" : "";
+    }
+
     autoBtn.textContent = S.autoFire ? "♾️🔥" : "♾️";
     buzz(12);
     beep(520,0.04,"square",0.05);
@@ -1246,6 +1425,10 @@ function addShake(amount){
 
 function setPhase(p){
   S.phase = p;
+  if(deathUI){
+    deathUI.style.display = (p === "dead") ? "grid" : "none";
+    deathUI.setAttribute("aria-hidden", (p === "dead") ? "false" : "true");
+  }
 }
 
 function resetShip(){
@@ -1360,12 +1543,7 @@ function updateShip(){
     S.ship.vx += Math.cos(S.ship.a)*thrust;
     S.ship.vy += Math.sin(S.ship.a)*thrust;
   } else {
-    if(down.ArrowLeft)  S.ship.a -= CFG.ship.rot;
-    if(down.ArrowRight) S.ship.a += CFG.ship.rot;
-    if(down.ArrowUp){
-      S.ship.vx += Math.cos(S.ship.a)*CFG.ship.thrust;
-      S.ship.vy += Math.sin(S.ship.a)*CFG.ship.thrust;
-    }
+   // joystick only on mobile; no fallback
   }
 
   S.ship.x = wrap(S.ship.x+S.ship.vx,W);
@@ -1596,12 +1774,11 @@ function fireBomb(){
 function updateWeapons(){
   updateWeaponSelection();
   tickCooldowns();
-  if(S.isTouch && S.autoFire && S.phase!=="dead"){
+ if(S.isTouch && S.autoFire && S.phase !== "dead"){
   down.Space = 1;
-
-  if(S.weapon==="burst" && S.cd.burst===0) press.Space=1;
-  if(S.weapon==="fan"   && S.cd.fan===0)   press.Space=1;
-  if(S.weapon==="bomb"  && S.cd.bomb===0)  press.Space=1;
+  if(S.weapon==="burst" && S.cd.burst===0) press.Space = 1;
+  if(S.weapon==="fan"   && S.cd.fan===0)   press.Space = 1;
+  if(S.weapon==="bomb"  && S.cd.bomb===0)  press.Space = 1;
 }
 
   // Burst sequencer: fires 3 rounds over a few frames (no overlap)
@@ -1777,7 +1954,6 @@ function render(){
     ctx.fillText("SYSTEM BREACH", W/2-90, H/2-10);
     ctx.fillStyle = "#9ff";
     ctx.font = "14px ui-monospace";
-    ctx.fillText("Press R to restart", W/2-70, H/2+18);
   }
 
   ctx.restore();
