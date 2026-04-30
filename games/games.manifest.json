@@ -14,6 +14,12 @@
         },
         {
           "type": "file",
+          "name": "Vector Breach Mobile (inProgress)",
+          "path": "vectorbreachmobile.html",
+          "format": "html"
+        },
+        {
+          "type": "file",
           "name": "Block Blast",
           "path": "blockblast.html",
           "format": "html"
