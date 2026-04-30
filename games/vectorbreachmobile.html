@@ -246,20 +246,22 @@ canvas { -ms-touch-action: none; touch-action:none; }
 
 #touchUI .cluster{
   position:absolute;
-  bottom:14px;
+  bottom:26px;
   display:flex;
   gap:10px;
   pointer-events:auto;
+  transform: scale(0.75);
+  transform-origin: bottom right;
 }
 
 #touchUI .cluster.left{ left:14px; }
 
 #touchUI .cluster.right{
   right: max(12px, env(safe-area-inset-right));
-  bottom: calc(22px + env(safe-area-inset-bottom));
+  bottom: calc(34px + env(safe-area-inset-bottom));
 
   display:flex;
-  flex-direction:column;   /* ⬅️ this is the fix */
+  flex-direction:column;   
   align-items:flex-end;
   gap:12px;
 }
@@ -397,7 +399,7 @@ canvas { -ms-touch-action: none; touch-action:none; }
 
   /* parking position (only used while hidden) */
   left: max(12px, env(safe-area-inset-left));
-  bottom: calc(22px + env(safe-area-inset-bottom));
+  bottom: calc(34px + env(safe-area-inset-bottom));
 
   width:120px;
   height:120px;
@@ -405,6 +407,8 @@ canvas { -ms-touch-action: none; touch-action:none; }
   opacity:1;
   pointer-events:none;
   transition: opacity .12s ease;
+  transform: scale(0.75);
+  transform-origin: bottom left;
 }
 
 #joy.active{
