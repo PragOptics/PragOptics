@@ -14,7 +14,8 @@
 <style>
 :root{
   --hud-h: 112px;
-  --hud-scale:1.0;
+  --hud-scale:0.85;
+  --game-scale:0.75;
 
   --bg0:#020406;
   --ink:#9ff;
@@ -216,6 +217,7 @@ html,body{
 }
 
 /* ===== GAME AREA ===== */
+
 #gameWrap{
   width:100%;
   height:calc(100vh - var(--hud-h));
@@ -514,7 +516,6 @@ canvas { -ms-touch-action: none; touch-action:none; }
   <div id="hudScale">
   <div id="hudTop">
     <div class="title">PRAGOPTICS :: VECTOR BREACH</div>
-    <div class="muted">1–4 switch • Q/E cycle • Space fire • Arrows move • R reset</div>
   </div>
 
   <div id="hudMid">
@@ -596,16 +597,16 @@ canvas { -ms-touch-action: none; touch-action:none; }
   </div>
 </header>
 
+
+
 <main id="gameWrap">
   <canvas id="c"></canvas>
-
 <div id="deathUI" aria-hidden="true">
   <div class="panel">
     <div class="t1">SYSTEM BREACH</div>
     <button id="restartBtn" class="btn">RESTART</button>
   </div>
 </div>
-
   <!-- TOUCH CONTROLS (shown only on coarse pointers via CSS) -->
 
   <div id="touchLayer" aria-hidden="true">
@@ -634,6 +635,7 @@ canvas { -ms-touch-action: none; touch-action:none; }
   </div>
 </main>
 
+
 <script>
 (() => {
 "use strict";
@@ -643,14 +645,29 @@ const canvas = document.getElementById("c");
 const wrapEl = document.getElementById("gameWrap");
 const ctx = canvas.getContext("2d");
 
-let W=0, H=0, DPR=1;
+let W=0, H=0, DPR=1, GS=1;
+
 function resize(){
   DPR = window.devicePixelRatio || 1;
-  W = wrapEl.clientWidth | 0;
-  H = wrapEl.clientHeight | 0;
-  canvas.width = W * DPR;
-  canvas.height = H * DPR
-  ctx.setTransform(DPR,0,0,DPR,0,0);
+
+  // Read game-scale from CSS
+  GS = parseFloat(
+    getComputedStyle(document.documentElement).getPropertyValue("--game-scale")
+  ) || 1;
+
+  // Canvas should STILL fill the visible gameWrap in CSS pixels
+  const vw = wrapEl.clientWidth  | 0;
+  const vh = wrapEl.clientHeight | 0;
+
+  canvas.width  = (vw * DPR) | 0;
+  canvas.height = (vh * DPR) | 0;
+
+  // World units are larger when GS < 1, so gameplay appears smaller (more space)
+  W = (vw / GS) | 0;
+  H = (vh / GS) | 0;
+
+  // Draw world units scaled into the full-size canvas
+  ctx.setTransform(DPR * GS, 0, 0, DPR * GS, 0, 0);
 }
 
 function syncHudHeight(){
