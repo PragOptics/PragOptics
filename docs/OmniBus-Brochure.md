@@ -441,10 +441,13 @@ For QA/QC, that's the whole game: every record answers **who did what, when, whe
 
 OmniBus is a **universal data concentrator**: every transport feeds the same audit trail, the same profiles, the same scoring, the same UI. The technician experience never changes; only the wire underneath.
 
-- **USB HART.** Connect any HART instrument through the USB modem, with full identity, polling, and complete write/read-back/audit cycles.
-- **On-board HART modem.** A built-in, isolated front-end with three modes: **HART-only (listen), Power+HART (sources 24 V loop power and measures 4–20 mA), and Inline/Measure (reads loop current on an externally powered loop).** No external communicator, no separate loop supply.
+- **USB.** A CDC serial HART modem (such as a MicroLink) plugs into USB for full identity, polling, and complete write/read-back/audit cycles.
+- **On-board two-wire loop (banana jacks).** A built-in, isolated front-end with its own 250 Ω reference that can also source 24 V loop power. It senses whether the loop is already powered, then works one of three ways:
+  - **+PWR** (a dead loop): OmniBus supplies the loop power, reads the 4–20 mA, and talks HART, all at once. A communicator, loop supply, and mA reader in one tool.
+  - **HART-only** (the loop is already powered): a tap across the leads for HART read/write only, sourcing nothing and measuring nothing.
+  - **+MEAS** (measure a powered loop): OmniBus goes in series to read the real 4–20 mA while talking HART, sourcing no power.
 - **HART-IP over Ethernet.** Work instruments and gateways across the network, direct-to-instrument or gateway-host.
-- **Wireless.** Scan, join, and connect to instruments that host their own access point, then work them over HART-IP.
+- **Wi-Fi and Bluetooth.** Join an instrument's own Wi-Fi access point and work it over HART-IP, or connect over Bluetooth.
 - **Built-in cellular and GNSS.** Every OmniBus ships with an integrated LTE modem and a GNSS receiver. GNSS (site and geofence tagging) works out of the box; cellular data is an optional service, below.
 
 One device, one workflow, every instrument on the plant, wired or wireless.
@@ -516,8 +519,8 @@ That is the point: an OmniBus can run with **zero active connections** (captured
 Every OmniBus is a complete field, calibration, and audit tool out of the box: encrypted, mA-measuring, and fully useful on your own network with no subscription. From there, you add only what your operation needs.
 
 **Standard on every OmniBus**
-- Universal HART communication over USB and an on-board isolated modem
-- Three field modes: listen, source-power + HART, and inline measure
+- **Universal HART over every link:** a USB CDC modem (such as a MicroLink), the on-board two-wire loop (banana jacks), HART-IP over Ethernet, Wi-Fi, and Bluetooth
+- **Three on-board loop modes** with a built-in 250 Ω reference, switchable 24 V loop power, and automatic loop-power sensing (listen · source-power + measure · inline measure)
 - **Onboard 4–20 mA measurement** that reads loop current directly and writes it into every As-Found / As-Left record
 - Configure · Calibrate · Loop Test · Record
 - As-Found / As-Left capture and calibration certificates
