@@ -4,6 +4,18 @@
   "items": [
     {
       "type": "folder",
+      "name": "Products",
+      "items": [
+        {
+          "type": "file",
+          "name": "OmniBus Brochure",
+          "path": "OmniBus-Brochure.md",
+          "format": "md"
+        }
+      ]
+    },
+    {
+      "type": "folder",
       "name": "Legal",
       "items": [
         {

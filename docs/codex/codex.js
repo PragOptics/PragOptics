@@ -1,107 +1,126 @@
-// /docs/.codex/codex.js
+// /docs/codex/codex.js
+//
+// PragOptics Codex — document renderer + navigation.
+//
+// Rendering is now a full Markdown engine (markdown-it + GFM + raw HTML),
+// matched to "VS Code Ctrl+Shift+V" quality:
+//   - markdown-it            full CommonMark + GFM tables, html:true (raw HTML/<style>/<svg> pass through)
+//   - markdown-it-anchor     heading ids so in-doc TOC/anchor links resolve
+//   - highlight.js           fenced code-block syntax highlighting
+//
+// Each document is rendered inside an ISOLATED <iframe> (like VS Code's webview),
+// so a doc that ships its own <style>/<svg>/banners renders faithfully without its
+// CSS leaking into the codex chrome. The frame auto-sizes to its content.
+//
+// Deps are vendored under ./vendor/ and loaded by index.html as UMD globals, so
+// the codex has no external CDN dependency.
+
+const markdownit = window.markdownit;
+const anchor = window.markdownItAnchor;
+const hljs = window.hljs;
+const VENDOR = new URL("./vendor/", import.meta.url).href;
 
 /* =========================
-   Utils: escape + markdown
+   Markdown engine
    ========================= */
 
-function esc(s) {
-  return String(s).replace(/[&<>"]/g, (c) => ({
-    "&": "&amp;",
-    "<": "&lt;",
-    ">": "&gt;",
-    "\"": "&quot;"
-  }[c]));
+// GitHub-style heading slugs so authored links like [X](#how-it-works) land.
+function slugify(s) {
+  return String(s)
+    .normalize("NFKD")
+    .toLowerCase()
+    .replace(/[^\w\s-]/g, "")
+    .trim()
+    .replace(/\s+/g, "-");
 }
 
-function mdToHtml(md) {
-  md = md.replace(/\r\n?/g, "\n");
-
-  // horizontal rules
-  md = md.replace(/^\s*(?:-{3,}|\*{3,})\s*$/gm, "<hr>");
-
-  // code fences
-  md = md.replace(/```([\s\S]*?)```/g, (_, code) =>
-    `<pre><code>${esc(code)}</code></pre>`
-  );
-
-  // inline code
-  md = md.replace(/`([^`]+)`/g, (_, c) => `<code>${esc(c)}</code>`);
-
-  // headings
-  md = md
-    .replace(/^######\s?(.*)$/gm, "<h6>$1</h6>")
-    .replace(/^#####\s?(.*)$/gm, "<h5>$1</h5>")
-    .replace(/^####\s?(.*)$/gm, "<h4>$1</h4>")
-    .replace(/^###\s?(.*)$/gm, "<h3>$1</h3>")
-    .replace(/^##\s?(.*)$/gm, "<h2>$1</h2>")
-    .replace(/^#\s?(.*)$/gm, "<h1>$1</h1>");
-
-  // bold / italic
-  md = md
-    .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
-    .replace(/\*([^*]+)\*/g, "<em>$1</em>");
-
-  // images ![alt](url)  (e.g., shields.io badges)
-  // images ![alt](url)
-md = md.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (_, alt, url) => {
-  const safeAlt = esc(alt || "");
-  const safeUrl = esc(url);
-  // If it's a shields.io badge → use md-badge
-  const isBadge = safeUrl.includes("shields.io");
-  return `<img ${isBadge ? 'class="md-badge"' : ''} alt="${safeAlt}" src="${safeUrl}" loading="lazy">`;
-});
-
-  // links [text](url)
-  md = md.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_, text, url) => {
-    const safeUrl = esc(url);
-    const safeText = esc(text);
-    return `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer">${safeText}</a>`;
-  });
-
-  // GFM pipe tables
-  md = md.replace(
-    /(^\|.+\|\s*\n\|(?:\s*:?-+:?\s*\|)+\s*\n(?:\|.*\|\s*\n)+)/gm,
-    (block) => {
-      const lines = block.trim().split("\n");
-      const header = lines[0].slice(1, -1).split("|").map(c => c.trim());
-      const body = lines.slice(2).map(row =>
-        row.slice(1, -1).split("|").map(c => c.trim())
-      );
-
-      const thead = `<thead><tr>${header.map(h => `<th>${h}</th>`).join("")}</tr></thead>`;
-      const tbody = `<tbody>${body.map(r => `<tr>${r.map(c => `<td>${c}</td>`).join("")}</tr>`).join("")}</tbody>`;
-      return `<table>${thead}${tbody}</table>`;
+const md = markdownit({
+  html: true,        // pass raw HTML / <style> / <svg> through (docs are first-party)
+  linkify: true,
+  typographer: true,
+  breaks: false,
+  highlight(str, lang) {
+    if (lang && hljs.getLanguage(lang)) {
+      try {
+        return '<pre class="hljs"><code>' +
+          hljs.highlight(str, { language: lang, ignoreIllegals: true }).value +
+          "</code></pre>";
+      } catch (_) {}
     }
-  );
+    return '<pre class="hljs"><code>' + md.utils.escapeHtml(str) + "</code></pre>";
+  }
+}).use(anchor, { slugify, tabIndex: false, permalink: false });
 
-  // Preserve any raw HTML tables already present in the .md
-  const TABLE_PLACEHOLDER = "§§TABLE_BLOCK§§";
-  const tables = [];
-  md = md.replace(/<table[\s\S]*?<\/table>/g, (match) => {
-    tables.push(match);
-    return TABLE_PLACEHOLDER;
+/* Default dark "markdown preview" stylesheet for documents that bring no theme of
+   their own (the legal/info docs). A document's own <style> overrides these inside
+   its isolated frame, so richly-styled docs (e.g. the OmniBus brochure) render as
+   authored. */
+const BASE_CSS = `
+:root{--bg:#0a0f16;--ink:#e6edf3;--mut:#9fb0c3;--line:#222c39;--cyan:#1fe0ff;--purple:#bf7dff;--code:#0f1620;}
+*{box-sizing:border-box;}
+html,body{margin:0;background:var(--bg);}
+body{color:var(--ink);font:16px/1.65 -apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  max-width:920px;margin:0 auto;padding:26px 30px 60px;-webkit-font-smoothing:antialiased;
+  -webkit-print-color-adjust:exact;print-color-adjust:exact;}
+a{color:var(--cyan);text-decoration:none;} a:hover{text-decoration:underline;}
+h1,h2,h3,h4,h5,h6{font-weight:700;line-height:1.25;margin:1.4em 0 .5em;}
+h1{font-size:2em;border-bottom:1px solid var(--line);padding-bottom:.3em;}
+h2{font-size:1.5em;border-bottom:1px solid var(--line);padding-bottom:.3em;}
+h3{font-size:1.25em;} h4{font-size:1.05em;}
+p{margin:.7em 0;}
+ul,ol{padding-left:1.6em;} li{margin:.25em 0;}
+blockquote{margin:1em 0;padding:.4em 1em;border-left:4px solid var(--purple);
+  background:rgba(191,125,255,.07);color:var(--mut);border-radius:0 8px 8px 0;}
+code{background:var(--code);padding:.15em .4em;border-radius:6px;font-size:.9em;
+  font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;}
+pre{background:var(--code);border:1px solid var(--line);border-radius:10px;padding:14px 16px;overflow:auto;}
+pre code{background:none;padding:0;font-size:.86em;}
+table{border-collapse:collapse;width:100%;margin:1em 0;display:block;overflow:auto;}
+th,td{border:1px solid var(--line);padding:7px 12px;text-align:left;}
+th{background:#121a25;font-weight:700;}
+tbody tr:nth-child(2n) td{background:rgba(255,255,255,.02);}
+img{max-width:100%;height:auto;}
+hr{border:0;border-top:1px solid var(--line);margin:1.8em 0;}
+`;
+
+/* In-frame script: report height to the parent so the iframe auto-sizes; open
+   external links in a new tab; smooth-scroll in-document anchor links. */
+const FRAME_JS = `<script>
+(function(){
+  function report(){ var h=Math.max(document.documentElement.scrollHeight, document.body.scrollHeight); parent.postMessage({__codexHeight:h},"*"); }
+  document.querySelectorAll('a[href^="http"],a[href^="mailto"],a[href^="tel"]').forEach(function(a){ a.target="_blank"; a.rel="noopener noreferrer"; });
+  document.addEventListener("click", function(e){
+    var a = e.target.closest && e.target.closest('a[href^="#"]');
+    if(!a) return;
+    var id = decodeURIComponent(a.getAttribute("href").slice(1));
+    var t = id && document.getElementById(id);
+    if(t){ e.preventDefault(); t.scrollIntoView({behavior:"smooth",block:"start"}); }
   });
+  window.addEventListener("load", report);
+  window.addEventListener("resize", report);
+  document.querySelectorAll("img").forEach(function(im){ im.addEventListener("load", report); im.addEventListener("error", report); });
+  setTimeout(report,60); setTimeout(report,400); setTimeout(report,1400);
+})();
+</script>`;
 
-  // unordered lists (simple)
-  md = md.replace(/^(?:-\s.+(?:\n|$))+?/gm, (block) => {
-    const items = block.trim().split("\n").map(line => {
-      const txt = line.replace(/^-+\s?/, "");
-      return `<li>${txt}</li>`;
-    }).join("");
-    return `<ul>${items}</ul>`;
-  });
-
-  // paragraph wrap (avoid wrapping existing blocks)
-  md = md.replace(
-    /^(?!<h\d|<ul|<pre|<p|<table|<hr|<\/|\s*$)(.+)$/gm,
-    "<p>$1</p>"
-  );
-
-  // restore preserved tables
-  md = md.replace(new RegExp(TABLE_PLACEHOLDER, "g"), () => tables.shift());
-
-  return md;
+function docDirOf(p) {
+  try { return p.slice(0, p.lastIndexOf("/") + 1); } catch (_) { return ""; }
 }
+
+function frameSrcdoc(bodyHtml, baseHref) {
+  return '<!doctype html><html><head><meta charset="utf-8">' +
+    '<meta name="viewport" content="width=device-width,initial-scale=1">' +
+    (baseHref ? '<base href="' + baseHref + '">' : "") +
+    '<link rel="stylesheet" href="' + VENDOR + 'github-dark.min.css">' +
+    "<style>" + BASE_CSS + "</style></head>" +
+    '<body class="markdown-body">' + bodyHtml + FRAME_JS + "</body></html>";
+}
+
+let _frame = null;
+window.addEventListener("message", (ev) => {
+  const d = ev && ev.data;
+  if (d && d.__codexHeight && _frame) _frame.style.height = (d.__codexHeight + 8) + "px";
+});
 
 /* =========================
    DOM refs
@@ -130,7 +149,6 @@ function setLoading(on) {
 }
 
 function hashDocPath() {
-  // expects #doc=<encodedPath>
   const m = location.hash.match(/doc=([^&]+)/);
   return m ? decodeURIComponent(m[1]) : null;
 }
@@ -154,12 +172,16 @@ function basename(p) {
    Manifest + tree building
    ========================= */
 
+// Resolve the manifest + doc paths relative to wherever this docs page is served,
+// so the codex works on prod (/docs/) and on a local preview alike.
+const DOCS_ROOT = new URL(".", document.baseURI).href;
+
 async function loadManifest() {
-  const res = await fetch("https://pragoptics.com/docs/codex.manifest.json", { cache: "no-store" });
-  if (!res.ok) throw new Error("Failed to load https://pragoptics.com/docs/codex.manifest.json");
+  const url = new URL("codex.manifest.json", DOCS_ROOT).href;
+  const res = await fetch(url, { cache: "no-store" });
+  if (!res.ok) throw new Error("Failed to load " + url);
   return res.json();
 }
-
 
 function clearActive() {
   document.querySelectorAll(".codex-node.is-active").forEach(n => n.classList.remove("is-active"));
@@ -185,7 +207,6 @@ function createNode({ icon, text, isActive = false }) {
 
   node.appendChild(ico);
   node.appendChild(label);
-
   return node;
 }
 
@@ -220,11 +241,8 @@ function buildTree(items, rootEl, rootPath) {
       fileNode.dataset.filePath = filePath;
 
       fileNode.addEventListener("click", async (e) => {
-        // Prevent bubbling into a parent folder toggle
         e.stopPropagation();
         await openDoc(item.name, filePath);
-
-        // mobile: collapse nav after selection
         if ($nav && $nav.classList.contains("is-open")) $nav.classList.remove("is-open");
       });
 
@@ -234,7 +252,7 @@ function buildTree(items, rootEl, rootPath) {
 }
 
 /* =========================
-   Doc loading
+   Doc loading (markdown-it → isolated iframe)
    ========================= */
 
 async function openDoc(name, filePath) {
@@ -246,25 +264,29 @@ async function openDoc(name, filePath) {
   if ($raw) $raw.href = filePath;
 
   setHashDocPath(filePath);
-
   setLoading(true);
-  if ($content) $content.innerHTML = "";
+  if ($content) { $content.innerHTML = ""; $content.style.padding = "0"; }
 
   try {
     const res = await fetch(filePath, { cache: "no-store" });
     if (!res.ok) throw new Error("Failed to fetch doc");
-    const md = await res.text();
-    if ($content) $content.innerHTML = mdToHtml(md);
+    const text = await res.text();
+    const html = md.render(text);
+
+    const frame = document.createElement("iframe");
+    frame.className = "codex-frame";
+    frame.setAttribute("title", name || "Document");
+    _frame = frame;
+    if ($content) $content.appendChild(frame);
+    frame.srcdoc = frameSrcdoc(html, docDirOf(filePath));
   } catch {
-    if ($content) $content.innerHTML = "<p>Unable to load document.</p>";
+    if ($content) $content.innerHTML = '<p style="padding:18px 22px;color:var(--muted)">Unable to load document.</p>';
   } finally {
     setLoading(false);
   }
 }
 
-function findFirstFile(manifest) {
-  const root = manifest.root || "https://pragoptics.com/docs/";
-
+function findFirstFile(manifest, root) {
   function walk(items) {
     for (const it of items || []) {
       if (it.type === "file") return { name: it.name, path: root + it.path };
@@ -275,7 +297,6 @@ function findFirstFile(manifest) {
     }
     return null;
   }
-
   return walk(manifest.items);
 }
 
@@ -287,25 +308,22 @@ function findFirstFile(manifest) {
   if (!$tree || !$content) return;
 
   const manifest = await loadManifest();
-  const rootPath = manifest.root || "https://pragoptics.com/docs/";
+  const rootPath = DOCS_ROOT;
 
   buildTree(manifest.items || [], $tree, rootPath);
 
-  // 1) open from hash if provided
   const initial = hashDocPath();
   if (initial) {
     await openDoc(basename(initial), initial);
     return;
   }
 
-  // 2) otherwise open first file in manifest
-  const first = findFirstFile(manifest);
+  const first = findFirstFile(manifest, rootPath);
   if (first) {
     await openDoc(first.name, first.path);
     return;
   }
 
-  // 3) no files
   if ($title) $title.textContent = manifest.title || "Documentation";
   if ($path) $path.textContent = "No documents configured";
   if ($content) $content.innerHTML = "<p>No documents found in codex.manifest.json</p>";

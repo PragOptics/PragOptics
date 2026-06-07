@@ -20,7 +20,7 @@
   <link rel="stylesheet" href="https://pragoptics.com/css/components/modals.css">
 
   <!-- Codex runtime styles -->
-  <link rel="stylesheet" href="https://pragoptics.com/docs/codex/codex.css">
+  <link rel="stylesheet" href="codex/codex.css">
 </head>
 
 <body class="codex">
@@ -54,6 +54,10 @@
     </main>
   </div>
 
-  <script type="module" src="https://pragoptics.com/docs/codex/codex.js"></script>
+  <!-- Codex Markdown engine — vendored, no external CDN -->
+  <script src="codex/vendor/markdown-it.min.js"></script>
+  <script src="codex/vendor/markdownItAnchor.umd.js"></script>
+  <script src="codex/vendor/highlight.min.js"></script>
+  <script type="module" src="codex/codex.js"></script>
 </body>
 </html>
