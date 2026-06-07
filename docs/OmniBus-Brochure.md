@@ -93,8 +93,8 @@ sub,.fine{ color:var(--muted); font-size:.78rem; }
 .banner.amber{ border-left-color:var(--amber); background:linear-gradient(120deg,rgba(255,204,51,0.12),rgba(191,125,255,0.12)); }
 .banner.amber .punch{ color:#ffd45a; text-shadow:0 0 16px rgba(255,204,51,0.45); }
 
-.flow{ display:flex; flex-wrap:wrap; align-items:stretch; gap:8px; margin:1.5em 0; }
-.flow-card{ flex:1 1 150px; padding:14px 15px; border-radius:14px; background:var(--glass);
+.flow{ display:flex; flex-wrap:nowrap; align-items:stretch; gap:8px; margin:1.5em 0; }
+.flow-card{ flex:1 1 0; min-width:0; padding:14px 15px; border-radius:14px; background:var(--glass);
   border:1px solid var(--line); border-top:3px solid var(--cyan); box-shadow:0 10px 26px rgba(0,0,0,0.30); }
 .flow-card .t{ color:#fff; font-weight:800; font-size:1.02rem; }
 .flow-card .s{ color:var(--muted); font-size:.82rem; margin-top:.35em; line-height:1.45; }
@@ -103,9 +103,14 @@ sub,.fine{ color:var(--muted); font-size:.78rem; }
 .flow-card.c3{ border-top-color:var(--purple); }
 .flow-card.c4{ border-top-color:var(--amber); }
 .flow-card.c5{ border-top-color:var(--green); }
-.flow-branch{ display:flex; flex-direction:column; gap:8px; flex:1 1 200px; }
-.flow-branch .flow-card{ flex:1 1 auto; }
-.flow-arrow{ align-self:center; color:var(--cyan); font-size:1.25rem; font-weight:800; opacity:.85; }
+.flow-branch{ display:flex; flex-direction:row; gap:8px; flex:2 1 0; min-width:0; }
+.flow-branch .flow-card{ flex:1 1 0; min-width:0; }
+.flow-arrow{ align-self:center; flex:0 0 auto; color:var(--cyan); font-size:1.25rem; font-weight:800; opacity:.85; }
+@media (max-width:720px){
+  .flow{ flex-direction:column; }
+  .flow-branch{ flex:1 1 auto; }
+  .flow-arrow{ transform:rotate(90deg); margin:2px 0; }
+}
 
 .contact{ text-align:center; color:var(--muted); font-size:.92rem; margin:.4em 0 0; }
 .contact a{ border:0; color:var(--cyan); }
@@ -494,16 +499,17 @@ OmniBus is one node in a system you control end to end, from the sensor to the p
     <div class="flow-card c4"><div class="t">Field Node Manager</div><div class="s">Free desktop. Local control, view, SSH and USB exchange.</div></div>
   </div>
   <div class="flow-arrow">▸</div>
-  <div class="flow-card c5"><div class="t">SharePoint / SPFx</div><div class="s">Your governed system of record.</div></div>
+  <div class="flow-card c5"><div class="t">SharePoint (SPFx)</div><div class="s">Optional visualizer on your SharePoint. Manual by default, or API-connected.</div></div>
 </div>
 
-*Two routes to your records: straight from the device with Cloud Sync, or through the free Field Node Manager.*
+*Your data, your way: keep it on the device, carry it off by USB or SSH to your own SharePoint, or sync to the cloud. Every hop is optional.*
 
 - **On the device.** Live work, As-Found / As-Left capture, PULSE and Atlas, the full historian. Everything runs locally, forever.
-- **Straight to the cloud (optional).** With Cloud Sync on, OmniBus signs and uploads its records to the PragOptics cloud and your SharePoint (SPFx) system of record directly, with no desktop in the middle.
-- **Through the free Field Node Manager.** Or drive the device from your desk: remote control, a full view, the calibration register, certificate generation, mapping and geofencing, and local data exchange over SSH. On its own it's a local cockpit on your own network, with the OmniBus acting as the modem, and it can relay to the cloud once Cloud Sync is on (or you can drop a USB dump straight into SPFx).
+- **Through the free Field Node Manager.** Drive the device from your desk: remote control, a full view, the calibration register, certificate generation, mapping and geofencing, and local data import/export over SSH. On its own it's a local cockpit on your own network, with the OmniBus acting as the modem.
+- **On your SharePoint (SPFx).** An optional PragOptics visualizer package that runs on your own SharePoint, included free with any OmniBus. By default it is **fully manual and offline**: you move records in by USB or SSH, and nothing connects to any API. Your SharePoint data reaches the PragOptics platform only if you choose to send it.
+- **Connected to the cloud (optional).** Provision an account from the front end and turn on Cloud Sync, and OmniBus signs and uploads its records straight to the PragOptics cloud. You can then download a free, API-connected SPFx that replaces the manual one, so your SharePoint updates live.
 
-Because PragOptics owns the whole stack (device, manager, and SharePoint front end), your data moves cleanly from the loop you're standing at to the dashboard your manager is watching. No integration tax. No vendor lock-in.
+That is the point: an OmniBus can run with **zero active connections** (captured on the device, carried off by USB or SSH, visualized on your own SharePoint), or scale all the way up to a live, cloud-synced fleet. Simple, versatile, no vendor lock-in.
 
 [↑ Contents](#contents)
 
@@ -622,7 +628,7 @@ The market gives you three ways to work a HART loop today: a single-vendor handh
 | **Core value** | Vendor-neutral instrument work with an automatic, certifiable audit trail |
 | **Built in** | Onboard mA measurement · built-in LTE + GNSS · encrypted secure store + hardware root of trust · PULSE + Atlas |
 | **Signature feature** | Guided As-Found / As-Left recording → finished calibration certificates |
-| **Included free** | PragOptics Field Node Manager: desktop control, view, USB + SSH data exchange |
+| **Included free** | Field Node Manager (desktop) + SPFx SharePoint visualizer, with any device |
 | **Optional** | Cellular data plan (PragOptics-provisioned or BYO) · Cloud Sync (subscription) |
 | **Connectivity** | USB HART · on-board HART · HART-IP · Wi-Fi · built-in LTE |
 | **Ownership** | One-time device purchase, local use forever; the only recurring costs are optional (cellular plan, Cloud Sync) |
@@ -641,6 +647,7 @@ Own the hardware. Use it locally, forever. The desktop software is free. You pay
 
 **Always free**
 - **PragOptics Field Node Manager.** The desktop app, free with every device. It connects to your PragOptics field nodes (OmniBus is one of them) for remote control, a full desktop view, and local data exchange over SSH. On its own, everything stays on your network, and the OmniBus simply acts as the modem.
+- **PragOptics SPFx visualizer.** The SharePoint package, included free with any OmniBus (and free on a Super plan). It ships as the **manual, offline version with no API connection** by default. Provision an account from the front end and you can download the free, API-connected version that updates your SharePoint live. Standalone (without a device) it is $1,500.
 
 **Subscribe only for the cloud**
 - **PragOptics Cloud Sync** is optional. Turn it on and OmniBus syncs your records to the PragOptics cloud and SharePoint system of record, fleet-wide, straight from the device or through the Field Node Manager. Turn it off and nothing changes locally; you just lose the remote channel.
@@ -651,6 +658,7 @@ Own the hardware. Use it locally, forever. The desktop software is free. You pay
 |---|:---:|
 | **OmniBus device** (encrypted, mA-measuring, built-in LTE + GNSS, all field tools, yours forever) | **$1,500** |
 | **PragOptics Field Node Manager** (desktop control · view · SSH) | **Free** |
+| **PragOptics SPFx** (SharePoint visualizer package) | Free with device · free on Super · $1,500 standalone |
 
 **PragOptics Cloud Sync** *(optional subscription)*
 
