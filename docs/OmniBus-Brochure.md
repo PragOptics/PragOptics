@@ -450,7 +450,7 @@ OmniBus is a **universal data concentrator**: every transport feeds the same aud
 - **Wi-Fi and Bluetooth.** Join an instrument's own Wi-Fi access point and work it over HART-IP, or connect over Bluetooth.
 - **Built-in cellular and GNSS.** Every OmniBus ships with an integrated LTE modem and a GNSS receiver. GNSS (site and geofence tagging) works out of the box; cellular data is an optional service, below.
 
-One device, one workflow, every instrument on the plant, wired or wireless.
+One device, one workflow, every instrument on the plant, wired or wireless. **Modbus** is on the way as a software update, extending the same capture-and-audit workflow to Modbus instruments.
 
 ### Cellular data service
 
