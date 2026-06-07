@@ -508,6 +508,12 @@ OmniBus is one node in a system you control end to end, from the sensor to the p
 - **On your SharePoint (SPFx).** An optional PragOptics visualizer package that runs on your own SharePoint, included free with any OmniBus. By default it is **fully manual and offline**: you move records in by USB or SSH, and nothing connects to any API. Your SharePoint data reaches the PragOptics platform only if you choose to send it.
 - **Connected to the cloud (optional).** Provision an account from the front end and turn on Cloud Sync, and OmniBus signs and uploads its records straight to the PragOptics cloud. You can then download a free, API-connected SPFx that replaces the manual one, so your SharePoint updates live.
 
+### Sites, geofencing, and organizations
+
+OmniBus is location-aware out of the box. Built-in GNSS fixes a site's coordinates and lets you draw a geofence around it, and every record is filed into that **site's own repository**, so one plant's data never merges with another's. A node that travels simply grows a folder per site. This works fully offline with no subscription, and it's optional: ignore location entirely and the device still captures and audits exactly the same.
+
+That segregation carries straight into the cloud. Your account is the hard wall, so a device's data can only ever land in your own tenant. Sites roll up under an **organization** while staying separated (one plant never bleeds into another), and with an active subscription you can **link data with another account by private invitation**, the way a company unites its multiple sites, or a service vendor and a customer share a view, without ever crossing the underlying data over.
+
 That is the point: an OmniBus can run with **zero active connections** (captured on the device, carried off by USB or SSH, visualized on your own SharePoint), or scale all the way up to a live, cloud-synced fleet. Simple, versatile, no vendor lock-in.
 
 [↑ Contents](#contents)
