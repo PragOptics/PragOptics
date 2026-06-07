@@ -454,27 +454,27 @@ One device, one workflow, every instrument on the plant, wired or wireless. **Mo
 
 ### Wireless gateways and multi-modal HART-IP
 
-Not every instrument hangs off a pair of wires you can clip onto anymore. Plenty live on a network, or behind their own wireless access point. **OmniBus reaches them with the same command engine it uses for everything else**, and that engine is multi-modal: the on-board loop, a USB modem, HART-IP over Ethernet, and Wi-Fi are four transports driven by one path. HART-IP and wireless converge on the exact same logic. Wireless simply adds one step in front: join the network.
+Many instruments now live on a network instead of hanging off a pair of wires you can clip onto. Some are single instruments with their own address. Others sit behind a **wireless gateway**, which is not one instrument at all: it is a host that fronts a whole mesh of wireless field devices. **OmniBus reaches both over HART-IP with one multi-modal engine, and it works out what it is connected to before it draws a screen.**
 
-When OmniBus arrives at an endpoint, it does not assume what is there. It **probes what that endpoint is actually serving**, HART-IP, Modbus, a web port, and tells you what is live. Reaching a wireless instrument then comes down to a single choice: tap its network.
+You give OmniBus the device address. It configures its own network side automatically (its port and subnet), polls the endpoint, and detects the device class: a gateway host, or a single direct instrument. Then it adapts to what it actually found.
 
 <div class="flow">
-  <div class="flow-card c1"><div class="t">Tap to reach it</div><div class="s">Pick a Wi-Fi network from the live list, or an address. OmniBus scans, joins, and auto-discovers the HART-IP endpoint from DHCP. You never type an IP, a port, or a subnet, and the Wi-Fi password never lands in the record.</div></div>
+  <div class="flow-card c1"><div class="t">Point it at the device</div><div class="s">Give OmniBus the address. It sets up its own network port and subnet, polls the endpoint, and classifies what answered. There is nothing else to configure.</div></div>
   <div class="flow-arrow">▸</div>
   <div class="flow-branch">
-    <div class="flow-card c3"><div class="t">Across the network or Wi-Fi</div><div class="s">You get a gateway view: the endpoint, the services it is serving, and a ready state, with one tap to open.</div></div>
-    <div class="flow-card c2"><div class="t">Straight onto the loop</div><div class="s">USB or the on-board two-wire front end reads the instrument's identity and connects.</div></div>
+    <div class="flow-card c3"><div class="t">A gateway? Work the whole mesh.</div><div class="s">You get the gateway view: every wireless field device in one live roster (name, PV, SV, TV, QV, last update, and state: Live, Late, Stale, or Unreachable), device-status counts, gateway load and network health, and one tap into any device for full diagnostics.</div></div>
+    <div class="flow-card c2"><div class="t">A single instrument? Straight to work.</div><div class="s">You land in the standardized instrument workspace, the same one every transport uses, with the login to match: a gateway takes a username and password, an Endress+Hauser device takes its serial number.</div></div>
   </div>
   <div class="flow-arrow">▸</div>
-  <div class="flow-card c5"><div class="t">One standardized workspace</div><div class="s">Every path lands on the same instrument screen. Configure, calibrate, loop-test, and record exactly the same way, wired or wireless.</div></div>
+  <div class="flow-card c5"><div class="t">Polled honestly</div><div class="s">Live values refresh on a steady round-robin, only for what is on screen, and the heartbeat flips to offline the instant the gateway stops answering. No stale number is ever shown as live.</div></div>
 </div>
 
-The screen adapts to **how** you reach the instrument, never to **what** you do once you are there. Connect across the network or over Wi-Fi and you work the connection from a gateway view. The moment you open the device, you are in the standardized instrument workspace, identical across every transport and every manufacturer. No per-vendor network tool, no second screen to learn.
+That is what multi-modal HART-IP means: OmniBus reads the device class on connect and hands you the right screen. A gateway opens its whole network, the home dashboard, the full device list, and the gateway's own settings (network, protocols, security). A single instrument opens the standardized workspace you already know. One handheld covers the gateway and every device behind it.
 
 <div class="banner amber">
-  <span class="big">The network is just another loop.</span>
-  <span class="setup">A laptop, the gateway's own web page, a vendor utility, and a separate Wi-Fi dance: that is how networked instruments usually get worked.</span>
-  <span class="punch">OmniBus makes it one tap, on the screen you already know.</span>
+  <span class="big">A gateway is not one instrument. It is a whole network of them.</span>
+  <span class="setup">Working a wireless network usually means a laptop, the gateway's own web page, and yet another tool for the devices behind it.</span>
+  <span class="punch">OmniBus reads the whole mesh, and walks into any device on it, from one screen.</span>
 </div>
 
 ### Cellular data service
