@@ -173,7 +173,7 @@ sub,.fine{ color:var(--muted); font-size:.78rem; }
 7. [PULSE](#pulse): device health, scored continuously
 8. [Atlas](#atlas): deep instrument profiling
 9. [The Historian](#the-historian): your field black box
-10. [Connectivity and protocols](#connectivity-and-protocols)
+10. [Connectivity and protocols](#connectivity-and-protocols): transports, wireless gateways, cellular
 11. [The hardware](#the-hardware)
 12. [The PragOptics platform](#the-pragoptics-platform)
 13. [Modular by design](#modular-by-design): what's standard, what's optional
@@ -451,6 +451,31 @@ OmniBus is a **universal data concentrator**: every transport feeds the same aud
 - **Built-in cellular and GNSS.** Every OmniBus ships with an integrated LTE modem and a GNSS receiver. GNSS (site and geofence tagging) works out of the box; cellular data is an optional service, below.
 
 One device, one workflow, every instrument on the plant, wired or wireless. **Modbus** is on the way as a software update, extending the same capture-and-audit workflow to Modbus instruments.
+
+### Wireless gateways and multi-modal HART-IP
+
+Not every instrument hangs off a pair of wires you can clip onto anymore. Plenty live on a network, or behind their own wireless access point. **OmniBus reaches them with the same command engine it uses for everything else**, and that engine is multi-modal: the on-board loop, a USB modem, HART-IP over Ethernet, and Wi-Fi are four transports driven by one path. HART-IP and wireless converge on the exact same logic. Wireless simply adds one step in front: join the network.
+
+When OmniBus arrives at an endpoint, it does not assume what is there. It **probes what that endpoint is actually serving**, HART-IP, Modbus, a web port, and tells you what is live. Reaching a wireless instrument then comes down to a single choice: tap its network.
+
+<div class="flow">
+  <div class="flow-card c1"><div class="t">Tap to reach it</div><div class="s">Pick a Wi-Fi network from the live list, or an address. OmniBus scans, joins, and auto-discovers the HART-IP endpoint from DHCP. You never type an IP, a port, or a subnet, and the Wi-Fi password never lands in the record.</div></div>
+  <div class="flow-arrow">▸</div>
+  <div class="flow-branch">
+    <div class="flow-card c3"><div class="t">Across the network or Wi-Fi</div><div class="s">You get a gateway view: the endpoint, the services it is serving, and a ready state, with one tap to open.</div></div>
+    <div class="flow-card c2"><div class="t">Straight onto the loop</div><div class="s">USB or the on-board two-wire front end reads the instrument's identity and connects.</div></div>
+  </div>
+  <div class="flow-arrow">▸</div>
+  <div class="flow-card c5"><div class="t">One standardized workspace</div><div class="s">Every path lands on the same instrument screen. Configure, calibrate, loop-test, and record exactly the same way, wired or wireless.</div></div>
+</div>
+
+The screen adapts to **how** you reach the instrument, never to **what** you do once you are there. Connect across the network or over Wi-Fi and you work the connection from a gateway view. The moment you open the device, you are in the standardized instrument workspace, identical across every transport and every manufacturer. No per-vendor network tool, no second screen to learn.
+
+<div class="banner amber">
+  <span class="big">The network is just another loop.</span>
+  <span class="setup">A laptop, the gateway's own web page, a vendor utility, and a separate Wi-Fi dance: that is how networked instruments usually get worked.</span>
+  <span class="punch">OmniBus makes it one tap, on the screen you already know.</span>
+</div>
 
 ### Cellular data service
 
