@@ -75,7 +75,8 @@ code{background:var(--code);padding:.15em .4em;border-radius:6px;font-size:.9em;
   font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;}
 pre{background:var(--code);border:1px solid var(--line);border-radius:10px;padding:14px 16px;overflow:auto;}
 pre code{background:none;padding:0;font-size:.86em;}
-table{border-collapse:collapse;width:100%;margin:1em 0;display:block;overflow:auto;}
+table{border-collapse:collapse;width:100%;margin:1em 0;}
+.markdown-body table{table-layout:auto;}
 th,td{border:1px solid var(--line);padding:7px 12px;text-align:left;}
 th{background:#121a25;font-weight:700;}
 tbody tr:nth-child(2n) td{background:rgba(255,255,255,.02);}
