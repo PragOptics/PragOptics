@@ -142,5 +142,7 @@ body{
   body{ font-size:16px; }
   .prose h1{ font-size:2rem; }
   .prose h2{ font-size:1.35rem; }
-  .site-header nav a{ margin-left:12px; }
+  .site-header{ flex-wrap:wrap; gap:8px 0; }
+  .site-header nav a{ margin-left:0; margin-right:14px; }
+  .prose table{ display:block; overflow-x:auto; -webkit-overflow-scrolling:touch; }
 }

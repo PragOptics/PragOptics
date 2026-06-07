@@ -107,6 +107,13 @@ sub,.fine{ color:var(--muted); font-size:.78rem; }
 .flow-branch .flow-card{ flex:1 1 0; min-width:0; }
 .flow-arrow{ align-self:center; color:var(--cyan); font-size:1.2rem; font-weight:800; opacity:.85; transform:rotate(90deg); margin:1px 0; }
 @media (max-width:480px){ .flow-branch{ flex-direction:column; } }
+@media (max-width:640px){
+  table{ display:block; overflow-x:auto; -webkit-overflow-scrolling:touch; }
+  .report .r-grid{ grid-template-columns:1fr; }
+  .hero h1{ font-size:2.2rem; }
+  .hero{ padding:24px 22px; }
+  body{ padding:18px 16px 40px; }
+}
 
 .contact{ text-align:center; color:var(--muted); font-size:.92rem; margin:.4em 0 0; }
 .contact a{ border:0; color:var(--cyan); }
