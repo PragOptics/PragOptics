@@ -444,8 +444,16 @@ OmniBus is a **universal data concentrator**: every transport feeds the same aud
 - **On-board HART modem.** A built-in, isolated front-end with three modes: **HART-only (listen), Power+HART (sources 24 V loop power and measures 4–20 mA), and Inline/Measure (reads loop current on an externally powered loop).** No external communicator, no separate loop supply.
 - **HART-IP over Ethernet.** Work instruments and gateways across the network, direct-to-instrument or gateway-host.
 - **Wireless.** Scan, join, and connect to instruments that host their own access point, then work them over HART-IP.
+- **Built-in cellular and GNSS.** Every OmniBus ships with an integrated LTE modem and a GNSS receiver. GNSS (site and geofence tagging) works out of the box; cellular data is an optional service, below.
 
-One device, one workflow, every instrument on the plant, wired or wireless. Add the optional cellular module to keep field nodes connected anywhere (see [Modular by design](#modular-by-design)).
+One device, one workflow, every instrument on the plant, wired or wireless.
+
+### Cellular data service
+
+The LTE hardware is built into every device. The data plan is what you choose:
+
+- **PragOptics-provisioned (order option).** Add a SIM plan when you order and the unit arrives **activated and ready out of the box**, with the plan provisioned and managed by PragOptics. Data rates are subject to change.
+- **Bring your own carrier.** Supply your own SIM and plan. This is not out-of-the-box ready; it requires you to install and activate the SIM on the device. PragOptics support will help you through it.
 
 [↑ Contents](#contents)
 
@@ -460,8 +468,8 @@ One device, one workflow, every instrument on the plant, wired or wireless. Add 
 | **Power** | High-capacity Li-ion UPS with real-time clock and fuel gauge; all-day field power and graceful shutdown |
 | **HART front-end** | Isolated AD5700-class modem; HART-only / Power+HART / Inline-Measure modes; rugged keyed loop connector |
 | **Current measurement** | Onboard 4–20 mA measurement (250 Ω precision shunt + 16-bit ADC, galvanically isolated) that feeds the As-Found / As-Left record automatically |
-| **Connectivity** | USB HART, on-board HART, HART-IP, and Wi-Fi (optional cellular / LTE) |
-| **Location** | GNSS site and geofence tagging (via the optional cellular + GNSS module) |
+| **Connectivity** | USB HART, on-board HART, HART-IP, Wi-Fi, and built-in LTE |
+| **Location** | Integrated GNSS (GPS / GLONASS / Galileo / BeiDou) for site and geofence tagging |
 | **Camera** | On-board camera for field-evidence photos attached to records |
 | **Security** | On-board hardware secure element (root of trust); encrypted device logic and secure store; device-bound keys |
 | **Input** | Touchscreen plus single hardware button with tap / double-tap / long-press gestures |
@@ -516,13 +524,14 @@ Every OmniBus is a complete field, calibration, and audit tool out of the box: e
 - Local-authoritative storage, so your data never has to leave the device
 - USB data dump and SSH data exchange
 - The **free PragOptics Field Node Manager** for desktop control, a full device view, and local data import/export across every PragOptics field node
+- A **built-in LTE modem and GNSS receiver** (GNSS works out of the box; cellular data is an optional service)
 
 **Optional**
 
 | Option | Type | What it adds |
 |---|:---:|---|
-| **Cellular + GNSS** | Hardware | Integrated LTE for always-connected field nodes, with GNSS location and geofence tagging on every session. |
-| **PragOptics Cloud Sync** | Subscription | Live, signed synchronization to the PragOptics cloud system of record, fleet-wide and multi-tenant. The only recurring cost. |
+| **Cellular data plan** | Service | Activates the built-in LTE modem. Provisioned by PragOptics so the unit ships activated, or bring your own carrier and self-install. Data rates subject to change. |
+| **PragOptics Cloud Sync** | Subscription | Live, signed synchronization to the PragOptics cloud system of record, fleet-wide and multi-tenant. |
 
 Buy the tool. Keep it forever. Add the cloud only when your data needs to travel.
 
@@ -611,12 +620,12 @@ The market gives you three ways to work a HART loop today: a single-vendor handh
 | **Replaces** | Single-vendor handheld communicators, documenting calibrators, paper sheets, and disconnected record-keeping |
 | **For** | Instrument & automation technicians (ISA), calibration shops, reliability & maintenance teams, QA/QC and compliance |
 | **Core value** | Vendor-neutral instrument work with an automatic, certifiable audit trail |
-| **Built in** | Onboard mA measurement · encrypted device logic & secure store · hardware root of trust · PULSE + Atlas |
+| **Built in** | Onboard mA measurement · built-in LTE + GNSS · encrypted secure store + hardware root of trust · PULSE + Atlas |
 | **Signature feature** | Guided As-Found / As-Left recording → finished calibration certificates |
 | **Included free** | PragOptics Field Node Manager: desktop control, view, USB + SSH data exchange |
-| **Optional** | Cellular + GNSS (hardware) · Cloud Sync (subscription) |
-| **Connectivity** | USB HART · on-board HART · HART-IP · Wi-Fi · cellular (optional) |
-| **Ownership** | One-time device purchase, local use forever; cloud sync is the only recurring cost |
+| **Optional** | Cellular data plan (PragOptics-provisioned or BYO) · Cloud Sync (subscription) |
+| **Connectivity** | USB HART · on-board HART · HART-IP · Wi-Fi · built-in LTE |
+| **Ownership** | One-time device purchase, local use forever; the only recurring costs are optional (cellular plan, Cloud Sync) |
 
 [↑ Contents](#contents)
 
@@ -627,8 +636,8 @@ The market gives you three ways to work a HART loop today: a single-vendor handh
 Own the hardware. Use it locally, forever. The desktop software is free. You pay for the cloud only when you want your data to travel.
 
 **Buy once**
-- **The OmniBus device.** A one-time purchase. Universal HART, the three field modes, onboard 4–20 mA measurement, As-Found / As-Left, certificates, the Historian, PULSE, Atlas, plus an encrypted secure store with a hardware root of trust, all run locally, forever, with no subscription. Repairable to the component level.
-- **Optional hardware**, ordered with the device: the **cellular + GNSS** module.
+- **The OmniBus device.** A one-time purchase. Universal HART, the three field modes, onboard 4–20 mA measurement, As-Found / As-Left, certificates, the Historian, PULSE, Atlas, a built-in LTE modem with GNSS, plus an encrypted secure store with a hardware root of trust, all run locally, forever, with no subscription. Repairable to the component level.
+- **Order option:** add a **PragOptics cellular data plan** so the unit ships activated and ready, or bring your own carrier and activate the SIM yourself (PragOptics support assists). Data rates subject to change.
 
 **Always free**
 - **PragOptics Field Node Manager.** The desktop app, free with every device. It connects to your PragOptics field nodes (OmniBus is one of them) for remote control, a full desktop view, and local data exchange over SSH. On its own, everything stays on your network, and the OmniBus simply acts as the modem.
@@ -640,11 +649,10 @@ Own the hardware. Use it locally, forever. The desktop software is free. You pay
 
 | Item | Price |
 |---|:---:|
-| **OmniBus device** (encrypted, mA-measuring, all field tools, yours forever) | **$1,500** |
-| **Cellular + GNSS module** *(optional)* | On request |
+| **OmniBus device** (encrypted, mA-measuring, built-in LTE + GNSS, all field tools, yours forever) | **$1,500** |
 | **PragOptics Field Node Manager** (desktop control · view · SSH) | **Free** |
 
-**PragOptics Cloud Sync** *(optional subscription, the only recurring cost)*
+**PragOptics Cloud Sync** *(optional subscription)*
 
 | Tier | Built for | Price |
 |---|---|:---:|
@@ -652,7 +660,7 @@ Own the hardware. Use it locally, forever. The desktop software is free. You pay
 | **Partner** | A team or shop, up to 5 paired devices | **$50 / mo** |
 | **Super** | A fleet or multi-site org, up to 15 paired devices | **$350 / mo** |
 
-<sub>The device and the Field Node Manager need no subscription: local work, remote control, and SSH data exchange are free forever. Volume, fleet, and multi-year terms available; optional cellular hardware priced on request.</sub>
+<sub>The device and the Field Node Manager need no subscription: local work, remote control, and SSH data exchange are free forever. A cellular data plan and Cloud Sync are optional services. Volume, fleet, and multi-year terms available.</sub>
 
 ### What it costs to own, and what it replaces
 
