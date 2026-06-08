@@ -109,10 +109,16 @@ sub,.fine{ color:var(--muted); font-size:.78rem; }
 @media (max-width:480px){ .flow-branch{ flex-direction:column; } }
 @media (max-width:640px){
   table{ display:block; overflow-x:auto; -webkit-overflow-scrolling:touch; }
-  .report .r-grid{ grid-template-columns:1fr; }
   .hero h1{ font-size:2.2rem; }
   .hero{ padding:24px 22px; }
   body{ padding:18px 16px 40px; }
+  /* calibration report: scale to fit the phone, do not scroll */
+  .report{ padding:16px 14px; font-size:.82rem; }
+  .report .r-head{ flex-direction:column; align-items:flex-start; gap:8px; }
+  .report .r-meta{ text-align:left; }
+  .report .r-grid{ grid-template-columns:1fr; }
+  .report table{ display:table; width:100%; font-size:.68rem; }
+  .report th, .report td{ padding:5px 6px; }
 }
 
 .contact{ text-align:center; color:var(--muted); font-size:.92rem; margin:.4em 0 0; }

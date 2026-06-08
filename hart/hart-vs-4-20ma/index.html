@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HART vs 4-20 mA: What Is the Difference?</title>
+<meta name="description" content="HART vs 4-20 mA explained simply: they are not competitors. HART rides on top of the 4-20 mA current loop on the same two wires. See what each carries, with a comparison table.">
+<meta name="keywords" content="HART vs 4-20 mA, difference between HART and 4-20mA, 4-20 mA current loop, HART on 4-20mA, HART protocol, analog current loop, FSK signal, HART digital communication">
+<link rel="canonical" href="https://pragoptics.com/hart/hart-vs-4-20ma/">
+<meta name="color-scheme" content="dark">
+<meta name="robots" content="index, follow, max-image-preview:large">
+<meta name="author" content="PragOptics">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="PragOptics">
+<meta property="og:title" content="HART vs 4-20 mA: What Is the Difference?">
+<meta property="og:description" content="HART vs 4-20 mA explained simply: they are not competitors. HART rides on top of the 4-20 mA current loop on the same two wires. See what each carries, with a comparison table.">
+<meta property="og:url" content="https://pragoptics.com/hart/hart-vs-4-20ma/">
+<meta property="og:image" content="https://pragoptics.com/images/logo.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="HART vs 4-20 mA: What Is the Difference?">
+<meta name="twitter:description" content="HART vs 4-20 mA explained simply: they are not competitors. HART rides on top of the 4-20 mA current loop on the same two wires. See what each carries, with a comparison table.">
+<meta name="twitter:image" content="https://pragoptics.com/images/logo.png">
+<link rel="icon" type="image/png" href="https://pragoptics.com/images/favicon.png">
+<link rel="apple-touch-icon" href="https://pragoptics.com/images/apple-touch-icon.png">
+<link rel="stylesheet" href="../hart.css">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"HART vs 4-20 mA: What Is the Difference?","description":"HART vs 4-20 mA explained: they are not competitors. HART rides on top of the 4-20 mA current loop on the same two wires. What each carries, plus a comparison table.","about":[{"@type":"Thing","name":"HART protocol"},{"@type":"Thing","name":"4-20 mA current loop"}],"keywords":"HART vs 4-20 mA, difference between HART and 4-20mA, 4-20 mA current loop, HART on 4-20mA","articleSection":"HART","inLanguage":"en-US","author":{"@type":"Organization","name":"PragOptics","url":"https://pragoptics.com"},"publisher":{"@type":"Organization","name":"PragOptics","url":"https://pragoptics.com"},"mainEntityOfPage":{"@type":"WebPage","@id":"/hart/hart-vs-4-20ma"}}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Home","item":"https://pragoptics.com/"},{"@type":"ListItem","position":2,"name":"HART","item":"https://pragoptics.com/hart/"},{"@type":"ListItem","position":3,"name":"HART vs 4-20 mA","item":"https://pragoptics.com/hart/hart-vs-4-20ma/"}]}</script>
+</head>
+<body>
+<header class="site-header">
+  <a class="brand" href="/"><img src="https://pragoptics.com/images/logo.png" alt="PragOptics logo" width="30" height="30"><span>PragOptics</span></a>
+  <nav><a href="/hart/">HART Hub</a><a href="/hart/what-is-hart/">What is HART</a><a href="/hart/glossary/">Glossary</a><a href="/hart/faq/">FAQ</a></nav>
+</header>
+<nav class="breadcrumb" aria-label="Breadcrumb"><a href="/">Home</a> / <a href="/hart/">HART</a> / <span>HART vs 4-20 mA</span></nav>
+<main class="container">
+<article class="prose">
+<h1>HART vs 4-20 mA: What Is the Difference?</h1>
+<h2>HART vs 4-20 mA: the short answer</h2>
+<p>HART and 4-20 mA are <strong>not competitors</strong>. They are two layers that share the same pair of wires. The 4-20 mA current loop is the analog signal that carries one process value to your control system. <strong>HART rides on top of that loop as a digital signal</strong>, adding tag, configuration, multiple variables, and diagnostics without disturbing the analog reading. So the real difference between HART and 4-20 mA is not which to choose: it is what each layer does on the loop you already have.</p>
+<p>HART stands for <strong>Highway Addressable Remote Transducer</strong>, an open standard maintained by the FieldComm Group. It was designed from the start to coexist with the installed base of 4-20 mA wiring, which is exactly why it sits on the loop instead of replacing it.</p>
+
+<h2>What is the 4-20 mA current loop?</h2>
+<p>The 4-20 mA current loop is the analog standard that carries a single process variable from a field instrument to the control system as an electric current. The instrument sets the current between 4 milliamps (0% of range) and 20 milliamps (100% of range), and the control system reads that current to know the measured value.</p>
+<p>It is popular for good reasons that have nothing to do with HART:</p>
+<ul>
+<li><strong>One value, simply expressed.</strong> A pressure transmitter ranged 0 to 100 psi outputs 4 mA at 0 psi, 12 mA at 50 psi, and 20 mA at 100 psi. The current <em>is</em> the reading.</li>
+<li><strong>Robust over distance.</strong> Current is the same at every point in a series loop, so voltage drop across long cable runs does not change the value the way a voltage signal would.</li>
+<li><strong>Live-zero diagnostics.</strong> Because the bottom of the range is 4 mA and not 0 mA, a true 0 mA reading means a broken wire or a dead instrument, not a valid low measurement.</li>
+<li><strong>Simple and universal.</strong> Almost every controller, recorder, and indicator on a plant floor accepts a 4-20 mA input.</li>
+</ul>
+<p>The trade-off: a single 4-20 mA loop carries <strong>exactly one number</strong>. It cannot tell you the instrument's tag, its range, a second or third measured variable, or whether it is reporting a fault. For that, you need HART.</p>
+
+<h2>How does HART add a digital signal on the same loop?</h2>
+<p>HART adds digital communication by superimposing a small alternating-current (FSK) signal on the same two wires that carry the 4-20 mA analog current. FSK stands for frequency-shift keying: HART uses the Bell 202 standard, shifting between two audio tones (about 1200 Hz for a digital 1 and about 2200 Hz for a digital 0) at 1200 bits per second.</p>
+<p>The clever part is why this does not corrupt the analog reading. The HART FSK signal is an alternating (AC) tone whose <strong>average value is zero</strong>. The control system reads the loop's slow-moving direct current (the 4-20 mA process value) and simply does not respond to the fast, alternating, zero-average tone laid over it. The analog measurement keeps flowing, undisturbed, while digital data passes in the background. Both signals occupy the same copper at the same time.</p>
+<p>A HART master (a handheld communicator, an asset-management system, or a field node) requests data; the instrument answers in the same digital language. None of that changes the 4-20 mA current the controller is reading for control.</p>
+
+<h2>What does each one carry?</h2>
+<p>The 4-20 mA loop carries one analog value to the control system. HART carries everything else about the instrument digitally. They answer different questions on the same wire.</p>
+<dl>
+<dt>The 4-20 mA analog loop carries:</dt>
+<dd>One primary variable (the PV), continuously, as the control current the DCS or PLC acts on. That is its whole job, and it does it reliably.</dd>
+<dt>The HART digital layer carries:</dt>
+<dd>The instrument <strong>tag</strong> and message; the full <strong>configuration</strong> (range, engineering units, damping, transfer function); <strong>multiple process variables</strong> (PV, SV, TV, QV) where the device supports them; <strong>device identity</strong> (manufacturer, device type, serial number); live <strong>diagnostics and status</strong>; and the commands used for <strong>calibration and trim</strong>. It is a two-way channel, so a master can read these and write changes back.</dd>
+</dl>
+<p>In other words, the analog loop tells the controller <em>what the value is</em>. HART tells a technician <em>everything about the instrument producing it</em>, and lets that technician configure and calibrate it.</p>
+
+<h2>Point-to-point vs multidrop: where the loop current goes</h2>
+<p>HART runs in one of two wiring modes, and the difference is what happens to the analog 4-20 mA current.</p>
+<ul>
+<li><strong>Point-to-point (the common mode).</strong> One instrument per loop. The 4-20 mA analog current is live and carries the process value, while HART digital data rides on top simultaneously. This is the typical installation: the controller reads the analog PV, and HART is available for configuration, diagnostics, and a documented multivariable view at the same time.</li>
+<li><strong>Multidrop.</strong> Several HART instruments share one pair of wires. Here the analog loop is <strong>parked</strong>: each device is set to a fixed low current (commonly 4 mA) so it no longer represents a process value, and <em>all</em> measurement data moves digitally over HART, with each instrument given a unique polling address. You trade the live analog signal for the ability to put many devices on one cable.</li>
+</ul>
+<p>The takeaway: in point-to-point, the analog 4-20 mA reading stays live and HART adds to it. In multidrop, the analog current is fixed out of the way and HART carries everything.</p>
+
+<h2>HART vs 4-20 mA: comparison table</h2>
+<table>
+<thead>
+<tr><th>Aspect</th><th>4-20 mA</th><th>HART</th></tr>
+</thead>
+<tbody>
+<tr><td>Signal type</td><td>Analog DC current (4 to 20 mA)</td><td>Digital FSK tone superimposed on the loop</td></tr>
+<tr><td>Direction</td><td>One-way (instrument to control system)</td><td>Two-way (read and write)</td></tr>
+<tr><td>What it carries</td><td>One process variable (the PV)</td><td>Tag, configuration, multiple variables, diagnostics, calibration</td></tr>
+<tr><td>Effect on the analog reading</td><td>It is the reading</td><td>Zero-average signal leaves the analog reading undisturbed</td></tr>
+<tr><td>Wiring</td><td>Two wires, one instrument per loop</td><td>Same two wires; point-to-point or multidrop</td></tr>
+<tr><td>Primary user</td><td>The control system (DCS / PLC)</td><td>Technicians, asset management, diagnostics tools</td></tr>
+<tr><td>Standard</td><td>Analog current-loop convention</td><td>Open FieldComm Group standard (Bell 202 FSK)</td></tr>
+<tr><td>Relationship</td><td>The foundation layer</td><td>Rides on top of the 4-20 mA loop</td></tr>
+</tbody>
+</table>
+
+<h2>They coexist on the same two wires</h2>
+<p>The most important point about HART vs 4-20 mA is that you do not pick one. On a standard point-to-point loop, both run together on the same pair of wires: the analog 4-20 mA current drives control, and HART digital data is available on demand for configuration, multivariable data, and diagnostics. That backward compatibility is the reason HART became the most widely installed smart-instrument protocol: a plant can keep its existing 4-20 mA wiring and gain digital intelligence on top.</p>
+<p>To learn the protocol itself in more depth, see <a href="/hart/what-is-hart/">what is HART</a>, and check the <a href="/hart/glossary/">HART glossary</a> for terms like FSK, multidrop, PV, and polling address.</p>
+
+<h2>How OmniBus reads both layers at once</h2>
+<p>Most tools read only the digital HART side, which is where a subtle trust gap appears: a HART device reports the milliamp value it <em>thinks</em> it is putting out, not proof of the real loop current. <a href="/">OmniBus</a> by PragOptics, a universal, vendor-neutral handheld HART communicator and calibration recorder, was built to close that gap by reading <strong>both</strong> layers: the digital HART data and the actual analog loop current, measured independently.</p>
+<p>Its isolated front end carries an onboard 4-20 mA measurement circuit (a 250 ohm precision shunt feeding a 16-bit ADC), so it senses the genuine loop current while it talks HART. It senses whether a loop is already powered and adapts:</p>
+<ul>
+<li><strong>+PWR</strong> on a dead loop: OmniBus supplies loop power, reads the 4-20 mA, and talks HART at once.</li>
+<li><strong>HART-only</strong> on a loop that is already powered: a tap for digital read and write, sourcing and measuring nothing.</li>
+<li><strong>+MEAS</strong> on a powered loop: OmniBus goes in series to read the real 4-20 mA while talking HART.</li>
+</ul>
+<p>That measured current, the true loop value rather than the device's self-report, lands directly in the As-Found / As-Left calibration record. For networked instruments, its multi-modal HART-IP engine auto-detects whether it is connected to a single instrument or a wireless gateway host and adapts the workspace to match. The result, per the OmniBus product brochure, is one tool that proves what the loop is actually doing, not just what the instrument claims.</p>
+<p>Still have questions about HART and the 4-20 mA loop? See the <a href="/hart/faq/">HART FAQ</a> or browse the full <a href="/hart/">HART resource hub</a>.</p>
+</article>
+<aside class="cta-box">
+  <h2>Meet OmniBus</h2>
+  <p>OmniBus by PragOptics is a universal, vendor-neutral HART communicator and calibration recorder in one rugged handheld. Configure, calibrate, and document any HART instrument, with the audit trail built in.</p>
+  <a class="cta" href="/">Explore OmniBus</a>
+</aside>
+</main>
+<footer class="site-footer">
+  <div>&copy; PragOptics, a Fortiview Holdings brand. Universal HART field tools.</div>
+  <div><a href="/">Home</a> &middot; <a href="/hart/">HART Hub</a> &middot; <a href="mailto:support@fortiviewholdings.com">support@fortiviewholdings.com</a></div>
+</footer>
+</body>
+</html>

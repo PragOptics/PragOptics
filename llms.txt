@@ -1,34 +1,24 @@
 # PragOptics
 
-> PragOptics is the data-visualization and field-data platform for industrial automation, and the maker of OmniBus, a universal HART communicator and calibration recorder. PragOptics is a brand of Fortiview Holdings.
-
-PragOptics turns every HART instrument connection into an auditable, certifiable record. The flagship product, OmniBus, is a handheld field node that speaks vendor-neutral HART across manufacturers and produces finished As-Found / As-Left calibration certificates as a by-product of doing the job.
+> PragOptics is the field-data, calibration, and visualization platform for industrial automation, and the maker of OmniBus, a universal, vendor-neutral handheld HART communicator, calibration recorder, and field node. PragOptics is a Fortiview Holdings brand.
 
 ## What OmniBus is
 
-- Universal, vendor-neutral HART communicator: works HART field instruments regardless of manufacturer, with no per-vendor descriptor licensing.
-- Calibration recorder: guided, tolerance-based multi-point calibration with on-device trims (PV Zero, DAC Zero, DAC Gain) and automatic read-back.
-- On-board 4-20 mA measurement: a built-in milliamp circuit measures real loop current directly, rather than trusting the device's reported value, and writes the trusted value into the record.
-- Connectivity: USB HART, on-board two-wire loop (banana jacks), HART-IP over Ethernet, Wi-Fi, Bluetooth, plus built-in LTE and GNSS. Modbus support is planned via software update.
-- Audit trail: an append-only historian records every HART exchange and the full write lifecycle (requested, sent, response, read-back, result), answering who did what, when, where, and why.
-- PULSE scores device health continuously from local evidence; Atlas runs safe-read deep capability profiling on demand.
-- Ownership: a one-time device purchase used locally forever. The PragOptics Field Node Manager desktop app is free. PragOptics Cloud Sync is an optional subscription.
-
-PragOptics is a platform: OmniBus is one field node within it, feeding the Field Node Manager, an optional SharePoint (SPFx) visualizer, and an optional PragOptics cloud system of record.
+OmniBus works any HART instrument across manufacturers over USB HART, an on-board two-wire loop, HART-IP, and Wi-Fi. It measures true 4-20 mA loop current on board, turns every connection into a guided As-Found / As-Left calibration record with auto-generated certificates and an append-only audit trail, and reaches wireless gateways with multi-modal HART-IP that auto-detects a gateway host versus a single instrument.
 
 ## HART resources
 
-- [What Is HART? A Field Guide to HART Communication](https://pragoptics.com/hart/what-is-hart/): how digital HART rides on the 4-20 mA loop, HART commands, DD/DTM, HART-IP, and calibration.
-- [HART Glossary](https://pragoptics.com/hart/glossary/): 38 key HART terms including HART-IP, WirelessHART, FSK, burst mode, DD, DTM, NE43, As-Found / As-Left, and trim.
-- [HART Communication FAQ](https://pragoptics.com/hart/faq/): answer-first responses on how HART works, what a HART communicator is, HART vs 4-20 mA, HART-IP, WirelessHART, and As-Found / As-Left calibration.
-- [HART resource hub](https://pragoptics.com/hart/): landing page linking the guides above.
-
-## Main
-
-- [PragOptics home](https://pragoptics.com/): the platform for HART field data, calibration, and OmniBus.
+- [What is HART?](https://pragoptics.com/hart/what-is-hart/): How HART communication works: the 4-20 mA loop, masters, device variables, commands, DD/DTM, HART-IP, and calibration.
+- [HART communicator](https://pragoptics.com/hart/hart-communicator/): What a HART communicator is, the three form factors, primary vs secondary master, and how to choose one.
+- [HART calibration](https://pragoptics.com/hart/hart-calibration/): As-Found / As-Left, trim types, tolerance and NE43, and a step-by-step calibration procedure.
+- [HART-IP](https://pragoptics.com/hart/hart-ip/): HART over Ethernet, gateway hosts versus direct instruments, and wireless mesh.
+- [HART vs 4-20 mA](https://pragoptics.com/hart/hart-vs-4-20ma/): Why HART rides on top of the analog loop instead of replacing it.
+- [WirelessHART](https://pragoptics.com/hart/wirelesshart/): The IEC 62591 mesh, gateways, adapters, and how it relates to wired HART and HART-IP.
+- [HART commands](https://pragoptics.com/hart/hart-commands/): Universal, common-practice, and device-specific commands, and why they enable universal tools.
+- [HART glossary](https://pragoptics.com/hart/glossary/): Key HART terms defined, from Bell 202 FSK and PV/SV/TV/QV to As-Found / As-Left.
+- [HART FAQ](https://pragoptics.com/hart/faq/): Straight, answer-first responses to the HART questions technicians actually ask.
 
 ## Contact
 
-- Email: support@fortiviewholdings.com
-- Phone: +1-832-425-0421
-- Parent company: Fortiview Holdings (https://fortiviewholdings.com)
+- Website: https://pragoptics.com
+- Support: support@fortiviewholdings.com
