@@ -27,6 +27,7 @@
     import { resolvePostLoginUI } from "../runtime/postLoginResolver.js";
     import { initFooter } from '../components/footer.js';
     import { initLegalViewer } from '../components/legalViewer.js';
+    import { initBrochureViewer } from '../components/brochureViewer.js';
 
     // routePostLogin is now a thin forwarder only
     function routePostLoginForward({ ping }) {
@@ -53,6 +54,8 @@
       termsPath: "/docs/PragOptics-Subscriber-Agreement.md",
       privacyPath: "/docs/PragOptics-Privacy.md"
     });
+
+    initBrochureViewer({ src: "/docs/brochure-view.html" });
 
     await loadView('/views/footer.view.html', 'view-footer');
 
