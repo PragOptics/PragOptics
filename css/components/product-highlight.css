@@ -1,5 +1,5 @@
 /* /css/components/product-highlight.css
-   The "Product Highlight" container below the landing columns: the brochure card
+   "Product Highlight" container below the landing columns: the brochure card
    (opens the iframe modal) and the PragOptics-themed Field Node Manager card. */
 
 .product-highlight { margin-top: 18px; padding: 26px 24px 28px; }
@@ -15,32 +15,40 @@
   -webkit-background-clip: text; background-clip: text; color: transparent;
 }
 
-.ph-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.ph-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; align-items: stretch; }
 
+/* shared themed card surface (both cards use the same gradient + edge) */
 .ph-card {
-  display: flex; flex-direction: column; gap: 14px; padding: 18px;
+  position: relative; overflow: hidden; min-height: 252px; padding: 22px;
   border-radius: var(--radius, 16px);
-  background: var(--glass, rgba(12, 20, 34, .6));
-  border: 1px solid var(--border, rgba(255, 255, 255, .10));
+  background: linear-gradient(120deg, rgba(28, 164, 144, .12), rgba(162, 0, 255, .12));
+  border: 1px solid rgba(162, 0, 255, .30);
   box-shadow: var(--aura, 0 18px 50px rgba(0, 0, 0, .5));
 }
 
-/* brochure card = flyer beside copy */
-.ph-brochure { flex-direction: row; align-items: center; }
+/* brochure card: flyer beside a body whose title / text / button are spread vertically */
+.ph-brochure { display: flex; flex-direction: row; align-items: stretch; gap: 18px; }
 .ph-flyer {
-  width: 168px; max-width: 44%; height: auto; flex: none;
+  width: 168px; max-width: 44%; height: auto; flex: none; align-self: center;
   border-radius: 12px; border: 1px solid var(--border, rgba(255, 255, 255, .12)); background: #05070d;
 }
-.ph-card-body { flex: 1; min-width: 0; }
-.ph-card-body h3 { margin: 0 0 .4em; color: #fff; font-size: 1.16rem; font-weight: 800; }
-.ph-card-body p { margin: 0 0 1.1em; }
+.ph-card-body { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: space-between; gap: 16px; }
+.ph-card-body h3 { margin: 0; color: #fff; font-size: 1.2rem; font-weight: 800; }
+.ph-card-body p { margin: 0; color: var(--muted, #9fb3c8); }
+.ph-card-body .ph-btn { align-self: flex-start; margin-top: auto; }
 
-/* FNM card = PragOptics-themed accent */
-.ph-fnm {
-  justify-content: center;
-  background: linear-gradient(120deg, rgba(28, 164, 144, .12), rgba(162, 0, 255, .12));
-  border-color: rgba(162, 0, 255, .30);
+/* FNM card: faint logo behind, content (incl. centered button) centered, docs link bottom-right */
+.ph-fnm { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding-bottom: 40px; }
+.ph-fnm::before {
+  content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none;
+  background: url(/images/logo.png) no-repeat center / 56% auto; opacity: .12;
 }
+.ph-fnm > * { position: relative; z-index: 1; }
+.ph-fnm h3 { margin: 0 0 .45em; color: #fff; font-size: 1.2rem; font-weight: 800; }
+.ph-fnm p { margin: 0 0 1.2em; color: var(--muted, #9fb3c8); max-width: 42ch; }
+.ph-docs { position: absolute; right: 14px; bottom: 12px; z-index: 1; font-size: .8rem; color: var(--muted, #9fb3c8); text-align: right; }
+.ph-docs a { color: var(--brand-600, #21bca5); text-decoration: none; }
+.ph-docs a:hover { color: #fff; }
 
 /* shared themed button (matches the HART hub CTA so it reads as one product) */
 .ph-btn {
@@ -50,9 +58,6 @@
   box-shadow: 0 10px 26px rgba(28, 164, 144, .30);
 }
 .ph-btn:hover { background: linear-gradient(120deg, var(--brand-600, #21bca5), var(--brand-purp, #a200ff)); color: #fff; }
-.ph-sub { display: block; margin-top: 10px; font-size: .84rem; color: var(--muted, #9fb3c8); }
-.ph-sub a { color: var(--brand-600, #21bca5); text-decoration: none; }
-.ph-sub a:hover { color: #fff; }
 
 /* brochure iframe modal (reuses .legal-mask/.legal-panel/.legal-card from legal-viewer.css) */
 .brochure-card { width: min(1040px, 94vw) !important; }
@@ -61,7 +66,8 @@
 
 @media (max-width: 680px) {
   .ph-grid { grid-template-columns: 1fr; }
-  .ph-brochure { flex-direction: column; align-items: stretch; }
+  .ph-brochure { flex-direction: column; }
   .ph-flyer { width: 100%; max-width: 300px; margin: 0 auto; }
+  .ph-card-body .ph-btn { align-self: center; }
   .brochure-frame { height: 82vh; }
 }

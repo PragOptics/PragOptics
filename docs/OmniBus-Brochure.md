@@ -117,8 +117,8 @@ sub,.fine{ color:var(--muted); font-size:.78rem; }
   .report .r-head{ flex-direction:column; align-items:flex-start; gap:8px; }
   .report .r-meta{ text-align:left; }
   .report .r-grid{ grid-template-columns:1fr; }
-  .report table{ display:table; width:100%; font-size:.68rem; }
-  .report th, .report td{ padding:5px 6px; }
+  .report table{ display:table; width:100%; table-layout:fixed; font-size:.68rem; }
+  .report th, .report td{ padding:5px 5px; word-break:break-word; }
 }
 
 .contact{ text-align:center; color:var(--muted); font-size:.92rem; margin:.4em 0 0; }

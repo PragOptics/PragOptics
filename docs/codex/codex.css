@@ -221,4 +221,9 @@ body.codex{
   .codex-nav.is-open .codex-tree{
     display:block;
   }
+  /* header: stack so the title and "Open raw" never collide, and keep the long path from shifting the layout */
+  .codex-main{ padding: 12px; }
+  .codex-head{ flex-direction: column; align-items: stretch; gap: 8px; }
+  .codex-head-right{ align-self: flex-end; }
+  .codex-path{ white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; font-size: .8rem; }
 }
