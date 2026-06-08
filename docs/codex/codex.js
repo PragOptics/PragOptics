@@ -69,6 +69,7 @@ h2{font-size:1.5em;border-bottom:1px solid var(--line);padding-bottom:.3em;}
 h3{font-size:1.25em;} h4{font-size:1.05em;}
 p{margin:.7em 0;}
 ul,ol{padding-left:1.6em;} li{margin:.25em 0;}
+dl{margin:1em 0;} dt{font-weight:700;color:var(--cyan);margin-top:.85em;} dd{margin:.2em 0 0;color:var(--mut);}
 blockquote{margin:1em 0;padding:.4em 1em;border-left:4px solid var(--purple);
   background:rgba(191,125,255,.07);color:var(--mut);border-radius:0 8px 8px 0;}
 code{background:var(--code);padding:.15em .4em;border-radius:6px;font-size:.9em;

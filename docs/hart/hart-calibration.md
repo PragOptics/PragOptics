@@ -1,0 +1,95 @@
+# HART Transmitter Calibration: As-Found / As-Left Explained
+
+<p>HART calibration is the process of verifying, and where necessary correcting, the relationship between what a HART transmitter senses and what it reports, both as a digital value and as a 4 to 20 mA loop current. To calibrate a HART transmitter properly, you apply a known reference at the input, measure the real output, compare it against a documented tolerance, and trim the device only when it falls outside that tolerance. The defining discipline of the job is the <strong>As-Found / As-Left</strong> method: document the condition before you touch it, adjust if needed, then document the condition after.</p>
+
+<p>HART is the Highway Addressable Remote Transducer protocol, an open standard governed by the <a href="https://www.fieldcommgroup.org/">FieldComm Group</a>. Because a HART transmitter carries a digital command layer on top of its analog loop, calibration is not one operation but several: trimming the sensor input, trimming the analog output, and ranging the device. Getting the terminology right is the difference between a true calibration and a number that only looks right on the screen. This page explains each piece and gives you a clean, repeatable procedure. New to the protocol? Start with <a href="/hart/what-is-hart/">what HART is</a>, or jump to the <a href="/hart/glossary/">glossary</a> for any term.</p>
+
+<h2>What HART calibration is and why it matters</h2>
+<p>HART calibration confirms that a transmitter's reported value and its 4 to 20 mA output both match a traceable reference across its operating range. It matters because a transmitter drifts over time: sensor aging, thermal cycling, process buildup, and electronic component shift all push the reading away from truth. An uncalibrated transmitter can read perfectly on a control screen while feeding the controller a value that is several percent off, and nobody knows until a batch is ruined, a custody transfer is disputed, or a safety function fails to act when it should.</p>
+<p>Calibration is also a compliance obligation. Regulated industries, custody-transfer agreements, and safety-instrumented systems all require documented, traceable proof that an instrument was within tolerance, captured on a defined schedule. The calibration record, not the act of calibrating, is what an auditor asks for. That is why the As-Found / As-Left certificate is the real deliverable of the work.</p>
+
+<h2>The As-Found / As-Left method</h2>
+<p>The As-Found / As-Left method is the documentation backbone of every defensible calibration: record the instrument's condition <em>before</em> any adjustment (As-Found), perform the trim if it is out of tolerance, then record the condition <em>after</em> (As-Left). The two snapshots together prove both that you found a problem and that you fixed it.</p>
+<dl>
+<dt>As-Found</dt>
+<dd>The instrument's behavior exactly as you found it, before any change. This is the most valuable data point in the entire job, because it captures whether the device was telling the truth during the period since its last calibration. Skip the As-Found and you lose the ability to ever prove the process was being measured correctly.</dd>
+<dt>Adjust</dt>
+<dd>Performed only if an As-Found point meets or exceeds tolerance. You trim the device (see trim types below), with read-back after each trim so you can confirm the correction took effect.</dd>
+<dt>As-Left</dt>
+<dd>The instrument's behavior after adjustment. If the As-Found passed at every point, the As-Left is simply identical to the As-Found and no adjustment was made. If the As-Found failed, the As-Left is mandatory and must demonstrate every point is now within tolerance.</dd>
+</dl>
+<p>A common rule, and the one the OmniBus certificate enforces, is simple: <strong>if any As-Found point meets or exceeds tolerance, an As-Left becomes required.</strong> That single rule keeps the record honest and prevents an out-of-tolerance device from leaving the field with no proof it was corrected.</p>
+
+<h2>Digital trim vs true calibration against a reference</h2>
+<p>A digital trim adjusts the transmitter's internal math; a true calibration verifies that math against an external, traceable reference. They are not the same thing, and confusing them is the single most common mistake in HART work.</p>
+<p>A <strong>true calibration</strong> always involves an independent standard. You apply a known input from a calibrated source (a pressure standard, a temperature bath, a decade box) and you measure the output with a calibrated meter. The transmitter is judged against equipment whose accuracy is traceable to a national standard. If you only adjust the device until its own screen reads what you want, you have not calibrated anything. You have just moved the error somewhere you cannot see it.</p>
+<p>A <strong>digital trim</strong> (also called a calibration trim or output trim) is the adjustment step <em>within</em> a calibration. It corrects the device. But a trim performed without a traceable reference is meaningless, and re-ranging the transmitter (changing the 4 mA and 20 mA endpoints, often called the LRV and URV) is <em>not</em> a calibration at all. Re-ranging only relabels the span. It does not check or correct accuracy. Many "calibrations" in the field are really just re-ranges, which is why the distinction matters.</p>
+
+<h2>HART trim types</h2>
+<p>A HART transmitter has two independent stages that can each be trimmed: the sensor input and the analog output. A complete calibration may touch one or both, and you should always know which one you are correcting.</p>
+
+<h3>Sensor trim</h3>
+<p>The sensor trim corrects the relationship between the physical input and the transmitter's internal digital value (the primary variable, or PV). You apply a known input from your reference standard and tell the device, "this is what you are actually seeing." A sensor trim is usually done as a zero trim and a span trim, or as a multi-point trim, and it corrects errors in the sensing element and its analog-to-digital conversion. After a correct sensor trim, the digital PV the device reports matches the real process value.</p>
+
+<h3>D/A trim (loop-current / output trim)</h3>
+<p>The D/A trim, also called the output trim or loop-current trim, corrects the relationship between the device's internal digital value and the actual 4 to 20 mA it puts on the loop. The device commands itself to output exactly 4 mA, you measure the real current with a reference meter, and you tell the device the true value so it can correct its digital-to-analog converter. You repeat at 20 mA. After a correct D/A trim, the milliamps on the wire match the milliamps the device intends to send.</p>
+
+<table>
+<thead><tr><th>Trim</th><th>Corrects</th><th>Reference you apply</th><th>What you measure</th></tr></thead>
+<tbody>
+<tr><td>Sensor trim</td><td>Input to digital PV</td><td>Known process input (pressure, temperature, etc.)</td><td>Reported PV vs applied input</td></tr>
+<tr><td>D/A (output) trim</td><td>Digital PV to 4 to 20 mA</td><td>Internal fixed-output command (4 mA, 20 mA)</td><td>Real loop current vs commanded current</td></tr>
+<tr><td>Re-range (LRV/URV)</td><td>Endpoint scaling only</td><td>Nothing (not a calibration)</td><td>Nothing</td></tr>
+</tbody>
+</table>
+
+<h2>Tolerance and NAMUR NE43 fault levels</h2>
+<p>Tolerance is the maximum error you will accept before a point is declared out and a trim is required, usually stated as a percentage of span (for example, plus or minus 0.25% or plus or minus 0.50%). The tolerance must be defined <em>before</em> the calibration, not chosen after seeing the numbers, and it should be tighter than the loop's required accuracy with margin to spare.</p>
+<p>Separate from your accuracy tolerance, the 4 to 20 mA loop also carries a fault-signaling convention defined by <strong>NAMUR NE43</strong>. NE43 reserves the current ranges just outside the measurement band so the control system can tell a real low reading from a failed transmitter. The measurement signal lives between 3.8 and 20.5 mA; anything beyond those limits is interpreted as a fault.</p>
+
+<table>
+<thead><tr><th>Current</th><th>Meaning under NE43</th></tr></thead>
+<tbody>
+<tr><td>3.6 mA (down to about 3.5 mA)</td><td>Downscale fault (failure signaled low)</td></tr>
+<tr><td>3.8 mA</td><td>Lower saturation limit (lowest valid measurement)</td></tr>
+<tr><td>4.0 mA</td><td>0% of measurement span</td></tr>
+<tr><td>20.0 mA</td><td>100% of measurement span</td></tr>
+<tr><td>20.5 mA</td><td>Upper saturation limit (highest valid measurement)</td></tr>
+<tr><td>21.0 mA (and above)</td><td>Upscale fault (failure signaled high)</td></tr>
+</tbody>
+</table>
+
+<p>Why this matters during calibration: a healthy, in-tolerance transmitter should drive its output across the 3.8 to 20.5 mA usable band cleanly, and its fault current should land in the reserved zones when commanded. If a device cannot reach its saturation limits, or its fault current is wrong, that is a finding worth recording even when the four mid-band points pass.</p>
+
+<h2>The mA-trust nuance: what the device thinks vs what the loop actually carries</h2>
+<p>A milliamp value reported over HART is what the device <em>thinks</em> it is outputting, not a measurement of the real current on the wire. This is the single most important nuance in trusted HART calibration, and it is widely misunderstood.</p>
+<p>When you read loop current over the HART digital layer, you are reading the device's own internal estimate of its output. If the digital-to-analog converter has drifted, the HART-reported milliamps and the actual loop current disagree, and the device cannot detect its own error. That is precisely the error a D/A trim exists to correct. So a calibration that trusts the HART-reported milliamps to verify the D/A trim is checking the device against itself, which proves nothing.</p>
+<blockquote>A trusted calibration measures the real loop current with an independent meter, then compares it to what the device claims. The gap between those two numbers is the output error you are there to find.</blockquote>
+<p>This is built into <a href="/">OmniBus</a> by PragOptics, a universal, vendor-neutral handheld HART communicator, calibration recorder, and field node. OmniBus carries its own galvanically isolated milliamp circuit (a precision shunt and ADC) alongside the HART modem, so it measures the true loop current independently rather than trusting the device's self-report. In its <strong>+PWR</strong> mode the device powers a dead loop, reads the real 4 to 20 mA, and talks HART all at once; in its <strong>+MEAS</strong> mode it sits in series with a powered loop (such as one driven by the DCS) to read the actual current while communicating. The trusted, measured value, not the device's claim, is what lands in the calibration record.</p>
+
+<h2>Step-by-step HART calibration procedure</h2>
+<p>This is the general transmitter calibration procedure for a HART device. The order is deliberate: document first, correct only if needed, then prove the correction.</p>
+
+<ol>
+<li><strong>Connect and identify.</strong> Connect your HART communicator across the loop and your reference standard at the input. Read the instrument's identity (manufacturer, device type, tag) and confirm you are working the right device. Establish whether the loop is already powered so you measure current correctly, in series with a live loop or by sourcing power to a dead one.</li>
+<li><strong>Set up the record.</strong> Enter the work order, technician, test equipment (with serial numbers and traceability), the tolerance (for example, plus or minus 0.50% of span), the input range, the output range, and the transfer characteristic (linear or square-root). Lock the tolerance in before you read anything.</li>
+<li><strong>Read As-Found at the test points.</strong> Choose your test points (commonly 0, 25, 50, 75, and 100% of span). At each point, apply the known reference input, let the reading settle, and record the applied input alongside the <em>measured</em> output current. Do not touch a single setting yet.</li>
+<li><strong>Compare to tolerance.</strong> For each point, compute the error as a percentage of span and compare it to your tolerance. A point that meets or exceeds tolerance is out and flags the device for adjustment. Record the verdict for every point.</li>
+<li><strong>Trim if out.</strong> If the As-Found is out, identify whether the error is in the input (sensor trim) or the output (D/A trim) and perform the correct trim against your reference. Read back after each trim to confirm it took. Re-ranging is not a substitute for a trim.</li>
+<li><strong>Verify As-Left.</strong> If you adjusted the device, repeat the full point sweep and record the As-Left values. Every point must now be within tolerance. Track which points were corrected so the record shows the before-and-after clearly.</li>
+<li><strong>Generate the certificate.</strong> Produce the As-Found / As-Left certificate: header (tag, work order, technician, timestamp), the tolerance applied, the point-by-point tables with out-of-tolerance rows flagged, the calibration plot against the tolerance band, and technician comments. Attach it to the work order and file it.</li>
+</ol>
+
+<p>With OmniBus, steps 3 through 7 are a single guided workflow. The onboard milliamp circuit reads the real loop current straight into each point, error and pass/fail appear instantly against your tolerance, trims are available inline with automatic read-back, and the finished certificate is generated from the stored record before you leave the field. The output is the same QA/QC-grade document an auditor expects, produced as a by-product of doing the job rather than a separate evening of paperwork.</p>
+
+<h2>Frequently asked questions</h2>
+<h3>Is re-ranging a HART transmitter the same as calibrating it?</h3>
+<p>No. Re-ranging changes the 4 mA and 20 mA endpoints (LRV and URV) and only relabels the span. It does not check or correct accuracy against a reference. A calibration verifies and, if needed, trims the device against a traceable standard.</p>
+
+<h3>Can I calibrate a HART transmitter using only the HART-reported milliamps?</h3>
+<p>Not for a trusted output calibration. The HART-reported milliamp value is the device's own estimate, so verifying the D/A trim against it checks the device against itself. A trusted calibration measures the real loop current with an independent meter, which is what OmniBus does on-board.</p>
+
+<h3>How many test points should a calibration use?</h3>
+<p>Five points (0, 25, 50, 75, 100% of span) is the common practice and exposes both zero and span errors plus any non-linearity. Some applications use three points; critical or non-linear devices may use more. Define the points before you start.</p>
+
+<p>For more answers, see the <a href="/hart/faq/">HART FAQ</a>, browse the full <a href="/hart/">HART resource hub</a>, or learn the protocol fundamentals in <a href="/hart/what-is-hart/">What is HART?</a></p>

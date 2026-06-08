@@ -16,6 +16,66 @@
     },
     {
       "type": "folder",
+      "name": "HART",
+      "items": [
+        {
+          "type": "file",
+          "name": "What is HART?",
+          "path": "hart/what-is-hart.md",
+          "format": "md"
+        },
+        {
+          "type": "file",
+          "name": "HART Communicator",
+          "path": "hart/hart-communicator.md",
+          "format": "md"
+        },
+        {
+          "type": "file",
+          "name": "HART Calibration",
+          "path": "hart/hart-calibration.md",
+          "format": "md"
+        },
+        {
+          "type": "file",
+          "name": "HART-IP",
+          "path": "hart/hart-ip.md",
+          "format": "md"
+        },
+        {
+          "type": "file",
+          "name": "HART vs 4-20 mA",
+          "path": "hart/hart-vs-4-20ma.md",
+          "format": "md"
+        },
+        {
+          "type": "file",
+          "name": "WirelessHART",
+          "path": "hart/wirelesshart.md",
+          "format": "md"
+        },
+        {
+          "type": "file",
+          "name": "HART Commands",
+          "path": "hart/hart-commands.md",
+          "format": "md"
+        },
+        {
+          "type": "file",
+          "name": "HART Glossary",
+          "path": "hart/glossary.md",
+          "format": "md"
+        },
+        {
+          "type": "file",
+          "name": "HART FAQ",
+          "path": "hart/faq.md",
+          "format": "md"
+        }
+      ]
+    },
+    {
+      "type": "folder",
       "name": "Legal",
       "items": [
         {

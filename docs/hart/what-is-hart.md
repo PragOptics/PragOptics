@@ -1,0 +1,103 @@
+# What Is HART? A Field Guide to HART Communication
+
+<h2>What is the HART protocol?</h2>
+<p>HART is the digital communication protocol that lets a smart field instrument and a master device exchange information over the same two wires that already carry a 4-20 mA analog signal. HART stands for <strong>Highway Addressable Remote Transducer</strong>. It is an open, established industry standard maintained by the FieldComm Group, and it is the most widely deployed smart-instrument protocol in process automation, with hundreds of millions of HART-enabled devices installed worldwide.</p>
+<p>The key idea that makes HART so durable is simple: it adds a digital conversation on top of the trusted analog 4-20 mA current loop <em>without</em> disturbing that analog signal. The 4-20 mA reading keeps driving the control system exactly as it always has, while HART carries everything else the analog wire never could: the device tag, configuration, multiple process values, diagnostics, and calibration data. A plant gets smart-instrument capability without throwing away its existing wiring or its proven analog control path.</p>
+<p>For a working instrument or automation technician, HART is the language you speak to a <strong>HART transmitter</strong> when you configure it, range it, diagnose it, or calibrate it. This guide covers how HART communication works on the wire, the command structure, device descriptors, the HART-IP and WirelessHART extensions, why HART matters in the field, and how HART calibration is documented. For quick definitions of any term used here, see the <a href="/hart/glossary/">HART glossary</a>.</p>
+
+<h2>What does HART stand for?</h2>
+<p>HART stands for <strong>Highway Addressable Remote Transducer</strong>. Each part of the name describes the protocol: "Highway" is the shared communication path (the wiring), "Addressable" means each device has an address so a master can talk to a specific instrument, and "Remote Transducer" is the field device (a transmitter or sensor) at the far end of the loop.</p>
+<p>The protocol originated in the late 1980s and is now governed by the FieldComm Group, the same body that publishes the HART specifications. Because it is a public standard rather than a single vendor's proprietary scheme, any compliant master can talk to any compliant HART device, which is the foundation for vendor-neutral tools.</p>
+
+<h2>How does HART communication work?</h2>
+<p>HART works by superimposing a small digital signal on top of the analog 4-20 mA loop current using <strong>frequency-shift keying (FSK)</strong>. The digital bits ride as an alternating audio-frequency tone whose average value is zero, so the underlying DC current that represents the process variable is left undisturbed. The analog loop and the digital conversation share one pair of wires at the same time.</p>
+
+<h3>The Bell 202 FSK signal</h3>
+<p>HART uses the <strong>Bell 202</strong> telephone-modem standard for its physical layer. Bits are sent at 1200 bits per second by shifting between two frequencies: a logical 1 ("mark") is encoded as <strong>1200 Hz</strong> and a logical 0 ("space") as <strong>2200 Hz</strong>. The FSK tone is a small alternating signal (roughly 1 mA peak to peak (about ±0.5 mA amplitude)) added to the loop. Because it is a symmetric AC signal centered on zero, its average contribution to the loop current is zero. That is the whole trick: the control system reads the slow-moving DC level as the 4-20 mA process value, while a HART master reads the high-frequency tone riding on top as data.</p>
+
+<h3>Riding on top of the 4-20 mA loop</h3>
+<p>The analog and digital layers do not interfere because they live in different parts of the signal. The 4-20 mA measurement is direct current (DC) that moves slowly with the process. The HART FSK signal is alternating current (AC) in the audio band. A receiving device uses filters to separate them: a low-pass path recovers the 4-20 mA value, and a band-pass path recovers the HART tones. This is why you can clip a <strong>HART communicator</strong> across a live, powered loop and read or write digitally while the loop keeps controlling the process. To learn more about the analog side, see <a href="/hart/glossary/">our explanation of the 4-20 mA current loop</a>.</p>
+
+<h3>Masters and devices on the loop</h3>
+<p>HART is a master-slave protocol: a master asks, the field device answers. The standard allows two masters on the same loop at once, which is one of HART's most useful field features.</p>
+<ul>
+<li><strong>Primary master.</strong> Usually the permanent system: a control system (DCS or PLC), an asset-management host, or a HART multiplexer that polls instruments.</li>
+<li><strong>Secondary master.</strong> Typically a handheld <strong>HART communicator</strong> a technician clips on temporarily to configure or calibrate the device.</li>
+</ul>
+<p>Because the protocol coordinates the two masters, a technician can work an instrument with a handheld without knocking the control system's host off the loop. Field devices normally operate in point-to-point mode (one device per loop, address 0, with the 4-20 mA signal live). HART also supports multidrop mode, where several devices share one pair of wires by digital address; in multidrop the analog current is parked at a fixed low value and all process data is read digitally.</p>
+
+<h2>HART device variables: PV, SV, TV, and QV</h2>
+<p>A single HART instrument can report more than one value. The protocol defines up to four <strong>dynamic variables</strong>, abbreviated PV, SV, TV, and QV (also written FV for fourth variable). The analog 4-20 mA loop can only carry one of them; HART carries them all digitally.</p>
+<dl>
+<dt>PV (Primary Variable)</dt>
+<dd>The main process measurement, and the value mapped to the 4-20 mA analog output. On a pressure transmitter, PV is pressure.</dd>
+<dt>SV (Secondary Variable)</dt>
+<dd>A second measured value the device can provide, for example sensor temperature on that same pressure transmitter.</dd>
+<dt>TV (Tertiary Variable)</dt>
+<dd>A third value, where the device supports it.</dd>
+<dt>QV (Quaternary Variable)</dt>
+<dd>A fourth value, the highest of the standard dynamic variables.</dd>
+</dl>
+<p>Each dynamic variable carries its own engineering units and a status that tells you whether the reading is good, bad, or in some limited condition. This is a major reason HART matters: a single transmitter can deliver several measurements plus their health, all over one analog pair of wires.</p>
+
+<h2>The HART command structure</h2>
+<p>HART communication is organized as numbered <strong>commands</strong>. A master sends a command number with any data it carries, and the device replies with data plus a two-byte response and status. The commands fall into three tiers, which is what makes a universal communicator possible.</p>
+
+<h3>Universal commands</h3>
+<p>Universal commands must be supported by every HART device, regardless of manufacturer or type. They cover the basics every instrument shares: reading identity, the primary variable, the loop current and percent of range, and all dynamic variables.</p>
+<ul>
+<li><strong>Command 0</strong> reads the device identity (manufacturer, device type, and unique ID). This is how a master first learns what it is talking to.</li>
+<li><strong>Command 1</strong> reads the primary variable (PV) with its units.</li>
+<li><strong>Command 2</strong> reads the loop current and the percent of range.</li>
+<li><strong>Command 3</strong> reads the dynamic variables (PV, SV, TV, QV) and the loop current.</li>
+</ul>
+<p>Because every compliant device answers these, any HART master can identify and read any HART instrument. That common floor is what lets a vendor-neutral tool work across the whole bus.</p>
+
+<h3>Common-practice commands</h3>
+<p>Common-practice commands are optional but widely implemented in a consistent way across vendors. They cover frequent field tasks such as changing the polling address, writing the tag and message, setting engineering units, writing the lower and upper range values (LRV/URV), changing damping, and performing trims. Because they are standardized, a master can perform these operations on devices from different manufacturers without custom code per vendor.</p>
+
+<h3>Device-specific commands</h3>
+<p>Device-specific commands are defined by the manufacturer for capabilities unique to a particular instrument, such as advanced diagnostics, specialized sensor configuration, or vendor features that go beyond the standard set. To use these fully, a master needs to know how the device describes them, which is where device descriptors come in.</p>
+
+<h2>Device descriptors: DD and DTM</h2>
+<p>A device descriptor is a structured file that tells a host how to talk to a specific instrument's full feature set, including its device-specific commands, menus, and parameters. There are two common forms: the <strong>Device Description (DD)</strong>, written in a standardized device description language, and the <strong>Device Type Manager (DTM)</strong>, a software component used within an FDT frame application. Both serve the same purpose: they let a generic host present a particular device's complete capabilities and menus correctly.</p>
+<p>Descriptors are powerful, but they introduce a practical burden. A traditional handheld or host often needs the matching DD or DTM loaded for each instrument it expects to see, and keeping those libraries current across many vendors is ongoing work. A tool built on the universal and common-practice command tiers can identify and work most instruments without per-device descriptor licensing, falling back to descriptors only when a device-specific feature truly requires one.</p>
+
+<h2>HART-IP and WirelessHART</h2>
+<p>The HART specification has grown beyond the two-wire loop. Two extensions matter most in the field today, and both reuse the same HART command set so the way you work an instrument does not change.</p>
+
+<h3>HART-IP (HART over Ethernet/IP)</h3>
+<p>HART-IP carries HART communication over standard Ethernet and IP networks. It lets a host reach instruments and gateways across a plant network rather than only over a clipped-on loop. In practice you encounter HART-IP two ways: talking directly to a network-capable instrument, or talking to a <strong>gateway</strong> that hosts many wired or wireless devices behind it. The commands and data are the same HART you already know; only the transport underneath is different.</p>
+
+<h3>WirelessHART</h3>
+<p>WirelessHART is the wireless mesh version of HART, operating in the 2.4 GHz band. Field devices form a self-organizing mesh network and report back to a wireless gateway, which typically presents them to hosts over HART-IP. It is the same HART command and data model applied to a battery-powered, wireless field layer, useful where running new wire is impractical.</p>
+
+<h2>Why HART matters in the field</h2>
+<p>HART matters because it turns a one-number analog loop into a two-way diagnostic and configuration channel without changing the control wiring. For a technician, that unlocks four jobs that the bare 4-20 mA signal can never do on its own.</p>
+<ul>
+<li><strong>Configuration.</strong> Set the tag, message, engineering units, range (LRV/URV), damping, and transfer function digitally, instead of with screwdrivers and zero/span pots.</li>
+<li><strong>Diagnostics.</strong> Read device status, sensor health, and fault conditions to find a problem before it becomes a process upset, and to tell a real device fault from a wiring fault.</li>
+<li><strong>Calibration.</strong> Read the device's view of the loop, perform trims, and verify output against an applied reference, with the digital values that prove what you did.</li>
+<li><strong>Asset management.</strong> Inventory what is installed, track configuration changes, and keep a record of every instrument by tag, all from the same connection.</li>
+</ul>
+<p>For deeper context on a specific HART transmitter task, see the <a href="/hart/faq/">HART FAQ</a>.</p>
+
+<h2>How HART calibration works</h2>
+<p>HART calibration verifies that an instrument's output correctly represents the real process value, documents its condition before and after any adjustment, and corrects it within tolerance if needed. The defensible way to do it is to capture two states, As-Found and As-Left, while also confirming the actual loop current and respecting the NAMUR NE43 fault levels. HART is what gives you the digital readback to prove each step.</p>
+
+<h3>As-Found and As-Left</h3>
+<p><strong>As-Found</strong> is the instrument's condition before you touch it; <strong>As-Left</strong> is its condition after any adjustment. You apply a known reference at several test points (commonly 0, 25, 50, 75, and 100 percent of span), record the applied input and the measured output at each point, and compare the error against tolerance. If the As-Found result is within tolerance, no adjustment is needed and As-Left can simply confirm it. If any As-Found point is out of tolerance, you trim the device and then capture a full As-Left set to prove it now passes. The pair, before and after, is the heart of a calibration record.</p>
+
+<h3>The loop test</h3>
+<p>A loop test (also called a loop check) forces the instrument's output to fixed milliamp values, such as 4, 12, and 20 mA, so you can confirm the wiring and that the receiving system reads the same current the device is sending. HART makes this clean: the master commands a fixed-current mode, holds it while you verify, then releases the loop back to live tracking. It separates a wiring or DCS-scaling problem from an instrument problem.</p>
+
+<h3>NAMUR NE43 fault levels</h3>
+<p>NAMUR NE43 is the recommendation that standardizes how a 4-20 mA transmitter signals a fault by driving its current outside the normal 4-20 mA measurement range. It reserves a small band at each end for valid readings and pushes the output past those into a defined fault zone so the control system can tell a real failure from a low or high process value. Typical practice is a downscale (low) fault at or below about <strong>3.6 mA</strong> and an upscale (high) fault at or above about <strong>21 mA</strong>, with the usable measurement signal living between roughly 3.8 and 20.5 mA. Knowing these levels is essential during calibration so you do not mistake an intentional fault current for a calibration error.</p>
+
+<h3>Why the actual milliamp reading matters</h3>
+<p>A critical and often-missed point: the milliamp value a HART device reports over the digital link is what the device <em>thinks</em> it is putting out, not independent proof of the real loop current. The two can differ, which is exactly the kind of fault calibration is meant to catch. A trustworthy calibration measures the actual loop current with an independent meter and records that measured value, not just the device's self-reported number.</p>
+
+<h2>OmniBus: a universal, vendor-neutral HART communicator and calibration recorder</h2>
+<p><strong>OmniBus by PragOptics</strong> (a Fortiview Holdings brand) is a handheld field node that combines a universal HART communicator, a calibration recorder, and an audit trail in one rugged, battery-powered, touchscreen device. It speaks universal and common-practice HART across instruments from any manufacturer, organized by device family, so the screen only shows what the connected instrument can actually do, with no per-vendor handheld and no descriptor licensing.</p>
+<p>OmniBus is built so the record is a by-product of doing the job. Its guided workflows, Configure, Calibrate, Loop Test, and Record, capture <strong>As-Found / As-Left</strong> calibration automatically, and an onboard 4-20 mA measurement circuit reads the real loop current independently rather than trusting only the device's self-reported value, so the measured current is what lands in the record. Every session is written to an append-only historian that answers who did what, when, where, and why, and finished calibration certificates come out the other side. It reaches instruments over USB HART, an on-board two-wire loop, HART-IP, and wireless, all driving the same workflow.</p>
+<p>The aim is straightforward: give a single technician a vendor-neutral HART communicator and a defensible calibration record in one tool. To see how it fits together, visit the <a href="/">OmniBus overview</a>, or start with <a href="/hart/what-is-hart/">this field guide</a> and the <a href="/hart/glossary/">HART glossary</a>.</p>
