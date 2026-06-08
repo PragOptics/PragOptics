@@ -93,11 +93,17 @@ const FRAME_JS = `<script>
   function report(){ var h=Math.max(document.documentElement.scrollHeight, document.body.scrollHeight); parent.postMessage({__codexHeight:h},"*"); }
   document.querySelectorAll('a[href^="http"],a[href^="mailto"],a[href^="tel"]').forEach(function(a){ a.target="_blank"; a.rel="noopener noreferrer"; });
   document.addEventListener("click", function(e){
-    var a = e.target.closest && e.target.closest('a[href^="#"]');
+    var a = e.target.closest && e.target.closest('a[href]');
     if(!a) return;
-    var id = decodeURIComponent(a.getAttribute("href").slice(1));
-    var t = id && document.getElementById(id);
-    if(t){ e.preventDefault(); t.scrollIntoView({behavior:"smooth",block:"start"}); }
+    var href = a.getAttribute("href");
+    if(href.charAt(0)==="#"){
+      var id = decodeURIComponent(href.slice(1));
+      var t = id && document.getElementById(id);
+      if(t){ e.preventDefault(); t.scrollIntoView({behavior:"smooth",block:"start"}); }
+      return;
+    }
+    if(href.indexOf("/hart")===0){ e.preventDefault(); parent.postMessage({__codexHartNav:href},"*"); return; }
+    if(href.charAt(0)==="/"){ e.preventDefault(); window.open(href,"_blank","noopener"); return; }
   });
   window.addEventListener("load", report);
   window.addEventListener("resize", report);
@@ -123,7 +129,21 @@ let _frame = null;
 window.addEventListener("message", (ev) => {
   const d = ev && ev.data;
   if (d && d.__codexHeight && _frame) _frame.style.height = (d.__codexHeight + 8) + "px";
+  if (d && d.__codexHartNav) hartNavigate(d.__codexHartNav);
 });
+
+/* In-codex HART navigation: a /hart/<slug>/ link inside a doc opens the matching
+   codex doc instead of jumping to the static page, so the view stays consistent. */
+function hartNavigate(href) {
+  const slug = String(href).replace(/^\/hart\/?/, "").replace(/[/#?].*$/, "").replace(/\/+$/, "");
+  const file = slug ? ("hart/" + slug + ".md") : "hart/hart-resources.md";
+  const url = new URL(file, DOCS_ROOT).href;
+  let name = basename(url);
+  const node = document.querySelector('.codex-node[data-file-path="' + ((window.CSS && CSS.escape) ? CSS.escape(url) : url) + '"]');
+  if (node) { const lbl = node.querySelector("span:last-child"); if (lbl) name = lbl.textContent.trim(); }
+  openDoc(name, url);
+  window.scrollTo(0, 0);
+}
 
 /* =========================
    DOM refs

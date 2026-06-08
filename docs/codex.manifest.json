@@ -20,6 +20,12 @@
       "items": [
         {
           "type": "file",
+          "name": "HART Resources",
+          "path": "hart/hart-resources.md",
+          "format": "md"
+        },
+        {
+          "type": "file",
           "name": "What is HART?",
           "path": "hart/what-is-hart.md",
           "format": "md"

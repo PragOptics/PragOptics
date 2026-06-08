@@ -95,14 +95,14 @@
 <p>To learn the protocol itself in more depth, see <a href="/hart/what-is-hart/">what is HART</a>, and check the <a href="/hart/glossary/">HART glossary</a> for terms like FSK, multidrop, PV, and polling address.</p>
 
 <h2>How OmniBus reads both layers at once</h2>
-<p>Most tools read only the digital HART side, which is where a subtle trust gap appears: a HART device reports the milliamp value it <em>thinks</em> it is putting out, not proof of the real loop current. <a href="/">OmniBus</a> by PragOptics, a universal, vendor-neutral handheld HART communicator and calibration recorder, was built to close that gap by reading <strong>both</strong> layers: the digital HART data and the actual analog loop current, measured independently.</p>
+<p>Most tools read only the digital HART side, which is where a subtle trust gap appears: a HART device reports the milliamp value it <em>thinks</em> it is putting out, not proof of the real loop current. <a href="/">OmniBus</a> by PragOptics, a universal, vendor-neutral handheld HART communicator and calibration recorder, closes that gap by reading <strong>both</strong> layers: the digital HART data and the actual analog loop current, measured independently.</p>
 <p>Its isolated front end carries an onboard 4-20 mA measurement circuit (a 250 ohm precision shunt feeding a 16-bit ADC), so it senses the genuine loop current while it talks HART. It senses whether a loop is already powered and adapts:</p>
 <ul>
 <li><strong>+PWR</strong> on a dead loop: OmniBus supplies loop power, reads the 4-20 mA, and talks HART at once.</li>
 <li><strong>HART-only</strong> on a loop that is already powered: a tap for digital read and write, sourcing and measuring nothing.</li>
 <li><strong>+MEAS</strong> on a powered loop: OmniBus goes in series to read the real 4-20 mA while talking HART.</li>
 </ul>
-<p>That measured current, the true loop value rather than the device's self-report, lands directly in the As-Found / As-Left calibration record. For networked instruments, its multi-modal HART-IP engine auto-detects whether it is connected to a single instrument or a wireless gateway host and adapts the workspace to match. The result, per the OmniBus product brochure, is one tool that proves what the loop is actually doing, not just what the instrument claims.</p>
+<p>That measured current, the true loop value rather than the device's self-report, lands directly in the As-Found / As-Left calibration record. For networked instruments, its multi-modal HART-IP engine auto-detects whether it is connected to a single instrument or a wireless gateway host and adapts the workspace to match. OmniBus is one tool that proves what the loop is actually doing, not just what the instrument claims.</p>
 <p>Still have questions about HART and the 4-20 mA loop? See the <a href="/hart/faq/">HART FAQ</a> or browse the full <a href="/hart/">HART resource hub</a>.</p>
 </article>
 <aside class="cta-box">
