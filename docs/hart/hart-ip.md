@@ -1,5 +1,8 @@
-# What Is HART-IP? HART Over Ethernet and Wireless Gateways
+<link rel="stylesheet" href="/hart/hart.css">
 
+<main class="container">
+<article class="prose">
+<h1>What Is HART-IP? HART Over Ethernet and Wireless Gateways</h1>
 <p><strong>HART-IP is the HART protocol carried over a standard TCP/IP network instead of over the analog 4-20 mA loop.</strong> It packs the same HART commands a technician already knows (HART stands for Highway Addressable Remote Transducer) into Ethernet, Wi-Fi, or cellular packets, commonly on TCP port 5094. HART-IP is an open FieldComm Group standard, so a tool that speaks it can reach a field instrument or a wireless gateway anywhere the network reaches, without clipping leads onto a pair of wires. This page explains what HART-IP is, how it differs from classic FSK HART on the loop, the two network topologies you will meet, and why HART over Ethernet matters for working many instruments across a plant.</p>
 
 <h2>HART-IP definition: HART over TCP/IP</h2>
@@ -61,3 +64,10 @@
 <li><strong>A single instrument?</strong> OmniBus lands in the standardized instrument workspace, the same one every transport uses, with the login to match (a gateway takes a username and password; an Endress+Hauser device takes its serial number).</li>
 </ul>
 <p>Per the brochure, live values refresh on a steady round-robin only for what is on screen, and the truth-grade heartbeat flips to offline the instant the gateway stops answering, so no stale number is ever shown as live. The brochure frames the result plainly: a gateway is not one instrument, it is a whole network of them, and OmniBus reads the whole mesh and walks into any device on it from one screen. HART-IP over Ethernet is one of several transports OmniBus treats identically, alongside USB HART, the on-board two-wire loop, Wi-Fi, and Bluetooth, all feeding the same audit trail. Learn more about the OmniBus field node on the <a href="/">PragOptics homepage</a>, or return to the <a href="/hart/">HART knowledge hub</a> for related topics.</p>
+</article>
+<aside class="cta-box">
+  <h2>Meet OmniBus</h2>
+  <p>OmniBus by PragOptics is a universal, vendor-neutral HART communicator and calibration recorder in one rugged handheld. Configure, calibrate, and document any HART instrument, with the audit trail built in.</p>
+  <a class="cta" href="/">Explore OmniBus</a>
+</aside>
+</main>

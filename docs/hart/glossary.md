@@ -1,5 +1,8 @@
-# HART Glossary: Key Terms in HART Communication
+<link rel="stylesheet" href="/hart/hart.css">
 
+<main class="container">
+<article class="prose">
+<h1>HART Glossary: Key Terms in HART Communication</h1>
 <p>This HART glossary defines the key terms in HART communication, from the physical signaling layer up to device descriptions and calibration records. HART (Highway Addressable Remote Transducer) is a public, open digital protocol that rides on top of the standard 4 to 20 mA current loop, letting a master device read and configure a smart field instrument over the same two wires that already carry the analog measurement. The definitions below use American spelling and are written for working instrument and automation technicians. For a plain-language overview, see <a href="/hart/what-is-hart/">what is HART</a>, and for quick answers see the <a href="/hart/faq/">HART FAQ</a>.</p>
 
 <h2>Protocol and signaling terms</h2>
@@ -138,3 +141,10 @@
 </dl>
 
 <p>Looking for more? Explore <a href="/hart/what-is-hart/">what HART is</a>, browse the <a href="/hart/faq/">HART FAQ</a>, or see how a universal, vendor-neutral HART communicator and calibration recorder captures these terms in practice at <a href="/">PragOptics OmniBus</a>.</p>
+</article>
+<aside class="cta-box">
+  <h2>Meet OmniBus</h2>
+  <p>OmniBus by PragOptics is a universal, vendor-neutral HART communicator and calibration recorder in one rugged handheld. Configure, calibrate, and document any HART instrument, with the audit trail built in.</p>
+  <a class="cta" href="/">Explore OmniBus</a>
+</aside>
+</main>

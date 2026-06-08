@@ -1,5 +1,8 @@
-# HART Communication FAQ
+<link rel="stylesheet" href="/hart/hart.css">
 
+<main class="container">
+<article class="prose">
+<h1>HART Communication FAQ</h1>
 <p>This HART communication FAQ answers the questions instrument and automation technicians ask most: how HART works, what a HART communicator does, how HART rides on a 4-20 mA loop, and how HART calibration and HART-IP fit together. HART is the most widely deployed smart-instrument protocol in process automation, and every answer below is written answer-first so you get the short version in the first sentence, then the detail. For term-by-term definitions see the <a href="/hart/glossary/">HART glossary</a>, or start with <a href="/hart/what-is-hart/">what is HART</a>.</p>
 
 <h2>HART basics</h2>
@@ -54,3 +57,10 @@
 
 <h2>Related HART resources</h2>
 <p>For plain-language definitions of every term used here, see the <a href="/hart/glossary/">HART glossary</a>. For a deeper introduction to the protocol, read <a href="/hart/what-is-hart/">what is HART communication</a>. To see how a vendor-neutral communicator captures these calibrations as an audit trail, visit the <a href="/">OmniBus homepage</a>.</p>
+</article>
+<aside class="cta-box">
+  <h2>Meet OmniBus</h2>
+  <p>OmniBus by PragOptics is a universal, vendor-neutral HART communicator and calibration recorder in one rugged handheld. Configure, calibrate, and document any HART instrument, with the audit trail built in.</p>
+  <a class="cta" href="/">Explore OmniBus</a>
+</aside>
+</main>

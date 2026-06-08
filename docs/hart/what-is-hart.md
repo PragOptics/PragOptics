@@ -1,5 +1,8 @@
-# What Is HART? A Field Guide to HART Communication
+<link rel="stylesheet" href="/hart/hart.css">
 
+<main class="container">
+<article class="prose">
+<h1>What Is HART? A Field Guide to HART Communication</h1>
 <h2>What is the HART protocol?</h2>
 <p>HART is the digital communication protocol that lets a smart field instrument and a master device exchange information over the same two wires that already carry a 4-20 mA analog signal. HART stands for <strong>Highway Addressable Remote Transducer</strong>. It is an open, established industry standard maintained by the FieldComm Group, and it is the most widely deployed smart-instrument protocol in process automation, with hundreds of millions of HART-enabled devices installed worldwide.</p>
 <p>The key idea that makes HART so durable is simple: it adds a digital conversation on top of the trusted analog 4-20 mA current loop <em>without</em> disturbing that analog signal. The 4-20 mA reading keeps driving the control system exactly as it always has, while HART carries everything else the analog wire never could: the device tag, configuration, multiple process values, diagnostics, and calibration data. A plant gets smart-instrument capability without throwing away its existing wiring or its proven analog control path.</p>
@@ -101,3 +104,10 @@
 <p><strong>OmniBus by PragOptics</strong> (a Fortiview Holdings brand) is a handheld field node that combines a universal HART communicator, a calibration recorder, and an audit trail in one rugged, battery-powered, touchscreen device. It speaks universal and common-practice HART across instruments from any manufacturer, organized by device family, so the screen only shows what the connected instrument can actually do, with no per-vendor handheld and no descriptor licensing.</p>
 <p>OmniBus is built so the record is a by-product of doing the job. Its guided workflows, Configure, Calibrate, Loop Test, and Record, capture <strong>As-Found / As-Left</strong> calibration automatically, and an onboard 4-20 mA measurement circuit reads the real loop current independently rather than trusting only the device's self-reported value, so the measured current is what lands in the record. Every session is written to an append-only historian that answers who did what, when, where, and why, and finished calibration certificates come out the other side. It reaches instruments over USB HART, an on-board two-wire loop, HART-IP, and wireless, all driving the same workflow.</p>
 <p>The aim is straightforward: give a single technician a vendor-neutral HART communicator and a defensible calibration record in one tool. To see how it fits together, visit the <a href="/">OmniBus overview</a>, or start with <a href="/hart/what-is-hart/">this field guide</a> and the <a href="/hart/glossary/">HART glossary</a>.</p>
+</article>
+<aside class="cta-box">
+  <h2>Meet OmniBus</h2>
+  <p>OmniBus by PragOptics is a universal, vendor-neutral HART communicator and calibration recorder in one rugged handheld. Configure, calibrate, and document any HART instrument, with the audit trail built in.</p>
+  <a class="cta" href="/">Explore OmniBus</a>
+</aside>
+</main>

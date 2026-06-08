@@ -1,5 +1,8 @@
-# WirelessHART explained: mesh networks, gateways, and adapters
+<link rel="stylesheet" href="/hart/hart.css">
 
+<main class="container">
+<article class="prose">
+<h1>WirelessHART explained: mesh networks, gateways, and adapters</h1>
 <h2>What is WirelessHART?</h2>
 <p>WirelessHART is the wireless version of the HART protocol: a 2.4 GHz, self-organizing, self-healing mesh network that carries the same HART commands and device data over the air instead of over a wire pair. It is published as the international standard <strong>IEC 62591</strong> and is maintained by the <a href="https://www.fieldcommgroup.org/">FieldComm Group</a>, the same organization that owns wired HART. HART stands for Highway Addressable Remote Transducer, and WirelessHART keeps the "HART" part fully intact: the application layer and the command set are the same as the wired protocol you already know.</p>
 <p>The practical idea is simple. Instead of running new cable to a transmitter in a hard-to-reach spot, you let that instrument talk wirelessly to its neighbors, and those neighbors relay the traffic, hop by hop, back to a central <strong>WirelessHART gateway</strong> that connects the mesh to your host or control system. Every device that can hear the network helps carry it.</p>
@@ -84,3 +87,10 @@
 <li>Security is built in via AES-128 encryption and join keys managed by the network.</li>
 <li>OmniBus reaches gateways over HART-IP, auto-detects gateway-host versus single instrument, and presents the gateway's live device roster from one handheld.</li>
 </ul>
+</article>
+<aside class="cta-box">
+  <h2>Meet OmniBus</h2>
+  <p>OmniBus by PragOptics is a universal, vendor-neutral HART communicator and calibration recorder in one rugged handheld. Configure, calibrate, and document any HART instrument, with the audit trail built in.</p>
+  <a class="cta" href="/">Explore OmniBus</a>
+</aside>
+</main>

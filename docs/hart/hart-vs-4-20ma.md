@@ -1,5 +1,8 @@
-# HART vs 4-20 mA: What Is the Difference?
+<link rel="stylesheet" href="/hart/hart.css">
 
+<main class="container">
+<article class="prose">
+<h1>HART vs 4-20 mA: What Is the Difference?</h1>
 <h2>HART vs 4-20 mA: the short answer</h2>
 <p>HART and 4-20 mA are <strong>not competitors</strong>. They are two layers that share the same pair of wires. The 4-20 mA current loop is the analog signal that carries one process value to your control system. <strong>HART rides on top of that loop as a digital signal</strong>, adding tag, configuration, multiple variables, and diagnostics without disturbing the analog reading. So the real difference between HART and 4-20 mA is not which to choose: it is what each layer does on the loop you already have.</p>
 <p>HART stands for <strong>Highway Addressable Remote Transducer</strong>, an open standard maintained by the FieldComm Group. It was designed from the start to coexist with the installed base of 4-20 mA wiring, which is exactly why it sits on the loop instead of replacing it.</p>
@@ -69,3 +72,10 @@
 </ul>
 <p>That measured current, the true loop value rather than the device's self-report, lands directly in the As-Found / As-Left calibration record. For networked instruments, its multi-modal HART-IP engine auto-detects whether it is connected to a single instrument or a wireless gateway host and adapts the workspace to match. The result, per the OmniBus product brochure, is one tool that proves what the loop is actually doing, not just what the instrument claims.</p>
 <p>Still have questions about HART and the 4-20 mA loop? See the <a href="/hart/faq/">HART FAQ</a> or browse the full <a href="/hart/">HART resource hub</a>.</p>
+</article>
+<aside class="cta-box">
+  <h2>Meet OmniBus</h2>
+  <p>OmniBus by PragOptics is a universal, vendor-neutral HART communicator and calibration recorder in one rugged handheld. Configure, calibrate, and document any HART instrument, with the audit trail built in.</p>
+  <a class="cta" href="/">Explore OmniBus</a>
+</aside>
+</main>

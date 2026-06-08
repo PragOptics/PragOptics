@@ -1,5 +1,8 @@
-# What Is a HART Communicator (and How to Choose One)
+<link rel="stylesheet" href="/hart/hart.css">
 
+<main class="container">
+<article class="prose">
+<h1>What Is a HART Communicator (and How to Choose One)</h1>
 <h2>What is a HART communicator?</h2>
 <p>A <strong>HART communicator</strong> is a master device that talks the HART protocol to field instruments so a technician can configure, range, trim, calibrate, diagnose, and read them. HART stands for <strong>Highway Addressable Remote Transducer</strong>, an open digital communication standard maintained by the <a href="https://www.fieldcommgroup.org/" rel="nofollow">FieldComm Group</a>. The communicator is the tool that puts a human in the loop with a smart transmitter, valve positioner, or analyzer.</p>
 <p>In practical terms, a HART communicator is how you change a transmitter's tag, set its 4 mA and 20 mA range points, perform a sensor or output trim, read the primary variable, and pull device diagnostics, all without removing the instrument from service in most cases. It speaks to the instrument over the same two wires that carry the 4 to 20 mA loop signal, by riding a low-amplitude digital signal on top of the analog current.</p>
@@ -90,3 +93,10 @@
 <li><strong>The record is the product.</strong> Guided Configure, Calibrate, Loop Test, and Record workflows capture As-Found / As-Left results and produce print-ready calibration certificates, written to an append-only historian that answers who did what, when, where, and why.</li>
 </ul>
 <p>In short, OmniBus is positioned as a <strong>universal HART communicator</strong> that replaces a vendor-locked handheld, a separate documenting calibrator, and a stack of paperwork with one device, on any HART instrument, with the record already done. See more <a href="/hart/faq/">HART questions answered</a> or explore the full <a href="/hart/">HART resource hub</a>.</p>
+</article>
+<aside class="cta-box">
+  <h2>Meet OmniBus</h2>
+  <p>OmniBus by PragOptics is a universal, vendor-neutral HART communicator and calibration recorder in one rugged handheld. Configure, calibrate, and document any HART instrument, with the audit trail built in.</p>
+  <a class="cta" href="/">Explore OmniBus</a>
+</aside>
+</main>

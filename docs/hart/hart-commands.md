@@ -1,5 +1,8 @@
-# HART Commands: Universal, Common-Practice, and Device-Specific
+<link rel="stylesheet" href="/hart/hart.css">
 
+<main class="container">
+<article class="prose">
+<h1>HART Commands: Universal, Common-Practice, and Device-Specific</h1>
 <h2>What are HART commands?</h2>
 <p>HART commands are numbered requests a master device sends to a HART field instrument, and the instrument replies with data plus a two-byte response code. HART (Highway Addressable Remote Transducer) is a master-slave digital protocol, maintained as an open standard by the FieldComm Group, that rides on top of the same two wires carrying a 4-20 mA analog signal. The master (a handheld communicator, a control system, or an asset-management tool) asks; the slave (the transmitter or valve positioner) answers. Every exchange is keyed by a command number, so "read the primary variable" is a different number from "write the upper range value."</p>
 <p>Commands fall into three classes by who defines them and who must support them: <strong>Universal</strong> (mandatory on every HART device), <strong>Common-Practice</strong> (widely implemented but optional), and <strong>Device-Specific</strong> (defined by the manufacturer for one device type). That tiering is the reason a single vendor-neutral communicator can work any HART instrument on the plant without per-vendor software.</p>
@@ -75,3 +78,10 @@
 
 <h2>Related reading</h2>
 <p>For the protocol fundamentals behind these commands, start with <a href="/hart/what-is-hart/">what HART is</a> and the <a href="/hart/glossary/">HART glossary</a>. Common questions are answered in the <a href="/hart/faq/">HART FAQ</a>, and the full set of topics lives on the <a href="/hart/">HART hub</a>. To see how a universal communicator applies these command tiers in the field, visit the <a href="/">OmniBus product page</a>.</p>
+</article>
+<aside class="cta-box">
+  <h2>Meet OmniBus</h2>
+  <p>OmniBus by PragOptics is a universal, vendor-neutral HART communicator and calibration recorder in one rugged handheld. Configure, calibrate, and document any HART instrument, with the audit trail built in.</p>
+  <a class="cta" href="/">Explore OmniBus</a>
+</aside>
+</main>

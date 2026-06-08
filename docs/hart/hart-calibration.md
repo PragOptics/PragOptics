@@ -1,5 +1,8 @@
-# HART Transmitter Calibration: As-Found / As-Left Explained
+<link rel="stylesheet" href="/hart/hart.css">
 
+<main class="container">
+<article class="prose">
+<h1>HART Transmitter Calibration: As-Found / As-Left Explained</h1>
 <p>HART calibration is the process of verifying, and where necessary correcting, the relationship between what a HART transmitter senses and what it reports, both as a digital value and as a 4 to 20 mA loop current. To calibrate a HART transmitter properly, you apply a known reference at the input, measure the real output, compare it against a documented tolerance, and trim the device only when it falls outside that tolerance. The defining discipline of the job is the <strong>As-Found / As-Left</strong> method: document the condition before you touch it, adjust if needed, then document the condition after.</p>
 
 <p>HART is the Highway Addressable Remote Transducer protocol, an open standard governed by the <a href="https://www.fieldcommgroup.org/">FieldComm Group</a>. Because a HART transmitter carries a digital command layer on top of its analog loop, calibration is not one operation but several: trimming the sensor input, trimming the analog output, and ranging the device. Getting the terminology right is the difference between a true calibration and a number that only looks right on the screen. This page explains each piece and gives you a clean, repeatable procedure. New to the protocol? Start with <a href="/hart/what-is-hart/">what HART is</a>, or jump to the <a href="/hart/glossary/">glossary</a> for any term.</p>
@@ -93,3 +96,10 @@
 <p>Five points (0, 25, 50, 75, 100% of span) is the common practice and exposes both zero and span errors plus any non-linearity. Some applications use three points; critical or non-linear devices may use more. Define the points before you start.</p>
 
 <p>For more answers, see the <a href="/hart/faq/">HART FAQ</a>, browse the full <a href="/hart/">HART resource hub</a>, or learn the protocol fundamentals in <a href="/hart/what-is-hart/">What is HART?</a></p>
+</article>
+<aside class="cta-box">
+  <h2>Meet OmniBus</h2>
+  <p>OmniBus by PragOptics is a universal, vendor-neutral HART communicator and calibration recorder in one rugged handheld. Configure, calibrate, and document any HART instrument, with the audit trail built in.</p>
+  <a class="cta" href="/">Explore OmniBus</a>
+</aside>
+</main>
