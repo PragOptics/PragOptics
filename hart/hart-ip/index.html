@@ -89,13 +89,13 @@
 <p>The catch is the topology question above: a tool that connects over HART-IP must work out whether it reached a single instrument or a gateway full of them, or it will show the wrong thing.</p>
 
 <h2>OmniBus multi-modal HART-IP: auto-detect gateway vs instrument</h2>
-<p><strong>OmniBus by PragOptics reaches both HART-IP topologies with one multi-modal engine, auto-detecting on connect whether the endpoint is a gateway host or a single direct instrument, then adapting the screen to match.</strong> OmniBus is a universal, vendor-neutral handheld HART communicator, calibration recorder, and field node. You give the device the endpoint address and it configures its own network side automatically (its port and subnet), polls the endpoint, and classifies what answered before it draws a screen.</p>
+<p><strong>OmniBus reaches both HART-IP topologies with one multi-modal engine, and it works out what it is talking to before it draws a screen: a gateway host, or a single instrument.</strong> You hand it the address. It sets up its own side of the network (port and subnet), polls the endpoint, and decides what answered. You configure nothing else.</p>
 <p>From there it branches based on what it actually found:</p>
 <ul>
 <li><strong>A gateway?</strong> OmniBus opens the gateway view: every wireless field device in one live roster (name, PV, SV, TV, QV, last update, and state shown as Live, Late, Stale, or Unreachable), device-status counts, gateway load and network health, and one tap into any device for full diagnostics.</li>
 <li><strong>A single instrument?</strong> OmniBus lands in the standardized instrument workspace, the same one every transport uses, with the login to match (a gateway takes a username and password; an Endress+Hauser device takes its serial number).</li>
 </ul>
-<p>Live values refresh on a steady round-robin only for what is on screen, and the truth-grade heartbeat flips to offline the instant the gateway stops answering, so no stale number is ever shown as live. The result is plain: a gateway is not one instrument, it is a whole network of them, and OmniBus reads the whole mesh and walks into any device on it from one screen. HART-IP over Ethernet is one of several transports OmniBus treats identically, alongside USB HART, the on-board two-wire loop, Wi-Fi, and Bluetooth, all feeding the same audit trail.</p>
+<p>Live values refresh on a steady round-robin, only for what is on screen, and the heartbeat flips to offline the instant the gateway goes quiet. No stale number is ever dressed up as live. Because a gateway is not one instrument, it is a whole network of them, and OmniBus reads the whole mesh and walks into any device on it from one screen. HART-IP over Ethernet is just one way in. USB HART, the on-board two-wire loop, Wi-Fi, Bluetooth: same engine, same audit trail.</p>
 </article>
 <aside class="cta-box">
   <h2>Meet OmniBus</h2>
