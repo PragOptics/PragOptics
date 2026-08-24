@@ -7,7 +7,7 @@
 
 ## 1. Purpose & Scope
 
-This Platform Agreement (“Agreement”) governs access to and use of the **PragOptics™ Platform** (“PragOptics” or the “Platform”), operated by **Fortiview Holdings LLC** (“FH”).
+This Platform Agreement (“Agreement”) governs access to and use of the **PragOptics™ Platform** (“PragOptics” or the “Platform”), operated by **Bridges Industrial LLC** (“BI”).
 
 PragOptics is a programmable control plane that enables authentication, routing, automation, orchestration, billing, storage, deployment, and API-driven workflows across one or more environments, tenants, or execution targets.
 
@@ -25,7 +25,7 @@ The role descriptions below are illustrative and non-exhaustive.
 
 ### 2.1 Platform Operator
 
-**FH** is the owner and operator of the PragOptics Platform and retains authority over platform architecture, security controls, provisioning logic, routing behavior, operational policies, and billing enforcement.
+**BI** is the owner and operator of the PragOptics Platform and retains authority over platform architecture, security controls, provisioning logic, routing behavior, operational policies, and billing enforcement.
 
 ### 2.2 Platform Participant
 
@@ -58,7 +58,7 @@ Partners operate under their own commercial and legal relationships with their c
 
 Certain roles or capabilities (including administrative, super-user, or external-tenant execution roles) may require explicit delegation, elevated permissions, or additional agreements.
 
-FH may grant, restrict, or revoke elevated privileges to protect platform integrity, security, or compliance.
+BI may grant, restrict, or revoke elevated privileges to protect platform integrity, security, or compliance.
 
 ---
 
@@ -193,7 +193,7 @@ Usage beyond included thresholds may result in overages, including but not limit
 
 Overages may be billed directly to the Participant or allocated to a controlling account, depending on role configuration and subscription structure.
 
-FH may apply administrative surcharges or pass-through costs as disclosed at billing time.
+BI may apply administrative surcharges or pass-through costs as disclosed at billing time.
 
 ---
 
@@ -220,7 +220,7 @@ Participants must not:
 - Use the Platform for unlawful purposes
 - Interfere with other Participants’ access
 
-FH may suspend or restrict access immediately to protect platform integrity, security, or availability.
+BI may suspend or restrict access immediately to protect platform integrity, security, or availability.
 
 ---
 
@@ -230,7 +230,7 @@ FH may suspend or restrict access immediately to protect platform integrity, sec
 
 Participants retain ownership of their data and content.
 
-FH processes platform metadata required for routing, billing, provisioning, auditing, and security enforcement.
+BI processes platform metadata required for routing, billing, provisioning, auditing, and security enforcement.
 
 ### 8.2 Security Controls
 
@@ -250,7 +250,7 @@ PragOptics is designed for resilience and stateless operation but is **not** pro
 
 ### 9.1 No SLA by Default
 
-FH does not guarantee uninterrupted or error-free service.
+BI does not guarantee uninterrupted or error-free service.
 
 ### 9.2 Third-Party Dependencies
 
@@ -262,7 +262,7 @@ Platform operation depends on third-party providers (including cloud infrastruct
 
 ### 10.1 Suspension
 
-FH may suspend access for:
+BI may suspend access for:
 - Non-payment
 - Security concerns
 - Policy violations
@@ -280,11 +280,11 @@ Termination does not relieve responsibility for accrued charges.
 
 ### 11.1 Platform Evolution
 
-PragOptics is an evolving platform. FH may add, modify, deprecate, or replace features.
+PragOptics is an evolving platform. BI may add, modify, deprecate, or replace features.
 
 ### 11.2 Agreement Updates
 
-FH may update this Agreement to reflect platform, security, operational, or regulatory changes.
+BI may update this Agreement to reflect platform, security, operational, or regulatory changes.
 
 Material changes will be communicated through reasonable notice. Continued use constitutes acceptance of the updated Agreement.
 
@@ -307,5 +307,5 @@ This Agreement is governed by the laws of the **State of Texas, USA**, without r
 
 ## 14. Contact
 
-Platform operator: **Fortiview Holdings LLC**  
+Platform operator: **Bridges Industrial LLC**  
 Support: **support@fortiviewholdings.com**

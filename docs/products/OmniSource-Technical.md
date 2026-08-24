@@ -34,7 +34,7 @@ Read this section before building, buying, or using an OmniSource.
 
 **Build-your-own — no warranty.** The schematic, bill of materials, assembly
 guide, and enclosure files are published as open reference material for
-personal, non-commercial construction. Fortiview Holdings and PragOptics make
+personal, non-commercial construction. Bridges Industrial and PragOptics make
 **NO WARRANTY, EXPRESS OR IMPLIED,** of merchantability, fitness for any
 particular purpose, safety, regulatory compliance, or freedom from defect of
 any device the reader chooses to build from these materials. **You assume all
@@ -43,11 +43,11 @@ designing, sourcing parts for, building, testing, powering, or using any device
 constructed from this publication. Anyone who constructs, modifies, or uses a
 device based on these plans is solely responsible for that device's safety,
 performance, regulatory compliance, and fitness for their application.
-Fortiview Holdings and PragOptics are not the manufacturer of any unit you
+Bridges Industrial and PragOptics are not the manufacturer of any unit you
 build yourself, and accept no obligation of support, replacement, refund, or
 indemnity for user-constructed units.
 
-**Misuse — no liability.** Fortiview Holdings and PragOptics are not liable for
+**Misuse: no liability.** Bridges Industrial and PragOptics are not liable for
 any injury, damage, or loss, direct or consequential, arising from the use of
 OmniSource — whether built from the plans or purchased as an assembled unit —
 outside its **Intended use** described above. This includes, without

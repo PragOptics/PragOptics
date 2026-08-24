@@ -7,7 +7,7 @@
 
 ## 1. Purpose of This Policy
 
-This Privacy Policy describes how **Fortiview Holdings LLC** (“FH”) collects, uses, processes, and protects information in connection with the **PragOptics™ Platform** (“PragOptics” or the “Platform”).
+This Privacy Policy describes how **Bridges Industrial LLC** (“BI”) collects, uses, processes, and protects information in connection with the **PragOptics™ Platform** (“PragOptics” or the “Platform”).
 
 PragOptics is a programmable control plane designed to orchestrate authentication, APIs, automation, workflows, messaging, deployment, billing, and data routing across multiple systems and environments.
 
@@ -62,7 +62,7 @@ If enabled by the Participant, PragOptics may process messaging-related data, su
 - Originator and destination identifiers (e.g., phone numbers or addresses)
 - Delivery status, error codes, and timestamps
 
-PragOptics does not operate its own telecommunications network. Messaging delivery relies on third-party communication service providers selected by FH or integrated by Partners.
+PragOptics does not operate its own telecommunications network. Messaging delivery relies on third-party communication service providers selected by BI or integrated by Partners.
 
 ---
 
@@ -139,7 +139,7 @@ Partners using PragOptics to deliver services to third parties are responsible f
 - Obtaining required consents
 - Ensuring lawful use of messaging, communications, and automation
 
-FH acts as a platform operator, not as the controller for Partner-customer relationships.
+BI acts as a platform operator, not as the controller for Partner-customer relationships.
 
 ---
 
@@ -150,7 +150,7 @@ Depending on jurisdiction, individuals may have rights to:
 - Request correction or deletion
 - Restrict or object to processing
 
-Requests related to PragOptics-managed data may be submitted to FH.  
+Requests related to PragOptics-managed data may be submitted to BI.  
 Requests related to Partner-managed data should be directed to the Partner.
 
 ---
@@ -165,7 +165,7 @@ By using the Platform, Participants acknowledge that data may be transferred and
 
 ## 10. Changes to This Policy
 
-FH may update this Privacy Policy to reflect platform changes, legal requirements, or operational practices.
+BI may update this Privacy Policy to reflect platform changes, legal requirements, or operational practices.
 
 Material changes will be communicated through reasonable notice. Continued use of PragOptics constitutes acceptance of the updated policy.
 
@@ -175,5 +175,5 @@ Material changes will be communicated through reasonable notice. Continued use o
 
 For privacy-related inquiries or requests, contact:
 
-**Fortiview Holdings LLC**  
+**Bridges Industrial LLC**  
 Email: **support@fortiviewholdings.com**

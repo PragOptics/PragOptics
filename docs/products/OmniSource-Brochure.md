@@ -143,7 +143,7 @@ sub,.fine{ color:var(--muted); font-size:.78rem; }
 </div>
 
 <div class="contact">
-  <a href="https://pragoptics.com">pragoptics.com</a> · <a href="https://fortiviewholdings.com">fortiviewholdings.com</a> · <a href="mailto:support@fortiviewholdings.com">support@fortiviewholdings.com</a> · <a href="tel:+18324250421">832-425-0421</a>
+  <a href="https://pragoptics.com">pragoptics.com</a> · <a href="https://bridgesindust.com">bridgesindust.com</a> · <a href="mailto:support@fortiviewholdings.com">support@fortiviewholdings.com</a> · <a href="tel:+18324250421">832-425-0421</a>
 </div>
 
 ---
@@ -324,7 +324,7 @@ OmniSource wakes a transmitter up, anywhere you can find a USB port, with a desi
 **PragOptics™**
 
 <div class="contact" style="text-align:left">
-<a href="https://pragoptics.com">pragoptics.com</a> · <a href="https://fortiviewholdings.com">fortiviewholdings.com</a><br>
+<a href="https://pragoptics.com">pragoptics.com</a> · <a href="https://bridgesindust.com">bridgesindust.com</a><br>
 <a href="mailto:support@fortiviewholdings.com">support@fortiviewholdings.com</a><br>
 <a href="tel:+18324250421">832-425-0421</a>
 </div>

@@ -64,7 +64,7 @@ Warranties follow the **product**, not the first buyer. Any registered unit can 
 
 PragOptics hardware and designs are tools for **qualified users** who understand the systems they work on. Each product's technical documentation describes that product's intended use and safety envelope; using a product means using it within that envelope.
 
-**We are not responsible for misuse, or for systems you build.** To the fullest extent permitted by law, Fortiview Holdings and PragOptics are not liable for any loss, injury, or damage — direct, indirect, incidental, or consequential — arising from:
+**We are not responsible for misuse, or for systems you build.** To the fullest extent permitted by law, Bridges Industrial and PragOptics are not liable for any loss, injury, or damage, whether direct, indirect, incidental, or consequential, arising from:
 
 - use of any product outside its documented intended use and safety envelope;
 - **misuse, modification, or servicing** beyond what the product documentation authorizes;
