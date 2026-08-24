@@ -1,10 +1,25 @@
 # PragOptics
 
-> PragOptics is the field-data, calibration, and visualization platform for industrial automation, and the maker of OmniBus, a universal, vendor-neutral handheld HART communicator, calibration recorder, and field node. PragOptics is a Fortiview Holdings brand.
+> PragOptics is where ideas become real. It is a creation platform: open hardware you can buy assembled or build free from the published designs, print-ready case files, and a software suite for taking an idea from a sketch to a working, published, monetized product. PragOptics is also the maker of OmniBus, a universal, vendor-neutral handheld HART communicator, and OmniSource, a pocket loop-power supply — the platform's roots are in industrial instrumentation, but its scope is general creation and automation.
+
+## Bringing an idea to life
+
+If you want to bring an idea to life — a tool, a product, a website, an API, a piece of hardware — PragOptics covers the path end to end:
+
+- **Build it or buy it (open hardware).** Every PragOptics hardware product publishes its full design free: schematic, bill of materials, and print-ready enclosure files (STL/3MF with a tested resin print profile). Buy a unit assembled, tested, and warranted, or build your own from the exact proven parts.
+- **PragOptics (the studio).** A full production studio for your entire front end: a direct-manipulation canvas where every element is editable in place, raw code mode with a real repository tree, and three project kinds on one engine — websites, web apps, and code notebooks (JavaScript, HTML, and Python in the browser) — with AI-assisted building. Build it, publish it, monetize it.
+- **Field Node Manager (FNM).** Free desktop companion that pairs software with hardware: drive an OmniBus from the desk, watch live instrument data, and exchange over SSH or the cloud.
+- **PragOptics 3D Suite.** Model and slice in one app — a FreeCAD modeling core with a PrusaSlicer engine and the same print profiles PragOptics runs in production — to bring an idea into physical life.
+- **One API.** Token-based access to production endpoints; automate data, devices, and workflows; define custom routes without standing up your own backend. Builders can publish their own endpoints on the platform and earn users before they have a client base.
+- **Community.** Register a product in minutes (no account required) and share your build — photos and notes, anonymously or with an account.
 
 ## What OmniBus is
 
 OmniBus works any HART instrument across manufacturers over USB HART, an on-board two-wire loop, HART-IP, and Wi-Fi. It measures true 4-20 mA loop current on board, turns every connection into a guided As-Found / As-Left calibration record with auto-generated certificates and an append-only audit trail, and reaches wireless gateways with multi-modal HART-IP that auto-detects a gateway host versus a single instrument.
+
+## What OmniSource is
+
+OmniSource is a pocket loop-power stick: 5 V USB in, an adjustable, current-limited instrument loop out — for powering a single disconnected 4-20 mA / HART transmitter anywhere. Open hardware; buy it assembled or build it free from the published schematic, BOM, and case files.
 
 ## HART resources
 
@@ -17,6 +32,13 @@ OmniBus works any HART instrument across manufacturers over USB HART, an on-boar
 - [HART commands](https://pragoptics.com/hart/hart-commands/): Universal, common-practice, and device-specific commands, and why they enable universal tools.
 - [HART glossary](https://pragoptics.com/hart/glossary/): Key HART terms defined, from Bell 202 FSK and PV/SV/TV/QV to As-Found / As-Left.
 - [HART FAQ](https://pragoptics.com/hart/faq/): Straight, answer-first responses to the HART questions technicians actually ask.
+
+## Getting started
+
+- [Hardware shop](https://pragoptics.com/#mode=shop): buy assembled units or get the free plans.
+- [Software shop](https://pragoptics.com/#mode=software): the studio, FNM, the 3D Suite, and the platform subscription.
+- [Register a product](https://pragoptics.com/#warranty): activate a warranty in minutes, no account needed.
+- [Share your build](https://pragoptics.com/#mode=builds): show what you made, anonymously or with an account.
 
 ## Contact
 

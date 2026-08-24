@@ -1,6 +1,666 @@
 /* /css/layout/hero.css */
 
 /* ===== Hero ===== */
+
+/* Top band: copy on the left, the creation-flow vignette living in the
+   negative space to the right (no container — it floats on the panel). */
+.hero-top{
+  display:flex; align-items:center; gap:34px;
+}
+.hero-copy{ flex:1 1 52%; min-width:0; }
+.hero-show{
+  /* takes the right half; the fixed 400px stage centers itself inside it
+     (height includes the footnote band below the 300px scene area) */
+  flex:1 1 48%; height:332px; position:relative; min-width:0;
+}
+@media (max-width: 980px){
+  .hero-top{ flex-wrap:wrap; }
+  .hero-show{ flex:1 1 100%; max-width:420px; height:332px; margin:6px auto 0; }
+}
+
+/* ===== The creation-flow vignette — an idea coming to life =====
+   Three scenes rotate on a 54s cycle (18s each): the PragOptics studio builds
+   and publishes, FNM pairs with hardware, the 3D Suite models and slices.
+   Studio chrome is faithful to the real app: panel #161920, border #262b36,
+   accent #2f9e8a, selection = 2px teal outline + soft glow. Pure CSS. */
+.hero-show{ pointer-events:none; }
+/* fixed 400×300 scene — scales as one unit so the composition never squishes */
+.hs-stage{
+  position:absolute; left:50%; top:0; width:400px; height:300px;
+  transform:translateX(-50%); transform-origin:top center;
+}
+.hs-scene{ position:absolute; inset:0; }
+
+/* shared footnote — sits in its own band BELOW the 300px scene area */
+.hs-note{
+  position:absolute; left:50%; bottom:-26px; transform:translateX(-50%);
+  font:500 7px/1 ui-monospace, "Cascadia Code", Menlo, monospace;
+  letter-spacing:.14em; text-transform:uppercase;
+  color:var(--muted, #c6d0f0a6); opacity:.45; white-space:nowrap;
+}
+.hs-scene > *, .hs-page > *{ position:absolute; }
+
+/* rotation gates: each scene owns one 18s window of the 54s cycle; the inner
+   18s loops line up with the windows exactly (54 = 3 × 18) */
+.hs-s1{ animation:hsScene1 54s linear infinite both; }
+.hs-s2{ opacity:0; animation:hsScene2 54s linear infinite both; }
+.hs-s3{ opacity:0; animation:hsScene3 54s linear infinite both; }
+/* Gate timing rule: every gate must be FULLY closed before its scene's inner
+   18s cycle wraps (33.333% / 66.667% / 100%), because elements that end a
+   cycle visible snap to their 0% state at the wrap — if the gate is still
+   half-open at that instant, the reset is visible as a glitch/blink. */
+@keyframes hsScene1{ 0%,32.4%{opacity:1} 33.1%,99.55%{opacity:0} 100%{opacity:1} }
+@keyframes hsScene2{ 0%,33.35%{opacity:0} 34%,65.7%{opacity:1} 66.4%,100%{opacity:0} }
+@keyframes hsScene3{ 0%,66.7%{opacity:0} 67.35%,98.9%{opacity:1} 99.55%,100%{opacity:0} }
+@media (max-width: 459px){
+  .hs-stage{ transform:translateX(-50%) scale(.78); }
+  .hero-show{ height:262px !important; }
+}
+@media (max-width: 359px){
+  .hs-stage{ transform:translateX(-50%) scale(.66); }
+  .hero-show{ height:223px !important; }
+}
+
+/* scene wordmark: app tile + gradient titling (the studio's real topbar look) */
+.hs-brand{
+  top:0; left:2px;
+  display:inline-flex; align-items:center; gap:8px;
+  animation:hsBrand 18s linear infinite both;
+}
+.hs-brand img{
+  width:22px; height:22px; border-radius:6px; display:block;
+  box-shadow:0 0 0 1px rgba(147,112,219,.4), 0 0 12px rgba(147,112,219,.3);
+}
+.hs-brand u{
+  text-decoration:none;
+  font:700 12.5px/1 "Space Grotesk", ui-sans-serif, sans-serif;
+  letter-spacing:2.5px; text-transform:uppercase;
+  background:linear-gradient(120deg,#b9c8ff,#c99df1 55%,#8fd7e8);
+  -webkit-background-clip:text; background-clip:text; color:transparent;
+}
+@keyframes hsBrand{ 0%,2%{opacity:0} 5%,92%{opacity:1} 96%,100%{opacity:0} }
+
+/* --- the user's site, assembling on the canvas frame --- */
+.hs-page{
+  top:26px; left:0; width:218px; height:268px;
+  background:#fff; border-radius:8px;
+  box-shadow:0 16px 38px rgba(0,0,0,.5);
+  animation:hsPage 18s linear infinite both;
+}
+@keyframes hsPage{
+  0%,4%{opacity:0; transform:translateY(8px) scale(.96)}
+  7%{opacity:1; transform:none}
+  79%{box-shadow:0 16px 38px rgba(0,0,0,.5)}
+  83%,88%{box-shadow:0 16px 38px rgba(0,0,0,.5), 0 0 42px rgba(47,158,138,.4)}
+  91%{box-shadow:0 16px 38px rgba(0,0,0,.5)}
+  92%{opacity:1}
+  96%,100%{opacity:0}
+}
+.hs-nav{
+  top:0; left:0; right:0; height:16px; background:#10141c;
+  border-radius:7px 7px 0 0; display:flex; align-items:center; gap:5px; padding:0 8px;
+  animation:hsNav 18s linear infinite both;
+}
+.hs-nav i{ width:6px; height:6px; background:#2f9e8a; border-radius:2px; margin-right:auto; }
+.hs-nav u{ width:14px; height:3px; background:#3a4356; border-radius:2px; }
+@keyframes hsNav{
+  0%,14%{opacity:0; transform:translateY(-4px)}
+  17%{opacity:1; transform:none; outline:2px solid #2f9e8a; outline-offset:-2px; box-shadow:0 0 0 4px rgba(47,158,138,.12)}
+  23%{outline:2px solid transparent; box-shadow:0 0 0 4px transparent}
+  92%{opacity:1} 96%,100%{opacity:0}
+}
+.hs-head{ top:30px; left:14px; width:62%; height:11px; background:#1c2433; border-radius:3px; animation:hsHead 18s linear infinite both; }
+@keyframes hsHead{
+  0%,24%{opacity:0; transform:translateY(5px)}
+  27%{opacity:1; transform:none; outline:2px solid #2f9e8a; outline-offset:-2px; box-shadow:0 0 0 4px rgba(47,158,138,.12)}
+  34%{outline:2px solid transparent; box-shadow:0 0 0 4px transparent}
+  92%{opacity:1} 96%,100%{opacity:0}
+}
+.hs-p{ height:5px; background:#ccd3de; border-radius:2px; }
+.hs-p1{ top:49px; left:14px; width:84%; animation:hsP1 18s linear infinite both; }
+.hs-p2{ top:58px; left:14px; width:70%; animation:hsP2 18s linear infinite both; }
+@keyframes hsP1{ 0%,28%{opacity:0} 30%,92%{opacity:1} 96%,100%{opacity:0} }
+@keyframes hsP2{ 0%,29.5%{opacity:0} 31.5%,92%{opacity:1} 96%,100%{opacity:0} }
+.hs-btnpill{ top:72px; left:14px; width:62px; height:13px; background:#2f9e8a; border-radius:7px; animation:hsBtn 18s linear infinite both; }
+@keyframes hsBtn{
+  0%,34%{opacity:0; transform:scale(.85)}
+  37%{opacity:1; transform:none; outline:2px solid #2f9e8a; outline-offset:-2px; box-shadow:0 0 0 4px rgba(47,158,138,.12)}
+  44%{outline:2px solid transparent; box-shadow:0 0 0 4px transparent}
+  92%{opacity:1} 96%,100%{opacity:0}
+}
+.hs-cards{ top:100px; left:10px; right:10px; display:grid; grid-template-columns:repeat(3,1fr); gap:6px; }
+.hs-card{ position:relative; height:62px; background:#eef1f5; border:1px solid #e2e6ec; border-radius:6px; padding:6px; }
+.hs-card i{ display:block; width:9px; height:9px; background:rgba(47,158,138,.3); border-radius:2px; }
+.hs-card u{ display:block; height:4px; background:#cfd6df; border-radius:2px; margin-top:5px; width:82%; }
+.hs-card u + u{ width:58%; }
+.hs-c1{ animation:hsC1 18s linear infinite both; }
+.hs-c2{ animation:hsC2 18s linear infinite both; }
+.hs-c3{ animation:hsC3 18s linear infinite both; }
+@keyframes hsC1{
+  0%,44%{opacity:0; transform:translateY(6px)}
+  46%{opacity:1; transform:none; outline:2px solid #2f9e8a; outline-offset:-2px; box-shadow:0 0 0 4px rgba(47,158,138,.12)}
+  53%{outline:2px solid transparent; box-shadow:0 0 0 4px transparent}
+  92%{opacity:1} 96%,100%{opacity:0}
+}
+@keyframes hsC2{
+  0%,47%{opacity:0; transform:translateY(6px)}
+  49%{opacity:1; transform:none; outline:2px solid #2f9e8a; outline-offset:-2px; box-shadow:0 0 0 4px rgba(47,158,138,.12)}
+  56%{outline:2px solid transparent; box-shadow:0 0 0 4px transparent}
+  92%{opacity:1} 96%,100%{opacity:0}
+}
+@keyframes hsC3{
+  0%,50%{opacity:0; transform:translateY(6px)}
+  52%{opacity:1; transform:none; outline:2px solid #2f9e8a; outline-offset:-2px; box-shadow:0 0 0 4px rgba(47,158,138,.12)}
+  59%{outline:2px solid transparent; box-shadow:0 0 0 4px transparent}
+  92%{opacity:1} 96%,100%{opacity:0}
+}
+.hs-live{
+  top:-8px; right:-8px; display:inline-flex; align-items:center;
+  font:700 9px/1 ui-monospace, Menlo, monospace; letter-spacing:.12em;
+  color:#38b39c; background:#0f1115; border:1px solid rgba(56,179,156,.55);
+  border-radius:999px; padding:3px 7px;
+  animation:hsLive 18s linear infinite both;
+}
+.hs-live i{ width:5px; height:5px; background:#38b39c; border-radius:50%; margin-right:4px; box-shadow:0 0 6px rgba(56,179,156,.9); }
+@keyframes hsLive{
+  0%,80%{opacity:0; transform:scale(.7)}
+  83%,92%{opacity:1; transform:none}
+  96%,100%{opacity:0}
+}
+
+/* floating node toolbar (the wb-chip) hovering the selected heading */
+.hs-tool{
+  top:44px; left:40px; display:inline-flex; gap:5px; align-items:center;
+  font:600 10px/1 ui-sans-serif, sans-serif; color:#c6ccd8;
+  background:rgba(22,25,32,.92); border:1px solid #2b3140; border-radius:8px;
+  padding:4px 7px; box-shadow:0 2px 4px rgba(0,0,0,.4), 0 10px 28px rgba(0,0,0,.45);
+  opacity:0;
+  animation:hsTool 18s linear infinite both;
+}
+.hs-tool b{ color:#38b39c; font-weight:700; }
+@keyframes hsTool{
+  0%,23%{opacity:0; transform:translateY(4px) scale(.95)}
+  26%,33%{opacity:1; transform:none}
+  37%,100%{opacity:0}
+}
+
+/* op stream — real shapes from src/ai/ops.js, real token colors */
+.hs-code{ left:226px; width:170px; font:500 10px/1.5 ui-monospace, Menlo, monospace; color:#5b6472; white-space:nowrap; }
+.hs-code em{ font-style:normal; color:#c39cf2; }
+.hs-code q{ quotes:none; color:#d8a15c; }
+.hs-code q::before, .hs-code q::after{ content:none; }
+.hs-cw{ display:inline-block; }
+.hs-code1{ top:36px; animation:hsCode1 18s linear infinite both; }
+.hs-code2{ top:54px; animation:hsCode2 18s linear infinite both; }
+.hs-code3{ top:72px; animation:hsCode3 18s linear infinite both; }
+.hs-code1 .hs-cw{ animation:hsType1 18s steps(22, end) infinite both; }
+.hs-code2 .hs-cw{ animation:hsType2 18s steps(20, end) infinite both; }
+.hs-code3 .hs-cw{ animation:hsType3 18s steps(20, end) infinite both; }
+@keyframes hsCode1{ 0%,12%{opacity:0} 13%,92%{opacity:1} 96%,100%{opacity:0} }
+@keyframes hsCode2{ 0%,24%{opacity:0} 25%,92%{opacity:1} 96%,100%{opacity:0} }
+@keyframes hsCode3{ 0%,40%{opacity:0} 41%,92%{opacity:1} 96%,100%{opacity:0} }
+@keyframes hsType1{ 0%,12%{clip-path:inset(0 100% 0 0)} 18%,100%{clip-path:inset(0 0 0 0)} }
+@keyframes hsType2{ 0%,24%{clip-path:inset(0 100% 0 0)} 30%,100%{clip-path:inset(0 0 0 0)} }
+@keyframes hsType3{ 0%,40%{clip-path:inset(0 100% 0 0)} 46%,100%{clip-path:inset(0 0 0 0)} }
+
+/* AI dock — miniature of the real one (bottom-right, panel chrome, op chips) */
+.hs-dock{
+  right:0; bottom:0; width:172px;
+  display:flex; flex-direction:column; gap:6px;
+  background:#161920; border:1px solid #262b36; border-radius:12px; padding:9px;
+  box-shadow:0 12px 30px rgba(0,0,0,.5);
+  animation:hsDock 18s linear infinite both;
+}
+.hs-dock > *{ position:static; }
+@keyframes hsDock{ 0%,6%{opacity:0; transform:translateY(10px) scale(.98)} 9%,92%{opacity:1; transform:none} 96%,100%{opacity:0} }
+.hs-msg{ font:500 10.5px/1.35 ui-sans-serif, sans-serif; padding:5px 8px; max-width:92%; }
+.hs-user{
+  align-self:flex-end; background:#2f9e8a; color:#06130f;
+  border-radius:10px 10px 4px 10px;
+  animation:hsUser 18s linear infinite both;
+}
+@keyframes hsUser{ 0%,9%{opacity:0; transform:translateY(5px) scale(.95)} 12%,100%{opacity:1; transform:none} }
+.hs-chips{ display:flex; flex-wrap:wrap; gap:4px; }
+.hs-chip{
+  font:600 9.5px/1 ui-monospace, Menlo, monospace;
+  color:#38b39c; background:rgba(47,158,138,.14);
+  border:1px solid rgba(47,158,138,.3); border-radius:5px; padding:3px 6px;
+}
+.hs-ch1{ animation:hsCh1 18s linear infinite both; }
+.hs-ch2{ animation:hsCh2 18s linear infinite both; }
+.hs-ch3{ animation:hsCh3 18s linear infinite both; }
+@keyframes hsCh1{ 0%,16%{opacity:0; transform:scale(.8)} 18%,100%{opacity:1; transform:none} }
+@keyframes hsCh2{ 0%,30%{opacity:0; transform:scale(.8)} 32%,100%{opacity:1; transform:none} }
+@keyframes hsCh3{ 0%,52%{opacity:0; transform:scale(.8)} 54%,100%{opacity:1; transform:none} }
+.hs-bot{
+  align-self:flex-start; background:#1c2029; border:1px solid #262b36; color:#e7eaf0;
+  border-radius:10px 10px 10px 4px;
+  animation:hsBot 18s linear infinite both;
+}
+@keyframes hsBot{ 0%,58%{opacity:0; transform:translateY(5px)} 61%,100%{opacity:1; transform:none} }
+.hs-meter{
+  align-self:flex-start; font:600 9px/1 ui-monospace, Menlo, monospace;
+  color:#38b39c; background:rgba(47,158,138,.14); border-radius:999px; padding:2px 6px;
+  animation:hsMeter 18s linear infinite both;
+}
+@keyframes hsMeter{ 0%,61%{opacity:0} 64%,100%{opacity:1} }
+
+/* publish beat */
+.hs-publish{
+  left:130px; top:252px;
+  font:700 11px/1 ui-sans-serif, sans-serif; color:#06130f;
+  background:#2f9e8a; border-radius:7px; padding:5px 10px;
+  box-shadow:0 6px 16px rgba(47,158,138,.35);
+  animation:hsPub 18s linear infinite both;
+}
+@keyframes hsPub{
+  0%,70%{opacity:0; transform:translateY(6px)}
+  73%,75.5%{opacity:1; transform:none}
+  77%{transform:scale(.92)}
+  79%,88%{opacity:1; transform:none}
+  92%,100%{opacity:0}
+}
+
+/* ===== Scene 2: Field Node Manager =====
+   Micro-UI in the app's OWN design system (FNM_Demo/tokens.css): brushed-metal
+   OmniBus bar, LED wordmark #9af1ff, LED clock #70f0ff, detline green logs,
+   numeric green #85e29a, per-accent command titles. Story: CONNECT → device
+   found → mirror comes alive → live PV → RECORD → cal report saved. */
+.fm-connect{
+  left:0; top:32px;
+  font:800 9px/1 ui-monospace, "Cascadia Code", Consolas, monospace; letter-spacing:.16em;
+  color:#1fe0ff; border:1px solid rgba(31,224,255,.5); border-radius:8px; padding:5px 9px;
+  background:rgba(31,224,255,.06);
+  animation:fmConnect 18s linear infinite both;
+}
+@keyframes fmConnect{
+  0%,4%{opacity:0; transform:scale(.9)}
+  6%{opacity:1; transform:none; box-shadow:0 0 16px rgba(31,224,255,.55)}
+  8.5%{box-shadow:0 0 6px rgba(31,224,255,.2)}
+  10.5%{box-shadow:0 0 16px rgba(31,224,255,.55)}
+  13%,92%{opacity:1; box-shadow:none}
+  96%,100%{opacity:0}
+}
+.fm-det{
+  font:600 9px/1.2 ui-monospace, "Cascadia Code", Consolas, monospace;
+  color:#38ffb3; white-space:nowrap; overflow:hidden;
+}
+.fm-det1{ left:96px; top:38px; animation:fmDet1 18s steps(24, end) infinite both; }
+@keyframes fmDet1{ 0%,8%{opacity:1; clip-path:inset(0 100% 0 0)} 13%,92%{opacity:1; clip-path:inset(0 0 0 0)} 96%,100%{opacity:0} }
+
+/* the brushed-metal OmniBus top bar (the device mirror) */
+.fm-bar{
+  left:0; top:54px; width:400px; height:34px;
+  display:flex; align-items:center; gap:9px; padding:0 9px;
+  background:linear-gradient(180deg,#3a3f45,#1d2228 42%,#080b0f);
+  border-radius:8px; border-bottom:2px solid rgba(0,0,0,.65);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.33), 0 2px 10px rgba(0,0,0,.65);
+  animation:fmBar 18s linear infinite both;
+}
+.fm-bar > *{ position:static; }
+@keyframes fmBar{ 0%,12%{opacity:0; transform:translateY(-6px)} 15%,92%{opacity:1; transform:none} 96%,100%{opacity:0} }
+.fm-word{
+  display:inline-flex; align-items:center; height:24px; padding:0 9px; border-radius:7px;
+  background:rgba(0,0,0,.45); box-shadow:inset 0 1px 0 rgba(255,255,255,.12);
+  font:800 12px/1 ui-sans-serif, "Segoe UI", sans-serif; letter-spacing:.14em;
+  color:#9af1ff; text-shadow:0 0 9px rgba(112,240,255,.55), 0 0 2px rgba(112,240,255,.9);
+}
+.fm-heart{
+  font-style:normal; font-size:13px; color:#1fe0ff;
+  text-shadow:0 0 8px rgba(31,224,255,.7);
+  animation:fmBeat 1.5s ease-in-out infinite;
+}
+@keyframes fmBeat{ 0%,40%,100%{transform:scale(1)} 12%{transform:scale(1.22)} 26%{transform:scale(1)} }
+.fm-bars{ margin-left:auto; display:inline-flex; align-items:flex-end; gap:2px; height:13px; }
+.fm-bars i{ width:3px; border-radius:1px; background:#38ffb3; display:block; }
+.fm-bars i:nth-child(1){ height:5px; } .fm-bars i:nth-child(2){ height:8px; }
+.fm-bars i:nth-child(3){ height:11px; } .fm-bars i:nth-child(4){ height:13px; }
+.fm-bars i.off{ opacity:.18; }
+.fm-batt{ position:relative; width:26px; height:13px; border:1px solid #38ffb3; border-radius:3px; display:inline-block; }
+.fm-batt::after{ content:""; position:absolute; right:-4px; top:3px; width:3px; height:6px; border-radius:1px; background:#38ffb3; }
+.fm-batt i{ position:absolute; left:2px; top:2px; bottom:2px; width:70%; border-radius:2px; background:#38ffb3; }
+.fm-clock{
+  display:inline-flex; align-items:center; height:22px; padding:0 8px; border-radius:7px;
+  background:rgba(0,0,0,.45);
+  font:700 11px/1 ui-monospace, "Cascadia Code", Consolas, monospace; letter-spacing:.1em;
+  color:#70f0ff; text-shadow:0 0 9px rgba(112,240,255,.55);
+}
+
+/* instrument card — glass, LED tag, big numeric-green PV */
+.fm-card{
+  left:0; top:98px; width:250px; height:152px;
+  display:flex; flex-direction:column; gap:8px; padding:11px 13px;
+  background:rgba(0,0,0,.43); border:1px solid rgba(255,255,255,.10); border-radius:12px;
+  box-shadow:0 8px 24px rgba(0,0,0,.5);
+  animation:fmCard 18s linear infinite both;
+}
+.fm-card > *{ position:static; }
+@keyframes fmCard{ 0%,15%{opacity:0; transform:translateY(8px) scale(.98)} 18%,92%{opacity:1; transform:none} 96%,100%{opacity:0} }
+.fm-tag{ display:flex; align-items:center; gap:7px; }
+.fm-tag b{
+  font:800 14px/1 ui-sans-serif, "Segoe UI", sans-serif; letter-spacing:.06em;
+  color:#7df3ff; text-shadow:0 0 10px rgba(31,224,255,.55), 0 0 2px rgba(31,224,255,.85);
+}
+.fm-tag i{
+  width:6px; height:6px; border-radius:50%; background:#38ffb3;
+  box-shadow:0 0 7px rgba(56,255,179,.9);
+  animation:fmBeat 1.5s ease-in-out infinite;
+}
+.fm-tag span{ font:500 7.5px/1 ui-monospace, "Cascadia Code", Consolas, monospace; color:#c6d0f0a6; letter-spacing:.06em; }
+.fm-pvrow{ position:relative; display:flex; align-items:baseline; gap:8px; height:34px; }
+.fm-pvlbl{ font:700 10px/1 ui-monospace, "Cascadia Code", Consolas, monospace; letter-spacing:.2em; color:#c6d0f0a6; }
+.fm-pv{
+  position:absolute; left:32px; top:0;
+  font:700 28px/1 ui-monospace, "Cascadia Code", Consolas, monospace;
+  color:#85e29a; text-shadow:0 0 12px rgba(133,226,154,.35);
+  opacity:0;
+}
+.fm-pvrow em{ margin-left:auto; font:500 9px/1 ui-monospace, "Cascadia Code", Consolas, monospace; font-style:normal; color:#c6d0f0a6; }
+.fm-pv1{ animation:fmPv1 18s linear infinite both; }
+.fm-pv2{ animation:fmPv2 18s linear infinite both; }
+.fm-pv3{ animation:fmPv3 18s linear infinite both; }
+@keyframes fmPv1{ 0%,20%{opacity:0} 21.5%,44%{opacity:1} 45.5%,100%{opacity:0} }
+@keyframes fmPv2{ 0%,45.5%{opacity:0} 47%,66.5%{opacity:1} 68%,100%{opacity:0} }
+@keyframes fmPv3{ 0%,68%{opacity:0} 69.5%,100%{opacity:1} }
+.fm-range{ position:relative; height:8px; border-radius:5px; background:rgba(255,255,255,.07); overflow:visible; }
+.fm-range u{
+  position:absolute; left:0; top:0; bottom:0; width:0; border-radius:5px;
+  background:linear-gradient(90deg, rgba(56,255,179,.35), #38ffb3);
+  animation:fmFill 18s ease-out infinite both;
+}
+.fm-range s{
+  position:absolute; top:-3px; bottom:-3px; width:2px; border-radius:1px; left:62.3%;
+  background:#dcdbf0e1; opacity:0;
+  animation:fmMark 18s linear infinite both;
+}
+@keyframes fmFill{ 0%,19%{width:0} 27%,100%{width:62.3%} }
+@keyframes fmMark{ 0%,26%{opacity:0} 28%,100%{opacity:.8} }
+.fm-lims{ display:flex; gap:14px; font:600 8.5px/1 ui-monospace, "Cascadia Code", Consolas, monospace; color:#c6d0f0a6; }
+.fm-lims b{ color:#85e29a; font-weight:700; }
+
+/* command rail — the app's per-accent LED button titles */
+.fm-cmds{
+  left:262px; top:98px; width:138px; height:152px;
+  display:flex; flex-direction:column; gap:7px; padding:10px 12px;
+  background:rgba(0,0,0,.43); border:1px solid rgba(255,255,255,.10); border-radius:12px;
+  box-shadow:0 8px 24px rgba(0,0,0,.5);
+  animation:fmCard 18s linear infinite both;
+}
+.fm-cmds > *{ position:static; }
+.fm-cmdhead{ font:700 7.5px/1 ui-monospace, "Cascadia Code", Consolas, monospace; letter-spacing:.24em; color:#21bca5; }
+.fm-cmd{
+  font:800 9.5px/1 ui-sans-serif, "Segoe UI", sans-serif; letter-spacing:.14em;
+  padding:7px 8px; border-radius:8px;
+  background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.09);
+  opacity:0;
+}
+.fm-c1{ color:#21bca5; text-shadow:0 0 8px rgba(33,188,165,.5); animation:fmC1 18s linear infinite both; }
+.fm-c2{ color:#1fe0ff; text-shadow:0 0 8px rgba(31,224,255,.5); animation:fmC2 18s linear infinite both; }
+.fm-c3{ color:#bf7dff; text-shadow:0 0 8px rgba(191,125,255,.5); animation:fmC3 18s linear infinite both; }
+.fm-c4{ color:#38ffb3; text-shadow:0 0 8px rgba(56,255,179,.5); animation:fmC4 18s linear infinite both; }
+@keyframes fmC1{ 0%,22%{opacity:0; transform:translateX(8px)} 24.5%,100%{opacity:1; transform:none} }
+@keyframes fmC2{ 0%,24.5%{opacity:0; transform:translateX(8px)} 27%,100%{opacity:1; transform:none} }
+@keyframes fmC3{ 0%,27%{opacity:0; transform:translateX(8px)} 29.5%,100%{opacity:1; transform:none} }
+@keyframes fmC4{
+  0%,29.5%{opacity:0; transform:translateX(8px)}
+  32%,54%{opacity:1; transform:none; background:rgba(255,255,255,.03); border-color:rgba(255,255,255,.09)}
+  55.5%,57.5%{opacity:1; transform:scale(.95); background:rgba(56,255,179,.16); border-color:rgba(56,255,179,.55)}
+  60%,100%{opacity:1; transform:none; background:rgba(255,255,255,.03); border-color:rgba(56,255,179,.4)}
+}
+.fm-det2{ left:2px; top:262px; animation:fmDet2 18s steps(26, end) infinite both; }
+@keyframes fmDet2{ 0%,58%{opacity:1; clip-path:inset(0 100% 0 0)} 65%,92%{opacity:1; clip-path:inset(0 0 0 0)} 96%,100%{opacity:0} }
+
+/* ===== Scene 3: 3D Suite =====
+   Micro-UI in the real GlassUI language (glass chrome, emerald accents
+   #12C2A8 / #03FCDA from the actual theme). The true workflow: Sketch001
+   draws → Pad extrudes it into a solid → Fillet rounds it — each feature
+   appearing in the model tree as it's created — then the slice preview
+   rebuilds it layer by layer. */
+.gs-tools{
+  left:0; top:30px; display:inline-flex; gap:6px;
+  animation:gsIn 18s linear infinite both;
+}
+.gs-tools > *{ position:static; }
+@keyframes gsIn{ 0%,5%{opacity:0; transform:translateY(-5px)} 8%,92%{opacity:1; transform:none} 96%,100%{opacity:0} }
+.gs-tool{
+  font:700 8px/1 ui-monospace, "Cascadia Code", Consolas, monospace; letter-spacing:.12em;
+  color:#c6d0f0a6; padding:6px 9px; border-radius:8px;
+  background:rgba(0,0,0,.43); border:1px solid rgba(255,255,255,.10);
+}
+.gs-tl1{ animation:gsTl1 18s linear infinite both; }
+.gs-tl2{ animation:gsTl2 18s linear infinite both; }
+.gs-tl3{ animation:gsTl3 18s linear infinite both; }
+@keyframes gsTl1{ 0%,12%{color:#c6d0f0a6; border-color:rgba(255,255,255,.10)} 13%,23%{color:#03FCDA; border-color:rgba(3,252,218,.55); box-shadow:0 0 12px rgba(3,252,218,.25)} 25%,100%{color:#c6d0f0a6; border-color:rgba(255,255,255,.10); box-shadow:none} }
+@keyframes gsTl2{ 0%,25%{color:#c6d0f0a6; border-color:rgba(255,255,255,.10)} 26%,39%{color:#03FCDA; border-color:rgba(3,252,218,.55); box-shadow:0 0 12px rgba(3,252,218,.25)} 41%,100%{color:#c6d0f0a6; border-color:rgba(255,255,255,.10); box-shadow:none} }
+@keyframes gsTl3{ 0%,43%{color:#c6d0f0a6; border-color:rgba(255,255,255,.10)} 44%,53%{color:#03FCDA; border-color:rgba(3,252,218,.55); box-shadow:0 0 12px rgba(3,252,218,.25)} 55%,100%{color:#c6d0f0a6; border-color:rgba(255,255,255,.10); box-shadow:none} }
+
+.gs-view{
+  left:0; top:56px; width:252px; height:230px;
+  border-radius:10px; overflow:hidden;
+  background:#04060b;
+  background-image:radial-gradient(rgba(35,48,60,.4) 1px, transparent 1px);
+  background-size:17px 17px;
+  border:1px solid rgba(255,255,255,.08);
+  perspective:720px; perspective-origin:50% 34%;
+  animation:gsIn 18s linear infinite both;
+}
+
+/* a REAL 3D scene: the whole world slowly orbits like a CAD viewport */
+.gs-world{
+  position:absolute; left:118px; top:158px; width:0; height:0;
+  transform-style:preserve-3d;
+  animation:gsWorld 18s ease-in-out infinite both;
+}
+.gs-world *{ position:absolute; }
+@keyframes gsWorld{
+  0%{transform:rotateX(-24deg) rotateY(-30deg)}
+  50%{transform:rotateX(-24deg) rotateY(26deg)}
+  100%{transform:rotateX(-24deg) rotateY(-30deg)}
+}
+
+/* ground grid plane + axes */
+.gs-floor{
+  left:-80px; top:-80px; width:160px; height:160px;
+  transform:rotateX(90deg);
+  background:
+    repeating-linear-gradient(0deg, rgba(18,194,168,.15) 0 1px, transparent 1px 16px),
+    repeating-linear-gradient(90deg, rgba(18,194,168,.15) 0 1px, transparent 1px 16px);
+  -webkit-mask-image:radial-gradient(closest-side, #000 50%, transparent 100%);
+          mask-image:radial-gradient(closest-side, #000 50%, transparent 100%);
+  animation:gsFloorIn 18s linear infinite both;
+}
+@keyframes gsFloorIn{ 0%,8%{opacity:0} 11%,100%{opacity:1} }
+.gs-ax{ height:1.5px; transform-origin:0 50%; animation:gsAxIn 18s linear infinite both; }
+.gs-axX{ left:0; top:0; width:70px; background:#12C2A8; box-shadow:0 0 5px rgba(18,194,168,.7); transform:rotateX(90deg); }
+.gs-axZ{ left:0; top:0; width:55px; background:#4aa3ff; box-shadow:0 0 5px rgba(74,163,255,.5); transform:rotateX(90deg) rotateZ(-90deg); }
+@keyframes gsAxIn{ 0%,9%{opacity:0} 12%,100%{opacity:.85} }
+
+/* Sketch001 — the footprint draws ON the ground plane, in 3D */
+.gs-sketch3d{
+  left:-56px; top:-31px; width:112px; height:62px;
+  border:1.5px dashed #12C2A8; border-radius:3px;
+  transform:rotateX(90deg) translateZ(0.6px);
+  animation:gsSketch3 18s linear infinite both;
+}
+@keyframes gsSketch3{
+  0%,12%{opacity:0; clip-path:inset(0 100% 0 0)}
+  13%{opacity:1}
+  20%{clip-path:inset(0 0 0 0); border-style:dashed}
+  23%,25%{border-style:solid; box-shadow:0 0 12px rgba(3,252,218,.45)}
+  27%,40%{opacity:1; border-style:solid; box-shadow:none; clip-path:inset(0 0 0 0)}
+  46%,100%{opacity:0}
+}
+
+/* THE PART, two representations of the same body:
+   1) .gs-solid — ONE box (118 × 64 × 56). Pad = it EXTRUDES: pulled up out of
+      the sketch as a single solid (scaleY on the 3D wrapper, anchored to the
+      floor), no seams, top face riding up. Fillet rounds it.
+   2) .gs-slab × 8 — the sliced layers. They exist ONLY in the slice phase:
+      the solid blinks out, then layers materialize bottom-up in place. */
+.gs-solid{
+  left:-59px; top:-56px; width:118px; height:56px;
+  transform-style:preserve-3d; transform-origin:50% 100%;
+  animation:gsSolidGrow 18s linear infinite both;
+}
+/* the extrude: continuous pull from the profile to full height */
+@keyframes gsSolidGrow{
+  0%,26%{transform:scaleY(.02); animation-timing-function:cubic-bezier(.3,.1,.25,1)}
+  37.5%,100%{transform:scaleY(1)}
+}
+.sx{
+  box-sizing:border-box; backface-visibility:hidden;
+  border:1px solid rgba(18,194,168,.18);
+  animation:gsRound 18s linear infinite both, gsSolidF 18s linear infinite both;
+}
+.sx.f{ left:0; top:0; width:118px; height:56px; transform:translateZ(32px); background:#114639; }
+.sx.b{ left:0; top:0; width:118px; height:56px; transform:rotateY(180deg) translateZ(32px); background:#0d3a30; }
+.sx.r{ left:27px; top:0; width:64px; height:56px; transform:rotateY(90deg) translateZ(59px); background:#0a332b; }
+.sx.l{ left:27px; top:0; width:64px; height:56px; transform:rotateY(-90deg) translateZ(59px); background:#0c3a31; }
+.sx.t{ left:0; top:-4px; width:118px; height:64px; transform:rotateX(90deg) translateZ(28px); background:linear-gradient(135deg,#175a4c,#113f36); }
+/* faces carry the opacity (animating opacity on a preserve-3d wrapper makes
+   Chromium flatten the subtree) — in with the extrude, out at the slice blink */
+@keyframes gsSolidF{ 0%,25.2%{opacity:0} 26.4%,53.5%{opacity:1} 54.5%,100%{opacity:0} }
+
+.gs-slab{
+  left:-59px; top:-7px; width:118px; height:7px;
+  transform-style:preserve-3d;
+}
+.gs-s1{ transform:translateY(0); }
+.gs-s2{ transform:translateY(-7px); }
+.gs-s3{ transform:translateY(-14px); }
+.gs-s4{ transform:translateY(-21px); }
+.gs-s5{ transform:translateY(-28px); }
+.gs-s6{ transform:translateY(-35px); }
+.gs-s7{ transform:translateY(-42px); }
+.gs-s8{ transform:translateY(-49px); }
+.sl{ box-sizing:border-box; backface-visibility:hidden; border:1px solid rgba(18,194,168,.14); }
+.sl.f{ left:0; top:0; width:118px; height:7px; transform:translateZ(32px); background:#114639; }
+.sl.b{ left:0; top:0; width:118px; height:7px; transform:rotateY(180deg) translateZ(32px); background:#0d3a30; }
+.sl.r{ left:27px; top:0; width:64px; height:7px; transform:rotateY(90deg) translateZ(59px); background:#0a332b; }
+.sl.l{ left:27px; top:0; width:64px; height:7px; transform:rotateY(-90deg) translateZ(59px); background:#0c3a31; }
+.sl.t{ left:0; top:-28.5px; width:118px; height:64px; transform:rotateX(90deg) translateZ(3.4px); background:linear-gradient(135deg,#175a4c,#113f36); }
+@keyframes gsRound{ 0%,44%{border-radius:1px} 48%,100%{border-radius:4px} }
+
+.gs-s1 .sl{ animation:gsRound 18s linear infinite both, gsEdge1 18s linear infinite both; }
+.gs-s2 .sl{ animation:gsRound 18s linear infinite both, gsEdge2 18s linear infinite both; }
+.gs-s3 .sl{ animation:gsRound 18s linear infinite both, gsEdge3 18s linear infinite both; }
+.gs-s4 .sl{ animation:gsRound 18s linear infinite both, gsEdge4 18s linear infinite both; }
+.gs-s5 .sl{ animation:gsRound 18s linear infinite both, gsEdge5 18s linear infinite both; }
+.gs-s6 .sl{ animation:gsRound 18s linear infinite both, gsEdge6 18s linear infinite both; }
+.gs-s7 .sl{ animation:gsRound 18s linear infinite both, gsEdge7 18s linear infinite both; }
+.gs-s8 .sl{ animation:gsRound 18s linear infinite both, gsEdge8 18s linear infinite both; }
+/* the slice: each layer is invisible for the whole model phase, then appears
+   in place bottom-up — igniting emerald as the current layer, settling to a
+   soft sliced-edge, and finally relaxing to the finished-part look */
+@keyframes gsEdge1{ 0%,56%{opacity:0; border-color:rgba(18,194,168,.14)} 56.7%{opacity:1; border-color:rgba(3,252,218,.95)} 58.2%,71%{opacity:1; border-color:rgba(3,252,218,.45)} 74%,100%{opacity:1; border-color:rgba(18,194,168,.14)} }
+@keyframes gsEdge2{ 0%,57.6%{opacity:0; border-color:rgba(18,194,168,.14)} 58.3%{opacity:1; border-color:rgba(3,252,218,.95)} 59.8%,71%{opacity:1; border-color:rgba(3,252,218,.45)} 74%,100%{opacity:1; border-color:rgba(18,194,168,.14)} }
+@keyframes gsEdge3{ 0%,59.2%{opacity:0; border-color:rgba(18,194,168,.14)} 59.9%{opacity:1; border-color:rgba(3,252,218,.95)} 61.4%,71%{opacity:1; border-color:rgba(3,252,218,.45)} 74%,100%{opacity:1; border-color:rgba(18,194,168,.14)} }
+@keyframes gsEdge4{ 0%,60.8%{opacity:0; border-color:rgba(18,194,168,.14)} 61.5%{opacity:1; border-color:rgba(3,252,218,.95)} 63%,71%{opacity:1; border-color:rgba(3,252,218,.45)} 74%,100%{opacity:1; border-color:rgba(18,194,168,.14)} }
+@keyframes gsEdge5{ 0%,62.4%{opacity:0; border-color:rgba(18,194,168,.14)} 63.1%{opacity:1; border-color:rgba(3,252,218,.95)} 64.6%,71%{opacity:1; border-color:rgba(3,252,218,.45)} 74%,100%{opacity:1; border-color:rgba(18,194,168,.14)} }
+@keyframes gsEdge6{ 0%,64%{opacity:0; border-color:rgba(18,194,168,.14)} 64.7%{opacity:1; border-color:rgba(3,252,218,.95)} 66.2%,71%{opacity:1; border-color:rgba(3,252,218,.45)} 74%,100%{opacity:1; border-color:rgba(18,194,168,.14)} }
+@keyframes gsEdge7{ 0%,65.6%{opacity:0; border-color:rgba(18,194,168,.14)} 66.3%{opacity:1; border-color:rgba(3,252,218,.95)} 67.8%,71%{opacity:1; border-color:rgba(3,252,218,.45)} 74%,100%{opacity:1; border-color:rgba(18,194,168,.14)} }
+@keyframes gsEdge8{ 0%,67.2%{opacity:0; border-color:rgba(18,194,168,.14)} 67.9%{opacity:1; border-color:rgba(3,252,218,.95)} 69.4%,71%{opacity:1; border-color:rgba(3,252,218,.45)} 74%,100%{opacity:1; border-color:rgba(18,194,168,.14)} }
+
+
+/* model tree — features appear AS they're created, like the real app */
+.gs-tree{
+  left:262px; top:56px; width:138px;
+  display:flex; flex-direction:column; gap:4px; padding:9px 11px;
+  background:rgba(0,0,0,.43); border:1px solid rgba(255,255,255,.10); border-radius:12px;
+  box-shadow:0 8px 24px rgba(0,0,0,.5);
+  animation:gsIn 18s linear infinite both;
+}
+.gs-tree > *{ position:static; }
+.gs-treehead{ font:700 7.5px/1 ui-monospace, "Cascadia Code", Consolas, monospace; letter-spacing:.24em; color:#c6d0f0a6; margin-bottom:2px; }
+.gs-node{
+  font:600 9.5px/1.2 ui-sans-serif, "Segoe UI", sans-serif; color:#dcdbf0e1;
+  padding:4px 6px; border-radius:6px; opacity:0;
+}
+.gs-n1, .gs-n2, .gs-n3{ margin-left:10px; }
+.gs-n0{ animation:gsN0 18s linear infinite both; }
+.gs-n1{ animation:gsN1 18s linear infinite both; }
+.gs-n2{ animation:gsN2 18s linear infinite both; }
+.gs-n3{ animation:gsN3 18s linear infinite both; }
+@keyframes gsN0{ 0%,9%{opacity:0} 11%,100%{opacity:1} }
+@keyframes gsN1{
+  0%,14%{opacity:0; transform:translateX(-6px)}
+  16%{opacity:1; transform:none; color:#03FCDA; background:rgba(3,252,218,.09)}
+  24%{color:#03FCDA; background:rgba(3,252,218,.09)}
+  27%,100%{opacity:1; color:#dcdbf0e1; background:transparent}
+}
+@keyframes gsN2{
+  0%,27%{opacity:0; transform:translateX(-6px)}
+  29%{opacity:1; transform:none; color:#03FCDA; background:rgba(3,252,218,.09)}
+  40%{color:#03FCDA; background:rgba(3,252,218,.09)}
+  43%,100%{opacity:1; color:#dcdbf0e1; background:transparent}
+}
+@keyframes gsN3{
+  0%,44%{opacity:0; transform:translateX(-6px)}
+  46%{opacity:1; transform:none; color:#03FCDA; background:rgba(3,252,218,.09)}
+  53%{color:#03FCDA; background:rgba(3,252,218,.09)}
+  56%,100%{opacity:1; color:#dcdbf0e1; background:transparent}
+}
+
+/* slicer rail */
+.gs-slice{
+  left:262px; top:176px; width:138px;
+  display:flex; flex-direction:column; gap:8px; padding:10px 11px;
+  background:rgba(0,0,0,.43); border:1px solid rgba(255,255,255,.10); border-radius:12px;
+  box-shadow:0 8px 24px rgba(0,0,0,.5);
+  animation:gsSliceCard 18s linear infinite both;
+}
+.gs-slice > *{ position:static; }
+@keyframes gsSliceCard{ 0%,51.5%{opacity:0; transform:translateY(8px)} 53.5%,92%{opacity:1; transform:none} 96%,100%{opacity:0} }
+.gs-schip{
+  align-self:flex-start;
+  font:800 8px/1 ui-monospace, "Cascadia Code", Consolas, monospace; letter-spacing:.14em;
+  color:#03FCDA; border:1px solid rgba(3,252,218,.45); border-radius:6px; padding:4px 7px;
+  background:rgba(3,252,218,.06);
+}
+/* live layer counter, synced to the slab stack */
+.gs-scount{ position:relative; display:block; height:11px; font:600 8.5px/1 ui-monospace, "Cascadia Code", Consolas, monospace; color:#c6d0f0a6; }
+.gs-sc{ position:absolute; left:0; top:0; font-weight:800; color:#03FCDA; opacity:0; }
+.gs-scount em{ position:absolute; left:50px; top:0; font-style:normal; }
+.gs-sc1{ animation:gsSc1 18s linear infinite both; }
+.gs-sc2{ animation:gsSc2 18s linear infinite both; }
+.gs-sc3{ animation:gsSc3 18s linear infinite both; }
+@keyframes gsSc1{ 0%,56%{opacity:0} 57%,60.5%{opacity:1} 61.5%,100%{opacity:0} }
+@keyframes gsSc2{ 0%,61.5%{opacity:0} 62.5%,65.8%{opacity:1} 66.8%,100%{opacity:0} }
+@keyframes gsSc3{ 0%,66.8%{opacity:0} 67.8%,100%{opacity:1} }
+.gs-sbar{ position:relative; display:block; height:7px; border-radius:4px; background:rgba(255,255,255,.07); overflow:hidden; }
+.gs-sbar u{
+  position:absolute; left:0; top:0; bottom:0; width:0; border-radius:4px;
+  background:linear-gradient(90deg,#12C2A8,#03FCDA);
+  animation:gsSFill 18s linear infinite both;
+}
+@keyframes gsSFill{ 0%,56%{width:0} 69.5%,100%{width:100%} }
+.gs-ready{
+  align-self:flex-start;
+  font:800 8.5px/1 ui-monospace, "Cascadia Code", Consolas, monospace; letter-spacing:.1em;
+  color:#03FCDA; border:1px solid rgba(3,252,218,.55); border-radius:999px; padding:5px 9px;
+  background:rgba(3,252,218,.07); box-shadow:0 0 16px rgba(3,252,218,.25);
+  opacity:0;
+  animation:gsReady 18s linear infinite both;
+}
+@keyframes gsReady{ 0%,73%{opacity:0; transform:scale(.85)} 75.5%,100%{opacity:1; transform:none} }
+
+
+@media (prefers-reduced-motion: reduce){
+  .hero-show *, .hero-show{ animation:none !important; }
+  .hs-tool{ opacity:0; }
+  /* still frame = scene 1's finished state; the other scenes stay hidden */
+  .hs-s2, .hs-s3{ opacity:0; }
+}
+
+/* Display face for the statement type only — sizes and layout untouched */
+.hero h1,
+.panel h2,
+.ph-title,
+.shop-title{
+  font-family:"Space Grotesk", ui-sans-serif, system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  letter-spacing:-.01em;
+}
+
 .hero h1{
   background: linear-gradient(
     130deg,
@@ -31,6 +691,37 @@
   font-size:1.02rem;
   line-height:1.6;
   color:var(--muted);
+  max-width:62ch;
+}
+
+/* The one-liner: the ✦ starred-label style (matches the spotlight row labels),
+   scaled up. Open-ended — it hands off to the two buttons below it. */
+.hero .hero-tagline{
+  font:700 1.06rem/1.4 ui-monospace, "SF Mono", "Cascadia Code", Menlo, monospace;
+  letter-spacing:.26em;
+  text-transform:uppercase;
+  color:var(--teal-bright, #36e6ca);
+  max-width:none;
+  margin-top:.35rem;
+  /* the text rides the same palette drift as its diamond */
+  animation:hero-star-hue 12.8s linear infinite;
+}
+.hero .hero-tagline::before{
+  content:"✦"; margin-right:10px; display:inline-block;
+  color:var(--brand-cyan, #1fe0ff);
+  text-shadow:0 0 10px rgba(31, 224, 255, .8);
+  /* the one diamond that drifts through the whole palette — gold included */
+  animation:ph-twinkle 3.2s ease-in-out infinite, hero-star-hue 12.8s linear infinite;
+}
+@keyframes hero-star-hue{
+  0%, 100% { color:var(--brand-cyan, #1fe0ff);   text-shadow:0 0 10px rgba(31, 224, 255, .8); }
+  25%      { color:var(--brand-purp, #bf7dff);   text-shadow:0 0 10px rgba(191, 125, 255, .8); }
+  50%      { color:var(--accent-gold, #e6c688);  text-shadow:0 0 10px rgba(230, 198, 136, .85); }
+  75%      { color:var(--teal-bright, #36e6ca);  text-shadow:0 0 10px rgba(54, 230, 202, .8); }
+}
+@media (prefers-reduced-motion: reduce){
+  .hero .hero-tagline,
+  .hero .hero-tagline::before{ animation:none; }
 }
 
 .hero .row{
@@ -63,11 +754,28 @@
   box-shadow: none;
 }
 
-.hero .login-panel strong{
-  font-size:.8rem;
-  letter-spacing:.12em;
+/* Column headers: same ✦ starred-label style as the spotlight rows */
+.hero .login-panel > strong{
+  font:700 .8rem/1.2 ui-monospace, "SF Mono", "Cascadia Code", Menlo, monospace;
+  letter-spacing:.26em;
   text-transform: uppercase;
-  color: var(--brand-600);
+  color: var(--teal-bright, #36e6ca);
+}
+.hero .login-panel > strong::before{
+  content:"✦"; margin-right:8px; display:inline-block;
+  color:var(--brand-cyan, #1fe0ff);
+  text-shadow:0 0 10px rgba(31, 224, 255, .8);
+  animation:ph-twinkle 3.2s ease-in-out infinite;
+}
+.hero .fast-path-col > strong::before{
+  color:var(--brand-purp, #bf7dff);
+  text-shadow:0 0 10px rgba(191, 125, 255, .8);
+  animation-delay:1.6s;
+}
+
+@media (prefers-reduced-motion: reduce){
+  .hero .hero-tagline::before,
+  .hero .login-panel > strong::before{ animation:none; }
 }
 
 .hero .login-panel .muted{

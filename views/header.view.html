@@ -39,16 +39,29 @@
                 </button>
               <ul class="dropdown-menu">
                 <li><span class="menu-section">Platform</span></li>
-                <li><a href="#" data-action="set-mode" data-mode="landing">Landing</a></li>              
-                <li><a href="#" data-action="set-mode" data-mode="console">API Console</a></li>
-                <li><a href="https://fnmdemo.pragoptics.com" target="_blank" rel="noopener noreferrer">Field Node Manager (demo)</a></li>
-                <li><a href="#" id="navWizard" class="hidden" data-action="open-wizard">Wizard</a></li>
+                <li><button type="button" data-action="set-mode" data-mode="landing">Landing</button></li>
+                <li><button type="button" data-action="set-mode" data-mode="console">API Console</button></li>
+                <li><button type="button" id="navWizard" class="hidden" data-action="open-wizard">Wizard</button></li>
 
+                <li><span class="menu-section">Resources</span></li>
+                <li><button type="button" data-action="open-docs">Documentation</button></li>
+                <li><button type="button" data-action="set-mode" data-mode="builds">Share Your Build</button></li>
+
+                <li><span class="menu-section">Shop</span></li>
+                <li data-shop-only><button type="button" data-action="set-mode" data-mode="shop">Hardware</button></li>
+                <li><button type="button" data-action="set-mode" data-mode="software">Software</button></li>
+                <li data-shop-only>
+                  <button type="button" data-action="open-cart">
+                    Cart <span class="cart-count" id="navCartCount" aria-live="polite">0</span>
+                  </button>
+                </li>
+                <li data-shop-only><button type="button" data-action="checkout">Checkout</button></li>
 
                 <li><span class="menu-section">Account</span></li>
-                <li><a href="#" data-action="open-billing">Billing</a></li>  
-                <li><a href="#" data-action="open-login">Login</a></li>
-                <li><a href="#" data-action="logout">Logout</a></li>
+                <li><button type="button" data-action="set-mode" data-mode="warranty">My Products</button></li>
+                <li><button type="button" data-action="open-billing">Billing</button></li>
+                <li><button type="button" data-action="open-login">Login</button></li>
+                <li><button type="button" data-action="logout">Logout</button></li>
 
               </ul>
             </li>

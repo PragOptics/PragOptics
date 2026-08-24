@@ -84,7 +84,7 @@
 <p>For background on the protocol itself, see <a href="/hart/what-is-hart/">what is HART</a>, and the <a href="/hart/glossary/">HART glossary</a> for terms like LRV, URV, DD/EDD, and master roles.</p>
 
 <h2>OmniBus: a universal, vendor-neutral HART communicator and calibration recorder</h2>
-<p>OmniBus is a universal, vendor-neutral handheld HART communicator and calibration recorder built by <a href="/">PragOptics</a> (Fortiview Holdings). It combines the communicator, the documenting calibrator, and the audit record in one rugged, battery-powered, touchscreen field node, and it is designed to sidestep the descriptor lock-in described above.</p>
+<p>OmniBus is a universal, vendor-neutral handheld HART communicator and calibration recorder built by <a href="/">PragOptics</a>. It combines the communicator, the documenting calibrator, and the audit record in one rugged, battery-powered, touchscreen field node, and it is designed to sidestep the descriptor lock-in described above.</p>
 <p>Per the OmniBus brochure, it is vendor-neutral by design: instead of locking to one manufacturer's device descriptors, it speaks universal, common-practice HART and organizes commands by <strong>device family</strong> (Temperature, Level, Pressure, PID Control), so the screen shows only what the connected instrument can actually do. No per-vendor handheld, no descriptor licensing.</p>
 <ul>
 <li><strong>Every form factor in one.</strong> It works as a self-contained handheld over its on-board two-wire loop, as a USB HART modem path, and across the network over HART-IP, all feeding the same workflow.</li>

@@ -12,12 +12,12 @@
   <link rel="apple-touch-icon" href="https://pragoptics.com/images/apple-touch-icon.png">
 
   <!-- Reuse site tokens + base so Codex matches platform -->
-  <link rel="stylesheet" href="https://pragoptics.com/css/tokens.css">
-  <link rel="stylesheet" href="https://pragoptics.com/css/base.css">
-  <link rel="stylesheet" href="https://pragoptics.com/css/utilities.css">
+  <link rel="stylesheet" href="/css/tokens.css">
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/utilities.css">
 
   <!-- Reuse markdown styling you already trust -->
-  <link rel="stylesheet" href="https://pragoptics.com/css/components/modals.css">
+  <link rel="stylesheet" href="/css/components/modals.css">
 
   <!-- Codex runtime styles -->
   <link rel="stylesheet" href="codex/codex.css">
@@ -27,10 +27,18 @@
   <div class="codex-shell">
     <aside class="codex-nav" aria-label="Documentation navigation">
       <div class="codex-nav-head">
-        <div class="codex-brand">PragOptics<span class="tm">™</span> Codex</div>
+        <a class="codex-brand-link" href="/" title="Back to PragOptics">
+          <img class="codex-logo" src="/images/logo.png" alt="PragOptics" width="28" height="28"
+               onerror="this.onerror=null;this.src='https://pragoptics.com/images/logo.png'">
+          <span class="codex-brand">PragOptics<span class="tm">™</span> Codex</span>
+        </a>
         <button id="codexNavToggle" class="codex-nav-toggle" type="button" aria-label="Toggle navigation">
           ☰
         </button>
+      </div>
+
+      <div class="codex-nav-actions">
+        <a id="codexHome" class="codex-home" href="#">Library index</a>
       </div>
 
       <div id="codexTree" class="codex-tree" role="tree" aria-label="Docs tree"></div>

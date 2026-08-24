@@ -1,0 +1,246 @@
+/* /css/views/shop.css
+   Hardware Shop — search + sort + filter tabs above a gallery grid.
+   The toolbar is sticky so the search and filters stay reachable while the
+   customer scrolls the gallery. */
+
+.shop { padding: 28px 26px 32px; margin-top: 10px; }
+
+/* ---- Compact header ---- */
+/* software.view.html and checkout.view.html use <header class="shop-head">, and a
+   global `header { position: fixed }` (the site nav) would rip it out of flow and
+   float it over the cards. Force it back into normal flow. */
+.shop-head { position: static; margin-bottom: 20px; }
+.shop-kicker {
+  display: inline-block; font-size: .72rem; letter-spacing: .22em; text-transform: uppercase;
+  color: var(--brand-600, #21bca5); font-weight: 800;
+}
+.shop-title {
+  margin: .25em 0 .35em; font-weight: 850; font-size: 1.9rem; line-height: 1.15;
+  background: linear-gradient(130deg, #fff 8%, var(--brand-600, #21bca5) 54%, var(--brand-purp, #a200ff) 96%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.shop-sub { margin: 0; color: var(--muted, #c6d0f0a6); max-width: 68ch; line-height: 1.55; }
+
+/* ---- Sticky commerce toolbar ---- */
+.shop-toolbar {
+  position: sticky; top: 10px; z-index: 5;
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) auto auto auto;
+  gap: 10px 14px; align-items: center;
+  padding: 12px 14px; margin: 0 -6px 18px;
+  border-radius: 16px;
+  background: linear-gradient(140deg, rgba(10, 15, 25, .88), rgba(15, 10, 25, .88));
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--border, rgba(255, 255, 255, .10));
+  box-shadow: 0 12px 34px rgba(0, 0, 0, .35);
+}
+
+/* Search */
+.shop-search {
+  position: relative; display: flex; align-items: center;
+  background: rgba(0, 0, 0, .32);
+  border: 1px solid var(--border, rgba(255, 255, 255, .12));
+  border-radius: 14px;
+  transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
+}
+.shop-search:focus-within {
+  border-color: var(--brand-600, #21bca5);
+  background: rgba(33, 188, 165, .04);
+  box-shadow: 0 0 0 3px rgba(33, 188, 165, .16);
+}
+.shop-search-icon {
+  position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+  color: var(--muted, #c6d0f0a6); pointer-events: none;
+  transition: color 160ms ease;
+}
+.shop-search:focus-within .shop-search-icon { color: var(--brand-600, #21bca5); }
+.shop-search-input {
+  width: 100%; padding: 11px 40px 11px 38px;
+  background: transparent; color: var(--ink, #dcdbf0e1);
+  border: 0; outline: 0; font: inherit; font-size: .95rem;
+}
+.shop-search-input::placeholder { color: var(--muted, #c6d0f0a6); opacity: .8; }
+.shop-search-input::-webkit-search-cancel-button { display: none; }
+.shop-search-clear {
+  position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+  width: 26px; height: 26px; border-radius: 10px;
+  background: rgba(255, 255, 255, .04); color: var(--muted, #c6d0f0a6);
+  border: 1px solid var(--border, rgba(255, 255, 255, .10));
+  cursor: pointer; font-size: .8rem; padding: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  transition: color 160ms ease, background 160ms ease, border-color 160ms ease;
+}
+.shop-search-clear:hover { color: #fff; background: rgba(162, 0, 255, .18); border-color: rgba(162, 0, 255, .5); }
+
+/* Availability tabs */
+.shop-tabs { display: flex; gap: 4px; padding: 3px;
+  background: rgba(0, 0, 0, .32);
+  border-radius: 14px; border: 1px solid var(--border, rgba(255, 255, 255, .10));
+}
+.shop-tab {
+  padding: 7px 12px; border-radius: 11px;
+  border: 0; background: transparent; color: var(--muted, #c6d0f0a6);
+  font-weight: 700; font-size: .82rem; letter-spacing: .04em; cursor: pointer;
+  transition: background 160ms ease, color 160ms ease, box-shadow 160ms ease;
+}
+.shop-tab:hover { color: var(--ink, #dcdbf0e1); background: rgba(33, 188, 165, .08); }
+.shop-tab.is-active {
+  color: #04130f;
+  background: linear-gradient(120deg, var(--brand-600, #21bca5), var(--brand, #1ca490));
+  box-shadow: 0 4px 12px rgba(33, 188, 165, .35);
+}
+.shop-tab:focus-visible { outline: 2px solid var(--brand-600, #21bca5); outline-offset: 2px; }
+
+/* Sort dropdown */
+.shop-sort { display: inline-flex; align-items: center; gap: 8px;
+  padding: 0 4px 0 12px;
+  background: rgba(0, 0, 0, .32);
+  border: 1px solid var(--border, rgba(255, 255, 255, .12));
+  border-radius: 14px;
+}
+.shop-sort-label { color: var(--muted, #c6d0f0a6); font-weight: 700; font-size: .82rem; letter-spacing: .04em; }
+.shop-sort-select {
+  padding: 10px 30px 10px 6px; background: transparent; color: var(--ink, #dcdbf0e1);
+  border: 0; outline: 0; font: inherit; font-size: .9rem; font-weight: 700;
+  cursor: pointer;
+  appearance: none; -webkit-appearance: none; -moz-appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, var(--brand-600, #21bca5) 50%),
+                    linear-gradient(135deg, var(--brand-600, #21bca5) 50%, transparent 50%);
+  background-position: calc(100% - 16px) 50%, calc(100% - 10px) 50%;
+  background-size: 6px 6px, 6px 6px;
+  background-repeat: no-repeat;
+}
+.shop-sort-select option { background: #0b0f19; color: var(--ink, #dcdbf0e1); }
+.shop-sort:focus-within { border-color: var(--brand-600, #21bca5); box-shadow: 0 0 0 3px rgba(33, 188, 165, .16); }
+
+/* Result count */
+.shop-count {
+  padding: 0 10px; font-size: .82rem; font-weight: 700; color: var(--muted, #c6d0f0a6);
+  letter-spacing: .04em; white-space: nowrap; text-align: right;
+}
+.shop-count strong { color: var(--brand-600, #21bca5); font-weight: 800; }
+
+/* ---- Gallery grid ---- */
+.shop-gallery {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 18px;
+}
+
+/* ---- Card ---- */
+.pcard {
+  position: relative; display: block; border-radius: var(--radius-card); overflow: hidden;
+  background: var(--card-surface);
+  border: 1px solid var(--card-border);
+  box-shadow: var(--card-shadow-rest);
+  transition: transform var(--card-ease), box-shadow var(--card-ease), border-color var(--card-ease);
+}
+.pcard:hover {
+  /* overflow:hidden clips a hover-retention strip, so this lift keeps the
+     bottom edge planted (translate up + slight grow) — no vacated band, no
+     edge flicker */
+  transform: translateY(-2px) scale(1.01);
+  border-color: var(--card-border-hover);
+  box-shadow: var(--card-shadow-hover);
+}
+
+.pcard-hit {
+  all: unset; box-sizing: border-box; cursor: pointer;
+  display: block; width: 100%; text-align: left;
+  color: inherit; font: inherit;
+}
+.pcard-hit:focus-visible { outline: 2px solid var(--brand-600, #21bca5); outline-offset: -2px; border-radius: var(--radius-card); }
+
+.pcard-media {
+  position: relative; aspect-ratio: 4 / 3;
+  background: #05070d;
+  border-bottom: 1px solid var(--border, rgba(255, 255, 255, .10));
+  overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+}
+.pcard-img {
+  width: 100%; height: 100%; object-fit: contain;
+  transition: transform 320ms cubic-bezier(.22,.61,.36,1);
+}
+.pcard:hover .pcard-img { transform: scale(1.04); }
+
+/* Status pills — same monospace treatment as software .sw-access (radius 8px) */
+.pcard-badge {
+  position: absolute; top: 12px; left: 12px; z-index: 2;
+  font: 700 .6rem/1 ui-monospace, "SF Mono", "Cascadia Code", Menlo, monospace;
+  letter-spacing: .16em; text-transform: uppercase;
+  padding: 5px 9px; border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, .14); color: var(--ink, #dcdbf0e1);
+  background: rgba(5, 7, 13, .55);
+}
+
+/* Availability chips (used on hardware pcards) */
+.chip {
+  position: absolute; top: 12px; right: 12px; z-index: 2;
+  font: 700 .6rem/1 ui-monospace, "SF Mono", "Cascadia Code", Menlo, monospace;
+  letter-spacing: .16em; text-transform: uppercase;
+  padding: 5px 9px; border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, .14); color: var(--ink, #dcdbf0e1);
+  background: rgba(5, 7, 13, .55);
+}
+.chip-avail { color: #7fe9cf; border-color: rgba(56, 255, 179, .4); }
+.chip-pre   { color: #ffcc7a; border-color: rgba(255, 178, 61, .42); }
+.chip-soon  { color: var(--muted, #c6d0f0a6); border-color: rgba(255, 255, 255, .18); }
+
+.pcard-body { padding: 16px 18px 18px; display: flex; flex-direction: column; gap: 6px; }
+.pcard-name {
+  margin: 0; font-size: 1.2rem; font-weight: 850; letter-spacing: -.01em;
+  color: var(--card-title);
+}
+.pcard-tag { margin: 0; color: var(--ink, #dcdbf0e1); font-weight: 600; font-size: .95rem; }
+.pcard-sub { margin: 4px 0 0; color: var(--muted, #c6d0f0a6); font-size: .88rem; line-height: 1.5; }
+
+.pcard-foot {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
+  margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border, rgba(255, 255, 255, .08));
+}
+.pcard-price {
+  font-weight: 850; font-size: 1rem;
+  color: var(--brand-600, #21bca5);
+}
+.pcard-cta { color: var(--brand-600, #21bca5); font-weight: 700; font-size: .88rem; }
+.pcard:hover .pcard-cta { color: #fff; }
+
+/* ---- Empty state ---- */
+.shop-empty {
+  padding: 44px 20px; border-radius: 18px;
+  border: 1px dashed rgba(255, 255, 255, .16);
+  background: rgba(255, 255, 255, .02);
+  text-align: center;
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+}
+.shop-empty[hidden] { display: none; }
+.shop-empty-glyph { font-size: 2.8rem; color: rgba(191, 125, 255, .35); }
+.shop-empty h3 { margin: 0; font-size: 1.1rem; color: var(--ink, #dcdbf0e1); }
+
+/* ---- Roadmap teaser ---- */
+.shop-roadmap {
+  margin-top: 24px; padding: 16px 18px; border-radius: 14px;
+  border: 1px dashed rgba(255, 255, 255, .18);
+  background: rgba(255, 255, 255, .02);
+}
+.shop-roadmap h3 {
+  margin: 0 0 4px; font-size: 1rem; font-weight: 800;
+  background: linear-gradient(120deg, var(--brand-600, #21bca5), #bf7dff);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.shop-roadmap p { margin: 0; line-height: 1.5; }
+
+/* ---- Responsive ---- */
+@media (max-width: 900px) {
+  .shop-toolbar { grid-template-columns: 1fr auto; grid-template-rows: auto auto; }
+  .shop-search { grid-column: 1 / -1; }
+  .shop-count  { grid-column: 1 / -1; text-align: left; padding-top: 4px; }
+}
+@media (max-width: 620px) {
+  .shop { padding: 22px 16px 26px; }
+  .shop-title { font-size: 1.5rem; }
+  .shop-toolbar { grid-template-columns: 1fr; }
+  .shop-tabs, .shop-sort { justify-self: stretch; }
+  .shop-sort { justify-content: space-between; }
+  .shop-gallery { grid-template-columns: 1fr; gap: 14px; }
+}

@@ -1,0 +1,78 @@
+{
+  "product": "OmniSource",
+  "description": "Print profiles for the OmniSource printed parts. Two materials, three parts, five files. Files are pre-oriented for resin printing. TSMC (two-stage motion control) lift and retract throughout; speeds in mm/min. Values marked TBD are being finalized and will be published here.",
+  "updated": "2026-07-05",
+  "profiles": [
+    {
+      "id": "enclosure-lid-fr-resin",
+      "parts": ["Enclosure", "Lid"],
+      "material": "FR (flame-retardant) resin",
+      "files": [
+        { "file": "OmniSource.stl", "contains": "Enclosure + Lid, print-oriented", "href": "/docs/assets/products/omnisource/enclosure/OmniSource.stl" },
+        { "file": "OmniSource_Enclosure.3mf", "contains": "Enclosure", "href": "/docs/assets/products/omnisource/enclosure/OmniSource_Enclosure.3mf" },
+        { "file": "OmniSource_Lid.3mf", "contains": "Lid", "href": "/docs/assets/products/omnisource/enclosure/OmniSource_Lid.3mf" }
+      ],
+      "orientation": "Pre-oriented in the files for resin printing",
+      "supports": "None — the enclosure and lid print unsupported",
+      "settings": {
+        "layerHeight": "30 µm",
+        "transitionLayers": "5",
+        "lightIntensity": "100%",
+        "bottom": {
+          "layers": "5",
+          "exposure": "18 s",
+          "lift": "0.05 mm then 8 mm",
+          "liftSpeed": "40 then 240 mm/min",
+          "retract": "4.05 mm then 4 mm",
+          "retractSpeed": "100 then 10 mm/min",
+          "waitBeforePrint": "2 s",
+          "waitAfterPrint": "0.05 s"
+        },
+        "normal": {
+          "exposure": "1.8 s",
+          "lift": "0.05 mm then 6 mm",
+          "liftSpeed": "40 then 240 mm/min",
+          "retract": "2.05 mm then 4 mm",
+          "retractSpeed": "180 then 60 mm/min",
+          "waitBeforePrint": "2 s",
+          "waitAfterPrint": "0.05 s"
+        }
+      }
+    },
+    {
+      "id": "case-silicone-resin",
+      "parts": ["Case"],
+      "material": "Silicone-like resin",
+      "files": [
+        { "file": "OmniSource_Case.stl", "contains": "Case, print-oriented, supports included", "href": "/docs/assets/products/omnisource/case/OmniSource_Case.stl" },
+        { "file": "OmniSource_Case.3mf", "contains": "Case", "href": "/docs/assets/products/omnisource/case/OmniSource_Case.3mf" }
+      ],
+      "orientation": "Pre-oriented in the files for resin printing",
+      "supports": "Supported — print the case with its included supports",
+      "settings": {
+        "layerHeight": "50 µm",
+        "transitionLayers": "6",
+        "lightIntensity": "100%",
+        "bottom": {
+          "layers": "4",
+          "exposure": "30 s",
+          "lift": "0.05 mm then 8 mm",
+          "liftSpeed": "40 then 240 mm/min",
+          "retract": "4.05 mm then 4 mm",
+          "retractSpeed": "100 then 10 mm/min",
+          "waitBeforePrint": "3 s",
+          "waitAfterPrint": "0.05 s"
+        },
+        "normal": {
+          "exposure": "6 s",
+          "lift": "0.05 mm then 8 mm",
+          "liftSpeed": "40 then 240 mm/min",
+          "retract": "4.05 mm then 4 mm",
+          "retractSpeed": "120 then 30 mm/min",
+          "waitBeforePrint": "3 s",
+          "waitAfterPrint": "0.05 s"
+        }
+      }
+    }
+  ]
+}

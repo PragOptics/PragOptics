@@ -8,7 +8,6 @@ export function resolvePostLoginUI({ ping }) {
 
   const billingStatus = String(ping?.billingProfile?.status || "").toUpperCase();
   const needsBillingSetup = ping?.needsBillingSetup === true;
-  const needsProvisioning = ping?.needsProvisioning === true;
 
   if (!ping.billingProfile || needsBillingSetup) {
     return {
@@ -51,12 +50,10 @@ export function resolvePostLoginUI({ ping }) {
 
     case "ACTIVE":
     case "PAST_DUE":
-      if (needsProvisioning) {
-        return {
-          mode: "provisioningWizard"
-        };
-      }
-
+      // Subscription is the front end's final step. Environment provisioning
+      // and account management live in the PragOptics software, so an active
+      // subscriber always resolves to the console regardless of provisioning
+      // state (ping.needsProvisioning is intentionally ignored here).
       return {
         mode: "console"
       };

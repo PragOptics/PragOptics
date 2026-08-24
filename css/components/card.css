@@ -1,0 +1,45 @@
+/* /css/components/card.css
+   Single source of the shared card LANGUAGE (surface, border, elevation, hover,
+   title color, focus ring). Structural per-card layouts (.ph-card media row,
+   .pcard media-top, .scard feature list, .codex-card compact row) stay in their
+   own files and route these same tokens through so all four families read as
+   one. Import BEFORE the view/component CSS so per-card files can still override
+   structure. */
+
+.u-card {
+  position: relative;
+  border-radius: var(--radius-card);
+  background: var(--card-surface);
+  border: 1px solid var(--card-border);
+  box-shadow: var(--card-shadow-rest);
+  transition:
+    transform var(--card-ease),
+    border-color var(--card-ease),
+    box-shadow var(--card-ease);
+}
+
+.u-card:hover {
+  transform: var(--card-lift);
+  border-color: var(--card-border-hover);
+  box-shadow: var(--card-shadow-hover);
+}
+
+/* hover-retention strip: rides with the lift so the cursor never exits
+   mid-hover at the bottom edge (no flicker oscillation) */
+.u-card::after {
+  content: ""; position: absolute; left: 0; right: 0; top: 100%; height: 5px;
+}
+
+.u-card:focus-visible,
+.u-card :focus-visible {
+  outline: 2px solid var(--brand-600);
+  outline-offset: 2px;
+}
+
+/* solid card-name color, site-wide (section/hero titles keep their gradient clip) */
+.u-card-title {
+  color: var(--card-title);
+  font-weight: 800;
+  letter-spacing: -.01em;
+  margin: 0;
+}

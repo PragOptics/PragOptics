@@ -1,0 +1,27 @@
+<!-- ============ MY PRODUCTS: REGISTER / TRANSFER ============ -->
+<!-- One multimodal page, every device. Register: pick the product, enter the
+     code from the warranty card, leave contact info — account optional.
+     Transfer: claim code to the current owner, confirmation code to the new
+     one; the warranty follows the product. Deep links:
+     /#mode=warranty&device=omnisource (register) · /#transfer (transfer) -->
+<section id="warrantyView" class="glass panel warranty hidden" aria-labelledby="wrTitle">
+
+  <header class="shop-head">
+    <span class="shop-kicker">My Products</span>
+    <h1 id="wrTitle" class="shop-title">Activate your warranty.</h1>
+    <p class="shop-sub" id="wrSub">
+      Your warranty card carries a unique code — one code, one device. Pick your
+      device, enter the code, and you're covered. No account required.
+    </p>
+  </header>
+
+  <div class="wr-tabs" role="tablist" aria-label="Register or transfer a product">
+    <button class="wr-tab is-active" type="button" role="tab" aria-selected="true" data-wr-mode="register">Register</button>
+    <button class="wr-tab" type="button" role="tab" aria-selected="false" data-wr-mode="transfer">Transfer</button>
+  </div>
+
+  <div class="wr-body" id="warrantyBody">
+    <!-- Populated by src/warranty/warranty.js (register) / transfer.js (transfer) -->
+  </div>
+
+</section>

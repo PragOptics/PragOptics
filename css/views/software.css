@@ -1,0 +1,139 @@
+/* /css/views/software.css
+   Software Shop — elevated, technical treatment. A single-subscription explainer
+   strip over a grid of app cards. Shares the page header with the Hardware Shop
+   via /css/views/shop.css. */
+
+.software-shop { padding: 28px 26px 34px; margin-top: 10px; }
+
+/* ---- Single-subscription explainer strip ---- */
+.sw-plan {
+  display: grid; grid-template-columns: 1.5fr 1fr; gap: 18px 28px; align-items: center;
+  margin: 4px 0 22px; padding: 18px 22px;
+  border: 1px solid rgba(255, 255, 255, .10);
+  border-left: 2px solid var(--brand-600, #21bca5);
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, .035), rgba(255, 255, 255, .012));
+}
+.sw-plan-eyebrow {
+  display: inline-block; margin-bottom: 7px;
+  font: 700 .66rem/1 ui-monospace, "SF Mono", "Cascadia Code", Menlo, monospace;
+  letter-spacing: .28em; text-transform: uppercase; color: var(--brand-600, #21bca5);
+}
+.sw-plan-copy { margin: 0; color: var(--ink, #dcdbf0e1); font-size: .95rem; line-height: 1.55; }
+
+.sw-plan-metrics {
+  margin: 0; padding: 0 0 0 20px; display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 0; border-left: 1px solid rgba(255, 255, 255, .09);
+}
+.sw-plan-metrics > div { padding-right: 10px; }
+.sw-plan-metrics dt {
+  margin: 0 0 4px;
+  font: 600 .58rem/1.2 ui-monospace, "SF Mono", "Cascadia Code", Menlo, monospace;
+  letter-spacing: .16em; text-transform: uppercase; color: var(--muted, #c6d0f0a6);
+}
+.sw-plan-metrics dd { margin: 0; font-weight: 800; font-size: .96rem; letter-spacing: .01em; color: #f4f7fb; }
+
+/* ---- Gallery grid ---- */
+.sw-gallery {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 16px; margin-top: 2px;
+}
+
+/* ---- App card ---- */
+.scard {
+  position: relative; padding: 20px 20px 18px; border-radius: var(--radius-card);
+  background: var(--card-surface);
+  border: 1px solid var(--card-border);
+  box-shadow: var(--card-shadow-rest);
+  display: flex; flex-direction: column; gap: 9px; min-height: 264px;
+  transition: transform var(--card-ease), border-color var(--card-ease), box-shadow var(--card-ease);
+}
+/* technical corner ticks, revealed on hover */
+.scard::before, .scard::after {
+  content: ""; position: absolute; width: 10px; height: 10px; pointer-events: none;
+  border-color: rgba(33, 188, 165, .6); opacity: 0; transition: opacity 200ms ease;
+}
+.scard::before { top: 9px; left: 9px; border-top: 1.5px solid; border-left: 1.5px solid; }
+.scard::after  { right: 9px; bottom: 9px; border-right: 1.5px solid; border-bottom: 1.5px solid; }
+.scard:hover {
+  /* featured scards are overflow:hidden (clips a retention strip), so the
+     lift keeps the bottom edge planted — no vacated band, no edge flicker */
+  transform: translateY(-2px) scale(1.01);
+  border-color: var(--card-border-hover);
+  box-shadow: var(--card-shadow-hover);
+}
+.scard:hover::before, .scard:hover::after { opacity: 1; }
+.scard.is-soon { border-style: dashed; border-color: rgba(255, 255, 255, .14); }
+.scard.is-soon:hover { border-style: solid; }
+
+/* top row: live/soon status + access tag */
+.scard-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 2px; }
+
+.sw-status {
+  display: inline-flex; align-items: center; gap: 7px;
+  font: 700 .62rem/1 ui-monospace, "SF Mono", "Cascadia Code", Menlo, monospace;
+  letter-spacing: .18em; text-transform: uppercase; color: var(--muted, #c6d0f0a6);
+}
+.sw-dot { width: 7px; height: 7px; border-radius: 50%; flex: none; }
+.sw-status--live { color: #7fe9cf; }
+.sw-status--live .sw-dot { background: #38ffb3; box-shadow: 0 0 8px rgba(56, 255, 179, .75); }
+.sw-status--soon .sw-dot { background: transparent; border: 1.5px solid rgba(255, 255, 255, .42); }
+
+.sw-access {
+  font: 700 .6rem/1 ui-monospace, "SF Mono", "Cascadia Code", Menlo, monospace;
+  letter-spacing: .16em; text-transform: uppercase;
+  padding: 5px 9px; border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, .14); color: var(--ink, #dcdbf0e1);
+}
+.sw-access--free { color: #7fe9cf; border-color: rgba(56, 255, 179, .4); }
+.sw-access--subscription { color: #cdaaff; border-color: rgba(162, 0, 255, .42); }
+
+.scard-name { margin: 5px 0 0; font-size: 1.2rem; font-weight: 800; letter-spacing: -.01em; color: var(--card-title); }
+.scard-tag { margin: 0; color: var(--brand-600, #21bca5); font-weight: 700; font-size: .82rem; letter-spacing: .01em; }
+.scard-sub { margin: 3px 0 0; color: var(--muted, #c6d0f0a6); font-size: .9rem; line-height: 1.55; }
+
+.scard-features { margin: 7px 0 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
+.scard-features li {
+  position: relative; padding-left: 16px; color: var(--muted, #c6d0f0a6); font-size: .84rem; line-height: 1.45;
+}
+.scard-features li::before {
+  content: ""; position: absolute; left: 0; top: .5em; width: 5px; height: 5px;
+  background: var(--brand-600, #21bca5); transform: rotate(45deg);
+}
+
+.scard-actions { margin-top: auto; padding-top: 14px; display: flex; gap: 8px; flex-wrap: wrap; }
+.scard-actions .ph-btn { padding: 10px 18px; font-size: .88rem; }
+
+/* ---- Featured card: app splash banner + icon badge (e.g. 3D Suite) ---- */
+.scard--featured { overflow: hidden; }
+.scard-media {
+  position: relative; margin: -20px -20px 8px; aspect-ratio: 16 / 9; overflow: hidden;
+  background: #05070d; border-bottom: 1px solid rgba(255, 255, 255, .10);
+}
+.scard-splash { width: 100%; height: 100%; object-fit: cover; object-position: center 30%; display: block; }
+/* Square-ish splashes with their own rounded frame show whole, not cropped */
+.scard-splash--contain { object-fit: contain; object-position: center; padding: 8px; box-sizing: border-box; }
+/* No dedicated splash yet — a branded placeholder fills the SAME banner edge-to-edge */
+.scard-splash--placeholder {
+  background:
+    radial-gradient(120% 140% at 50% 0%, rgba(33, 188, 165, .16), transparent 62%),
+    linear-gradient(180deg, #0a0f1a, #05070d);
+}
+
+/* Just the app icon — it already carries its own rounded border, so no chip/container */
+.scard-icon {
+  position: absolute; left: 14px; bottom: 12px; width: 46px; height: 46px;
+  object-fit: contain; display: block;
+  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, .5));
+}
+
+/* ---- Responsive ---- */
+@media (max-width: 720px) {
+  .sw-plan { grid-template-columns: 1fr; }
+  .sw-plan-metrics { border-left: 0; border-top: 1px solid rgba(255, 255, 255, .09); padding: 12px 0 0; }
+  .sw-plan-metrics > div { padding-right: 6px; }
+}
+@media (max-width: 640px) {
+  .software-shop { padding: 22px 16px 26px; }
+  .sw-gallery { grid-template-columns: 1fr; }
+}

@@ -769,7 +769,7 @@ OmniBus gives a single technician the reach of every vendor's handheld, the memo
 
 ## Get in touch
 
-**PragOptics™ · Fortiview Holdings**
+**PragOptics™**
 
 <div class="contact" style="text-align:left">
 <a href="https://pragoptics.com">pragoptics.com</a> · <a href="https://fortiviewholdings.com">fortiviewholdings.com</a><br>
@@ -777,4 +777,4 @@ OmniBus gives a single technician the reach of every vendor's handheld, the memo
 <a href="tel:+18324250421">832-425-0421</a>
 </div>
 
-<sub>OmniBus, OmniHat, and PragOptics are trademarks of Fortiview Holdings. Specifications are subject to change. Contact PragOptics for configuration options and availability.</sub>
+<sub>OmniBus and PragOptics are trademarks of PragOptics. Specifications are subject to change. Contact PragOptics for configuration options and availability.</sub>

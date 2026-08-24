@@ -15,11 +15,16 @@ export function initBrochureViewer(options = {}) {
   const $mask = document.getElementById("brochureMask");
   const $panel = document.getElementById("brochurePanel");
   const $frame = document.getElementById("brochureFrame");
+  const $title = document.getElementById("brochureTitle");
+  const $foot = document.getElementById("brochureOpenTab");
   if (!$mask || !$panel || !$frame) return;
 
-  function open() {
-    // lazy-load the iframe on first open so it does not cost anything on page load
-    if (!$frame.getAttribute("src")) $frame.setAttribute("src", src);
+  function open(useSrc, title) {
+    const finalSrc = useSrc || src;
+    // (re)load the iframe for the requested brochure so switching products works
+    if ($frame.getAttribute("src") !== finalSrc) $frame.setAttribute("src", finalSrc);
+    if ($title && title) $title.textContent = title;
+    if ($foot) $foot.setAttribute("href", finalSrc);
     $mask.classList.add("is-open");
     $panel.classList.add("is-open");
     $mask.setAttribute("aria-hidden", "false");
@@ -36,7 +41,8 @@ export function initBrochureViewer(options = {}) {
   }
 
   document.addEventListener("click", (e) => {
-    if (e.target.closest("[data-brochure-open]")) { e.preventDefault(); open(); return; }
+    const opener = e.target.closest("[data-brochure-open]");
+    if (opener) { e.preventDefault(); open(opener.dataset.brochureSrc, opener.dataset.brochureTitle); return; }
     const c = e.target.closest("[data-brochure-action]");
     if (c) { e.preventDefault(); if (c.dataset.brochureAction === "close") close(); return; }
     if (e.target === $mask) close();

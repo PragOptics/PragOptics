@@ -1,69 +1,208 @@
     <!-- ============ LANDING VIEW ============ -->
     <section id="landingView" class="glass panel">
       <div class="hero">
-        <h1>Build, deploy, and automate<br>solutions with one API.</h1>
-        <p>
-          PragOptics™ is your programmable control plane for websites, workflows, subscriptions,
-          and data‑driven systems. Authenticate, onboard, and ship production‑grade automation—fast.
-        </p>
-        <div class="btnContainer">
-          <button class="cta" data-modal-action="agreement-open">Get Started</button>
-          <button class="btn" data-action="set-mode" data-mode="console">API Console</button>
+        <div class="hero-top">
+          <div class="hero-copy">
+            <h1>Build, deploy, and automate<br>solutions with one API.</h1>
+            <p class="hero-tagline">What will you create...</p>
+            <div class="btnContainer">
+              <button class="cta" data-modal-action="agreement-open">Get Started</button>
+              <button class="btn" data-action="set-mode" data-mode="console">API Console</button>
+            </div>
+          </div>
+          <div class="hero-show" aria-hidden="true">
+            <!-- The creation-flow vignette — three scenes rotate on a 54s cycle,
+                 18s each: the PragOptics studio builds & publishes an idea, FNM
+                 pairs it with hardware, the 3D Suite models & slices it for
+                 print. .hs-stage is a fixed 400×300 scene that scales as one
+                 unit; each .hs-scene owns one window of the rotation. -->
+            <div class="hs-stage">
+
+            <div class="hs-scene hs-s1">
+            <span class="hs-brand"><img src="/docs/assets/products/pragoptics/tile.jpg" alt=""><u>PragOptics</u></span>
+
+            <div class="hs-page">
+              <div class="hs-nav"><i></i><u></u><u></u><u></u></div>
+              <div class="hs-head"></div>
+              <div class="hs-p hs-p1"></div>
+              <div class="hs-p hs-p2"></div>
+              <div class="hs-btnpill"></div>
+              <div class="hs-cards">
+                <div class="hs-card hs-c1"><i></i><u></u><u></u></div>
+                <div class="hs-card hs-c2"><i></i><u></u><u></u></div>
+                <div class="hs-card hs-c3"><i></i><u></u><u></u></div>
+              </div>
+              <span class="hs-live"><i></i>LIVE</span>
+            </div>
+
+            <div class="hs-tool"><span>⠿</span><b>H1</b><span>⧉</span><span>✕</span></div>
+
+            <div class="hs-code hs-code1"><span class="hs-cw"><em>op</em>:<q>"addSection"</q>, <em>heading</em>:<q>"Hero"</q></span></div>
+            <div class="hs-code hs-code2"><span class="hs-cw"><em>op</em>:<q>"addNode"</q>, <em>type</em>:<q>"button"</q></span></div>
+            <div class="hs-code hs-code3"><span class="hs-cw"><em>op</em>:<q>"setAccent"</q>, <em>color</em>:<q>"#2f9e8a"</q></span></div>
+
+            <div class="hs-dock">
+              <div class="hs-msg hs-user">Build a landing page for my sensor kit</div>
+              <div class="hs-chips">
+                <span class="hs-chip hs-ch1">addSection</span>
+                <span class="hs-chip hs-ch2">addNode button</span>
+                <span class="hs-chip hs-ch3">setAccent</span>
+              </div>
+              <div class="hs-msg hs-bot">Done.</div>
+              <span class="hs-meter">7 free AI assists left</span>
+            </div>
+
+            <div class="hs-publish">Publish ▸</div>
+            </div><!-- /hs-s1 -->
+
+            <!-- Scene 2: Field Node Manager — micro-UI built from the app's real
+                 design system (FNM_Demo/tokens.css): brushed-metal OmniBus top
+                 bar, LED wordmark + clock, detline log, #85e29a numerics, the
+                 real command set, a cal-report save beat. -->
+            <div class="hs-scene hs-s2">
+              <span class="hs-brand"><img src="/docs/assets/products/fnm/logo.png" alt=""><u>Field Node Manager</u></span>
+              <span class="fm-connect">◈ CONNECT</span>
+              <span class="fm-det fm-det1">» device found — FT-204A</span>
+              <div class="fm-bar">
+                <span class="fm-word">OMNIBUS</span>
+                <i class="fm-heart">⌁</i>
+                <span class="fm-bars"><i></i><i></i><i></i><i class="off"></i></span>
+                <span class="fm-batt"><i></i></span>
+                <span class="fm-clock">14:32</span>
+              </div>
+              <div class="fm-card">
+                <div class="fm-tag"><b>FT-204A</b><i></i><span>3051S · MICROLINK COC HART</span></div>
+                <div class="fm-pvrow">
+                  <span class="fm-pvlbl">PV</span>
+                  <b class="fm-pv fm-pv1">62.31</b><b class="fm-pv fm-pv2">62.34</b><b class="fm-pv fm-pv3">62.29</b>
+                  <em>inH2O</em>
+                </div>
+                <div class="fm-range"><u></u><s></s></div>
+                <div class="fm-lims"><span>LRV <b>0.0</b></span><span>URV <b>100.0</b></span><span>AO <b>13.97 mA</b></span></div>
+              </div>
+              <div class="fm-cmds">
+                <span class="fm-cmdhead">COMMANDS</span>
+                <span class="fm-cmd fm-c1">CONFIGURE</span>
+                <span class="fm-cmd fm-c2">CALIBRATE</span>
+                <span class="fm-cmd fm-c3">LOOP TEST</span>
+                <span class="fm-cmd fm-c4">RECORD</span>
+              </div>
+              <span class="fm-det fm-det2">✓ cal report saved — AS-FOUND</span>
+            </div><!-- /hs-s2 -->
+
+            <!-- Scene 3: 3D Suite — micro-UI built from the real GlassUI build
+                 (Modeling/GLASSUI_CHANGELOG.md): glass chrome, emerald accents
+                 (#12C2A8 / #03FCDA), the true Sketch → Pad → Fillet flow with
+                 features appearing in the model tree, then the slice preview
+                 rebuilds the part layer by layer. -->
+            <div class="hs-scene hs-s3">
+              <span class="hs-brand"><img src="/docs/assets/products/3d-suite/icon.png" alt=""><u>3D Suite</u></span>
+              <div class="gs-tools">
+                <span class="gs-tool gs-tl1">▭ SKETCH</span>
+                <span class="gs-tool gs-tl2">⇧ PAD</span>
+                <span class="gs-tool gs-tl3">◠ FILLET</span>
+              </div>
+              <div class="gs-view">
+                <div class="gs-world">
+                  <i class="gs-floor"></i>
+                  <i class="gs-ax gs-axX"></i><i class="gs-ax gs-axZ"></i>
+                  <i class="gs-sketch3d"></i>
+                  <span class="gs-solid"><i class="sx f"></i><i class="sx b"></i><i class="sx l"></i><i class="sx r"></i><i class="sx t"></i></span>
+                  <span class="gs-slab gs-s1"><i class="sl f"></i><i class="sl b"></i><i class="sl l"></i><i class="sl r"></i><i class="sl t"></i></span>
+                  <span class="gs-slab gs-s2"><i class="sl f"></i><i class="sl b"></i><i class="sl l"></i><i class="sl r"></i><i class="sl t"></i></span>
+                  <span class="gs-slab gs-s3"><i class="sl f"></i><i class="sl b"></i><i class="sl l"></i><i class="sl r"></i><i class="sl t"></i></span>
+                  <span class="gs-slab gs-s4"><i class="sl f"></i><i class="sl b"></i><i class="sl l"></i><i class="sl r"></i><i class="sl t"></i></span>
+                  <span class="gs-slab gs-s5"><i class="sl f"></i><i class="sl b"></i><i class="sl l"></i><i class="sl r"></i><i class="sl t"></i></span>
+                  <span class="gs-slab gs-s6"><i class="sl f"></i><i class="sl b"></i><i class="sl l"></i><i class="sl r"></i><i class="sl t"></i></span>
+                  <span class="gs-slab gs-s7"><i class="sl f"></i><i class="sl b"></i><i class="sl l"></i><i class="sl r"></i><i class="sl t"></i></span>
+                  <span class="gs-slab gs-s8"><i class="sl f"></i><i class="sl b"></i><i class="sl l"></i><i class="sl r"></i><i class="sl t"></i></span>
+                </div>
+              </div>
+              <div class="gs-tree">
+                <span class="gs-treehead">MODEL</span>
+                <span class="gs-node gs-n0">▾ Body</span>
+                <span class="gs-node gs-n1">Sketch001</span>
+                <span class="gs-node gs-n2">Pad</span>
+                <span class="gs-node gs-n3">Fillet</span>
+              </div>
+              <div class="gs-slice">
+                <span class="gs-schip">SLICE PREVIEW</span>
+                <span class="gs-scount"><b class="gs-sc gs-sc1">L 12/60</b><b class="gs-sc gs-sc2">L 36/60</b><b class="gs-sc gs-sc3">L 60/60</b><em>· 0.16 mm</em></span>
+                <span class="gs-sbar"><u></u></span>
+                <span class="gs-ready">READY TO PRINT ✓</span>
+              </div>
+            </div><!-- /hs-s3 -->
+
+            <span class="hs-note">concept animation · for illustration only</span>
+
+            </div>
+          </div>
         </div>
         <div class="row">
           <div class="col login-panel capability-col">
             <strong>Platform Capabilities</strong>
 
             <button class="cap-item">
-            <span class="cap-title">Programmable API Access</span>    
+            <span class="cap-title">Open Hardware</span>
             </button>
             <div class="cap-body">
-            <div class="muted bulleted">Authenticated API endpoints for integrations</div>
-            <div class="muted bulleted">Environment‑scoped data access</div>
-            <div class="muted bulleted">Custom endpoint definitions</div>
+            <div class="muted bulleted">Field tools sold assembled, or built from the free published designs</div>
+            <div class="muted bulleted">Schematics, BOMs, and print-ready case files with every product</div>
+            <div class="muted bulleted">Register your unit in minutes; the printed case is covered for life</div>
             </div>
 
             <button class="cap-item">
-            <span class="cap-title">eCommerce Automation Tools</span>    
+            <span class="cap-title">Software &amp; 3D Modeling</span>
             </button>
             <div class="cap-body">
-            <div class="muted bulleted">Order and catalog synchronization</div>
-            <div class="muted bulleted">Webhook‑driven workflows</div>
-            <div class="muted bulleted">Backend‑driven commerce logic</div>
+            <div class="muted bulleted">Desktop and field apps, free to download</div>
+            <div class="muted bulleted">Model and slice in one suite, tuned for our hardware</div>
+            <div class="muted bulleted">The same print profiles we run in production</div>
             </div>
 
             <button class="cap-item">
-            <span class="cap-title">Industrial Automation Tools</span>
+            <span class="cap-title">Live 3D Previews</span>
             </button>
             <div class="cap-body">
-            <div class="muted bulleted">Calibration report management</div>
-            <div class="muted bulleted">Tag &amp; equipment data modeling</div>
-            <div class="muted bulleted">Standards‑aligned reporting workflows</div>
+            <div class="muted bulleted">Every print file renders live in the product card, drag to orbit</div>
+            <div class="muted bulleted">The preview is the exact STL or 3MF you download, never a stale screenshot</div>
+            <div class="muted bulleted">Production print profiles published beside every file</div>
             </div>
 
             <button class="cap-item">
-            <span class="cap-title">SharePoint Extensions (SPFx)</span>
+            <span class="cap-title">One API, Any Workflow</span>
             </button>
             <div class="cap-body">
-            <div class="muted bulleted">Import & Export Data from Sharepoint</div>
-            <div class="muted bulleted">Manage & Visualize Data with Intuitive Dashboards</div>
-            <div class="muted bulleted">Bring-Your-Own-Data (optional web-sync)</div>
+            <div class="muted bulleted">Token-based access to authenticated, production endpoints</div>
+            <div class="muted bulleted">Automate data, devices, and field records from one place</div>
+            <div class="muted bulleted">Custom routes without standing up your own backend</div>
             </div>
 
             <button class="cap-item">
-            <span class="cap-title">PragOptics™ iOS App Sync</span></button>
+            <span class="cap-title">Commerce, Handled</span>
+            </button>
             <div class="cap-body">
-            <div class="muted bulleted">Mobile report capture and sync</div>
-            <div class="muted bulleted">Offline‑first workflows</div>
-            <div class="muted bulleted">Account‑bound data access</div>
+            <div class="muted bulleted">Stripe-backed subscriptions, checkout, and billing state</div>
+            <div class="muted bulleted">Usage-based pricing that scales with what you build</div>
+            <div class="muted bulleted">Sell under your own brand; your customers stay yours</div>
             </div>
 
             <button class="cap-item">
-            <span class="cap-title">Hardware Integrations</span></button>
+            <span class="cap-title">Publish &amp; Prove</span>
+            </button>
             <div class="cap-body">
-            <div class="muted bulleted">Multi‑modal device communications</div>
-            <div class="muted bulleted">Location and elevation awareness</div>
-            <div class="muted bulleted">Secure pairing and telemetry sync</div>
+            <div class="muted bulleted">Put your own endpoints on a production platform</div>
+            <div class="muted bulleted">Earn users and trust before you have a client base</div>
+            <div class="muted bulleted">What you deploy is callable by anyone you choose</div>
+            </div>
+
+            <button class="cap-item">
+            <span class="cap-title">Built in the Open</span>
+            </button>
+            <div class="cap-body">
+            <div class="muted bulleted">A community wall of builds made from the free plans</div>
+            <div class="muted bulleted">Share yours anonymously or with your account</div>
+            <div class="muted bulleted">Ownership transfers human to human, warranty included</div>
             </div>
             </div>
 
@@ -100,31 +239,50 @@
             billing, and activation.
             </div>
             </div>
-  
+
+            <button class="fast-path-item" data-path="register">
+            <span class="fp-title">Register a Product</span>
+            </button>
+            <div class="fast-path-body">
+            <div class="muted">
+            Got a warranty card in your case? <a href="#warranty" onclick="setAppMode('warranty'); return false;"><strong>Register your device</strong></a>,
+            pick your product, enter the code from the card, and you're covered.
+            No account needed.
+            </div>
+            </div>
+
+            <button class="fast-path-item" data-path="transfer">
+            <span class="fp-title">Transfer a Product</span>
+            </button>
+            <div class="fast-path-body">
+            <div class="muted">
+            Selling or handing a unit down? <a href="#transfer" onclick="location.hash='transfer'; setAppMode('warranty'); return false;"><strong>Transfer ownership</strong></a>,
+            warranty included. A claim code proves it's yours, the new owner
+            confirms by email, done. Human to human, no account needed.
+            </div>
+            </div>
+
+            <button class="fast-path-item" data-path="share">
+            <span class="fp-title">Share Your Build</span>
+            </button>
+            <div class="fast-path-body">
+            <div class="muted">
+            Built one from the free plans? <a href="#mode=builds" onclick="setAppMode('builds'); return false;"><strong>Share your build</strong></a>,
+            add photos and notes, anonymously or with your account. Every build
+            makes the designs better.
+            </div>
+            </div>
+
         </div>
       </div>
     </section>
 
-    <!-- ============ PRODUCT HIGHLIGHT ============ -->
-    <section class="glass panel product-highlight">
+    <!-- ============ PRODUCT SPOTLIGHT ============ -->
+    <!-- Two scrolling galleries rendered from the catalog by src/shop/featured.js:
+         hardware on top, software below, each row ending in its shop card. -->
+    <section class="glass panel product-highlight" id="featuredHardware">
       <div class="ph-head">
-        <span class="ph-kicker">Product Highlight</span>
-        <h2 class="ph-title">OmniBus, the universal HART field node</h2>
+        <h2 class="ph-title">Buy it built, or build your own.</h2>
       </div>
-      <div class="ph-grid">
-        <div class="ph-card ph-brochure">
-          <img class="ph-flyer" src="/docs/assets/OmniBusProductFlyer.png" alt="OmniBus by PragOptics product flyer" loading="lazy">
-          <div class="ph-card-body">
-            <h3>OmniBus Product Brochure</h3>
-            <p class="muted">A universal, vendor-neutral HART communicator, calibration recorder, and field node in one rugged handheld. See the full capability and pricing brochure.</p>
-            <button class="ph-btn" type="button" data-brochure-open>Open the brochure</button>
-          </div>
-        </div>
-        <div class="ph-card ph-fnm">
-          <h3>Field Node Manager</h3>
-          <p class="muted">The free desktop companion: drive your OmniBus from the desk, view it live, and exchange data over SSH or the cloud. Try the live demo, no install.</p>
-          <a class="ph-btn" href="https://fnmdemo.pragoptics.com" target="_blank" rel="noopener noreferrer">Open Field Node Manager (demo)</a>
-          <span class="ph-docs">Or read about it in the <a href="/docs/">docs</a>.</span>
-        </div>
-      </div>
+      <div class="ph-rows" id="featuredProducts"><!-- rendered by featured.js --></div>
     </section>

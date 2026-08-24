@@ -1,0 +1,151 @@
+/* /css/components/cart-drawer.css
+   Slide-in shopping cart drawer, right side, full-height.  Cart badge in the
+   header menu next to the "Cart" link. */
+
+.cart-mask { visibility: hidden; opacity: 0;
+  position: fixed; inset: 0; z-index: 980;
+  background: rgba(0, 0, 0, .55); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+  transition: opacity 220ms ease;
+}
+.cart-mask.is-open { visibility: visible; opacity: 1; }
+
+.cart-panel {
+  position: fixed; z-index: 981;
+  top: 0; right: 0; height: 100vh;
+  width: min(440px, 92vw);
+  background: linear-gradient(160deg, #0b0f19 0%, #10091a 100%);
+  border-left: 1px solid rgba(162, 0, 255, .30);
+  box-shadow: -24px 0 60px rgba(0, 0, 0, .55);
+  transform: translateX(100%);
+  transition: transform 260ms cubic-bezier(.22,.61,.36,1);
+  display: flex; flex-direction: column;
+}
+.cart-panel.is-open { transform: translateX(0); }
+
+.cart-head {
+  /* Global `header { position: fixed }` would take this out of the flex flow;
+     force it back so the drawer's flex column stacks head above body. */
+  position: static;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 20px; border-bottom: 1px solid var(--border, rgba(255, 255, 255, .10));
+}
+.cart-title {
+  margin: 0; font-weight: 900; font-size: 1.15rem; letter-spacing: .02em;
+  background: linear-gradient(120deg, var(--brand-600, #21bca5), #bf7dff);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.cart-close {
+  width: 34px; height: 34px; border-radius: 10px; border: 1px solid var(--border, rgba(255, 255, 255, .12));
+  background: rgba(0, 0, 0, .35); color: var(--ink, #dcdbf0e1); cursor: pointer; font-size: 1rem;
+  display: inline-flex; align-items: center; justify-content: center;
+  transition: background 160ms ease, color 160ms ease, border-color 160ms ease;
+}
+.cart-close:hover { background: rgba(162, 0, 255, .18); color: #fff; border-color: rgba(162, 0, 255, .5); }
+
+.cart-body-scroll { flex: 1; overflow: auto; padding: 14px 18px 18px; }
+
+/* Account banner (signed-out prompt / signed-in check) */
+.cart-account {
+  display: flex; flex-direction: column; gap: 8px;
+  padding: 12px 14px; margin-bottom: 12px;
+  border-radius: 12px;
+  background: linear-gradient(120deg, rgba(31, 224, 255, .08), rgba(162, 0, 255, .10));
+  border: 1px solid rgba(31, 224, 255, .24);
+}
+.cart-account-signed {
+  flex-direction: row; align-items: center; gap: 10px;
+  background: linear-gradient(120deg, rgba(56, 255, 179, .08), rgba(33, 188, 165, .10));
+  border-color: rgba(56, 255, 179, .28);
+}
+.cart-account-icon {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px; border-radius: 50%;
+  background: linear-gradient(120deg, #38ffb3, var(--brand-600, #21bca5));
+  color: #04130f; font-weight: 900; font-size: .78rem;
+}
+.cart-account-text { color: var(--ink, #dcdbf0e1); font-size: .88rem; line-height: 1.5; }
+.cart-account-text strong { color: var(--brand-600, #21bca5); }
+.cart-account-actions { display: flex; justify-content: flex-end; }
+.cart-account-btn { padding: 7px 14px !important; font-size: .82rem !important; }
+
+
+/* Empty state */
+.cart-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 40px 20px; gap: 12px; height: 100%; }
+.cart-empty-glyph { font-size: 3rem; color: rgba(191, 125, 255, .3); }
+.cart-empty h3 { margin: 0; font-size: 1.1rem; color: var(--ink, #dcdbf0e1); }
+.cart-empty p { margin: 0; color: var(--muted, #c6d0f0a6); }
+.cart-empty-actions { margin-top: 8px; }
+
+/* Line item */
+.cart-lines { display: flex; flex-direction: column; gap: 10px; }
+.cart-line {
+  display: grid; grid-template-columns: 64px 1fr auto; gap: 12px; align-items: start;
+  padding: 12px; border-radius: 14px; border: 1px solid var(--border, rgba(255, 255, 255, .10));
+  background: rgba(0, 0, 0, .22);
+}
+.cart-line-thumb { width: 64px; height: 64px; border-radius: 10px; overflow: hidden; background: #05070d; border: 1px solid var(--border, rgba(255, 255, 255, .08)); }
+.cart-line-thumb img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.cart-line-info { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.cart-line-name { font-weight: 800; color: var(--ink, #dcdbf0e1); font-size: .95rem; }
+.cart-line-variant { color: var(--muted, #c6d0f0a6); font-size: .82rem; }
+.cart-line-price { color: var(--brand-600, #21bca5); font-weight: 700; font-size: .88rem; }
+
+.cart-line-controls { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+
+/* Quantity stepper */
+.qty { display: inline-flex; align-items: stretch; border: 1px solid var(--border, rgba(255, 255, 255, .14)); border-radius: 10px; overflow: hidden; }
+.qty-btn { width: 28px; padding: 0; background: rgba(255, 255, 255, .03); color: var(--ink, #dcdbf0e1); border: 0; cursor: pointer; font-size: 1rem; }
+.qty-btn:hover { background: rgba(33, 188, 165, .18); color: #fff; }
+.qty-input {
+  width: 40px; text-align: center; background: transparent; color: var(--ink, #dcdbf0e1);
+  border: 0; border-left: 1px solid var(--border, rgba(255, 255, 255, .10)); border-right: 1px solid var(--border, rgba(255, 255, 255, .10));
+  font-weight: 700; font-size: .9rem; -moz-appearance: textfield;
+}
+.qty-input::-webkit-inner-spin-button, .qty-input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.qty-input:focus { outline: 2px solid var(--brand-600, #21bca5); outline-offset: -2px; }
+
+/* Donation amount — freely adjustable, whole dollars */
+.donate-amt { display: inline-flex; align-items: stretch; border: 1px solid var(--border, rgba(255, 255, 255, .14)); border-radius: 10px; overflow: hidden; }
+.donate-cur { display: flex; align-items: center; padding: 0 2px 0 9px; background: rgba(255, 255, 255, .03); color: var(--muted, #c6d0f0a6); font-size: .85rem; }
+.donate-input {
+  width: 52px; text-align: center; background: rgba(255, 255, 255, .03); color: var(--ink, #dcdbf0e1);
+  border: 0; font-weight: 700; font-size: .9rem; -moz-appearance: textfield;
+}
+.donate-input::-webkit-inner-spin-button, .donate-input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.donate-input:focus { outline: 2px solid var(--brand-600, #21bca5); outline-offset: -2px; }
+.cart-line--donation .cart-line-variant { color: var(--brand-600, #21bca5); }
+
+.cart-remove {
+  background: transparent; border: 0; color: var(--muted, #c6d0f0a6);
+  font-size: .8rem; text-decoration: underline; cursor: pointer;
+}
+.cart-remove:hover { color: var(--brand-purp, #a200ff); }
+
+.cart-line-total { font-weight: 800; color: var(--ink, #dcdbf0e1); font-size: .95rem; }
+
+/* Summary */
+.cart-summary { border-top: 1px solid var(--border, rgba(255, 255, 255, .10)); margin-top: 14px; padding-top: 14px; display: flex; flex-direction: column; gap: 10px; }
+.cart-summary-note { font-size: .82rem; line-height: 1.5; }
+.cart-summary-total { font-weight: 900; font-size: 1.1rem; text-align: right;
+  background: linear-gradient(120deg, var(--brand-600, #21bca5), #bf7dff);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.cart-summary-actions { display: flex; gap: 8px; justify-content: flex-end; }
+.cart-summary-actions .ph-btn { padding: 10px 18px; font-size: .9rem; }
+
+/* Cart badge in header menu */
+.cart-count {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 22px; height: 22px; padding: 0 7px; border-radius: 999px;
+  margin-left: 8px;
+  font-size: .72rem; font-weight: 900;
+  background: rgba(255, 255, 255, .08); color: var(--muted, #c6d0f0a6);
+  border: 1px solid var(--border, rgba(255, 255, 255, .12));
+  transition: background 160ms ease, color 160ms ease, box-shadow 160ms ease, transform 200ms cubic-bezier(.22,.61,.36,1);
+}
+.cart-count.has-items {
+  background: linear-gradient(120deg, var(--brand-600, #21bca5), var(--brand-purp, #a200ff));
+  color: #fff; border-color: transparent;
+  box-shadow: 0 0 12px rgba(33, 188, 165, .45);
+  transform: scale(1.06);
+}

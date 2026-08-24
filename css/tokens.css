@@ -34,4 +34,27 @@
       --maxw: clamp(1200px, 90vw, 1600px);
       --nav-maxw: clamp(1200px, 96vw, 1900px);
 
+      /* ---- Unified card language (see card.css) ---- */
+      --radius-card:14px;
+      --card-title:#f4f7fb;
+      --card-surface: linear-gradient(150deg, rgba(255,255,255,.045), rgba(255,255,255,.015));
+      --card-border: rgba(255,255,255,.10);
+      --card-border-hover: rgba(33,188,165,.45);
+      --card-shadow-rest: 0 10px 30px rgba(0,0,0,.45);
+      --card-shadow-hover: 0 18px 42px rgba(0,0,0,.55);
+      --card-lift: translateY(-3px);
+      --card-ease: 200ms cubic-bezier(.22,.61,.36,1);
+
+      /* dark text on the teal CTA fill */
+      --on-brand:#04130f;
+      /* missing brand accent */
+      --brand-cyan:#1fe0ff;
+      /* brighter teal for the ✦ starred labels (tagline, column headers,
+         spotlight row labels) — the button teal reads too dark as small type */
+      --teal-bright:#36e6ca;
+
+      /* Champagne accent — the warm counterpoint to the teal/purple palette.
+         For taglines and section labels only; never on actions/buttons. */
+      --accent-gold:#e6c688;
+
 }

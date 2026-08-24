@@ -28,6 +28,15 @@
     import { initFooter } from '../components/footer.js';
     import { initLegalViewer } from '../components/legalViewer.js';
     import { initBrochureViewer } from '../components/brochureViewer.js';
+    import { renderHardwareGallery } from '../shop/gallery.js';
+    import { renderFeaturedProducts } from '../shop/featured.js';
+    import { renderSoftwareGallery } from '../shop/software.js';
+    import { openProductModal, closeProductModal, initProductModal } from '../shop/product-modal.js';
+    import { openCart, closeCart, initCartDrawer } from '../shop/cart-drawer.js';
+    import { addItem as cartAddItem } from '../shop/cart.js';
+    import { initCheckoutView, onCheckoutEnter } from '../shop/checkout.js';
+    import { initWarrantyView, onWarrantyEnter } from '../warranty/warranty.js';
+    import { initBuildsView } from '../builds/builds.js';
 
     // routePostLogin is now a thin forwarder only
     function routePostLoginForward({ ping }) {
@@ -48,6 +57,11 @@
     await loadView('/views/landing.view.html', 'view-landing');
     await loadView('/views/wizard.view.html', 'view-wizard');
     await loadView('/views/console.view.html', 'view-console');
+    await loadView('/views/shop.view.html', 'view-shop');
+    await loadView('/views/software.view.html', 'view-software');
+    await loadView('/views/checkout.view.html', 'view-checkout');
+    await loadView('/views/warranty.view.html', 'view-warranty');
+    await loadView('/views/builds.view.html', 'view-builds');
     await loadView('/views/modals/modals.view.html', 'view-modals');
     await loadView('/views/legal.view.html', 'view-legal');
     initLegalViewer({
@@ -60,8 +74,30 @@
     await loadView('/views/footer.view.html', 'view-footer');
 
     initFooter();
-   
+
     initHeaderMenu();
+
+    // Shop: render the hardware + software galleries into their view shells,
+    // wire the detail modal, cart drawer, and checkout page.  Exposing the
+    // three action handlers on window lets header.menu.js dispatch to them
+    // without needing to import the modules.
+    renderHardwareGallery('shopGallery');
+    renderFeaturedProducts('featuredProducts');
+    renderSoftwareGallery('softwareGallery');
+    initProductModal();
+    initCartDrawer();
+    initCheckoutView();
+    initWarrantyView();
+    initBuildsView();
+    window.openProductModal  = openProductModal;
+    window.closeProductModal = closeProductModal;
+    window.openCart          = openCart;
+    window.closeCart         = closeCart;
+    window.addToCart         = (pid, variant) => cartAddItem(pid, variant || null, 1);
+    window.onEnterMode       = (mode) => {
+      if (mode === 'checkout') onCheckoutEnter();
+      if (mode === 'warranty') onWarrantyEnter();
+    };
 
     const _mountSwirl = () => {
       // one frame later ensures layout metrics exist
@@ -241,8 +277,7 @@ function setToken(tokens) {
       }
 
       const decision = resolvePostLoginUI({ ping });
-      const needsWizard =
-        (decision.mode === "wizard" || decision.mode === "provisioningWizard");
+      const needsWizard = decision.mode === "wizard";
 
       setWizardMenuVisible(needsWizard);
       return decision;
@@ -347,11 +382,6 @@ function applyPostLoginResolution({ ping }) {
     return;
   }
 
-  if (decision.mode === "provisioningWizard") {
-    showProvisioningShell(ping);
-    return;
-  }
-
   if (decision.mode === "console") {
     setAppMode("console");
     const flow = document.getElementById("platformFlow");
@@ -432,7 +462,19 @@ window.applyPostLoginResolution = applyPostLoginResolution;
 
     setAppMode("landing");
 
-    
+    // Deep-link support: codex/app links use "/#mode=shop" etc. Parse the hash
+    // on load and route to that surface so those links land correctly instead
+    // of always showing landing.
+    (function routeFromHash() {
+      const m = String(location.hash || "").match(/mode=(landing|console|shop|software|checkout|warranty|builds)/);
+      if (m) setAppMode(m[1]);
+      // Warranty-card short link: /#warranty (with optional &device=)
+      else if (/^#warranty/i.test(String(location.hash || ""))) setAppMode("warranty");
+      // Ownership-transfer short link: /#transfer (same page, transfer mode)
+      else if (/^#transfer/i.test(String(location.hash || ""))) setAppMode("warranty");
+    })();
+
+
     /* ===========================
        BILLING
        =========================== */
@@ -483,73 +525,10 @@ window.applyPostLoginResolution = applyPostLoginResolution;
       });
     }
 
-    function showProvisioningShell(ping) {
-      setAppMode("wizard");
+    /* Environment provisioning happens in the PragOptics software, not here.
+       The front-end wizard ends at the subscription payment step; active
+       subscribers resolve straight to the console. */
 
-      // one authoritative wipe (global + platformFlow)
-      clearAllWizardSurfaces();
-
-      const flow = document.getElementById("platformFlow");
-      if (!flow) return;
-
-      flow.classList.remove("mode-billing-landing");
-      flow.style.display = "block";
-      flow.innerHTML = `
-        <div class="provisioning-shell">
-          <div class="login-panel">
-            <h3>Environment Setup</h3>
-            <p class="hint">Create your PragOptics environment and define the Azure Table resources your account will use.</p>
-
-            <div class="row">
-              <div class="form-field">
-                <label for="envDisplayName">Environment Name</label>
-                <input id="envDisplayName" type="text" placeholder="PragOptics Environment">
-              </div>
-              <div class="form-field">
-                <label for="envOrgName">Organization Name</label>
-                <input id="envOrgName" type="text" placeholder="Optional organization name">
-              </div>
-            </div>
-
-            <div class="row">
-              <div class="form-field">
-                <label for="envUsersTable">Users Table</label>
-                <input id="envUsersTable" type="text" value="Users">
-              </div>
-              <div class="form-field">
-                <label for="envEnvironmentTable">Environment Table</label>
-                <input id="envEnvironmentTable" type="text" value="Environment">
-              </div>
-            </div>
-
-            <div class="row">
-              <div class="form-field">
-                <label for="envDataTable">Primary Data Table</label>
-                <input id="envDataTable" type="text" placeholder="Your primary table name">
-              </div>
-              <div class="form-field">
-                <label for="envPrefix">Table Prefix</label>
-                <input id="envPrefix" type="text" placeholder="Optional naming prefix">
-              </div>
-            </div>
-
-            <div class="dblStepBtn">
-              <button class="btn" type="button" onclick="setAppMode('console')">Back to Console</button>
-              <button class="cta" type="button" disabled>Create Environment</button>
-            </div>
-          </div>
-        </div>
-      `;
-
-      ensureWizardVisibleAndBranded(ping, {
-        title: "PragOptics™ Environment",
-        hint: "Provision your environment resources to continue platform setup.",
-        hasTokens: true
-      });
-
-      syncWizardAuthIndicator();
-    }
-    
    async function openBillingFromMenu() {    
     if (!isSessionActive()) {
       invalidateSession("expired");
@@ -593,7 +572,6 @@ window.applyPostLoginResolution = applyPostLoginResolution;
     const needsBillingSetup = ping?.needsBillingSetup === true;
 
     // Billing menu must always go to billing surface when billing is already active.
-    // Provisioning is irrelevant here.
     if (ping.billingProfile && !needsBillingSetup && (billingStatus === "ACTIVE" || billingStatus === "PAST_DUE")) {
       showBillingLanding(ping, billingStatus === "PAST_DUE");
       return;
@@ -645,7 +623,7 @@ window.applyPostLoginResolution = applyPostLoginResolution;
       return;
     }
 
-    // Otherwise launch the next required wizard (billing wizard or provisioning wizard)
+    // Otherwise launch the billing wizard (the only front-end wizard)
     applyPostLoginResolution({ ping });
   }
 
@@ -688,9 +666,6 @@ function clearBillingLandingOnly() {
 }
 
 function clearAllWizardSurfaces() {
-  // Remove any stray provisioning shells that may exist outside #platformFlow
-  document.querySelectorAll(".provisioning-shell").forEach(el => el.remove());
-
   // Remove any stray billing landing cards that may exist outside #platformFlow
   document.querySelectorAll(".billing-landing").forEach(el => el.remove());
 

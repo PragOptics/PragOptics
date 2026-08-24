@@ -11,6 +11,18 @@
           "name": "OmniBus Brochure",
           "path": "OmniBus-Brochure.md",
           "format": "md"
+        },
+        {
+          "type": "file",
+          "name": "OmniSource Brochure",
+          "path": "products/OmniSource-Brochure.md",
+          "format": "md"
+        },
+        {
+          "type": "file",
+          "name": "OmniSource Technical Doc",
+          "path": "products/OmniSource-Technical.md",
+          "format": "md"
         }
       ]
     },
@@ -84,6 +96,12 @@
       "type": "folder",
       "name": "Legal",
       "items": [
+        {
+          "type": "file",
+          "name": "Open Hardware, Warranty & Liability",
+          "path": "PragOptics-Open-Hardware-and-Warranty.md",
+          "format": "md"
+        },
         {
           "type": "file",
           "name": "Subscriber Agreement",

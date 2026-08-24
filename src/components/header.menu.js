@@ -1,5 +1,11 @@
+import { SHOP_LIVE } from '../shop/products.js';
+
 export function initHeaderMenu() {
-  const navs = document.querySelectorAll('.dev-nav, .btnContainer');
+  // E-commerce seam: while the shop is gated, drop its nav entries
+  // (Hardware / Cart / Checkout) so the menu only offers live surfaces.
+  if (!SHOP_LIVE) document.querySelectorAll('[data-shop-only]').forEach(el => el.remove());
+
+  const navs = document.querySelectorAll('.dev-nav, .btnContainer, .product-highlight, .shop, .software-shop');
   if (!navs.length) return;
 
   navs.forEach(nav => {
@@ -36,6 +42,38 @@ export function initHeaderMenu() {
 
         case 'logout':
           window.logout?.();
+          break;
+
+        case 'open-docs':
+          window.location.href = '/docs/';
+          break;
+
+        case 'open-cart':
+          window.openCart?.();
+          break;
+
+        case 'checkout':
+          window.setAppMode?.('checkout');
+          break;
+
+        case 'open-product':
+          window.openProductModal?.(link.dataset.productId);
+          break;
+
+        case 'add-to-cart':
+          window.addToCart?.(link.dataset.productId, link.dataset.variant || null);
+          break;
+
+        case 'buy':
+          // Landing / highlight primary action: add to cart AND open the drawer
+          // so the click has visible feedback and a path to checkout.
+          window.addToCart?.(link.dataset.productId, link.dataset.variant || null);
+          window.openCart?.();
+          break;
+
+        case 'notify':
+          try { localStorage.setItem('pragoptics_notify_intent_v1', link.dataset.productId || ''); } catch {}
+          window.setAppMode?.('checkout');
           break;
       }
     });

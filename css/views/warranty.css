@@ -1,0 +1,174 @@
+/* /css/views/warranty.css
+   Warranty registration — the page behind the URL on every warranty card.
+   Shares the page header treatment with the shops (shop-head in shop.css).
+   Centerpiece: the code field with the glass arrow "enter" button — the action
+   twin of the schematic download tile (.dl-trigger in product-modal.css). */
+
+.warranty { padding: 28px 26px 40px; margin-top: 10px; }
+
+.wr-body { max-width: 640px; margin: 8px auto 0; display: flex; flex-direction: column; gap: 26px; }
+
+.wr-step { display: flex; flex-direction: column; gap: 10px; }
+
+/* ---- labels ---- */
+.wr-label {
+  font: 700 .66rem/1 ui-monospace, "SF Mono", "Cascadia Code", Menlo, monospace;
+  letter-spacing: .24em; text-transform: uppercase; color: var(--brand-600, #21bca5);
+}
+.wr-label-center { text-align: center; }
+.wr-optional { color: var(--muted, #c6d0f0a6); font-weight: 600; text-transform: none; letter-spacing: .02em; font-size: .78rem; }
+
+/* ---- device select (glass) ---- */
+.wr-select-wrap { position: relative; }
+.wr-select {
+  width: 100%; appearance: none; -webkit-appearance: none; cursor: pointer;
+  padding: 14px 44px 14px 16px; border-radius: 12px;
+  font: 600 1rem/1.2 inherit; color: var(--ink, #dcdbf0e1);
+  background: rgba(12, 16, 26, .66); border: 1px solid var(--border, rgba(255, 255, 255, .14));
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+.wr-select:hover { border-color: rgba(33, 188, 165, .45); }
+.wr-select:focus-visible { outline: none; border-color: var(--brand-600, #21bca5); box-shadow: 0 0 0 3px rgba(33, 188, 165, .18); }
+.wr-select option { background: #0b1020; color: #e6edf7; }
+.wr-select-caret {
+  position: absolute; right: 16px; top: 50%; transform: translateY(-50%);
+  color: var(--brand-600, #21bca5); pointer-events: none; font-size: .9rem;
+}
+
+/* ---- thank-you ---- */
+.wr-step-code { text-align: center; gap: 14px; margin-top: 6px; }
+.wr-thanks { display: flex; flex-direction: column; gap: 10px; margin-bottom: 4px; }
+.wr-thanks-big {
+  font-size: 2.4rem; font-weight: 900; line-height: 1.08; letter-spacing: -.01em;
+  background: linear-gradient(120deg, #fff 8%, var(--brand-600, #21bca5) 55%, #bf7dff 96%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  text-wrap: balance;
+}
+.wr-thanks-sub { margin: 0 auto; max-width: 52ch; color: var(--muted, #c6d0f0a6); line-height: 1.6; }
+.wr-thanks-sub strong, .wr-thanks-sub code { color: var(--ink, #dcdbf0e1); }
+
+/* ---- the code row: input + glass arrow button ---- */
+.wr-code-row { display: flex; align-items: stretch; justify-content: center; gap: 10px; margin-top: 2px; }
+.wr-code-input {
+  width: min(340px, 70vw); text-align: center;
+  padding: 14px 16px; border-radius: 12px;
+  font: 700 1.15rem/1.2 ui-monospace, "SF Mono", "Cascadia Code", Menlo, monospace;
+  letter-spacing: .14em; text-transform: uppercase;
+  color: var(--ink, #dcdbf0e1);
+  background: rgba(12, 16, 26, .66); border: 1px solid var(--border, rgba(255, 255, 255, .14));
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+.wr-code-input::placeholder { color: rgba(198, 208, 240, .32); letter-spacing: .14em; }
+.wr-code-input:focus-visible { outline: none; border-color: var(--brand-600, #21bca5); box-shadow: 0 0 0 3px rgba(33, 188, 165, .18); }
+
+/* the enter arrow — same glass-tile language as the download trigger */
+.wr-go {
+  flex: none; width: 54px; border-radius: 12px; padding: 0; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+  position: relative;
+  border: 1px solid var(--border, rgba(255, 255, 255, .14));
+  background: rgba(255, 255, 255, .04); color: var(--ink, #dcdbf0e1);
+  transition: color 160ms ease, background 160ms ease, border-color 160ms ease, transform 160ms ease, box-shadow 160ms ease;
+}
+/* hover-retention strip: rides with the lift so the cursor never exits
+   mid-hover at the bottom edge (kills the flicker oscillation) */
+.wr-go::after {
+  content: ""; position: absolute; left: 0; right: 0; top: 100%; height: 4px;
+}
+.wr-go:hover {
+  color: #fff; background: rgba(33, 188, 165, .16); border-color: var(--brand-600, #21bca5);
+  box-shadow: 0 0 22px rgba(33, 188, 165, .25); transform: translateY(-2px);
+}
+.wr-go:active { transform: translateY(0); }
+.wr-go:focus-visible { outline: 2px solid var(--brand-600, #21bca5); outline-offset: 2px; }
+.wr-go-ico { display: block; }
+
+.wr-error { margin: 2px 0 0; color: #ff8b97; font-size: .88rem; }
+
+/* ---- contact step ---- */
+.wr-step-contact { gap: 14px; }
+.wr-code-chip {
+  align-self: center; display: inline-flex; align-items: center; gap: 12px;
+  padding: 8px 14px; border-radius: 999px;
+  border: 1px solid rgba(33, 188, 165, .35); background: rgba(33, 188, 165, .07);
+}
+.wr-chip-device { font-weight: 800; font-size: .88rem; color: var(--ink, #dcdbf0e1); }
+.wr-chip-code {
+  font: 700 .85rem/1 ui-monospace, "SF Mono", "Cascadia Code", Menlo, monospace;
+  letter-spacing: .1em; color: var(--brand-600, #21bca5); background: none; padding: 0;
+}
+.wr-contact-lede { margin: 0; text-align: center; color: var(--muted, #c6d0f0a6); }
+.wr-fields { display: grid; grid-template-columns: 1.4fr 1fr; gap: 12px; }
+
+/* ---- the two paths ---- */
+.wr-paths { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 8px; }
+.wr-path {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 4px;
+  padding: 16px 18px; text-align: left; border-radius: 14px;
+}
+.wr-path-t { font-weight: 800; font-size: .98rem; }
+.wr-path-s { font-weight: 500; font-size: .8rem; opacity: .85; line-height: 1.4; }
+.wr-path:disabled { opacity: .6; cursor: wait; }
+
+/* ---- success ---- */
+.wr-step-done { text-align: center; align-items: center; gap: 12px; padding: 18px 0 6px; }
+.wr-done-badge {
+  width: 62px; height: 62px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  color: #38ffb3; border: 1.5px solid rgba(56, 255, 179, .5);
+  background: rgba(56, 255, 179, .08);
+  box-shadow: 0 0 34px rgba(56, 255, 179, .25);
+}
+.wr-done-hint { margin: 0; color: var(--muted, #c6d0f0a6); font-size: .92rem; }
+.wr-done-actions { margin-top: 10px; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+
+/* ---- mode tabs: Register / Transfer ---- */
+.wr-tabs {
+  display: inline-flex; gap: 4px; margin: 4px 0 18px; padding: 4px;
+  border: 1px solid var(--border, rgba(255, 255, 255, .14)); border-radius: 999px;
+  background: rgba(12, 16, 26, .55);
+}
+.wr-tab {
+  padding: 9px 22px; border: 0; border-radius: 999px; cursor: pointer;
+  font: 700 .9rem/1 inherit; letter-spacing: .02em;
+  color: var(--muted, #c6d0f0a6); background: transparent;
+  transition: color 160ms ease, background 160ms ease;
+}
+.wr-tab:hover { color: var(--ink, #dcdbf0e1); }
+.wr-tab.is-active { color: #04110e; background: var(--brand-600, #21bca5); }
+
+/* ---- transfer flow ---- */
+.tr-fine { margin: 12px 0 0; font-size: .82rem; text-align: center; line-height: 1.5; }
+.tr-change {
+  border: 0; background: transparent; cursor: pointer; padding: 0;
+  font: 700 .8rem/1 inherit; color: var(--brand-600, #21bca5);
+  border-bottom: 1px solid rgba(33, 188, 165, .35);
+}
+.tr-change:hover { color: #fff; }
+.tr-resend { font-size: .85rem; }
+.tr-resend[disabled] { opacity: .55; cursor: default; }
+
+/* product checklist */
+.tr-items { display: flex; flex-direction: column; gap: 8px; margin: 14px 0 16px; }
+.tr-item {
+  display: flex; align-items: center; gap: 12px; cursor: pointer;
+  padding: 12px 14px; border-radius: 12px;
+  border: 1px solid var(--border, rgba(255, 255, 255, .14));
+  background: rgba(12, 16, 26, .55);
+  transition: border-color 160ms ease, background 160ms ease;
+}
+.tr-item:hover { border-color: rgba(33, 188, 165, .45); }
+.tr-item:has(input:checked) { border-color: var(--brand-600, #21bca5); background: rgba(33, 188, 165, .08); }
+.tr-item input[type="checkbox"] { width: 17px; height: 17px; accent-color: var(--brand-600, #21bca5); flex: none; }
+.tr-item-body { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.tr-item-name { font-weight: 800; font-size: .95rem; color: var(--ink, #dcdbf0e1); }
+.tr-item-meta { font-size: .8rem; color: var(--muted, #c6d0f0a6); }
+
+/* ---- responsive ---- */
+@media (max-width: 640px) {
+  .warranty { padding: 22px 16px 30px; }
+  .wr-thanks-big { font-size: 1.9rem; }
+  .wr-fields, .wr-paths { grid-template-columns: 1fr; }
+  .wr-code-row { flex-wrap: nowrap; }
+  .wr-code-input { width: 100%; min-width: 0; flex: 1; }
+}

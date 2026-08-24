@@ -69,7 +69,7 @@
 <p>For control loops that demand deterministic, fast, fault-tolerant signaling, a traditional wired loop is still the default. WirelessHART complements the wired plant; it does not replace every wire.</p>
 
 <h2>How OmniBus works with WirelessHART gateways</h2>
-<p>OmniBus reaches WirelessHART gateways over HART-IP and presents the gateway's full device roster from one screen, instead of forcing you onto a laptop and the gateway's own web page. <a href="/">OmniBus</a> by PragOptics (Fortiview Holdings) is a universal, vendor-neutral handheld HART communicator, calibration recorder, and field node, and its HART-IP path is multi-modal: it works out what it is connected to before it draws a screen.</p>
+<p>OmniBus reaches WirelessHART gateways over HART-IP and presents the gateway's full device roster from one screen, instead of forcing you onto a laptop and the gateway's own web page. <a href="/">OmniBus</a> by PragOptics is a universal, vendor-neutral handheld HART communicator, calibration recorder, and field node, and its HART-IP path is multi-modal: it works out what it is connected to before it draws a screen.</p>
 <p>According to the OmniBus product brochure, you give OmniBus the device address. It configures its own network side automatically (its port and subnet), polls the endpoint, and detects the device class: a gateway host, or a single direct instrument. Then it adapts to what it actually found.</p>
 <ul>
 <li><strong>If it is a gateway,</strong> OmniBus opens the gateway view: every wireless field device in one live roster (name, PV, SV, TV, QV, last update, and state shown as Live, Late, Stale, or Unreachable), device-status counts, gateway load and network health, and one tap into any device for full diagnostics.</li>

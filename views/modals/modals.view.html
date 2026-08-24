@@ -217,3 +217,24 @@
       </div>
     </div>
   </div>
+
+  <!-- ===== Product Detail Modal ===== -->
+  <div id="productMask" class="pm-mask" aria-hidden="true"></div>
+  <div id="productPanel" class="pm-panel" role="dialog" aria-modal="true" aria-labelledby="productBody" aria-hidden="true">
+    <button id="productClose" class="pm-close" type="button" aria-label="Close product details" data-pm-close>✕</button>
+    <div id="productBody" class="pm-body">
+      <!-- Populated by src/shop/product-modal.js -->
+    </div>
+  </div>
+
+  <!-- ===== Cart Drawer ===== -->
+  <div id="cartMask" class="cart-mask" aria-hidden="true"></div>
+  <aside id="cartPanel" class="cart-panel" role="dialog" aria-modal="true" aria-labelledby="cartTitle" aria-hidden="true">
+    <header class="cart-head">
+      <h2 id="cartTitle" class="cart-title">Your Cart</h2>
+      <button class="cart-close" type="button" aria-label="Close cart" data-cart-close>✕</button>
+    </header>
+    <div id="cartBody" class="cart-body-scroll">
+      <!-- Populated by src/shop/cart-drawer.js -->
+    </div>
+  </aside>

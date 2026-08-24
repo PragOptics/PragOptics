@@ -8,7 +8,19 @@ export function initFooter() {
   if (docsLink) {
     docsLink.addEventListener("click", (e) => {
       e.preventDefault();
-      window.open("/docs/", "_blank", "noopener,noreferrer");
+      // Same-tab in-app navigation (symmetric with the header "Documentation"
+      // entry) so doc entrants always have a visible way back.
+      window.location.href = "/docs/";
+    });
+  }
+
+  const warrantyLink = document.getElementById("warrantyLink");
+  if (warrantyLink) {
+    warrantyLink.addEventListener("click", (e) => {
+      e.preventDefault();
+      // In-app route to the warranty registration view (same URL as the
+      // printed warranty cards: /#warranty).
+      window.setAppMode?.("warranty");
     });
   }
 

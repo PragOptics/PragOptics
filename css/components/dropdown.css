@@ -13,19 +13,6 @@
 }
 
 
-.dropdown{position:relative}
-.dropdown-menu{
-  display:none;
-  position:absolute;
-  top:110%;
-  right:0;
-  background:var(--menu);
-  border:1px solid rgba(255,255,255,.12);
-  border-radius:var(--radius-sm);
-  min-width:240px;
-}
-.dropdown.open .dropdown-menu{display:block}a/* /css/components/dropdown.css */
-
 /* ====== DROPDOWN ====== */
 .dev-nav ul{
   list-style:none;
@@ -73,6 +60,51 @@
   -webkit-backdrop-filter: blur(14px) saturate(160%);
   backdrop-filter: blur(14px) saturate(160%);
   transition: transform 160ms ease, box-shadow 160ms ease;
+  /* Never taller than the screen — scroll inside the panel instead */
+  max-height: calc(100vh - 96px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+/* slim glass scrollbar for the small-screen list */
+.dropdown-menu::-webkit-scrollbar { width: 8px; }
+.dropdown-menu::-webkit-scrollbar-track { background: rgba(255,255,255,.04); border-radius: 999px; }
+.dropdown-menu::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(255,255,255,.26), rgba(255,255,255,.12));
+  border: 2px solid rgba(10,14,24,.65); background-clip: padding-box;
+}
+
+/* ====== MEGA PANEL (desktop) ======
+   Same DOM, hero-card layout: each .menu-section starts its own vertical
+   column, so the sections sit side by side under one wide glass panel. */
+@media (min-width: 760px){
+  .dropdown-menu{
+    width: min(660px, calc(100vw - 28px));
+    padding: 16px 12px 18px;
+    border-radius: 16px;
+    columns: 4;
+    column-gap: 10px;
+    max-height: none;
+    overflow: visible;
+    background-image:
+      radial-gradient(420px 220px at 88% -10%, rgba(162,0,255,.14), transparent 62%),
+      radial-gradient(380px 220px at 0% 112%, rgba(31,224,255,.09), transparent 60%);
+  }
+  .dropdown-menu > li { break-inside: avoid; }
+  /* each section header opens a new column (first one already starts col 1) */
+  .dropdown-menu > li:has(> .menu-section):not(:first-child){ break-before: column; }
+  .dropdown-menu li span.menu-section{
+    padding: 6px 12px 8px;
+    margin-bottom: 4px;
+    border-bottom: 1px solid rgba(255,255,255,.10);
+  }
+  .dropdown-menu li a,
+  .dropdown-menu li button{
+    border-radius: 9px;
+    width: calc(100% - 8px);
+    margin: 1px 4px;
+    padding: 8px 12px;
+  }
 }
 
 .dropdown-menu li span.menu-section{
@@ -86,16 +118,24 @@
   opacity:.9;
 }
 
-.dropdown-menu li a{
+.dropdown-menu li a,
+.dropdown-menu li button{
   display:block;
+  width:100%;
+  text-align:left;
   padding:8px 16px;
   color:var(--ink);
   font-size:.9rem;
   font-weight:500;
+  font-family:inherit;
+  background:none;
+  border:0;
+  cursor:pointer;
   transition:.2s ease;
 }
 
-.dropdown-menu li a:hover{
+.dropdown-menu li a:hover,
+.dropdown-menu li button:hover{
   background:rgba(151, 39, 216, 0.185);
   color:var(--brand-600);
 }

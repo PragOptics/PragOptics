@@ -1,0 +1,123 @@
+/* /css/views/builds.css
+   Share Your Build — community upload page. Shares the page header with the
+   shops (shop-head) and borrows the warranty page's select/error/done styles
+   (wr-select, wr-error, wr-done-badge, wr-thanks-*) so the two flows read as
+   one family. */
+
+.builds { padding: 28px 26px 40px; margin-top: 10px; }
+
+.bd-body { max-width: 680px; margin: 8px auto 0; }
+.bd-form { display: flex; flex-direction: column; gap: 16px; }
+.bd-fields { display: grid; grid-template-columns: 1.2fr 1fr; gap: 12px; }
+.bd-optional { color: var(--muted, #c6d0f0a6); font-weight: 600; font-size: .78rem; }
+
+/* ---- photo drop-zone ---- */
+.bd-drop {
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  padding: 26px 18px; border-radius: 14px; cursor: pointer; text-align: center;
+  border: 1.5px dashed rgba(255, 255, 255, .22);
+  background: rgba(255, 255, 255, .025);
+  transition: border-color 160ms ease, background 160ms ease, box-shadow 160ms ease;
+}
+.bd-drop:hover, .bd-drop.is-over {
+  border-color: var(--brand-600, #21bca5);
+  background: rgba(33, 188, 165, .06);
+  box-shadow: 0 0 30px rgba(33, 188, 165, .12) inset;
+}
+.bd-drop:focus-visible { outline: 2px solid var(--brand-600, #21bca5); outline-offset: 3px; }
+.bd-drop-ico { color: var(--brand-600, #21bca5); }
+.bd-drop-t { font-weight: 800; color: var(--ink, #dcdbf0e1); }
+.bd-drop-s { color: var(--muted, #c6d0f0a6); font-size: .82rem; }
+
+/* ---- thumbnails ---- */
+.bd-thumbs { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 10px; }
+.bd-thumb {
+  position: relative; margin: 0; aspect-ratio: 1 / 1; overflow: hidden;
+  border-radius: 12px; border: 1px solid var(--border, rgba(255, 255, 255, .14));
+  background: #05070d;
+}
+.bd-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.bd-thumb-x {
+  position: absolute; top: 6px; right: 6px; width: 24px; height: 24px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 8px; border: 1px solid rgba(255, 255, 255, .2); cursor: pointer;
+  background: rgba(5, 7, 13, .72); color: #fff; font-size: .7rem; line-height: 1;
+  backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+}
+.bd-thumb-x:hover { background: rgba(255, 93, 108, .8); border-color: transparent; }
+
+/* ---- textarea ---- */
+.bd-form textarea {
+  width: 100%; resize: vertical; min-height: 96px;
+  padding: 12px 14px; border-radius: 12px;
+  font: inherit; color: var(--ink, #dcdbf0e1); line-height: 1.5;
+  background: rgba(12, 16, 26, .66); border: 1px solid var(--border, rgba(255, 255, 255, .14));
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+.bd-form textarea:focus-visible { outline: none; border-color: var(--brand-600, #21bca5); box-shadow: 0 0 0 3px rgba(33, 188, 165, .18); }
+
+/* ---- the two share paths ---- */
+.bd-paths { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 4px; }
+.bd-path {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 4px;
+  padding: 16px 18px; text-align: left; border-radius: 14px;
+}
+.bd-path-t { font-weight: 800; font-size: .98rem; }
+.bd-path-s { font-weight: 500; font-size: .8rem; opacity: .85; line-height: 1.4; }
+.bd-path:disabled { opacity: .6; cursor: wait; }
+
+/* ---- success ---- */
+.bd-done { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 12px; padding: 18px 0 6px; }
+.bd-done .wr-done-actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+
+/* ---- community showcase wall ---- */
+.bd-gallery {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 14px; margin: 6px 0 26px;
+}
+.bg-card {
+  display: flex; flex-direction: column; overflow: hidden; border-radius: 14px;
+  border: 1px solid var(--border, rgba(255, 255, 255, .14));
+  background: rgba(12, 16, 26, .55);
+  transition: border-color 180ms ease, transform 180ms ease;
+}
+.bg-card:hover { border-color: rgba(33, 188, 165, .45); transform: translateY(-2px) scale(1.005); }
+.bg-media { position: relative; aspect-ratio: 4 / 3; background: #05070d; }
+.bg-media img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.bg-media-ph {
+  width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;
+  color: var(--muted, #c6d0f0a6); opacity: .5;
+}
+.bg-pill {
+  position: absolute; top: 8px; left: 8px;
+  font: 700 .58rem/1 ui-monospace, "Cascadia Code", Consolas, monospace;
+  letter-spacing: .14em; text-transform: uppercase;
+  color: #ffd489; border: 1px solid rgba(255, 212, 137, .4); border-radius: 999px;
+  padding: 4px 8px; background: rgba(10, 8, 2, .6);
+  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+}
+.bg-info { display: flex; flex-direction: column; gap: 4px; padding: 11px 13px 13px; }
+.bg-name { font-weight: 800; font-size: .95rem; color: var(--ink, #dcdbf0e1); }
+.bg-meta { font-size: .76rem; color: var(--muted, #c6d0f0a6); }
+.bg-notes {
+  margin: 3px 0 0; font-size: .8rem; line-height: 1.45; color: var(--muted, #c6d0f0a6);
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+}
+.bg-empty {
+  grid-column: 1 / -1; display: flex; flex-direction: column; align-items: center; gap: 6px;
+  padding: 34px 16px; text-align: center; border-radius: 14px;
+  border: 1px dashed var(--border, rgba(255, 255, 255, .18));
+}
+.bg-empty-glyph { color: var(--muted, #c6d0f0a6); opacity: .6; }
+.bg-empty-t { margin: 0; font-weight: 800; font-size: 1.05rem; color: var(--ink, #dcdbf0e1); }
+.bg-empty-s { margin: 0; font-size: .86rem; }
+
+.bd-share-head { margin: 0 0 12px; padding-top: 18px; border-top: 1px solid rgba(255, 255, 255, .08); }
+.bd-share-title { margin: 0; font-size: 1.25rem; letter-spacing: .01em; }
+
+/* ---- responsive ---- */
+@media (max-width: 640px) {
+  .builds { padding: 22px 16px 30px; }
+  .bd-fields, .bd-paths { grid-template-columns: 1fr; }
+  .bd-gallery { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
+}

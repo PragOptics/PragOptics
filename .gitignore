@@ -9,3 +9,18 @@ local.settings.json
 
 # Node
 node_modules/
+
+# Local-only notes / references — never committed or published
+_local/
+
+# Claude Code session files (launch config, worktrees)
+.claude/
+
+# .lcl keeps its own working files here. Not part of this project.
+.lcl/
+
+# .lcl's own working files. Not part of this project.
+ancient_knowledge.md
+ancient_knowledge-*.md
+ancient_knowledge.rules.md
+ancient_knowledge-*.rules.md

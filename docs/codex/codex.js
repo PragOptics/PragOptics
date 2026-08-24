@@ -284,7 +284,7 @@ async function openDoc(name, filePath) {
 
   if ($title) $title.textContent = name || "Document";
   if ($path) $path.textContent = filePath;
-  if ($raw) $raw.href = filePath;
+  if ($raw) { $raw.href = filePath; $raw.style.display = ""; }
 
   setHashDocPath(filePath);
   setLoading(true);
@@ -324,8 +324,81 @@ function findFirstFile(manifest, root) {
 }
 
 /* =========================
+   Library index (landing)
+   ========================= */
+
+function escapeHtml(s) {
+  return String(s ?? "").replace(/[&<>"']/g, c => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+  }[c]));
+}
+
+function fileCardHtml(f, root) {
+  const path = root + f.path;
+  return `<button class="codex-card" type="button" data-doc-path="${escapeHtml(path)}" data-doc-name="${escapeHtml(f.name)}">
+    <span class="codex-card-ico" aria-hidden="true">🗎</span>
+    <span class="codex-card-body">
+      <span class="codex-card-name">${escapeHtml(f.name)}</span>
+      <span class="codex-card-path">${escapeHtml(f.path)}</span>
+    </span>
+    <span class="codex-card-go" aria-hidden="true">→</span>
+  </button>`;
+}
+
+/* The landing view: a browsable overview of the whole library, shown when no
+   document is selected (instead of auto-opening the first doc). */
+function renderIndex(manifest, root) {
+  clearActive();
+  _frame = null;
+
+  if ($title) $title.textContent = manifest.title || "PragOptics Codex";
+  if ($path) $path.textContent = "Library — all documents";
+  if ($raw) $raw.style.display = "none";
+
+  // Clear any #doc= hash so the landing is the canonical URL.
+  if (location.hash) history.replaceState(null, "", location.pathname + location.search);
+
+  const groups = [];
+  const loose = [];
+  (manifest.items || []).forEach(it => {
+    if (it.type === "folder") groups.push(it);
+    else if (it.type === "file") loose.push(it);
+  });
+  if (loose.length) groups.unshift({ name: "Documents", items: loose });
+
+  const sections = groups.map(g => {
+    const files = (g.items || []).filter(i => i.type === "file");
+    const cards = files.map(f => fileCardHtml(f, root)).join("");
+    return `<section class="codex-idx-group">
+      <div class="codex-idx-h"><h2>${escapeHtml(g.name)}</h2><span class="codex-idx-count">${files.length}</span></div>
+      <div class="codex-idx-grid">${cards}</div>
+    </section>`;
+  }).join("");
+
+  const hero = `<div class="codex-idx-hero">
+    <span class="codex-idx-kicker">Documentation Library</span>
+    <h1 class="codex-idx-title">PragOptics Codex</h1>
+    <p class="codex-idx-lede">Every product brief, HART reference, and platform doc in one place. Pick a document to read it here, or use the tree on the left.</p>
+  </div>`;
+
+  if ($content) {
+    $content.style.padding = "";
+    $content.innerHTML = hero + sections;
+    $content.querySelectorAll(".codex-card").forEach(btn => {
+      btn.addEventListener("click", () => {
+        openDoc(btn.dataset.docName, btn.dataset.docPath);
+        window.scrollTo(0, 0);
+      });
+    });
+  }
+  setLoading(false);
+}
+
+/* =========================
    Boot
    ========================= */
+
+const $home = document.getElementById("codexHome");
 
 (async function boot() {
   if (!$tree || !$content) return;
@@ -335,19 +408,29 @@ function findFirstFile(manifest, root) {
 
   buildTree(manifest.items || [], $tree, rootPath);
 
+  if ($home) {
+    $home.addEventListener("click", (e) => {
+      e.preventDefault();
+      renderIndex(manifest, rootPath);
+      window.scrollTo(0, 0);
+      if ($nav && $nav.classList.contains("is-open")) $nav.classList.remove("is-open");
+    });
+  }
+
+  // Support browser back/forward and manual hash edits.
+  window.addEventListener("hashchange", () => {
+    const p = hashDocPath();
+    if (p) openDoc(basename(p), p);
+    else renderIndex(manifest, rootPath);
+  });
+
   const initial = hashDocPath();
   if (initial) {
     await openDoc(basename(initial), initial);
     return;
   }
 
-  const first = findFirstFile(manifest, rootPath);
-  if (first) {
-    await openDoc(first.name, first.path);
-    return;
-  }
-
-  if ($title) $title.textContent = manifest.title || "Documentation";
-  if ($path) $path.textContent = "No documents configured";
-  if ($content) $content.innerHTML = "<p>No documents found in codex.manifest.json</p>";
+  // No document selected → show the library landing so the reader can traverse
+  // the whole codex instead of dropping into the first file.
+  renderIndex(manifest, rootPath);
 })();
