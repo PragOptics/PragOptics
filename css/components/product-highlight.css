@@ -152,10 +152,12 @@
   border-color: var(--card-border-hover);
   box-shadow: var(--card-shadow-hover);
 }
-/* hover-retention strip for the card lift (glint owns ::after, so ::before) */
+/* hover-retention strip for the card lift (glint owns ::after, so ::before);
+   grows while hovered so the lift can't carry it past the pointer */
 .ph-card::before {
   content: ""; position: absolute; left: 0; right: 0; top: 100%; height: 5px;
 }
+.ph-card:hover::before { height: 11px; }
 
 /* starlight glint — a thin band of cyan/violet light sweeps the card on hover */
 .ph-card::after {
@@ -230,10 +232,12 @@
   box-shadow: 0 10px 26px rgba(28, 164, 144, .30);
   transition: background 160ms ease, box-shadow 160ms ease, transform 160ms ease, color 160ms ease;
 }
-/* hover-retention strip — no edge flicker on the lift */
+/* hover-retention strip with hysteresis — grows while hovered so the lift
+   can't carry it past a pointer in its lower band (no edge flicker) */
 .ph-btn::after {
   content: ""; position: absolute; left: 0; right: 0; top: 100%; height: 5px;
 }
+.ph-btn:hover::after { height: 11px; }
 .ph-btn:hover { background: linear-gradient(120deg, var(--brand-600, #21bca5), var(--brand-purp, #a200ff)); color: #fff; box-shadow: var(--aura); transform: translateY(-3px); }
 
 /* Featured-card action row + price line */

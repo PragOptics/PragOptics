@@ -51,8 +51,11 @@ function mediaHtml(p) {
   // banner + a corner app-icon badge. A product without its splash yet gets a branded
   // placeholder banner; drop in `splash` later and only the banner image changes.
   if (!p.splash && !p.icon) return '';
+  // splashFit: 'contain' shows a square-ish splash (e.g. a logo) whole in the
+  // banner instead of cover-cropping it.
+  const fit = p.splashFit === 'contain' ? ' scard-splash--contain' : '';
   const banner = p.splash
-    ? `<img class="scard-splash" src="${escapeHtml(p.splash)}" alt="${escapeHtml(p.name)}" loading="lazy">`
+    ? `<img class="scard-splash${fit}" src="${escapeHtml(p.splash)}" alt="${escapeHtml(p.name)}" loading="lazy">`
     : `<div class="scard-splash scard-splash--placeholder" role="img" aria-label="${escapeHtml(p.name)}"></div>`;
   const badge = p.icon
     ? `<img class="scard-icon" src="${escapeHtml(p.icon)}" alt="" loading="lazy">`

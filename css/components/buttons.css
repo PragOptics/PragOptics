@@ -20,16 +20,19 @@
   cursor:pointer;
   text-decoration:none;
   box-shadow:none;
-  transition: transform 160ms ease, box-shadow 160ms ease;
+  transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease;
 }
-/* hover-retention strip — the -3px lift must not drop the pointer off the
-   button, or hover strobes on the bottom edge (same fix as .ph-btn) */
+/* hover-retention strip with hysteresis: the strip is also the hover trigger,
+   so it must GROW while hovered — otherwise a pointer in its lower band is
+   carried past it by the -3px lift and hover strobes. Grown height must cover
+   rest-trigger reach (5px) + lift (3px) + slack. */
 .cta::after{
   content:""; position:absolute; left:0; right:0; top:100%; height:5px;
 }
+.cta:hover::after{ height:11px; }
 
 .cta:hover{
-  background: var(--brand-purp);
+  background: linear-gradient(180deg, var(--brand-purp), var(--brand-purp));
   border-color:rgba(34, 1, 63, 0.747);
   color: var(--ink);
   box-shadow:var(--aura);
@@ -38,6 +41,7 @@
 
 .btn{
   display:inline-flex; align-items:center; justify-content:center; gap:8px;
+  position:relative;
   background:var(--glass-2);
   color:var(--ink);
   border:1px solid var(--border);
@@ -46,8 +50,13 @@
   cursor:pointer;
   font-weight: 600;
   text-decoration:none;
-  transition: transform 160ms ease, box-shadow 160ms ease;
+  transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease;
 }
+/* same retention-with-hysteresis as .cta, scaled to the -2px lift */
+.btn::after{
+  content:""; position:absolute; left:0; right:0; top:100%; height:4px;
+}
+.btn:hover::after{ height:9px; }
 
 .btn:hover{
   background:rgba(33,188,165,0.12);

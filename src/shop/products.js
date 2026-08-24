@@ -166,6 +166,8 @@ export const SOFTWARE = [
     name: 'PragOptics™ Platform',
     tagline: 'One subscription. Every app.',
     icon: '/images/logo.png',
+    splash: '/images/logo.png',
+    splashFit: 'contain',
     subtitle: 'Not an app: the one subscription that powers all of them. Every PragOptics app downloads free and runs on its own. This adds the server side they all share, so your data and API features follow you from app to app. Start it once and it works across everything on this page.',
     availability: 'available',
     access: 'subscription',

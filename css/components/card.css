@@ -25,10 +25,12 @@
 }
 
 /* hover-retention strip: rides with the lift so the cursor never exits
-   mid-hover at the bottom edge (no flicker oscillation) */
+   mid-hover at the bottom edge; grows while hovered so the lift can't carry
+   it past a pointer in its lower band (no flicker oscillation) */
 .u-card::after {
   content: ""; position: absolute; left: 0; right: 0; top: 100%; height: 5px;
 }
+.u-card:hover::after { height: 11px; }
 
 .u-card:focus-visible,
 .u-card :focus-visible {
