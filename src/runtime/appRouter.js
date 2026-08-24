@@ -1,12 +1,6 @@
 // src/runtime/appRouter.js
 
-import { SHOP_LIVE } from "../shop/products.js";
-
 export function setAppMode(mode) {
-  // E-commerce seam: until SHOP_LIVE flips, the hardware shop and checkout are
-  // unreachable — every entry (nav, deep link, stale button) lands on landing.
-  if (!SHOP_LIVE && (mode === "shop" || mode === "checkout")) mode = "landing";
-
   ["landingView", "wizardView", "consoleView", "shopView", "softwareView", "checkoutView", "warrantyView", "buildsView"].forEach(id =>
     document.getElementById(id)?.classList.add("hidden")
   );

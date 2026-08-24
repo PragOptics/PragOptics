@@ -3,11 +3,13 @@
 // Add or edit entries here — the gallery, detail modal, and cart all render from
 // this list.  Prices in USD cents; `null` means TBD (reserve/notify flow only).
 
-// Backend seam: SHOP_LIVE gates every e-commerce surface (hardware shop, cart,
-// checkout, notify/donate flows). Until the billing backend is deployed the UI
-// hides those entry points and shop/checkout routes fall back to the landing.
-// The Software Shop stays live — the subscription wizard and the FNM demo work.
-export const SHOP_LIVE = false; // ← flip when the cart/checkout backend is deployed
+// Backend seam: SHOP_LIVE gates only the FINAL checkout submission and the
+// notify-me email capture, which need the goods checkout endpoint. Everything
+// else is live while false: the Hardware Shop, product modals, add to cart,
+// preorder deposits, donations, the cart drawer, and the checkout review page.
+// While false, "Place order" reads as coming soon and the cart stays saved on
+// the device, so nothing is collected into a void.
+export const SHOP_LIVE = false; // ← flip when the goods checkout endpoint is deployed
 
 export const HARDWARE = [
   {

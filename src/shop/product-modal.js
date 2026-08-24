@@ -1,7 +1,7 @@
 // src/shop/product-modal.js
 // Full-screen product detail modal.  Opens with openProductModal(productId).
 
-import { getProduct, formatPrice, preorderVariant, isPreorder } from './products.js';
+import { getProduct, formatPrice, preorderVariant, isPreorder, SHOP_LIVE } from './products.js';
 import { addItem, addDonation } from './cart.js';
 import { openCart } from './cart-drawer.js';
 import { createModelViewer } from '../components/modelViewer.js';
@@ -107,6 +107,8 @@ function softwareActionsHtml(p) {
   if (a.kind === 'wizard') {
     return `<div class="pm-actions"><button class="cta" type="button" data-pm-wizard>${label}</button>${donate}</div>`;
   }
+  // Notify captures an email through checkout, which waits on the backend seam.
+  if (!SHOP_LIVE) return `<div class="pm-actions"><button class="cta" type="button" disabled>Coming soon</button>${donate}</div>`;
   return `<div class="pm-actions"><button class="cta" type="button" data-pm-notify data-product-id="${escapeHtml(p.id)}">${label}</button>${donate}</div>`;
 }
 
@@ -120,17 +122,25 @@ function actionsHtml(p) {
       <div class="pm-actions">
         <button class="cta pm-add" type="button"
                 data-pm-add data-product-id="${escapeHtml(p.id)}" data-variant="preorder">
-          Preorder — ${escapeHtml(formatPrice(pre.priceCents))} deposit
+          Preorder: ${escapeHtml(formatPrice(pre.priceCents))} deposit
         </button>
-        <button class="btn" type="button"
+        ${SHOP_LIVE ? `<button class="btn" type="button"
                 data-pm-notify data-product-id="${escapeHtml(p.id)}">
           Notify me at launch
-        </button>
+        </button>` : ''}
       </div>
     `;
   }
 
   if (soon) {
+    // Notify captures an email through checkout, which waits on the backend seam.
+    if (!SHOP_LIVE) {
+      return `
+        <div class="pm-actions">
+          <button class="cta" type="button" disabled>Coming soon</button>
+        </div>
+      `;
+    }
     return `
       <div class="pm-actions">
         <button class="cta" type="button"

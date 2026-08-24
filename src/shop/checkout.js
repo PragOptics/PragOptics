@@ -4,7 +4,7 @@
 // a confirmation.  Cart contents are echoed on the page for user review.
 
 import { lines, subtotal, clear, subscribe } from './cart.js';
-import { formatPrice, ALL_PRODUCTS } from './products.js';
+import { formatPrice, ALL_PRODUCTS, SHOP_LIVE } from './products.js';
 
 let $view, $host;
 
@@ -100,8 +100,10 @@ function summaryHtml(ls) {
   const note = hasPreorder && hasStock
     ? 'Your order mixes in-stock items and preorder deposits. In-stock items are charged in full; each preorder is a deposit that reserves your unit, with the balance due when it ships.'
     : hasPreorder
-      ? 'This is a preorder. The amount below is a deposit that reserves your unit — the balance is due when it ships, and it is fully refundable until then.'
-      : 'Review your items below, then confirm your details to place the order.';
+      ? 'This is a preorder. The amount below is a deposit that reserves your unit. The balance is due when it ships, and it is fully refundable until then.'
+      : SHOP_LIVE
+        ? 'Review your items below, then confirm your details to place the order.'
+        : 'Review your items below. Checkout opens soon, and your cart will be waiting.';
   return `
     <section class="co-summary">
       <h2 class="co-h2">Your order</h2>
@@ -131,7 +133,7 @@ function formHtml() {
       ${signedIn ? `
         <div class="co-signedin">
           <span class="co-signedin-icon" aria-hidden="true">✓</span>
-          <span>Signed in — this reservation will link to your PragOptics account.</span>
+          <span>Signed in: this reservation will link to your PragOptics account.</span>
         </div>
       ` : `
         <div class="co-signin-prompt">
@@ -176,12 +178,30 @@ function formHtml() {
   `;
 }
 
+// The final step waits on the goods checkout endpoint: while SHOP_LIVE is off,
+// the review page keeps the live summary but offers no submission, and says so.
+function checkoutSoonHtml() {
+  return `
+    <section class="co-form co-soon">
+      <h2 class="co-h2">Checkout opens soon</h2>
+      <p class="muted co-note">
+        Online ordering is in its final buildout. Your cart is saved on this
+        device, so everything here will be waiting the day checkout opens.
+      </p>
+      <div class="co-actions">
+        <button class="ph-btn" type="button" disabled>Checkout coming soon</button>
+        <button class="ph-btn ph-btn-ghost" type="button" data-co-cancel>Back to shop</button>
+      </div>
+    </section>
+  `;
+}
+
 function notifyConfirmationHtml(email) {
   return `
     <div class="co-confirm">
       <div class="co-check" aria-hidden="true">✓</div>
       <h1 class="co-title">You're on the list</h1>
-      <p>Thanks — we'll email <strong>${escapeHtml(email)}</strong> the moment it ships.</p>
+      <p>Thanks! We'll email <strong>${escapeHtml(email)}</strong> the moment it ships.</p>
       <div class="co-empty-actions">
         <button class="ph-btn" type="button" onclick="window.setAppMode?.('shop')">Keep shopping</button>
         <button class="ph-btn ph-btn-ghost" type="button" onclick="window.setAppMode?.('landing')">Back to home</button>
@@ -195,7 +215,7 @@ function orderConfirmationHtml(email) {
     <div class="co-confirm">
       <div class="co-check" aria-hidden="true">✓</div>
       <h1 class="co-title">Order received</h1>
-      <p>Thanks — we've recorded your order and sent a copy to <strong>${escapeHtml(email)}</strong>. We'll follow up to confirm and arrange payment. Your cart has been cleared.</p>
+      <p>Thanks! We've recorded your order and sent a copy to <strong>${escapeHtml(email)}</strong>. We'll follow up to confirm and arrange payment. Your cart has been cleared.</p>
       <div class="co-empty-actions">
         <button class="ph-btn" type="button" onclick="window.setAppMode?.('shop')">Keep shopping</button>
         <button class="ph-btn ph-btn-ghost" type="button" onclick="window.setAppMode?.('landing')">Back to home</button>
@@ -233,11 +253,13 @@ function render() {
   }
 
   setHeader('Checkout', 'Review your order.',
-            'Confirm your items and details to place your order.');
+            SHOP_LIVE
+              ? 'Confirm your items and details to place your order.'
+              : 'Checkout opens soon. Your cart is saved on this device.');
   $host.innerHTML = `
     <div class="co-grid">
       ${summaryHtml(ls)}
-      ${formHtml()}
+      ${SHOP_LIVE ? formHtml() : checkoutSoonHtml()}
     </div>
   `;
 }
@@ -293,6 +315,7 @@ function bindOnce() {
     const form = e.target.closest('#reserveForm');
     if (!form) return;
     e.preventDefault();
+    if (!SHOP_LIVE) return; // form never renders while gated; guard anyway
     const email = form.email.value.trim();
     if (!email || !/^\S+@\S+\.\S+$/.test(email)) {
       form.email.setCustomValidity('Enter a valid email.');

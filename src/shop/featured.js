@@ -32,8 +32,10 @@ function primaryBtn(p) {
     return `<button class="cta" type="button" data-action="buy" data-product-id="${escapeHtml(p.id)}" data-variant="${escapeHtml(v)}">Add to cart</button>`;
   }
   if (pre) {
-    return `<button class="cta" type="button" data-action="buy" data-product-id="${escapeHtml(p.id)}" data-variant="preorder">Preorder — ${escapeHtml(formatPrice(pre.priceCents))}</button>`;
+    return `<button class="cta" type="button" data-action="buy" data-product-id="${escapeHtml(p.id)}" data-variant="preorder">Preorder: ${escapeHtml(formatPrice(pre.priceCents))}</button>`;
   }
+  // Notify captures an email through checkout, which needs the backend seam.
+  if (!SHOP_LIVE) return `<button class="cta" type="button" disabled>Coming soon</button>`;
   return `<button class="cta" type="button" data-action="notify" data-product-id="${escapeHtml(p.id)}">Notify me</button>`;
 }
 
@@ -89,7 +91,7 @@ function softwareCardHtml(s) {
         <p class="muted">${escapeHtml(s.subtitle || s.tagline || '')}</p>
         <div class="ph-actions">
           ${primary}
-          ${SHOP_LIVE ? `<button class="btn" type="button" data-action="open-product" data-product-id="${escapeHtml(s.id)}">View details</button>` : ''}
+          <button class="btn" type="button" data-action="open-product" data-product-id="${escapeHtml(s.id)}">View details</button>
         </div>
       </div>
     </article>
@@ -226,9 +228,8 @@ export function renderFeaturedProducts(mountId) {
     .filter(Boolean);
 
   // Product Spotlight: two scrolling rows — hardware, then software — each
-  // closing on its shop card. The hardware row is pure shop (add-to-cart,
-  // preorder, the shop tail) so the whole row sits behind the SHOP_LIVE seam.
-  const hardwareRow = !SHOP_LIVE ? '' : `
+  // closing on its shop card.
+  host.innerHTML = `
     <div class="ph-row">
       <span class="ph-row-label">Field Hardware</span>
       <div class="ph-scroller" tabindex="0" aria-label="Featured hardware">
@@ -239,10 +240,7 @@ export function renderFeaturedProducts(mountId) {
           mode: 'shop', btnLabel: 'Open the Hardware Shop', art: HW_ART
         })}
       </div>
-    </div>`;
-
-  host.innerHTML = `
-    ${hardwareRow}
+    </div>
     <div class="ph-row">
       <span class="ph-row-label">Software</span>
       <div class="ph-scroller" tabindex="0" aria-label="Featured software">

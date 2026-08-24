@@ -1,10 +1,4 @@
-import { SHOP_LIVE } from '../shop/products.js';
-
 export function initHeaderMenu() {
-  // E-commerce seam: while the shop is gated, drop its nav entries
-  // (Hardware / Cart / Checkout) so the menu only offers live surfaces.
-  if (!SHOP_LIVE) document.querySelectorAll('[data-shop-only]').forEach(el => el.remove());
-
   const navs = document.querySelectorAll('.dev-nav, .btnContainer, .product-highlight, .shop, .software-shop');
   if (!navs.length) return;
 
