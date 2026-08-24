@@ -100,36 +100,44 @@ function softwareCardHtml(s) {
 // dashed edge so it reads as "there's more" rather than another product.
 //
 // Each shop card carries technical line art in the site's own language —
-// thin emerald strokes, glowing pads/nodes, one slow dashed run. Hardware:
-// a circuit constellation (chip, traces, vias). Software: a tiered platform
-// stack fanning out to service endpoints. Pure SVG, nothing pictorial.
+// thin emerald strokes, glowing pads/nodes, one slow dashed run — and both
+// share one diagram grammar: a structured block on a left-hand bus, fanning
+// out right to endpoint nodes. Hardware: an instrument board (chip, pins,
+// vias) fanning to field nodes. Software: a tiered platform stack fanning to
+// service endpoints. Pure SVG, nothing pictorial.
 
 const HW_ART = `
 <svg class="ph-tail-art" viewBox="0 0 240 96" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
   <g fill="none" stroke="rgba(54,230,202,.55)" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
-    <rect x="100" y="32" width="40" height="32" rx="6" fill="rgba(33,188,165,.07)"/>
-    <path d="M100 38 H82 L70 26 H60"/>
-    <path class="tart-dash" d="M100 48 H62"/>
-    <path d="M100 58 H82 L70 70 H60"/>
-    <path d="M140 38 H158 L170 26 H180"/>
-    <path class="tart-dash" d="M140 48 H178"/>
-    <path d="M140 58 H158 L170 70 H180"/>
-    <path d="M112 32 V20"/><path d="M128 32 V20"/>
-    <path d="M112 64 V76"/><path d="M128 64 V76"/>
+    <rect x="54" y="18" width="62" height="60" rx="6" fill="rgba(33,188,165,.05)"/>
+    <rect x="72" y="38" width="22" height="20" rx="3" fill="rgba(33,188,165,.07)"/>
+    <path d="M78 38 V32"/><path d="M88 38 V32"/>
+    <path d="M78 58 V64"/><path d="M88 58 V64"/>
+    <path d="M54 26 H40"/>
+    <path d="M54 48 H40"/>
+    <path d="M54 70 H40"/>
+    <path d="M40 26 V70"/>
+    <path d="M116 26 H142 L154 18 H174"/>
+    <path class="tart-dash" d="M116 48 H174"/>
+    <path d="M116 70 H142 L154 78 H174"/>
+  </g>
+  <g fill="none" stroke="rgba(54,230,202,.4)" stroke-width="1">
+    <path d="M72 44 H62"/><path d="M72 52 H62"/>
+    <path d="M94 44 H104"/><path d="M94 52 H104"/>
   </g>
   <g fill="#36e6ca">
-    <circle cx="56" cy="26" r="6" opacity=".16"/><circle cx="56" cy="26" r="2.6"/>
-    <circle cx="58" cy="48" r="2.6"/>
-    <circle cx="56" cy="70" r="6" opacity=".16"/><circle cx="56" cy="70" r="2.6"/>
-    <circle cx="184" cy="26" r="2.6"/>
-    <circle cx="182" cy="48" r="6" opacity=".16"/><circle cx="182" cy="48" r="2.6"/>
-    <circle cx="112" cy="18" r="1.6"/><circle cx="128" cy="18" r="1.6"/>
-    <circle cx="112" cy="78" r="1.6"/><circle cx="128" cy="78" r="1.6"/>
+    <circle cx="59" cy="26" r="1.7"/>
+    <circle cx="59" cy="70" r="1.7"/>
+    <circle cx="62" cy="44" r="1.5"/><circle cx="62" cy="52" r="1.5"/>
+    <circle cx="104" cy="44" r="1.5"/><circle cx="104" cy="52" r="1.5"/>
+    <circle cx="40" cy="48" r="2.4"/>
+    <circle cx="178" cy="18" r="6" opacity=".16"/><circle cx="178" cy="18" r="2.6"/>
+    <circle cx="178" cy="78" r="6" opacity=".16"/><circle cx="178" cy="78" r="2.6"/>
   </g>
   <g fill="#bf7dff">
-    <circle cx="184" cy="70" r="6" opacity=".18"/><circle cx="184" cy="70" r="2.6"/>
+    <circle cx="178" cy="48" r="7" opacity=".18"/><circle cx="178" cy="48" r="2.8"/>
   </g>
-  <rect x="112" y="42" width="16" height="12" rx="2" fill="none" stroke="rgba(54,230,202,.4)" stroke-width="1.2"/>
+  <circle cx="178" cy="48" r="12" fill="none" stroke="rgba(191,125,255,.3)" stroke-width="1" stroke-dasharray="2 5"/>
 </svg>`;
 
 const SW_ART = `
