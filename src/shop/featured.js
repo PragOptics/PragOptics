@@ -101,8 +101,8 @@ function softwareCardHtml(s) {
 //
 // Each shop card carries technical line art in the site's own language —
 // thin emerald strokes, glowing pads/nodes, one slow dashed run. Hardware:
-// a circuit constellation (chip, traces, vias). Software: code brackets
-// feeding a deploy-graph constellation. Pure SVG, nothing pictorial.
+// a circuit constellation (chip, traces, vias). Software: a tiered platform
+// stack fanning out to service endpoints. Pure SVG, nothing pictorial.
 
 const HW_ART = `
 <svg class="ph-tail-art" viewBox="0 0 240 96" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
@@ -134,27 +134,35 @@ const HW_ART = `
 
 const SW_ART = `
 <svg class="ph-tail-art" viewBox="0 0 240 96" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
-  <g fill="none" stroke="rgba(54,230,202,.55)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M58 30 L40 48 L58 66"/>
-    <path d="M70 66 L84 30"/>
-    <path d="M96 30 L114 48 L96 66"/>
+  <g fill="none" stroke="rgba(54,230,202,.55)" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="58" y="16" width="54" height="16" rx="4" fill="rgba(33,188,165,.07)"/>
+    <rect x="58" y="40" width="54" height="16" rx="4" fill="rgba(33,188,165,.07)"/>
+    <rect x="58" y="64" width="54" height="16" rx="4" fill="rgba(33,188,165,.07)"/>
+    <path d="M58 24 H42"/>
+    <path d="M58 48 H42"/>
+    <path d="M58 72 H42"/>
+    <path d="M42 24 V72"/>
+    <path d="M112 24 H140 L154 16 H174"/>
+    <path class="tart-dash" d="M112 48 H174"/>
+    <path d="M112 72 H140 L154 80 H174"/>
   </g>
-  <g fill="none" stroke="rgba(54,230,202,.45)" stroke-width="1.3" stroke-linecap="round">
-    <path d="M141 31 L163 43"/>
-    <path d="M137 60 L162 48"/>
-    <path class="tart-dash" d="M172 43 L196 32"/>
-    <path d="M172 48 L198 61"/>
+  <g fill="none" stroke="rgba(54,230,202,.4)" stroke-width="1">
+    <path d="M68 24 H100"/>
+    <path d="M68 48 H92"/>
+    <path d="M68 72 H96"/>
   </g>
   <g fill="#36e6ca">
-    <circle cx="138" cy="29" r="2.6"/>
-    <circle cx="134" cy="62" r="2.6"/>
-    <circle cx="200" cy="30" r="6" opacity=".16"/><circle cx="200" cy="30" r="2.8"/>
+    <circle cx="63" cy="24" r="1.7"/>
+    <circle cx="63" cy="48" r="1.7"/>
+    <circle cx="63" cy="72" r="1.7"/>
+    <circle cx="42" cy="48" r="2.4"/>
+    <circle cx="178" cy="16" r="6" opacity=".16"/><circle cx="178" cy="16" r="2.6"/>
+    <circle cx="178" cy="80" r="6" opacity=".16"/><circle cx="178" cy="80" r="2.6"/>
   </g>
   <g fill="#bf7dff">
-    <circle cx="167" cy="45" r="8" opacity=".16"/><circle cx="167" cy="45" r="3.4"/>
-    <circle cx="202" cy="63" r="2.8"/>
+    <circle cx="178" cy="48" r="7" opacity=".18"/><circle cx="178" cy="48" r="2.8"/>
   </g>
-  <circle cx="167" cy="45" r="13" fill="none" stroke="rgba(191,125,255,.3)" stroke-width="1" stroke-dasharray="2 5"/>
+  <circle cx="178" cy="48" r="12" fill="none" stroke="rgba(191,125,255,.3)" stroke-width="1" stroke-dasharray="2 5"/>
 </svg>`;
 
 function tailCardHtml({ title, sub, mode, btnLabel, art }) {
