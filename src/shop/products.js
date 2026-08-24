@@ -165,16 +165,19 @@ export const SOFTWARE = [
     category: 'software',
     name: 'PragOptics™ Platform',
     tagline: 'One subscription. Every app.',
-    subtitle: 'Not an app — the subscription that powers all of them. Every PragOptics app downloads free and runs on its own; this adds the server side they share: cloud storage, sync, and API-backed features. Start it once and it works across everything on this page.',
+    icon: '/images/logo.png',
+    subtitle: 'Not an app: the one subscription that powers all of them. Every PragOptics app downloads free and runs on its own. This adds the server side they all share, so your data and API features follow you from app to app. Start it once and it works across everything on this page.',
     availability: 'available',
     access: 'subscription',
     priceLabel: 'Subscription',
     action: { kind: 'wizard', label: 'Start subscription' },
     features: [
       'One subscription covers every PragOptics app',
-      'Cloud storage + sync for your app data',
-      'Token-based API access + custom endpoints',
-      'Billed by usage — API calls and storage, not seats'
+      'Cloud storage and sync for your app data',
+      'API-backed features in every app that has them',
+      'Token-based API access and custom endpoints',
+      'Usage-based billing: pay for API calls and storage, not seats',
+      'No subscription needed to keep using the free apps'
     ]
   },
   {
