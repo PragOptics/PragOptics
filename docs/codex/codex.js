@@ -91,7 +91,12 @@ hr{border:0;border-top:1px solid var(--line);margin:1.8em 0;}
 const FRAME_JS = `<script>
 (function(){
   function report(){ var h=Math.max(document.documentElement.scrollHeight, document.body.scrollHeight); parent.postMessage({__codexHeight:h},"*"); }
-  document.querySelectorAll('a[href^="http"],a[href^="mailto"],a[href^="tel"]').forEach(function(a){ a.target="_blank"; a.rel="noopener noreferrer"; });
+  document.querySelectorAll('a[href^="http"],a[href^="mailto"],a[href^="tel"]').forEach(function(a){
+    // An absolute link back into the Codex is not an external link - leave it
+    // untargeted so the click handler below can open it in place.
+    if((a.getAttribute("href")||"").indexOf("/docs/#doc=") !== -1) return;
+    a.target="_blank"; a.rel="noopener noreferrer";
+  });
   document.addEventListener("click", function(e){
     var a = e.target.closest && e.target.closest('a[href]');
     if(!a) return;
@@ -103,6 +108,23 @@ const FRAME_JS = `<script>
       return;
     }
     if(href.indexOf("/hart")===0){ e.preventDefault(); parent.postMessage({__codexHartNav:href},"*"); return; }
+    // A link to another Codex doc, written either as /docs/#doc=NAME or with a
+    // full origin in front of it. Hand the parent the doc name so it swaps the
+    // view in place instead of opening a second copy of the Codex in a new tab.
+    var dm = href.indexOf("#doc=");
+    if(dm !== -1 && href.indexOf("/docs/") !== -1){
+      e.preventDefault();
+      parent.postMessage({__codexDocNav: href.slice(dm + 5)},"*");
+      return;
+    }
+    // A bare relative .md link. Without this it matches no rule, the browser
+    // default runs, and the frame navigates to unstyled raw markdown.
+    var bare = href.split("#")[0].split("?")[0];
+    if(bare.length > 3 && bare.slice(-3) === ".md" && href.indexOf("://") === -1 && href.charAt(0) !== "/"){
+      e.preventDefault();
+      parent.postMessage({__codexDocNav: a.href},"*");
+      return;
+    }
     if(href.charAt(0)==="/"){ e.preventDefault(); window.open(href,"_blank","noopener"); return; }
   });
   window.addEventListener("load", report);
@@ -130,7 +152,22 @@ window.addEventListener("message", (ev) => {
   const d = ev && ev.data;
   if (d && d.__codexHeight && _frame) _frame.style.height = (d.__codexHeight + 8) + "px";
   if (d && d.__codexHartNav) hartNavigate(d.__codexHartNav);
+  if (d && d.__codexDocNav) docNavigate(d.__codexDocNav);
 });
+
+/* In-codex doc navigation: a link from one doc to another resolves against the
+   docs root and opens in place, so the tree, scroll position and history survive.
+   Accepts a bare name ("omni-LICENSE.md"), a rooted path, or a full URL. */
+function docNavigate(target) {
+  let url;
+  try { url = new URL(decodeURIComponent(String(target)), DOCS_ROOT).href; }
+  catch (_) { return; }
+  let name = basename(url);
+  const node = document.querySelector('.codex-node[data-file-path="' + ((window.CSS && CSS.escape) ? CSS.escape(url) : url) + '"]');
+  if (node) { const lbl = node.querySelector("span:last-child"); if (lbl) name = lbl.textContent.trim(); }
+  openDoc(name, url);
+  window.scrollTo(0, 0);
+}
 
 /* In-codex HART navigation: a /hart/<slug>/ link inside a doc opens the matching
    codex doc instead of jumping to the static page, so the view stays consistent. */
@@ -171,13 +208,23 @@ function setLoading(on) {
   $loading.style.display = on ? "block" : "none";
 }
 
+/* Accepts either the short form a hand-written doc link uses
+   (#doc=omni-LICENSE.md) or a full URL, and always returns the absolute URL the
+   tree stores in data-file-path - so the fetch, the active-node highlight and
+   the path header all agree. */
 function hashDocPath() {
   const m = location.hash.match(/doc=([^&]+)/);
-  return m ? decodeURIComponent(m[1]) : null;
+  if (!m) return null;
+  const raw = decodeURIComponent(m[1]);
+  try { return new URL(raw, DOCS_ROOT).href; } catch (_) { return raw; }
 }
 
+/* Writes the short form relative to the docs root, so a copied Codex link is
+   portable instead of carrying whichever host it was copied from. */
 function setHashDocPath(p) {
-  const next = `#doc=${encodeURIComponent(p)}`;
+  let short = String(p);
+  if (short.indexOf(DOCS_ROOT) === 0) short = short.slice(DOCS_ROOT.length);
+  const next = `#doc=${encodeURIComponent(short)}`;
   if (location.hash !== next) history.replaceState(null, "", next);
 }
 
