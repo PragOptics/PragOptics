@@ -36,6 +36,18 @@ To request warranty service, contact PragOptics with proof of purchase. **Shippi
 
 ---
 
+## Returns & shipping
+
+**Returns.** Hardware bought from PragOptics can be returned within **30 days of delivery** for a refund of the purchase price. The unit must come back complete and in resellable condition. **You cover return shipping.** Returns go back by mail: contact us with your proof of purchase and we will send return instructions.
+
+**Preorder deposits.** A preorder deposit reserves your unit and is **fully refundable at any time until that unit ships**. Once it ships, the 30-day return window above applies instead.
+
+**Shipping.** Orders over **$50 ship free** within the United States. Orders under $50 are charged shipping at checkout.
+
+**What returns do not cover.** Units you built yourself from the published designs are not returnable, since we did not sell them to you. Warranty service is a separate process from returns: see the section above.
+
+---
+
 ## Activating your warranty
 
 Every unit we build ships with a **warranty card** carrying a **unique registration code** — one code, tied to one device. To activate the warranty above (the one-year defect cover and the lifetime case cover), **register your unit within 30 days of purchase** using the code on the card.
