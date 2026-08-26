@@ -176,4 +176,4 @@ Material changes will be communicated through reasonable notice. Continued use o
 For privacy-related inquiries or requests, contact:
 
 **Bridges Industrial LLC**  
-Email: **support@fortiviewholdings.com**
+Email: **support@bridgesindust.com**

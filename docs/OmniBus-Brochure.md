@@ -208,7 +208,7 @@ sub,.fine{ color:var(--muted); font-size:.78rem; }
 </div>
 
 <div class="contact">
-  <a href="https://pragoptics.com">pragoptics.com</a> · <a href="https://bridgesindust.com">bridgesindust.com</a> · <a href="mailto:support@fortiviewholdings.com">support@fortiviewholdings.com</a> · <a href="tel:+18324250421">832-425-0421</a>
+  <a href="https://pragoptics.com">pragoptics.com</a> · <a href="https://bridgesindust.com">bridgesindust.com</a> · <a href="mailto:support@bridgesindust.com">support@bridgesindust.com</a> · <a href="tel:+18324250421">832-425-0421</a>
 </div>
 
 ---
@@ -773,7 +773,7 @@ OmniBus gives a single technician the reach of every vendor's handheld, the memo
 
 <div class="contact" style="text-align:left">
 <a href="https://pragoptics.com">pragoptics.com</a> · <a href="https://bridgesindust.com">bridgesindust.com</a><br>
-<a href="mailto:support@fortiviewholdings.com">support@fortiviewholdings.com</a><br>
+<a href="mailto:support@bridgesindust.com">support@bridgesindust.com</a><br>
 <a href="tel:+18324250421">832-425-0421</a>
 </div>
 

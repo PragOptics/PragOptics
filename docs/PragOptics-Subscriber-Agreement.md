@@ -308,4 +308,4 @@ This Agreement is governed by the laws of the **State of Texas, USA**, without r
 ## 14. Contact
 
 Platform operator: **Bridges Industrial LLC**  
-Support: **support@fortiviewholdings.com**
+Support: **support@bridgesindust.com**
