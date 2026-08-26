@@ -104,6 +104,12 @@
         },
         {
           "type": "file",
+          "name": "Omni Design Licence (CC BY-NC-SA)",
+          "path": "omni-LICENSE.md",
+          "format": "md"
+        },
+        {
+          "type": "file",
           "name": "Subscriber Agreement",
           "path": "PragOptics-Subscriber-Agreement.md",
           "format": "md"

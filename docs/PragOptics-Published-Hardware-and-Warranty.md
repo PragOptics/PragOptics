@@ -23,7 +23,7 @@ What you may **not** do is **manufacture Omni hardware for resale**, sell the de
 
 **Firmware is proprietary and unpublished.** It is not covered by the design licence, and no rights to it are granted.
 
-The full licence, `omni-LICENSE.md`, travels with every design download and governs in full.
+The full licence, **[omni-LICENSE.md](/docs/#doc=omni-LICENSE.md)**, travels with every design download and governs in full.
 
 ---
 

@@ -3,7 +3,8 @@
 > OmniSource is published hardware from PragOptics, a division of Bridges Industrial LLC.
 > © 2025-2026 Bridges Industrial LLC. Source-available under CC BY-NC-SA 4.0 plus an
 > express in-house permission: build for yourself or your employer, not for resale.
-> Firmware is proprietary and unpublished. See `omni-LICENSE.md` beside the design files.
+> Firmware is proprietary and unpublished. See [omni-LICENSE.md](/docs/#doc=omni-LICENSE.md),
+> a copy of which sits beside the design files in every download folder.
 
 ---
 

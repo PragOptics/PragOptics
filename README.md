@@ -14,7 +14,7 @@ This repository represents the current state of that evolution.
 
 Use of PragOptics™ and associated services is governed by the applicable subscription agreement and privacy policy.
 
-PragOptics hardware is **published hardware**, source-available rather than open source. Every design is published free (schematic, BOM, enclosure files) under CC BY-NC-SA 4.0: build one for yourself or your employer, but not for resale. Firmware is proprietary and unpublished. The full licence is `omni-LICENSE.md`, which travels with every design download; see also [Published Hardware, Warranty & Liability](docs/PragOptics-Published-Hardware-and-Warranty.md).
+PragOptics hardware is **published hardware**, source-available rather than open source. Every design is published free (schematic, BOM, enclosure files) under CC BY-NC-SA 4.0: build one for yourself or your employer, but not for resale. Firmware is proprietary and unpublished. The full licence is [omni-LICENSE.md](docs/omni-LICENSE.md), a copy of which travels with every design download; see also [Published Hardware, Warranty & Liability](docs/PragOptics-Published-Hardware-and-Warranty.md).
 
 ---
 
