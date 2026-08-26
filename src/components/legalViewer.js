@@ -37,10 +37,13 @@ function mdToHtml(md) {
     .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
     .replace(/\*([^*]+)\*/g, "<em>$1</em>");
 
-  // links [text](url)
-  md = md.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_, text, url) =>
-    `<a href="url">${esc(text)}</a>`
-  );
+  // links [text](url) — external ones open in a new tab
+  md = md.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_, text, url) => {
+    const href = esc(url.trim());
+    const external = /^https?:\/\//i.test(href);
+    const attrs = external ? ' target="_blank" rel="noopener noreferrer"' : '';
+    return `<a href="${href}"${attrs}>${esc(text)}</a>`;
+  });
 
   // GFM pipe tables
   md = md.replace(
@@ -90,7 +93,14 @@ function mdToHtml(md) {
 export function initLegalViewer(options = {}) {
   const paths = {
     terms: options.termsPath || "/docs/PragOptics-Subscriber-Agreement.md",
-    privacy: options.privacyPath || "/docs/PragOptics-Privacy.md"
+    privacy: options.privacyPath || "/docs/PragOptics-Privacy.md",
+    license: options.licensePath || "/docs/omni-LICENSE.md"
+  };
+
+  const titles = {
+    terms: "Terms",
+    privacy: "Privacy",
+    license: "Omni Design Licence"
   };
 
   const $mask = document.getElementById("legalMask");
@@ -116,14 +126,17 @@ export function initLegalViewer(options = {}) {
     $panel.classList.remove("is-open");
     $mask.setAttribute("aria-hidden", "true");
     $panel.setAttribute("aria-hidden", "true");
-    document.body.style.overflow = "";
+    // This viewer can open on top of the product modal or the cart drawer.
+    // Only give scrolling back if nothing is still open underneath.
+    const stillOpen = document.querySelector("#productPanel.is-open, #cartPanel.is-open");
+    document.body.style.overflow = stillOpen ? "hidden" : "";
   }
 
   async function showDoc(kind) {
     const url = paths[kind];
     if (!url) return;
 
-    $title.textContent = (kind === "terms") ? "Terms" : "Privacy";
+    $title.textContent = titles[kind] || "Document";
     $raw.href = url;
 
     $loading.style.display = "block";

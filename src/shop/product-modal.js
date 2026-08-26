@@ -389,10 +389,17 @@ function bodyHtml(p) {
       <section class="pm-downloads">
         <h3 class="pm-h3">Docs &amp; downloads</h3>
         <div class="pm-download-list">
-          ${p.downloads.map(d => d.kind === 'link'
-            ? `<a class="btn" href="${escapeHtml(d.href)}">${escapeHtml(d.label)}</a>`
-            : `<span class="btn pm-download-pending" aria-disabled="true">${escapeHtml(d.label)}</span>`
-          ).join('')}
+          ${p.downloads.map(d => {
+            // 'legal' opens in the on-page markdown viewer, the same one the
+            // footer Terms/Privacy links use. href stays as a no-JS fallback.
+            if (d.kind === 'legal') {
+              return `<a class="btn" href="${escapeHtml(d.href)}" data-legal="${escapeHtml(d.legal)}">${escapeHtml(d.label)}</a>`;
+            }
+            if (d.kind === 'link') {
+              return `<a class="btn" href="${escapeHtml(d.href)}">${escapeHtml(d.label)}</a>`;
+            }
+            return `<span class="btn pm-download-pending" aria-disabled="true">${escapeHtml(d.label)}</span>`;
+          }).join('')}
         </div>
       </section>
     ` : ''}

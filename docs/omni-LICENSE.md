@@ -22,8 +22,8 @@ accompanying documentation) are licensed under:
 **Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International
 (CC BY-NC-SA 4.0)**
 
-- Full legal text: https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode
-- Plain-language summary: https://creativecommons.org/licenses/by-nc-sa/4.0/
+- Full legal text: [creativecommons.org/licenses/by-nc-sa/4.0/legalcode](https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode)
+- Plain-language summary: [creativecommons.org/licenses/by-nc-sa/4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/)
 
 The full licence text governs. The sections below describe how we apply it and
 add one express permission.
@@ -57,7 +57,7 @@ leasing, or distributing units outside your organisation.
   term of this licence, subject only to the in-house permission above.
 
 Manufacturing or distributing Omni hardware commercially requires a separate
-written licence from Bridges Industrial LLC. Ask us: support@bridgesindust.com.
+written licence from Bridges Industrial LLC. Ask us: [support@bridgesindust.com](mailto:support@bridgesindust.com).
 
 ---
 
@@ -91,8 +91,8 @@ warranty of any kind, express or implied. Warranty coverage applies only to unit
 built and sold by us.
 
 Full warranty and liability terms:
-https://pragoptics.com/docs/#doc=PragOptics-Published-Hardware-and-Warranty.md
+[Published Hardware, Warranty & Liability](https://pragoptics.com/docs/#doc=PragOptics-Published-Hardware-and-Warranty.md)
 
 ---
 
-Bridges Industrial LLC · bridgesindust.com · support@bridgesindust.com
+Bridges Industrial LLC · [bridgesindust.com](https://bridgesindust.com) · [support@bridgesindust.com](mailto:support@bridgesindust.com)

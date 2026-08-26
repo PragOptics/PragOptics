@@ -66,7 +66,8 @@
     await loadView('/views/legal.view.html', 'view-legal');
     initLegalViewer({
       termsPath: "/docs/PragOptics-Subscriber-Agreement.md",
-      privacyPath: "/docs/PragOptics-Privacy.md"
+      privacyPath: "/docs/PragOptics-Privacy.md",
+      licensePath: "/docs/omni-LICENSE.md"
     });
 
     initBrochureViewer({ src: "/docs/brochure-view.html" });
