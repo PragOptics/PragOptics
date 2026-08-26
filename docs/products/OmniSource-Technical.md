@@ -1,7 +1,9 @@
 # OmniSource — Technical Documentation
 
-> OmniSource is open hardware from PragOptics.
-> © 2025-2026 PragOptics. Free to build and modify for your own use.
+> OmniSource is published hardware from PragOptics, a division of Bridges Industrial LLC.
+> © 2025-2026 Bridges Industrial LLC. Source-available under CC BY-NC-SA 4.0 plus an
+> express in-house permission: build for yourself or your employer, not for resale.
+> Firmware is proprietary and unpublished. See `omni-LICENSE.md` beside the design files.
 
 ---
 
@@ -77,8 +79,8 @@ distributing, or acting on the plans — you acknowledge that you have read and
 accepted this Intended Use statement and this Disclaimer of Liability.
 
 **Platform-wide terms.** The warranty and liability terms that apply across all
-PragOptics hardware live in the platform document **PragOptics Open Hardware,
-Warranty & Liability** ([open it in the Codex](/docs/#doc=PragOptics-Open-Hardware-and-Warranty.md)).
+PragOptics hardware live in the platform document **PragOptics Published Hardware,
+Warranty & Liability** ([open it in the Codex](/docs/#doc=PragOptics-Published-Hardware-and-Warranty.md)).
 The device-specific intended-use and safety envelope above sits on top of that
 document; where this document is stricter, this document governs.
 
@@ -321,4 +323,4 @@ A pocket, adjustable, current-limited loop-power stick that runs off any USB
 port and wakes up a single, disconnected two-wire instrument: an exposed trimpot
 sets the voltage, a 270 Ω 3 W resistor keeps the output touch-safe and
 current-limited, a self-resetting 250R145 PTC backs it up, and a 10 µF cap keeps
-it steady. Open hardware, free to build, and built to be opened.
+it steady. Published hardware, free to build, and built to be opened.

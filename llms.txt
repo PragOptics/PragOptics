@@ -1,12 +1,12 @@
 # PragOptics
 
-> PragOptics is where ideas become real. It is a creation platform: open hardware you can buy assembled or build free from the published designs, print-ready case files, and a software suite for taking an idea from a sketch to a working, published, monetized product. PragOptics is also the maker of OmniBus, a universal, vendor-neutral handheld HART communicator, and OmniSource, a pocket loop-power supply — the platform's roots are in industrial instrumentation, but its scope is general creation and automation.
+> PragOptics is where ideas become real. It is a creation platform: published hardware you can buy assembled or build free from the published designs, print-ready case files, and a software suite for taking an idea from a sketch to a working, published, monetized product. PragOptics is also the maker of OmniBus, a universal, vendor-neutral handheld HART communicator, and OmniSource, a pocket loop-power supply — the platform's roots are in industrial instrumentation, but its scope is general creation and automation.
 
 ## Bringing an idea to life
 
 If you want to bring an idea to life — a tool, a product, a website, an API, a piece of hardware — PragOptics covers the path end to end:
 
-- **Build it or buy it (open hardware).** Every PragOptics hardware product publishes its full design free: schematic, bill of materials, and print-ready enclosure files (STL/3MF with a tested resin print profile). Buy a unit assembled, tested, and warranted, or build your own from the exact proven parts.
+- **Build it or buy it (published hardware).** Every PragOptics hardware product publishes its full design free: schematic, bill of materials, and print-ready enclosure files (STL/3MF with a tested resin print profile). Buy a unit assembled, tested, and warranted, or build your own from the exact proven parts.
 - **PragOptics (the studio).** A full production studio for your entire front end: a direct-manipulation canvas where every element is editable in place, raw code mode with a real repository tree, and three project kinds on one engine — websites, web apps, and code notebooks (JavaScript, HTML, and Python in the browser) — with AI-assisted building. Build it, publish it, monetize it.
 - **Field Node Manager (FNM).** Free desktop companion that pairs software with hardware: drive an OmniBus from the desk, watch live instrument data, and exchange over SSH or the cloud.
 - **PragOptics 3D Suite.** Model and slice in one app — a FreeCAD modeling core with a PrusaSlicer engine and the same print profiles PragOptics runs in production — to bring an idea into physical life.
@@ -19,7 +19,7 @@ OmniBus works any HART instrument across manufacturers over USB HART, an on-boar
 
 ## What OmniSource is
 
-OmniSource is a pocket loop-power stick: 5 V USB in, an adjustable, current-limited instrument loop out — for powering a single disconnected 4-20 mA / HART transmitter anywhere. Open hardware; buy it assembled or build it free from the published schematic, BOM, and case files.
+OmniSource is a pocket loop-power stick: 5 V USB in, an adjustable, current-limited instrument loop out — for powering a single disconnected 4-20 mA / HART transmitter anywhere. Published hardware; buy it assembled or build it free from the published schematic, BOM, and case files.
 
 ## HART resources
 

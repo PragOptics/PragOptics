@@ -73,6 +73,9 @@ export const HARDWARE = [
     downloads: [
       { label: 'Brochure',      href: '/docs/#doc=products/OmniSource-Brochure.md', kind: 'link' },
       { label: 'Technical doc', href: '/docs/#doc=products/OmniSource-Technical.md', kind: 'link' },
+      // The licence that governs every design download. Also copied into each
+      // design folder so it travels with the files themselves.
+      { label: 'Design licence · CC BY-NC-SA', href: '/docs/assets/products/omnisource/omni-LICENSE.md', kind: 'link' },
       { label: 'BOM · coming soon',             kind: 'pending' }
     ],
     kit: {
@@ -121,7 +124,7 @@ export const HARDWARE = [
       { id: 'kit', name: 'Assembled kit', priceCents: 2500,
         note: 'PragOptics carry case + OmniSource stick w/ finger-loop lanyard + test-lead harness w/ hook grabbers. Voltage-set to 25 V, ready to clip on. Printed case warranted for life; register within 30 days.' }
     ],
-    license: 'The full design is free to build from for your own use — exact parts, schematic, and case STL, as many as you like. Proven configurations; no commercial resale of units or plans. Buy one built for convenience, or build your own — both are first-class.'
+    license: 'Source-available, not open source. The full design is free to build from: exact parts, schematic, and case STL, as many as you like. Build one for yourself or your employer, but not for resale, and firmware stays proprietary. Published under CC BY-NC-SA 4.0; the full licence travels with every download. Buy one built for convenience, or build your own: both are first-class.'
   },
   {
     id: 'omnibus',

@@ -1,6 +1,6 @@
-# PragOptics Open Hardware, Warranty & Liability
+# PragOptics Published Hardware, Warranty & Liability
 
-*Applies to every PragOptics hardware product — the open designs we publish and the assembled units we sell. This is written to be read, not to scare you off. It lays out exactly what we stand behind and where responsibility sits, so you can buy or build with confidence.*
+*Applies to every PragOptics hardware product — the designs we publish and the assembled units we sell. This is written to be read, not to scare you off. It lays out exactly what we stand behind and where responsibility sits, so you can buy or build with confidence.*
 
 ---
 
@@ -15,9 +15,15 @@ We would always rather you buy one — it supports the work and comes with our w
 
 ---
 
-## Open-hardware license (the plain version)
+## Design licence (the plain version)
 
-The published designs are for **personal, non-commercial** use. You may build them for yourself, as many as you like, and share the link. You may **not** sell units or plans built from our designs, reproduce them commercially, or use the PragOptics name or product marks on a competing or derivative product. The full personal-build license ships with each download and governs in full.
+The Omni designs are **source-available, not open source.** They are published under **Creative Commons Attribution-NonCommercial-ShareAlike 4.0 (CC BY-NC-SA 4.0)**, with one express permission added on top: you may build units **for yourself, and for the internal operations of your employer**, as many as you like.
+
+What you may **not** do is **manufacture Omni hardware for resale**, sell the design files, or use the PragOptics and Omni names or marks as branding on your own product. Commercial manufacture requires a separate written licence from Bridges Industrial LLC.
+
+**Firmware is proprietary and unpublished.** It is not covered by the design licence, and no rights to it are granted.
+
+The full licence, `omni-LICENSE.md`, travels with every design download and governs in full.
 
 ---
 

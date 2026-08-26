@@ -135,7 +135,7 @@ sub,.fine{ color:var(--muted); font-size:.78rem; }
 <div class="pb"></div>
 
 <div class="hero">
-  <div class="kicker">PRAGOPTICS · FIELD INSTRUMENTATION · OPEN HARDWARE</div>
+  <div class="kicker">PRAGOPTICS · FIELD INSTRUMENTATION · PUBLISHED HARDWARE</div>
   <h1>OmniSource™</h1>
   <div class="tag">Pocket Loop Power</div>
   <div class="sub">Adjustable · Current-Limited · Build · Buy</div>
@@ -255,7 +255,7 @@ OmniSource is meant to be taken apart. It is a handful of through-hole parts on 
 
 ## Two ways to get one
 
-OmniSource is **open hardware.** The design is yours; the assembled unit is for when you would rather not source parts and solder.
+OmniSource is **published hardware.** The design is yours; the assembled unit is for when you would rather not source parts and solder.
 
 <div class="flow">
   <div class="flow-card c1"><div class="t">Build it</div><div class="s">The full plans are free: schematic, bill of materials, a step-by-step solder guide, and the enclosure STL — sliced and ready. A handful of leaded, through-hole parts plus a pre-built boost module; no fine-pitch SMD, no hot-air station. Print the case on whatever resin or FDM printer you own, an hour with an iron, and it is yours.</div></div>
@@ -267,9 +267,9 @@ OmniSource is **open hardware.** The design is yours; the assembled unit is for 
   Your call, same tool. The plans and the STL are always free — print your own case in any material and it is your own. Buy the finished unit and its case is warranted for life.
 </div>
 
-### The build-your-own license, in plain English
+### The build-your-own licence, in plain English
 
-The plans are free, and you may build OmniSource for your **own use**, as many as you like. What you may not do is **sell units or the plans**, or reproduce it commercially. That is what the assembled units are for. Build one for your toolbag, print a case, share the link. Just don't open a competing shop with our drawing. *(The full personal-build license ships with the download.)* Warranty and liability terms for every PragOptics product live in **[Open Hardware, Warranty & Liability](/docs/#doc=PragOptics-Open-Hardware-and-Warranty.md)**.
+OmniSource is **source-available, not open source.** The plans are free, and you may build one **for yourself or for your employer**, as many as you like. What you may not do is **manufacture them for resale**, sell the plans, or put our names on your own product. That is what the assembled units are for. Build one for your toolbag, print a case, share the link. Just don't open a competing shop with our drawing. Firmware is proprietary and is not part of the published design. *(The full licence, `omni-LICENSE.md`, travels with the download and governs in full.)* Warranty and liability terms for every PragOptics product live in **[Published Hardware, Warranty & Liability](/docs/#doc=PragOptics-Published-Hardware-and-Warranty.md)**.
 
 ---
 

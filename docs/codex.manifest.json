@@ -98,8 +98,8 @@
       "items": [
         {
           "type": "file",
-          "name": "Open Hardware, Warranty & Liability",
-          "path": "PragOptics-Open-Hardware-and-Warranty.md",
+          "name": "Published Hardware, Warranty & Liability",
+          "path": "PragOptics-Published-Hardware-and-Warranty.md",
           "format": "md"
         },
         {
