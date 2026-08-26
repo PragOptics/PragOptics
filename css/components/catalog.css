@@ -147,9 +147,17 @@
   color:var(--ink);
 }
 
+/* Mirrors the real header menu button: same 24-unit path and the same
+   purple-to-teal gradient, at full strength (the old .35 opacity was why
+   it read as a grey glyph). Its own gradient id, since the header SVG is
+   in the DOM at the same time. */
 .fp-icon{
-  opacity:.35;
+  display:inline-flex;
+  align-items:center;
+  vertical-align:-.18em;
+  margin:0 .12em;
 }
+.fp-icon svg{ display:block; }
 
 .fast-path-body{
   max-height:0;
