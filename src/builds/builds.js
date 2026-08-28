@@ -281,7 +281,13 @@ function bindOnce() {
         // Same handoff as warranty: stash the intent, run the normal sign-in /
         // account-creation flow; the backend ties the build to the account.
         try { localStorage.setItem(INTENT_KEY, JSON.stringify(intent)); } catch {}
-        setTimeout(() => { window.startPragOpticsLogin?.(); }, 1600);
+        setTimeout(() => {
+          // Agreement -> account creation on the landing, matching warranty
+          // and transfer. (Was startPragOpticsLogin, which left the site for
+          // the retired CIAM host.)
+          window.setAppMode?.('landing');
+          setTimeout(() => { window.openAgreementModal?.(); }, 250);
+        }, 1600);
       }
       return;
     }

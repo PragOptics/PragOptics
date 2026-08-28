@@ -273,7 +273,12 @@ function bindOnce() {
           // success screen — not if they've tabbed or navigated away.
           const view = document.getElementById('warrantyView');
           if (mode === 'register' && view && !view.classList.contains('hidden')) {
-            window.startPragOpticsLogin?.();
+            // Same path the transfer "get started" offer uses: the agreement
+            // gates account creation, and the wizard it leads into lives on
+            // the landing. (This used to call startPragOpticsLogin, which
+            // redirected to the retired CIAM host and left the site.)
+            window.setAppMode?.('landing');
+            setTimeout(() => { window.openAgreementModal?.(); }, 250);
           }
         }, 1600);
       }
