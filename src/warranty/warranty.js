@@ -164,7 +164,18 @@ async function submitRegistration({ wantsAccount }) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
-    if (!res.ok) throw new Error(`Registration failed (${res.status})`);
+    if (!res.ok) {
+      // The backend answers 404 for an unrecognised code and 409 for one that
+      // is already registered, each with a sentence written for the customer.
+      // Surface that instead of a bare status code; the catch below already
+      // renders ex.message into the error line.
+      let msg = `Registration failed (${res.status})`;
+      try {
+        const body = await res.json();
+        if (body && body.error) msg = String(body.error);
+      } catch { /* non-JSON error body: keep the status text */ }
+      throw new Error(msg);
+    }
     return res.json().catch(() => ({}));
   }
 
