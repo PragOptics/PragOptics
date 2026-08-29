@@ -289,6 +289,13 @@ export function refreshAdminNav() {
   const on = isAdminUser();
   document.querySelectorAll('[data-admin-only]').forEach(el => { el.hidden = !on; });
 
+  // The Internal section only exists for admins, so the mega-menu needs one
+  // more column then. The CSS keys the extra column off this class rather than
+  // guessing a count, so the columns always match the visible sections.
+  document.querySelectorAll('.dropdown-menu').forEach(menu => {
+    menu.classList.toggle('has-internal', on);
+  });
+
   // Login and Logout are two states of one thing, so only one shows at a time:
   // Login when signed out, Logout when signed in. Driven by the live session
   // (token), the same signal the rest of the app trusts - a stale ping alone

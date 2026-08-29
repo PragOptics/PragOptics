@@ -94,7 +94,13 @@
     width: min(760px, calc(100vw - 24px));
     padding: 16px 12px 18px;
     border-radius: 16px;
-    columns: 132px 5;
+    /* One column per section, exactly. Four sections normally; five when the
+       admin Internal section is present (.has-internal, toggled in
+       refreshAdminNav). A count HIGHER than the section count let
+       column-fill:balance fill the extra column by splitting the tallest
+       section (Shop), which is how Cart and Checkout ended up looking like
+       their own group. */
+    columns: 4;
     column-gap: 10px;
     max-height: none;
     overflow-x: auto;
@@ -106,6 +112,12 @@
   .dropdown-menu > li { break-inside: avoid; }
   /* each section header opens a new column (first one already starts col 1) */
   .dropdown-menu > li:has(> .menu-section):not(:first-child){ break-before: column; }
+  /* Admin adds a fifth section (Internal), so it needs a fifth column. */
+  .dropdown-menu.has-internal{ columns: 5; }
+  /* A column may start only at a section header. Forbidding a break before any
+     non-header item keeps every section whole in its own column, so balancing
+     can never split Shop (or any section) across two columns. */
+  .dropdown-menu > li:not(:has(> .menu-section)){ break-before: avoid; }
   .dropdown-menu li span.menu-section{
     padding: 6px 12px 8px;
     margin-bottom: 4px;
