@@ -17,7 +17,7 @@
 import { HARDWARE, getProduct } from '../shop/products.js';
 import { renderTransfer, cancelTransfer } from './transfer.js';
 
-const WARRANTY_API_LIVE = false; // ← flip when POST /warranty/register is deployed
+const WARRANTY_API_LIVE = true;  // live: POST /warranty/register deployed to blue 2026-08-29
 const PRAG_API_BASE = 'https://api.pragoptics.com/api/v1';
 const WARRANTY_REGISTER_URL = `${PRAG_API_BASE}/warranty/register`;
 
