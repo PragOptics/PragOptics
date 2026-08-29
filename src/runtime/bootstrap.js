@@ -264,6 +264,11 @@ function setToken(tokens) {
     // Reset stored auth (frontend-only; backend remains authoritative)
     sessionStorage.removeItem("pragoptics_tokens");
 
+    // The token is gone, so Login must come back and Logout/Admin must go.
+    // logout() reloads the page and boot handles it, but expiry does not
+    // reload, so refresh the nav here too.
+    refreshAdminNav();
+
     // Return app to safe baseline
     setAppMode("landing");
 

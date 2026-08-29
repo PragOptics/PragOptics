@@ -79,13 +79,26 @@
    column, so the sections sit side by side under one wide glass panel. */
 @media (min-width: 760px){
   .dropdown-menu{
-    width: min(660px, calc(100vw - 28px));
+    /* Five sections, not four. An admin adds the Internal section (Platform,
+       Resources, Shop, Internal, Account), and each section forces its own
+       column via break-before below. columns:4 meant the fifth column -
+       Account, which holds Login and Logout - flowed past the fixed-width,
+       right-anchored box and off the right edge of the screen. The items were
+       in the DOM the whole time, just rendered off-screen, so only an admin
+       ever hit it and only a screenshot showed it. Size for five, and cap the
+       count so the panel can never bleed sideways again.
+
+       overflow-x:auto is the backstop: if a future section or a narrow desktop
+       ever can't fit, the panel scrolls inside itself rather than pushing a
+       column off-screen where it silently vanishes. */
+    width: min(760px, calc(100vw - 24px));
     padding: 16px 12px 18px;
     border-radius: 16px;
-    columns: 4;
+    columns: 132px 5;
     column-gap: 10px;
     max-height: none;
-    overflow: visible;
+    overflow-x: auto;
+    overflow-y: visible;
     background-image:
       radial-gradient(420px 220px at 88% -10%, rgba(162,0,255,.14), transparent 62%),
       radial-gradient(380px 220px at 0% 112%, rgba(31,224,255,.09), transparent 60%);

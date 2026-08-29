@@ -288,6 +288,15 @@ function bindOnce() {
 export function refreshAdminNav() {
   const on = isAdminUser();
   document.querySelectorAll('[data-admin-only]').forEach(el => { el.hidden = !on; });
+
+  // Login and Logout are two states of one thing, so only one shows at a time:
+  // Login when signed out, Logout when signed in. Driven by the live session
+  // (token), the same signal the rest of the app trusts - a stale ping alone
+  // is not a session. Folded in here because this runs at exactly the moments
+  // that matter: boot, post-login resolution, and session expiry.
+  const signedIn = hasLiveSession();
+  document.querySelectorAll('[data-guest-only]').forEach(el => { el.hidden = signedIn; });
+  document.querySelectorAll('[data-auth-only]').forEach(el => { el.hidden = !signedIn; });
 }
 
 export function initAdminView() {
