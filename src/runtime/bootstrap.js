@@ -11,7 +11,6 @@
     import { initDropdownMenu } from '../components/dropdown.js';
     import { toggleViewerMode, setOutput } from '../components/responseViewer.js';
     import { setAppMode, ensureWizardVisibleAndBranded } from '../runtime/appRouter.js';
-    import { startPragOpticsLogin, handlePragOpticsCallback } from "../runtime/authRouter.js";
     import { formatPhone, gotoStep1, gotoStep2, gotoStep3, gotoStep4, gotoStep5, syncWizardAuthIndicator, initPostLoginWizard, buildRequestedSubscription } from "../wizard/index.js";
     import { handleBillingProfile, startPaymentStep, pollUntilResolved } from "../api/billing.js";
     import { setDnaMode } from "../components/dnaController.js";
@@ -139,8 +138,6 @@
        CONFIG
        =========================== */
     const PRAG_API_BASE   = "https://api.pragoptics.com/api/v1";
-    const CIAM_LOGIN_INIT = `${PRAG_API_BASE}/auth/ciam-login`;
-    const LOGIN_INIT = `${PRAG_API_BASE}/auth/login`;
     const PING_URL        = `${PRAG_API_BASE}/ping`;
     const AUTH_URL        = `${PRAG_API_BASE}/auth`;
     const BILLING_PROFILE_URL  = `${PRAG_API_BASE}/billing/profile`;
@@ -310,12 +307,11 @@ function setToken(tokens) {
        LOGIN + CALLBACK
        =========================== */
 
+/* Sign-in is the modal on this page: openLoginModal -> submitNativeLogin.
+   launchLogin used to redirect the browser to the CIAM authorize URL and take
+   the session back through ?authResult=. Both halves of that flow are gone. */
 function launchLogin() {
-  return startPragOpticsLogin({
-    mode: "password",
-    passwordLoginInit: LOGIN_INIT,
-    ciamLoginInit: CIAM_LOGIN_INIT
-  });
+  openLoginModal();
 }
 
 
@@ -410,14 +406,22 @@ window.applyPostLoginResolution = applyPostLoginResolution;
 
 
 
-  handlePragOpticsCallback({
-    pingUrl: PING_URL,
-    setToken,
-    onPingResolved: (ping) => {
-      applyPostLoginResolution({ ping });
-      window.setConsoleAuthenticated?.();
-    }
-  });
+  /* Removed: handlePragOpticsCallback().
+
+     It ran on every page load, read an authResult parameter out of the URL,
+     and called setToken() with whatever tokens that JSON contained. Nothing
+     checked where the value came from, and it was dug out of three different
+     places in the query string, so it was hard NOT to trigger.
+
+     Anyone could therefore hand a customer a link to this site carrying their
+     own access token and have the browser adopt it as the session. The
+     customer sees a normal signed-in page and keeps working - billing address,
+     phone, warranty registration - into an account that belongs to the
+     attacker, who reads it at leisure. Classic session fixation.
+
+     It existed to receive the CIAM redirect. That flow is gone; the login
+     modal posts credentials and gets a token in the response body, which
+     never puts a session in a URL. */
 
 
     /* ===========================
@@ -767,7 +771,7 @@ registerLegacyGlobals({
   routePostLogin: routePostLoginForward,
 
   // auth / api
-  startPragOpticsLogin: launchLogin,
+  startPragOpticsLogin: launchLogin,   // opens the login modal; no redirect
   logout,
   callPragOpticsPing,
   callPragOpticsAuth,

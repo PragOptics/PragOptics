@@ -1,89 +1,32 @@
 // src/runtime/authRouter.js
-import { fetchJson } from "../api/client.js";
+//
+// What is left of this module is one function: where to go after a ping
+// resolves. The login half is gone.
+//
+// It used to do two things, and both were the CIAM redirect flow:
+//
+//   startPragOpticsLogin()      asked the API for an authorize URL and sent
+//                               the browser to it
+//   handlePragOpticsCallback()  read an "authResult" parameter out of the URL
+//                               on every page load and called setToken() with
+//                               whatever tokens that JSON contained
+//
+// The second one was the problem. Nothing checked where the value came from,
+// and it was dug out of three separate places in the query string, so it was
+// hard not to trigger. Anyone could hand a customer a link to this site
+// carrying their own access token and the browser would adopt it as the
+// session. The customer sees a normal signed-in page and keeps working -
+// billing address, phone number, warranty registration - into an account
+// belonging to whoever sent the link, who reads it later at leisure. Session
+// fixation, no credential required, no backend involvement at all.
+//
+// Sign-in is now the modal on the page: ui/login.modal.js collects the
+// credentials, auth/native.js posts them to v1/auth/login-password, and the
+// token comes back in the response body. A session never travels in a URL,
+// which is the property that makes the attack above impossible rather than
+// merely patched.
+
 import { setAppMode } from "./appRouter.js";
-
-export function startPragOpticsLogin({
-  mode,
-  ciamLoginInit,
-  passwordLoginInit
-}) {
-  const returnUrl = encodeURIComponent(`${location.origin}${location.pathname}`);
-
-  const endpoint =
-    mode === "ciam"
-      ? ciamLoginInit
-      : mode === "password"
-      ? passwordLoginInit
-      : null;
-
-  if (!endpoint) {
-    throw new Error("No login mode configured");
-  }
-
-  return fetchJson(`${endpoint}?returnUrl=${returnUrl}`).then((data) => {
-    if (!data?.authorizeUrl) {
-      throw new Error("Missing authorizeUrl");
-    }
-
-    window.location = data.authorizeUrl;
-  });
-}
-
-function extractAuthResultFromLocation() {
-  const params = new URLSearchParams(location.search);
-
-  let encoded = params.get("authResult");
-  if (encoded) return encoded;
-
-  const post = params.get("post");
-  if (post && post.includes("authResult=")) {
-    return post.split("authResult=")[1] || null;
-  }
-
-  const idx = location.search.indexOf("authResult=");
-  if (idx >= 0) {
-    return location.search.slice(idx + "authResult=".length);
-  }
-
-  return null;
-}
-
-export async function handlePragOpticsCallback({
-  pingUrl,
-  onPingResolved,
-  setToken
-}) {
-  const encoded = extractAuthResultFromLocation();
-  if (!encoded) return;
-
-  let auth;
-  try {
-    auth = JSON.parse(decodeURIComponent(encoded));
-  } catch {
-    alert("Login failed: invalid callback payload.");
-    return;
-  }
-
-  if (!auth.success) {
-    alert(`Login failed: ${auth.errorDescription || auth.error}`);
-    return;
-  }
-
-  const tokens = auth.tokens;
-  setToken(tokens);
-
-  // Clean URL
-  window.history.replaceState({}, document.title, location.pathname);
-
-  const ping = await fetchJson(pingUrl, {
-    headers: {
-      Authorization: `Bearer ${tokens.access_token}`
-    }
-  });
-
-  sessionStorage.setItem("pragoptics_ping", JSON.stringify(ping));
-  onPingResolved(ping);
-}
 
 export function routePostLogin({ ping }) {
   // Auth router no longer owns UI decisions
