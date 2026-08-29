@@ -45,27 +45,34 @@
     }
     
     
-    await loadView('/views/header.view.html', 'view-header');
-    await loadView('/views/background.view.html', 'view-bg');
-    // background must exist before starfield init
+    // Every view mounts into its own host and none reads another, so these
+    // load in parallel. They used to be 14 sequential awaits, each waiting on
+    // the last, which put roughly 1.5s of pure round-trip latency in front of
+    // first paint.
+    await Promise.all([
+      loadView('/views/header.view.html', 'view-header'),
+      loadView('/views/background.view.html', 'view-bg'),
+      loadView('/views/landing.view.html', 'view-landing'),
+      loadView('/views/wizard.view.html', 'view-wizard'),
+      loadView('/views/console.view.html', 'view-console'),
+      loadView('/views/shop.view.html', 'view-shop'),
+      loadView('/views/software.view.html', 'view-software'),
+      loadView('/views/checkout.view.html', 'view-checkout'),
+      loadView('/views/warranty.view.html', 'view-warranty'),
+      loadView('/views/builds.view.html', 'view-builds'),
+      loadView('/views/admin.view.html', 'view-admin'),
+      loadView('/views/modals/modals.view.html', 'view-modals'),
+      loadView('/views/legal.view.html', 'view-legal'),
+      loadView('/views/footer.view.html', 'view-footer')
+    ]);
+
+    // background exists now, so the starfield can bind to its canvas
     requestAnimationFrame(() => {
       initStarfield({
         canvasId: "bg-stars",
         starCount: 160
       });
     });
-
-    await loadView('/views/landing.view.html', 'view-landing');
-    await loadView('/views/wizard.view.html', 'view-wizard');
-    await loadView('/views/console.view.html', 'view-console');
-    await loadView('/views/shop.view.html', 'view-shop');
-    await loadView('/views/software.view.html', 'view-software');
-    await loadView('/views/checkout.view.html', 'view-checkout');
-    await loadView('/views/warranty.view.html', 'view-warranty');
-    await loadView('/views/builds.view.html', 'view-builds');
-    await loadView('/views/admin.view.html', 'view-admin');
-    await loadView('/views/modals/modals.view.html', 'view-modals');
-    await loadView('/views/legal.view.html', 'view-legal');
     initLegalViewer({
       termsPath: "/docs/PragOptics-Subscriber-Agreement.md",
       privacyPath: "/docs/PragOptics-Privacy.md",
@@ -73,8 +80,6 @@
     });
 
     initBrochureViewer({ src: "/docs/brochure-view.html" });
-
-    await loadView('/views/footer.view.html', 'view-footer');
 
     initFooter();
 

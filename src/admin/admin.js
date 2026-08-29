@@ -31,9 +31,19 @@ function cachedPing() {
   catch { return null; }
 }
 
-/** Strict boolean, same test the backend applies. Tier is irrelevant. */
+function hasLiveSession() {
+  // invalidateSession() removes the token but deliberately leaves the cached
+  // ping in place, so the ping alone is not evidence of a live session.
+  try {
+    if (typeof window.isAccessTokenValid === 'function') return window.isAccessTokenValid();
+    return !!JSON.parse(sessionStorage.getItem('pragoptics_tokens') || 'null')?.access_token;
+  } catch { return false; }
+}
+
+/** Strict boolean, same test the backend applies. Tier is irrelevant, and an
+ *  expired session is not an admin session however stale the ping says. */
 export function isAdminUser() {
-  return cachedPing()?.user?.isAdmin === true;
+  return hasLiveSession() && cachedPing()?.user?.isAdmin === true;
 }
 
 function accessToken() {
@@ -141,13 +151,25 @@ function mintResultHtml(result) {
   `;
 }
 
+function statsHtml(rows, truncated) {
+  const available = rows.filter(r => r.status !== 'CLAIMED').length;
+  const claimed = rows.filter(r => r.status === 'CLAIMED').length;
+  return `
+    <div class="adm-stats">
+      <div class="adm-stat"><span class="adm-stat-n">${available}${truncated ? '+' : ''}</span><span class="adm-stat-l">Available</span></div>
+      <div class="adm-stat"><span class="adm-stat-n">${claimed}${truncated ? '+' : ''}</span><span class="adm-stat-l">Claimed</span></div>
+      <div class="adm-stat"><span class="adm-stat-n">${rows.length}${truncated ? '+' : ''}</span><span class="adm-stat-l">Shown</span></div>
+    </div>
+  `;
+}
+
 function inventoryHtml(data) {
   const rows = data.codes || [];
   if (!rows.length) {
-    return `<p class="adm-note">Nothing here yet.</p>`;
+    return `<p class="adm-empty">No codes in this view.</p>`;
   }
   return `
-    <p class="adm-note">${rows.length}${data.truncated ? '+' : ''} shown</p>
+    ${statsHtml(rows, data.truncated)}
     <div class="adm-table-scroll">
       <table class="adm-table">
         <thead>
