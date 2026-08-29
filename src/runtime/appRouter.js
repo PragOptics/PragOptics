@@ -1,7 +1,7 @@
 // src/runtime/appRouter.js
 
 export function setAppMode(mode) {
-  ["landingView", "wizardView", "consoleView", "shopView", "softwareView", "checkoutView", "warrantyView", "buildsView"].forEach(id =>
+  ["landingView", "wizardView", "consoleView", "shopView", "softwareView", "checkoutView", "warrantyView", "buildsView", "adminView"].forEach(id =>
     document.getElementById(id)?.classList.add("hidden")
   );
 

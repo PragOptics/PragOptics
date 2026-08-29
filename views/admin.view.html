@@ -1,0 +1,22 @@
+<!-- ============ ADMIN ============ -->
+<!-- Internal staff only. Rendered by src/admin/admin.js, which refuses to
+     mount unless ping.user.isAdmin === true. The gate here is cosmetic: every
+     route behind it is admin-gated server-side in resolveUserContext, so a
+     customer forging isAdmin locally gets a dashboard full of 403s.
+     Deep link: /#mode=admin (non-admins are bounced to landing). -->
+<section id="adminView" class="glass panel admin hidden" aria-labelledby="admTitle">
+
+  <header class="shop-head">
+    <span class="shop-kicker">Internal</span>
+    <h1 id="admTitle" class="shop-title">Admin.</h1>
+    <p class="shop-sub" id="admSub">
+      Warranty code inventory. Mint a batch, write them on cards, and see what
+      is still unclaimed.
+    </p>
+  </header>
+
+  <div class="adm-body" id="adminBody">
+    <!-- Populated by src/admin/admin.js -->
+  </div>
+
+</section>

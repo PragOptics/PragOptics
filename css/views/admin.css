@@ -1,0 +1,190 @@
+/* /css/views/admin.css
+   Internal admin dashboard. Deliberately plainer than the customer surfaces:
+   this is a tool, not a storefront, so it stays on the shared card language
+   (card.css tokens) with no glow, no gradients, no motion. */
+
+.admin { padding: 22px; }
+
+.adm-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 22rem) minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+  margin-top: 18px;
+}
+@media (max-width: 60rem) {
+  .adm-grid { grid-template-columns: minmax(0, 1fr); }
+}
+
+.adm-card {
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-card);
+  background: var(--card-surface);
+  box-shadow: var(--card-shadow-rest);
+  padding: 18px;
+}
+
+.adm-h2 {
+  margin: 0 0 6px;
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: -.01em;
+  color: var(--card-title);
+}
+
+.adm-note {
+  margin: 0 0 14px;
+  color: var(--muted);
+  font-size: .86rem;
+  line-height: 1.55;
+}
+.adm-note code {
+  background: rgba(255, 255, 255, .06);
+  border-radius: 4px;
+  padding: .05rem .3rem;
+  font-size: .95em;
+}
+
+/* ---- mint form ---- */
+.adm-fields { display: flex; flex-direction: column; gap: 6px; }
+
+.adm-label {
+  font-size: .72rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 600;
+  margin-top: 8px;
+}
+
+.adm-input {
+  width: 100%;
+  padding: 9px 11px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--glass-2);
+  color: var(--ink);
+  font: inherit;
+  font-size: .92rem;
+}
+.adm-input:focus-visible {
+  outline: 2px solid var(--brand-600);
+  outline-offset: 1px;
+  border-color: transparent;
+}
+
+.adm-actions { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
+
+.adm-error {
+  margin: 12px 0 0;
+  color: #ff8f98;
+  font-size: .86rem;
+}
+
+/* ---- mint result ---- */
+.adm-result {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+.adm-result-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+.adm-result-head strong { color: var(--ink); font-size: .95rem; }
+
+.adm-codes {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr));
+  gap: 6px;
+}
+.adm-codes li {
+  background: var(--glass-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 7px 10px;
+  text-align: center;
+}
+.adm-codes code {
+  font-size: 1rem;
+  letter-spacing: .06em;
+  color: var(--ink);
+}
+
+/* ---- inventory ---- */
+.adm-inv-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.adm-tabs { display: flex; gap: 4px; }
+
+.adm-tab {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  border-radius: 999px;
+  padding: 5px 13px;
+  font-size: .8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.adm-tab:hover { color: var(--ink); }
+.adm-tab.is-active {
+  background: var(--brandsoft);
+  border-color: rgba(33, 188, 165, .45);
+  color: var(--brand-600);
+}
+.adm-tab:focus-visible { outline: 2px solid var(--brand-600); outline-offset: 1px; }
+
+/* Wide tables scroll inside their own container, never the page. */
+.adm-table-scroll { overflow-x: auto; }
+
+.adm-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: .86rem;
+  min-width: 36rem;
+}
+.adm-table thead th {
+  text-align: left;
+  font-size: .7rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 600;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+.adm-table tbody td {
+  padding: 9px 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, .05);
+  color: var(--ink);
+  vertical-align: middle;
+}
+.adm-table tbody tr:last-child td { border-bottom: 0; }
+.adm-table code { font-size: .95rem; letter-spacing: .05em; }
+
+.adm-pill {
+  display: inline-block;
+  font-size: .68rem;
+  font-weight: 700;
+  letter-spacing: .06em;
+  padding: .12rem .5rem;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.adm-pill.is-available { color: #2fbf87; background: rgba(47, 191, 135, .14); }
+.adm-pill.is-claimed { color: var(--muted); background: rgba(255, 255, 255, .07); }

@@ -37,6 +37,7 @@
     import { initCheckoutView, onCheckoutEnter } from '../shop/checkout.js';
     import { initWarrantyView, onWarrantyEnter } from '../warranty/warranty.js';
     import { initBuildsView } from '../builds/builds.js';
+    import { initAdminView, onAdminEnter, refreshAdminNav } from '../admin/admin.js';
 
     // routePostLogin is now a thin forwarder only
     function routePostLoginForward({ ping }) {
@@ -62,6 +63,7 @@
     await loadView('/views/checkout.view.html', 'view-checkout');
     await loadView('/views/warranty.view.html', 'view-warranty');
     await loadView('/views/builds.view.html', 'view-builds');
+    await loadView('/views/admin.view.html', 'view-admin');
     await loadView('/views/modals/modals.view.html', 'view-modals');
     await loadView('/views/legal.view.html', 'view-legal');
     initLegalViewer({
@@ -90,6 +92,7 @@
     initCheckoutView();
     initWarrantyView();
     initBuildsView();
+    initAdminView();
     window.openProductModal  = openProductModal;
     window.closeProductModal = closeProductModal;
     window.openCart          = openCart;
@@ -98,6 +101,7 @@
     window.onEnterMode       = (mode) => {
       if (mode === 'checkout') onCheckoutEnter();
       if (mode === 'warranty') onWarrantyEnter();
+      if (mode === 'admin') onAdminEnter();
     };
 
     const _mountSwirl = () => {
@@ -316,6 +320,9 @@ function applyPostLoginResolution({ ping }) {
     return;
   }
 
+  // Internal-only nav follows the freshly resolved identity.
+  refreshAdminNav();
+
 
   const decision = updateWizardMenuFromPing(ping);
   const token = getStoredTokens()?.access_token;
@@ -467,7 +474,7 @@ window.applyPostLoginResolution = applyPostLoginResolution;
     // on load and route to that surface so those links land correctly instead
     // of always showing landing.
     (function routeFromHash() {
-      const m = String(location.hash || "").match(/mode=(landing|console|shop|software|checkout|warranty|builds)/);
+      const m = String(location.hash || "").match(/mode=(landing|console|shop|software|checkout|warranty|builds|admin)/);
       if (m) setAppMode(m[1]);
       // Warranty-card short link: /#warranty (with optional &device=)
       else if (/^#warranty/i.test(String(location.hash || ""))) setAppMode("warranty");
