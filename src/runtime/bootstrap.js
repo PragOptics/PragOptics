@@ -37,6 +37,7 @@
     import { initWarrantyView, onWarrantyEnter } from '../warranty/warranty.js';
     import { initBuildsView } from '../builds/builds.js';
     import { initAdminView, onAdminEnter, refreshAdminNav } from '../admin/admin.js';
+    import { initAccountView, onAccountEnter } from '../account/account.js';
 
     // routePostLogin is now a thin forwarder only
     function routePostLoginForward({ ping }) {
@@ -60,6 +61,7 @@
       loadView('/views/warranty.view.html', 'view-warranty'),
       loadView('/views/builds.view.html', 'view-builds'),
       loadView('/views/admin.view.html', 'view-admin'),
+      loadView('/views/account.view.html', 'view-account'),
       loadView('/views/modals/modals.view.html', 'view-modals'),
       loadView('/views/legal.view.html', 'view-legal'),
       loadView('/views/footer.view.html', 'view-footer')
@@ -97,6 +99,7 @@
     initWarrantyView();
     initBuildsView();
     initAdminView();
+    initAccountView();
     window.openProductModal  = openProductModal;
     window.closeProductModal = closeProductModal;
     window.openCart          = openCart;
@@ -106,6 +109,7 @@
       if (mode === 'checkout') onCheckoutEnter();
       if (mode === 'warranty') onWarrantyEnter();
       if (mode === 'admin') onAdminEnter();
+      if (mode === 'account') onAccountEnter();
     };
 
     const _mountSwirl = () => {
