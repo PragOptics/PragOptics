@@ -5,6 +5,7 @@ import { getProduct, formatPrice, preorderVariant, isPreorder, SHOP_LIVE } from 
 import { addItem, addDonation } from './cart.js';
 import { openCart } from './cart-drawer.js';
 import { createModelViewer } from '../components/modelViewer.js';
+import { inlineVideoHtml, bindInlineVideo, hasVideoSource } from '../components/videoOverlay.js';
 
 let $mask, $panel, $close, $body;
 let currentProductId = null;
@@ -67,6 +68,7 @@ function galleryHtml(p) {
           `).join('')}
         </div>
       ` : ''}
+      ${inlineVideoHtml(p.video, { label: 'Watch the How-To' })}
     </div>
   `;
 }
@@ -535,6 +537,7 @@ export function openProductModal(productId) {
   $body.innerHTML = bodyHtml(p);
   hydrateProfiles($body);
   hydrateViewer($body, p);
+  if (hasVideoSource(p.video)) bindInlineVideo($body, p.video);
   $mask.classList.add('is-open');
   $panel.classList.add('is-open');
   $mask.setAttribute('aria-hidden', 'false');

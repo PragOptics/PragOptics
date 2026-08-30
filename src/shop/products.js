@@ -18,12 +18,22 @@ export const HARDWARE = [
     name: 'OmniSource',
     tagline: 'Pocket loop-power stick.',
     subtitle: 'Energize any 4-20mA / HART transmitter off a USB port.',
-    image: '/docs/assets/products/omnisource/photo.png',
+    image: '/docs/assets/products/omnisource/product.png',
     flyer: '/docs/assets/OmniSourceProductFlyer.png',
     gallery: [
-      { src: '/docs/assets/products/omnisource/photo.png', alt: 'OmniSource production unit', kind: 'photo' },
-      { src: '/docs/assets/products/omnisource/cad-view.png', alt: 'OmniSource enclosure — CAD view', kind: 'cad' }
+      { src: '/docs/assets/products/omnisource/product.png', alt: 'OmniSource unit', kind: 'photo' },
+      { src: '/docs/assets/products/omnisource/case.png', alt: 'OmniSource packed in its branded hard-shell case', kind: 'photo' },
+      { src: '/docs/assets/products/omnisource/marketing.jpg', alt: 'Everything in the box: hard-shell case with paracord carabiner, OmniSource, wire harness, 2mm screwdriver, and warranty card', kind: 'photo' }
     ],
+    // How-To video. The source file is too large to serve from the repo, so it
+    // is hosted externally: set ONE of mp4 (a direct URL, e.g. Azure Blob) or
+    // youtube (an unlisted video id). The player stays hidden until one is set.
+    video: {
+      title: 'OmniSource: How To',
+      poster: '/docs/assets/products/omnisource/product.png',
+      mp4: '',
+      youtube: ''
+    },
     badge: 'First product',
     availability: 'available',
     priceCents: 2500,
@@ -93,6 +103,10 @@ export const HARDWARE = [
         {
           title: 'Test-lead harness',
           body: 'Center-positive barrel to two hook-style grabber clips (red +, black −). Bites onto instrument terminals without a screwdriver.'
+        },
+        {
+          title: 'PragOptics 2mm slotted screwdriver',
+          body: 'For the trimpot and the case screws, so you can retune the voltage or open the unit with nothing else on hand. PragOptics-branded while blades are in stock; an unbranded 2mm slotted driver ships when the branded blades are out.'
         },
         {
           title: 'Warranty & registration card',
