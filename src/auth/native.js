@@ -38,6 +38,23 @@ function normalizeEmail(s) {
 // -------------------------------
 // LOGIN (password)  -> /auth/login-password
 // -------------------------------
+// Ask the browser's password manager to save the credential.
+//
+// The forms are semantically correct (a real <form>, type="password",
+// autocomplete="current-password"), but sign-in submits via fetch and calls
+// preventDefault, so there is no navigation for Chrome's save-password
+// heuristic to notice - and it stays silent. The Credential Management API is
+// the SPA-correct trigger: storing the credential explicitly on success makes
+// the "Save password?" prompt appear. Guarded, since it exists only in secure
+// contexts and Chromium-family browsers; elsewhere it is a harmless no-op.
+async function saveCredential(email, password) {
+  try {
+    if (!window.PasswordCredential || !window.isSecureContext) return;
+    const cred = new window.PasswordCredential({ id: email, password, name: email });
+    await navigator.credentials.store(cred);
+  } catch { /* user declined, or unsupported: never block the login */ }
+}
+
 export async function submitNativeLogin(e) {
   e.preventDefault();
   setLoginError("");
@@ -64,6 +81,9 @@ export async function submitNativeLogin(e) {
         JSON.stringify(data.tokens)
       );
     }
+
+    // Offer to save the credential now that we know it was correct.
+    await saveCredential(email, password);
 
     closeLoginUi();
 
@@ -152,7 +172,12 @@ export async function submitNativeSignup({
     agreementAck
   };
 
-  return postJson("/auth/signup", body);
+  const result = await postJson("/auth/signup", body);
+  // A brand-new account just set a password: offer to save it too.
+  if (result?.tokens?.access_token) {
+    await saveCredential(body.email, body.password);
+  }
+  return result;
 }
 
 
