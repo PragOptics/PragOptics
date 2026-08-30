@@ -16,6 +16,23 @@
 
 import { HARDWARE, getProduct } from '../shop/products.js';
 import { renderTransfer, cancelTransfer } from './transfer.js';
+import { openVideoOverlay, hasVideoSource } from '../components/videoOverlay.js';
+
+// The printed code alphabet (no I/L/O/U/0/1, so nothing is mistaken while
+// typing off a card). Kept in step with the backend mint alphabet.
+const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTVWXYZ23456789';
+
+// Format a raw entry into XXXX-XXXX as the user types: uppercase, drop anything
+// not in the alphabet, cap at 8 characters, and drop the hyphen in after four.
+function formatCode(raw) {
+  const clean = String(raw || '').toUpperCase().split('')
+    .filter(c => CODE_ALPHABET.includes(c)).slice(0, 8).join('');
+  return clean.length > 4 ? clean.slice(0, 4) + '-' + clean.slice(4) : clean;
+}
+// How many alphabet characters (ignoring the hyphen) have been entered.
+function codeLen(v) {
+  return String(v || '').toUpperCase().split('').filter(c => CODE_ALPHABET.includes(c)).length;
+}
 
 const WARRANTY_API_LIVE = true;  // live: POST /warranty/register deployed to blue 2026-08-29
 const PRAG_API_BASE = 'https://api.pragoptics.com/api/v1';
@@ -66,22 +83,48 @@ function deviceStepHtml() {
   `;
 }
 
+function warrantyTermsHtml(p) {
+  const w = p.warranty;
+  if (!w?.terms?.length) return '';
+  return `
+    <section class="wr-terms" aria-label="Warranty terms">
+      <h3 class="wr-terms-h">${escapeHtml(w.headline || 'Warranty terms')}</h3>
+      ${w.lede ? `<p class="wr-terms-lede">${escapeHtml(w.lede)}</p>` : ''}
+      <ul class="wr-terms-list">
+        ${w.terms.map(t => `<li>${escapeHtml(t)}</li>`).join('')}
+      </ul>
+    </section>
+  `;
+}
+
 function codeStepHtml(p) {
+  const hasVideo = hasVideoSource(p.video);
   return `
     <div class="wr-step wr-step-code" data-wr-step="code">
       <div class="wr-thanks">
         <span class="wr-thanks-big">Thank you.</span>
         <p class="wr-thanks-sub">Your <strong>${escapeHtml(p.name)}</strong> was built, tested, and
-        voltage-set by hand — and it's yours to open, probe, and repair for as long as you run it.
+        voltage-set by hand. It is yours to open, probe, and repair for as long as you run it.
         Register it and the printed case is covered for life.</p>
       </div>
-      <label class="wr-label wr-label-center" for="wrCode">Warranty code — on the card in your case</label>
+      ${hasVideo ? `
+        <div class="wr-video-cta">
+          <button class="btn wr-watch" type="button" data-wr-action="watch-howto">
+            <span class="wr-watch-ico" aria-hidden="true">&#9658;</span>
+            Watch the How-To
+          </button>
+        </div>
+      ` : ''}
+      <label class="wr-label wr-label-center" for="wrCode">Warranty code, on the card in your case</label>
       <div class="wr-code-row">
         <input id="wrCode" class="wr-code-input" type="text" inputmode="text" autocomplete="off"
-               spellcheck="false" placeholder="XXXX-XXXX-XXXX" aria-label="Warranty code">
+               spellcheck="false" maxlength="9" placeholder="XXXX-XXXX" aria-label="Warranty code"
+               aria-describedby="wrCodeHint">
         <button id="wrCodeGo" class="wr-go" type="button" aria-label="Continue">${GO_ICON}</button>
       </div>
+      <p class="wr-code-hint" id="wrCodeHint">Four characters, a dash, then four. The dash is added for you.</p>
       <p class="wr-error" id="wrCodeError" hidden>Enter the code exactly as printed on your card.</p>
+      ${warrantyTermsHtml(p)}
     </div>
   `;
 }
@@ -229,13 +272,28 @@ function bindOnce() {
     }
   });
 
+  // Auto-format the code as it is typed: XXXX-XXXX, dash inserted for the user.
+  $body.addEventListener('input', (e) => {
+    const input = e.target.closest('#wrCode');
+    if (!input) return;
+    input.value = formatCode(input.value);
+  });
+
   $body.addEventListener('click', async (e) => {
+    // Watch the How-To video in the shared overlay (product-specific).
+    if (e.target.closest('[data-wr-action="watch-howto"]')) {
+      const p = getProduct(state.deviceId);
+      if (p && hasVideoSource(p.video)) openVideoOverlay(p.video);
+      return;
+    }
+
     const go = e.target.closest('#wrCodeGo');
     if (go) {
       const input = $body.querySelector('#wrCode');
       const err = $body.querySelector('#wrCodeError');
-      const code = normalizeCode(input?.value);
-      if (!code || code.length < 4) { if (err) err.hidden = false; input?.focus(); return; }
+      const code = formatCode(input?.value);
+      // A full code is eight alphabet characters (XXXX-XXXX).
+      if (codeLen(code) < 8) { if (err) err.hidden = false; input?.focus(); return; }
       state.code = code;
       if (err) err.hidden = true;
       showContactStep(getProduct(state.deviceId));

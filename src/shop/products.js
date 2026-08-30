@@ -32,7 +32,19 @@ export const HARDWARE = [
       title: 'OmniSource: How To',
       poster: '/docs/assets/products/omnisource/product.png',
       mp4: '',
-      youtube: ''
+      youtube: 'bCgHOtEVbxI'
+    },
+    // Warranty policy shown on the registration page. Each product carries its
+    // own terms; OmniSource covers the printed case for life, one claim a year.
+    warranty: {
+      headline: 'Lifetime case warranty',
+      lede: 'Your OmniSource case is covered for the life of the product. Here is how a claim works.',
+      terms: [
+        'Covers the printed hard-shell case for the life of the product.',
+        'One case replacement per year, per registration.',
+        'A replacement ships with a new case and a new registration card. Register that new card to keep your coverage active: one card, one redemption, then you re-register.',
+        'Return shipping on a warranty replacement is the customer’s responsibility.'
+      ]
     },
     badge: 'First product',
     availability: 'available',

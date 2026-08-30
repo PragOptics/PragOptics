@@ -172,3 +172,72 @@
   .wr-code-row { flex-wrap: nowrap; }
   .wr-code-input { width: 100%; min-width: 0; flex: 1; }
 }
+
+/* ---------- How-To button, code hint, and warranty terms ---------- */
+.wr-video-cta { display: flex; justify-content: center; margin: 4px 0 14px; }
+.wr-watch {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 18px;
+  border-radius: 999px;
+}
+.wr-watch-ico {
+  display: inline-grid;
+  place-items: center;
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: var(--brand-600, #21bca5);
+  color: #04120f;
+  font-size: .6rem;
+  padding-left: 2px;
+}
+
+.wr-code-hint {
+  margin: 8px 0 0;
+  text-align: center;
+  color: var(--muted);
+  font-size: .82rem;
+}
+
+/* The code input reads like the card: monospace, wide-tracked, centered. */
+.wr-code-input {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  text-align: center;
+}
+
+.wr-terms {
+  margin: 22px auto 0;
+  max-width: 34rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, .015);
+  padding: 16px 18px 18px;
+  text-align: left;
+}
+.wr-terms-h {
+  margin: 0 0 4px;
+  font-size: .95rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+.wr-terms-lede {
+  margin: 0 0 10px;
+  color: var(--muted);
+  font-size: .86rem;
+  line-height: 1.5;
+}
+.wr-terms-list {
+  margin: 0;
+  padding-left: 1.15rem;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.wr-terms-list li {
+  color: var(--ink);
+  font-size: .86rem;
+  line-height: 1.5;
+}
