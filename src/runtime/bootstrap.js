@@ -39,7 +39,7 @@
     import { initAdminView, onAdminEnter, refreshAdminNav } from '../admin/admin.js';
     import { initAccountView, onAccountEnter } from '../account/account.js';
     import { PRAG_API_BASE, LANE } from './config.js';
-    import { consumeLaneSigninFlag } from './lane.js';
+    import { consumeLaneSigninFlag, consumeLaneHandoff } from './lane.js';
 
     // routePostLogin is now a thin forwarder only
     function routePostLoginForward({ ping }) {
@@ -505,9 +505,37 @@ window.applyPostLoginResolution = applyPostLoginResolution;
       else if (/^#redeem/i.test(String(location.hash || ""))) setAppMode("warranty");
     })();
 
-    // A lane switch just landed: the old session was cleared, so open sign-in
-    // straight away for a fresh session (and fresh ping) on THIS lane.
-    if (consumeLaneSigninFlag()) {
+    // A SEAMLESS lane switch just landed: redeem the one-time handoff token for
+    // a fresh session on THIS lane - no password. Falls back to sign-in if the
+    // token is stale/rejected.
+    const __handoff = consumeLaneHandoff();
+    if (__handoff) {
+      (async () => {
+        try {
+          const res = await fetch(`${PRAG_API_BASE}/auth/lane/redeem`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ token: __handoff })
+          });
+          if (!res.ok) throw new Error("handoff rejected");
+          const data = await res.json();
+          sessionStorage.setItem("pragoptics_tokens", JSON.stringify(data.tokens));
+          const pingRes = await fetch(`${PRAG_API_BASE}/ping`, {
+            headers: { Authorization: `Bearer ${data.tokens.access_token}` }
+          });
+          const ping = await pingRes.json();
+          sessionStorage.setItem("pragoptics_ping", JSON.stringify(ping));
+          window.setConsoleAuthenticated?.();
+          applyPostLoginResolution({ ping });
+        } catch {
+          // Handoff failed: fall back to a plain sign-in on this lane.
+          openLoginModal("login");
+        }
+      })();
+    }
+    // A FALLBACK lane switch landed (no handoff): open sign-in for a fresh
+    // session on THIS lane.
+    else if (consumeLaneSigninFlag()) {
       setTimeout(() => openLoginModal("login"), 400);
     }
 

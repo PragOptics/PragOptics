@@ -166,21 +166,20 @@ async function renderProfile(main) {
 
 // Platform-level operators (isAdmin or isDev on the OWNER's Users table) can
 // route this browser to the dev sandbox. Each lane is its own platform with
-// its own accounts, so switching signs you out and opens sign-in on the
-// target lane; nothing from this session carries over or runs stale. The
-// gate is cosmetic, like every front-end gate: the sandbox authenticates
-// server-side against its own tables regardless.
+// its own accounts. When the two accounts are linked the switch is seamless
+// (the source lane vouches for you, no password); otherwise it opens sign-in
+// on the target. Either way the session comes back fresh - nothing runs stale.
 function platformLaneCardHtml() {
   if (!isPlatformOperator()) return '';
   return `
     <section class="acct-card">
       <h3 class="acct-card-h">Platform lane</h3>
       <p class="acct-card-note">This browser is routing API calls to the <strong>${escapeHtml(LANE)}</strong> lane.
-      Switching lanes signs you out and asks you to sign in on the other lane with that lane's
-      account; the site itself never changes, only where your calls go.</p>
+      When your accounts are linked, switching is seamless; otherwise it asks you to sign in on the
+      other lane. The site itself never changes, only where your calls go.</p>
       <div class="acct-add-row">
-        <button class="btn btn-sm" type="button" data-acct-action="lane-live" ${LANE === 'live' ? 'disabled' : ''}>Sign in to live</button>
-        <button class="btn btn-sm" type="button" data-acct-action="lane-dev" ${LANE === 'dev' ? 'disabled' : ''}>Sign in to dev</button>
+        <button class="btn btn-sm" type="button" data-acct-action="lane-live" ${LANE === 'live' ? 'disabled' : ''}>Switch to live</button>
+        <button class="btn btn-sm" type="button" data-acct-action="lane-dev" ${LANE === 'dev' ? 'disabled' : ''}>Switch to dev</button>
       </div>
     </section>
   `;

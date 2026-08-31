@@ -468,12 +468,12 @@ function renderCatalog(main) {
       <h3 class="adm-card-h">Lane</h3>
       <p class="muted">This browser is routing API calls to the <strong>${escapeHtml(LANE)}</strong> lane
       (${escapeHtml(PRAG_API_BASE)}). Each lane is its own platform: its own accounts, keys, and
-      Stripe mode. Switching signs you out here and opens sign-in on the other lane, so every
-      endpoint and cached response comes back fresh. The deployed site never changes; only where
-      this browser routes.</p>
+      Stripe mode. When your accounts are linked the switch is seamless (no password); otherwise
+      it opens sign-in on the other lane. Either way the session and every cached response come
+      back fresh. The deployed site never changes; only where this browser routes.</p>
       <div class="adm-actions-row">
-        <button class="btn" type="button" data-adm-action="lane-live" ${LANE === 'live' ? 'disabled' : ''}>Sign in to live</button>
-        <button class="btn" type="button" data-adm-action="lane-dev" ${LANE === 'dev' ? 'disabled' : ''}>Sign in to dev</button>
+        <button class="btn" type="button" data-adm-action="lane-live" ${LANE === 'live' ? 'disabled' : ''}>Switch to live</button>
+        <button class="btn" type="button" data-adm-action="lane-dev" ${LANE === 'dev' ? 'disabled' : ''}>Switch to dev</button>
       </div>
     </div>
 

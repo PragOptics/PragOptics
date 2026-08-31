@@ -17,9 +17,20 @@
 // The production default is untouchable: on pragoptics.com the lane is live
 // unless THIS explicit gesture stored an override, so a committed
 // LANE_SETTING can never route customers to the sandbox (config.js).
+//
+// The switch tries a SEAMLESS handoff first: the source lane vouches for the
+// operator with a 60-second single-use token (POST /auth/lane/exchange) which
+// the target lane redeems for a fresh session (POST /auth/lane/redeem) - no
+// password re-entry when the two accounts are linked. If the handoff is not
+// available (no link, not an operator, offline), it falls back to the plain
+// sign-out-and-sign-in behavior. Either way the target session is minted
+// fresh on the target lane, so nothing runs stale.
+
+import { PRAG_API_BASE } from './config.js';
 
 const OVERRIDE_KEY = 'pragoptics_lane_override';
 const SIGNIN_FLAG = 'pragoptics_lane_signin_v1';
+const HANDOFF_KEY = 'pragoptics_lane_handoff_v1';
 
 /** Platform-level operator on the CURRENT lane's ping: admin or dev. */
 export function isPlatformOperator() {
@@ -29,23 +40,57 @@ export function isPlatformOperator() {
   } catch { return false; }
 }
 
-/**
- * Switch this browser to the given lane ('dev' | 'live'): store the override,
- * end the current session, and reload straight into sign-in on the target.
- */
-export function switchLane(lane) {
-  if (lane !== 'dev' && lane !== 'live') return;
-  try { localStorage.setItem(OVERRIDE_KEY, lane); } catch { return; }
+function currentToken() {
+  try { return JSON.parse(sessionStorage.getItem('pragoptics_tokens') || 'null')?.access_token || null; }
+  catch { return null; }
+}
+
+function landOnTarget(lane, { handoff } = {}) {
   try {
+    localStorage.setItem(OVERRIDE_KEY, lane);
     sessionStorage.removeItem('pragoptics_tokens');
     sessionStorage.removeItem('pragoptics_ping');
-    sessionStorage.setItem(SIGNIN_FLAG, '1');
-  } catch { /* a blocked sessionStorage also means no session to clear */ }
+    if (handoff) sessionStorage.setItem(HANDOFF_KEY, handoff);
+    else sessionStorage.setItem(SIGNIN_FLAG, '1');
+  } catch { /* blocked storage: nothing to clear, fall through to reload */ }
   location.reload();
 }
 
-/** One-shot: did a lane switch just land? Consumed by bootstrap to open the
- *  sign-in modal on the fresh lane. */
+/**
+ * Switch this browser to the given lane ('dev' | 'live'). Attempts a seamless
+ * handoff from the current lane; falls back to sign-in on the target.
+ */
+export async function switchLane(lane) {
+  if (lane !== 'dev' && lane !== 'live') return;
+
+  const token = currentToken();
+  if (token) {
+    try {
+      const res = await fetch(`${PRAG_API_BASE}/auth/lane/exchange`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ toLane: lane })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data?.token) { landOnTarget(lane, { handoff: data.token }); return; }
+      }
+      // 403 (not an operator) / 409 (not linked) / anything else -> fall back.
+    } catch { /* offline etc. -> fall back */ }
+  }
+  landOnTarget(lane); // plain sign-in on the target lane
+}
+
+/** One-shot: a seamless handoff token, if a switch just landed with one. */
+export function consumeLaneHandoff() {
+  try {
+    const t = sessionStorage.getItem(HANDOFF_KEY);
+    if (t) { sessionStorage.removeItem(HANDOFF_KEY); return t; }
+  } catch { /* fine */ }
+  return null;
+}
+
+/** One-shot: did a fallback (non-seamless) lane switch just land? */
 export function consumeLaneSigninFlag() {
   try {
     if (sessionStorage.getItem(SIGNIN_FLAG) === '1') {
