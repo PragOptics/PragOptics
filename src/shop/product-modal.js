@@ -102,7 +102,7 @@ function priceBlockHtml(p) {
 function softwareActionsHtml(p) {
   const a = p.action || {};
   const label = escapeHtml(a.label || 'Learn more');
-  const donate = `<button class="btn sw-donate" type="button" data-pm-donate data-product-id="${escapeHtml(p.id)}" title="Free to download — donations keep it that way">♥ Donate</button>`;
+  const donate = `<button class="btn sw-donate" type="button" data-pm-donate data-product-id="${escapeHtml(p.id)}" title="Free to download. Donations keep it that way">♥ Donate</button>`;
   if (a.kind === 'external' && a.href) {
     return `<div class="pm-actions"><a class="cta" href="${escapeHtml(a.href)}" target="_blank" rel="noopener noreferrer">${label}</a>${donate}</div>`;
   }
@@ -296,7 +296,7 @@ async function hydrateProfiles(root) {
     const s = pr.settings || {};
     return `
     <table class="pm-profile-table">
-      <caption>${escapeHtml((pr.parts || []).join(' + '))} — ${escapeHtml(pr.material || '')}</caption>
+      <caption>${escapeHtml((pr.parts || []).join(' + '))} · ${escapeHtml(pr.material || '')}</caption>
       <tbody>
         ${row('Orientation', pr.orientation)}
         ${row('Supports', pr.supports)}

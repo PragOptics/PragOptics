@@ -44,7 +44,7 @@
   width:240px;
   height:34px;
   overflow:hidden;
-  border-radius:999px;
+  border-radius:var(--radius-pill);
   background:linear-gradient(
     90deg,
     rgba(255,255,255,.02),
@@ -124,7 +124,7 @@
   top:50%;
   width:8px;
   height:8px;
-  border-radius:999px;
+  border-radius:50%;
   transform:translate(-50%,-50%);
   opacity:0;
   will-change:left,transform,opacity,filter;

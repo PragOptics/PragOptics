@@ -29,6 +29,7 @@
   border:none;
   outline:none;
   box-shadow:none;
+  cursor:pointer;
   -webkit-tap-highlight-color:transparent;
   transition: transform 160ms ease, box-shadow 160ms ease;
 }
@@ -67,9 +68,9 @@
 }
 /* slim glass scrollbar for the small-screen list */
 .dropdown-menu::-webkit-scrollbar { width: 8px; }
-.dropdown-menu::-webkit-scrollbar-track { background: rgba(255,255,255,.04); border-radius: 999px; }
+.dropdown-menu::-webkit-scrollbar-track { background: rgba(255,255,255,.04); border-radius: var(--radius-pill); }
 .dropdown-menu::-webkit-scrollbar-thumb {
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: linear-gradient(180deg, rgba(255,255,255,.26), rgba(255,255,255,.12));
   border: 2px solid rgba(10,14,24,.65); background-clip: padding-box;
 }

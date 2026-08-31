@@ -39,7 +39,11 @@
     import { initAdminView, onAdminEnter, refreshAdminNav } from '../admin/admin.js';
     import { initAccountView, onAccountEnter } from '../account/account.js';
     import { PRAG_API_BASE, LANE } from './config.js';
-    import { consumeLaneSigninFlag, consumeLaneHandoff } from './lane.js';
+    import { consumeLaneSigninFlag, consumeLaneHandoff, switchLane } from './lane.js';
+
+    // Menu entry (operators only; see refreshAdminNav): flips this browser to
+    // the other lane. A full re-auth ritual; lane.js owns the mechanics.
+    window.switchLaneFromMenu = () => switchLane(LANE === 'dev' ? 'live' : 'dev');
 
     // routePostLogin is now a thin forwarder only
     function routePostLoginForward({ ping }) {
@@ -539,15 +543,8 @@ window.applyPostLoginResolution = applyPostLoginResolution;
       setTimeout(() => openLoginModal("login"), 400);
     }
 
-    // Operators live on the dev lane by choice; make it unmissable. The badge
-    // rides the header so every page carries it while the sandbox is routed.
-    if (LANE === "dev") {
-      const badge = document.createElement("div");
-      badge.className = "lane-badge";
-      badge.textContent = "DEV LANE";
-      badge.title = "This browser is routing API calls to the dev sandbox";
-      document.getElementById("view-header")?.appendChild(badge);
-    }
+    // The lane flag lives in the FOOTER's environment chip (footer.js), the
+    // established home for environment status. Nothing rides the header.
 
 
     /* ===========================
@@ -708,7 +705,7 @@ window.applyPostLoginResolution = applyPostLoginResolution;
 
   ensureWizardVisibleAndBranded(ping, {
     title: "PragOptics™ Billing",
-    hint: isUrgent ? "Payment issue detected — opening Stripe portal…" : "Opening Stripe billing portal…",
+    hint: isUrgent ? "Payment issue detected. Opening Stripe portal…" : "Opening Stripe billing portal…",
     hasTokens: !!getStoredTokens()?.access_token
   });
 

@@ -236,7 +236,7 @@ export function renderFeaturedProducts(mountId) {
         ${HARDWARE.map(cardHtml).join('')}
         ${tailCardHtml({
           title: 'The Hardware Shop',
-          sub: 'Everything on the bench — assembled units, kits, and the free plans behind them.',
+          sub: 'Everything on the bench: assembled units, kits, and the free plans behind them.',
           mode: 'shop', btnLabel: 'Open the Hardware Shop', art: HW_ART
         })}
       </div>

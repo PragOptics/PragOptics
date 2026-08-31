@@ -1,7 +1,8 @@
 // src/admin/admin.js
 //
-// Internal operator console: a sectioned admin panel (Overview, Users,
-// Warranty, and placeholders for what is not built yet).
+// Internal operator console. Three working sections, nothing speculative:
+// Users (the account roster), Warranty codes (mint + inventory), and
+// Catalog & lane (the lane switch and the Stripe catalog mirror).
 //
 // Gating is COSMETIC and deliberately so. The panel mounts only when the cached
 // ping says user.isAdmin === true, but every route it calls is admin-gated
@@ -10,7 +11,7 @@
 // never consulted here: a super-tier customer is still a customer.
 
 import { PRAG_API_BASE, LANE } from '../runtime/config.js';
-import { switchLane } from '../runtime/lane.js';
+import { switchLane, isPlatformOperator } from '../runtime/lane.js';
 const ISSUE_URL = `${PRAG_API_BASE}/warranty/codes/issue`;
 const LIST_URL  = `${PRAG_API_BASE}/warranty/codes`;
 const USERS_URL = `${PRAG_API_BASE}/admin/users`;
@@ -23,7 +24,7 @@ const CATALOG_SNAPSHOT_KEY = 'pragoptics_catalog_snapshot_v1';
 
 let $body = null;
 let mounted = false;
-let activeSection = 'overview';
+let activeSection = 'users';
 // Small cache so switching sections does not re-hit the API every click.
 const cache = { users: null };
 
@@ -94,95 +95,32 @@ function friendlyError(ex, fallback) {
 
 /* ---------- shell ---------- */
 
-const ICONS = {
-  overview:  '<path d="M4 13h6V4H4z"/><path d="M14 20h6v-9h-6z"/><path d="M14 8h6V4h-6z"/><path d="M4 20h6v-4H4z"/>',
-  users:     '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
-  warranty:  '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/>',
-  orders:    '<circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>',
-  inventory: '<path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="M3.27 6.96L12 12.01l8.73-5.05"/><path d="M12 22.08V12"/>',
-  catalog:   '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>'
-};
-
 const SECTIONS = [
-  { id: 'overview',  label: 'Overview' },
-  { id: 'users',     label: 'Users' },
-  { id: 'warranty',  label: 'Warranty' },
-  { id: 'orders',    label: 'Orders' },
-  { id: 'inventory', label: 'Inventory' },
-  { id: 'catalog',   label: 'Catalog' }
+  { id: 'users',    label: 'Users' },
+  { id: 'warranty', label: 'Warranty codes' },
+  { id: 'catalog',  label: 'Catalog & lane' }
 ];
-
-function icon(id) {
-  return `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor"
-            stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[id] || ''}</svg>`;
-}
 
 function shellHtml() {
   return `
     <div class="adm-shell">
-      <nav class="adm-side" aria-label="Admin sections">
-        <div class="adm-side-brand">
-          <span class="adm-side-kicker">Internal</span>
-          <span class="adm-side-title">Operator</span>
+      <header class="adm-head">
+        <div class="adm-head-id">
+          <span class="adm-kicker">Internal</span>
+          <h1 class="adm-title">Operator console</h1>
         </div>
-        <ul class="adm-nav">
-          ${SECTIONS.map(s => `
-            <li>
-              <button class="adm-nav-item ${s.id === activeSection ? 'is-active' : ''}"
-                      type="button" data-adm-section="${s.id}" aria-current="${s.id === activeSection ? 'page' : 'false'}">
-                <span class="adm-nav-ico">${icon(s.id)}</span>
-                <span>${escapeHtml(s.label)}</span>
-              </button>
-            </li>
-          `).join('')}
-        </ul>
-        <div class="adm-side-foot">
-          <span class="adm-side-who">${escapeHtml(adminEmail())}</span>
-          <span class="adm-side-role">Administrator</span>
-        </div>
+        <span class="adm-who" title="Signed in as">${escapeHtml(adminEmail())}</span>
+      </header>
+      <nav class="adm-tabs" role="tablist" aria-label="Console sections">
+        ${SECTIONS.map(s => `
+          <button class="adm-tab ${s.id === activeSection ? 'is-active' : ''}" type="button"
+                  role="tab" aria-selected="${s.id === activeSection ? 'true' : 'false'}"
+                  data-adm-section="${s.id}">${escapeHtml(s.label)}</button>
+        `).join('')}
       </nav>
       <main class="adm-main" id="admMain"><!-- section --></main>
     </div>
   `;
-}
-
-/* ---------- section: overview ---------- */
-
-function statCard(n, label, hint) {
-  return `<div class="adm-stat-card">
-      <span class="adm-stat-n">${escapeHtml(String(n))}</span>
-      <span class="adm-stat-l">${escapeHtml(label)}</span>
-      ${hint ? `<span class="adm-stat-h">${escapeHtml(hint)}</span>` : ''}
-    </div>`;
-}
-
-async function renderOverview(main) {
-  main.innerHTML = `
-    <header class="adm-sec-head"><h2 class="adm-sec-title">Overview</h2></header>
-    <div class="adm-stat-grid" id="admOverviewGrid">
-      ${statCard('…', 'Users')}${statCard('…', 'Active')}
-      ${statCard('…', 'Codes available')}${statCard('…', 'Codes claimed')}
-    </div>
-  `;
-  const grid = main.querySelector('#admOverviewGrid');
-  try {
-    const [users, avail, claimed] = await Promise.all([
-      apiFetch(`${USERS_URL}?limit=1000`).catch(() => ({ users: [] })),
-      apiFetch(`${LIST_URL}?status=AVAILABLE&limit=1000`).catch(() => ({ codes: [] })),
-      apiFetch(`${LIST_URL}?status=CLAIMED&limit=1000`).catch(() => ({ codes: [] }))
-    ]);
-    const all = users.users || [];
-    cache.users = all;
-    const active = all.filter(u => String(u.status).toUpperCase() === 'ACTIVE').length;
-    const subscribed = all.filter(u => !['free', '', 'none'].includes(String(u.tier).toLowerCase())).length;
-    grid.innerHTML =
-      statCard(all.length, 'Users', `${active} active`) +
-      statCard(subscribed, 'Subscribed', 'paid tiers') +
-      statCard((avail.codes || []).length + (avail.truncated ? '+' : ''), 'Codes available') +
-      statCard((claimed.codes || []).length + (claimed.truncated ? '+' : ''), 'Codes claimed');
-  } catch (ex) {
-    grid.innerHTML = `<p class="adm-empty">${escapeHtml(friendlyError(ex, 'Could not load overview.'))}</p>`;
-  }
 }
 
 /* ---------- section: users ---------- */
@@ -198,7 +136,7 @@ function statusPill(status) {
 }
 
 function usersTableHtml(users) {
-  if (!users.length) return `<p class="adm-empty">No users match this view.</p>`;
+  if (!users.length) return `<p class="adm-empty">No accounts yet.</p>`;
   return `
     <div class="adm-table-scroll">
       <table class="adm-table adm-users-table">
@@ -226,44 +164,17 @@ function usersTableHtml(users) {
   `;
 }
 
-function applyUserFilters(users) {
-  const q = (document.getElementById('admUserSearch')?.value || '').trim().toLowerCase();
-  const status = document.getElementById('admUserStatus')?.value || '';
-  const tier = document.getElementById('admUserTier')?.value || '';
-  return users.filter(u => {
-    if (q && !String(u.email || '').toLowerCase().includes(q)) return false;
-    if (status && String(u.status || '').toUpperCase() !== status) return false;
-    if (tier && String(u.tier || '').toLowerCase() !== tier) return false;
-    return true;
-  });
-}
-
-function renderUserRows() {
-  const host = document.getElementById('admUsersBody');
-  if (!host || !cache.users) return;
-  host.innerHTML = usersTableHtml(applyUserFilters(cache.users));
+function usersSummary(users) {
+  const active = users.filter(u => String(u.status).toUpperCase() === 'ACTIVE').length;
+  const subscribed = users.filter(u => !['free', '', 'none'].includes(String(u.tier).toLowerCase())).length;
+  return `${users.length} account${users.length === 1 ? '' : 's'} · ${active} active · ${subscribed} subscribed`;
 }
 
 async function renderUsers(main) {
   main.innerHTML = `
     <header class="adm-sec-head">
       <h2 class="adm-sec-title">Users</h2>
-      <div class="adm-toolbar">
-        <input class="adm-search" id="admUserSearch" type="search" placeholder="Search email…" aria-label="Search users by email">
-        <select class="adm-select" id="admUserStatus" aria-label="Filter by status">
-          <option value="">Any status</option>
-          <option value="ACTIVE">Active</option>
-          <option value="SUSPENDED">Suspended</option>
-          <option value="LOCKED">Locked</option>
-        </select>
-        <select class="adm-select" id="admUserTier" aria-label="Filter by tier">
-          <option value="">Any tier</option>
-          <option value="free">Free</option>
-          <option value="user">User</option>
-          <option value="partner">Partner</option>
-          <option value="super">Super</option>
-        </select>
-      </div>
+      <span class="adm-sec-sub" id="admUsersSummary"></span>
     </header>
     <p class="adm-error" id="admUsersError" hidden></p>
     <div id="admUsersBody"><p class="adm-note">Loading…</p></div>
@@ -273,14 +184,18 @@ async function renderUsers(main) {
       const data = await apiFetch(`${USERS_URL}?limit=1000`);
       cache.users = data.users || [];
     }
-    renderUserRows();
+    const summary = document.getElementById('admUsersSummary');
+    if (summary) summary.textContent = usersSummary(cache.users);
+    const host = document.getElementById('admUsersBody');
+    if (host) host.innerHTML = usersTableHtml(cache.users);
   } catch (ex) {
-    document.getElementById('admUsersBody').innerHTML = '';
+    const host = document.getElementById('admUsersBody');
+    if (host) host.innerHTML = '';
     showError('admUsersError', friendlyError(ex, 'Could not load users.'));
   }
 }
 
-/* ---------- section: warranty (mint + inventory) ---------- */
+/* ---------- section: warranty codes (mint + inventory) ---------- */
 
 function mintResultHtml(result) {
   const codes = result.codes || [];
@@ -328,7 +243,7 @@ function renderWarranty(main) {
     <header class="adm-sec-head"><h2 class="adm-sec-title">Warranty codes</h2></header>
     <div class="adm-grid">
       <section class="adm-card" aria-labelledby="admMintTitle">
-        <h3 class="adm-h2" id="admMintTitle">Mint codes</h3>
+        <h3 class="adm-card-h" id="admMintTitle">Mint codes</h3>
         <p class="adm-note">
           Codes are minted unclaimed. Write one on a card, ship it, and the
           customer redeems it at <code>/#warranty</code>. Leave the product
@@ -353,11 +268,11 @@ function renderWarranty(main) {
 
       <section class="adm-card" aria-labelledby="admInvTitle">
         <div class="adm-inv-head">
-          <h3 class="adm-h2" id="admInvTitle">Inventory</h3>
-          <div class="adm-tabs" role="tablist">
-            <button class="adm-tab is-active" type="button" role="tab" aria-selected="true" data-adm-filter="AVAILABLE">Available</button>
-            <button class="adm-tab" type="button" role="tab" aria-selected="false" data-adm-filter="CLAIMED">Claimed</button>
-            <button class="adm-tab" type="button" role="tab" aria-selected="false" data-adm-filter="ALL">All</button>
+          <h3 class="adm-card-h" id="admInvTitle">Inventory</h3>
+          <div class="adm-seg" role="tablist">
+            <button class="adm-seg-btn is-active" type="button" role="tab" aria-selected="true" data-adm-filter="AVAILABLE">Available</button>
+            <button class="adm-seg-btn" type="button" role="tab" aria-selected="false" data-adm-filter="CLAIMED">Claimed</button>
+            <button class="adm-seg-btn" type="button" role="tab" aria-selected="false" data-adm-filter="ALL">All</button>
           </div>
         </div>
         <p class="adm-error" id="admInvError" hidden></p>
@@ -395,7 +310,7 @@ async function mint(btn) {
     const result = await apiFetch(ISSUE_URL, { method: 'POST', body: JSON.stringify({ count, productId, note }) });
     const out = document.getElementById('admMintResult');
     if (out) out.innerHTML = mintResultHtml(result);
-    const active = document.querySelector('.adm-tab.is-active')?.dataset.admFilter || 'AVAILABLE';
+    const active = document.querySelector('.adm-seg-btn.is-active')?.dataset.admFilter || 'AVAILABLE';
     loadInventory(active);
   } catch (ex) {
     showError('admMintError', friendlyError(ex, 'Mint failed.'));
@@ -415,38 +330,23 @@ function copyCodes(btn) {
   }).catch(() => { /* clipboard blocked; codes are on screen anyway */ });
 }
 
-/* ---------- section: placeholders ---------- */
-
-function renderSoon(main, title, line) {
-  main.innerHTML = `
-    <header class="adm-sec-head"><h2 class="adm-sec-title">${escapeHtml(title)}</h2></header>
-    <div class="adm-soon">
-      <div class="adm-soon-badge">Coming soon</div>
-      <p>${escapeHtml(line)}</p>
-    </div>
-  `;
-}
-
 /* ---------- routing between sections ---------- */
 
 function showSection(id) {
   activeSection = id;
-  document.querySelectorAll('.adm-nav-item').forEach(b => {
+  document.querySelectorAll('.adm-tab').forEach(b => {
     const on = b.dataset.admSection === id;
     b.classList.toggle('is-active', on);
-    b.setAttribute('aria-current', on ? 'page' : 'false');
+    b.setAttribute('aria-selected', on ? 'true' : 'false');
   });
   const main = document.getElementById('admMain');
   if (!main) return;
-  if (id === 'overview')  return void renderOverview(main);
-  if (id === 'users')     return void renderUsers(main);
-  if (id === 'warranty')  return void renderWarranty(main);
-  if (id === 'orders')    return renderSoon(main, 'Orders', 'Order history and fulfillment land here once checkout is wired.');
-  if (id === 'inventory') return renderSoon(main, 'Inventory', 'Physical stock levels for hardware, cases, and screwdrivers will live here.');
-  if (id === 'catalog')   return void renderCatalog(main);
+  if (id === 'users')    return void renderUsers(main);
+  if (id === 'warranty') return void renderWarranty(main);
+  if (id === 'catalog')  return void renderCatalog(main);
 }
 
-/* ---------- section: catalog (lane mirror) ---------- */
+/* ---------- section: catalog & lane ---------- */
 
 function readSnapshot() {
   try { return JSON.parse(localStorage.getItem(CATALOG_SNAPSHOT_KEY) || 'null'); }
@@ -460,13 +360,13 @@ function renderCatalog(main) {
 
   main.innerHTML = `
     <header class="adm-sec-head">
-      <h2 class="adm-sec-title">Catalog</h2>
+      <h2 class="adm-sec-title">Catalog &amp; lane</h2>
       <span class="adm-pill">lane: ${escapeHtml(LANE)}</span>
     </header>
 
     <div class="adm-card">
       <h3 class="adm-card-h">Lane</h3>
-      <p class="muted">This browser is routing API calls to the <strong>${escapeHtml(LANE)}</strong> lane
+      <p class="adm-note">This browser is routing API calls to the <strong>${escapeHtml(LANE)}</strong> lane
       (${escapeHtml(PRAG_API_BASE)}). Each lane is its own platform: its own accounts, keys, and
       Stripe mode. When your accounts are linked the switch is seamless (no password); otherwise
       it opens sign-in on the other lane. Either way the session and every cached response come
@@ -480,21 +380,23 @@ function renderCatalog(main) {
     <div class="adm-card">
       <h3 class="adm-card-h">This lane's catalog</h3>
       ${rows.length ? `
-        <table class="adm-table">
-          <thead><tr><th>Lookup key</th><th>Interval</th><th>Amount</th></tr></thead>
-          <tbody>
-            ${rows.map(r => `<tr>
-              <td><code>${escapeHtml(r.lookupKey)}</code></td>
-              <td>${escapeHtml(r.interval || '')}</td>
-              <td>${r.amount !== '' && r.amount != null ? '$' + (Number(r.amount) / 100).toFixed(2) : ''}</td>
-            </tr>`).join('')}
-          </tbody>
-        </table>
+        <div class="adm-table-scroll">
+          <table class="adm-table">
+            <thead><tr><th>Lookup key</th><th>Interval</th><th>Amount</th></tr></thead>
+            <tbody>
+              ${rows.map(r => `<tr>
+                <td><code>${escapeHtml(r.lookupKey)}</code></td>
+                <td>${escapeHtml(r.interval || '')}</td>
+                <td>${r.amount !== '' && r.amount != null ? '$' + (Number(r.amount) / 100).toFixed(2) : ''}</td>
+              </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>
         <div class="adm-actions-row">
           <button class="cta" type="button" data-adm-action="catalog-snapshot">Snapshot ${rows.length} rows from ${escapeHtml(LANE)}</button>
         </div>
       ` : `
-        <p class="muted">No catalog rows on this lane yet. Sign out and back in if you subscribed
+        <p class="adm-note">No catalog rows on this lane yet. Sign out and back in if you subscribed
         recently; the catalog rides on the ping.</p>
       `}
     </div>
@@ -502,22 +404,22 @@ function renderCatalog(main) {
     <div class="adm-card">
       <h3 class="adm-card-h">Stored snapshot</h3>
       ${snap ? `
-        <p class="muted"><strong>${snap.items.length}</strong> rows from the
+        <p class="adm-note"><strong>${snap.items.length}</strong> rows from the
         <strong>${escapeHtml(snap.sourceLane)}</strong> lane, taken ${escapeHtml(new Date(snap.takenAt).toLocaleString())}.</p>
         ${snap.sourceLane === LANE
-          ? `<p class="muted">You are on the lane this snapshot came from. Flip to the other lane to import it.</p>`
-          : `<p class="muted">Importing creates the missing products and prices in the
+          ? `<p class="adm-note">You are on the lane this snapshot came from. Flip to the other lane to import it.</p>`
+          : `<p class="adm-note">Importing creates the missing products and prices in the
              <strong>${escapeHtml(LANE)}</strong> lane's Stripe account (by lookup key, idempotent),
              then syncs its ProductCatalog table.</p>
              <div class="adm-actions-row">
                <button class="cta" type="button" data-adm-action="catalog-import">Import into ${escapeHtml(LANE)}</button>
              </div>`}
       ` : `
-        <p class="muted">No snapshot stored. Take one on the lane that has the catalog (live), then
+        <p class="adm-note">No snapshot stored. Take one on the lane that has the catalog (live), then
         flip lanes and import it here.</p>
       `}
       <p class="adm-error" id="admCatalogError" hidden></p>
-      <p class="muted" id="admCatalogResult" hidden></p>
+      <p class="adm-note" id="admCatalogResult" hidden></p>
     </div>
   `;
 }
@@ -611,21 +513,13 @@ function bindOnce() {
     const tab = e.target.closest('[data-adm-filter]');
     if (tab) {
       e.preventDefault();
-      document.querySelectorAll('.adm-tab').forEach(t => {
+      document.querySelectorAll('.adm-seg-btn').forEach(t => {
         const on = t === tab;
         t.classList.toggle('is-active', on);
         t.setAttribute('aria-selected', on ? 'true' : 'false');
       });
       loadInventory(tab.dataset.admFilter);
     }
-  });
-
-  // Live user filtering, delegated so it survives section re-renders.
-  document.addEventListener('input', (e) => {
-    if (e.target.id === 'admUserSearch') renderUserRows();
-  });
-  document.addEventListener('change', (e) => {
-    if (e.target.id === 'admUserStatus' || e.target.id === 'admUserTier') renderUserRows();
   });
 }
 
@@ -650,6 +544,14 @@ export function refreshAdminNav() {
   const signedIn = hasLiveSession();
   document.querySelectorAll('[data-guest-only]').forEach(el => { el.hidden = signedIn; });
   document.querySelectorAll('[data-auth-only]').forEach(el => { el.hidden = !signedIn; });
+
+  // Lane switch in the menu: platform operators only (isAdmin OR isDev on this
+  // lane's ping), and only with a live session. The label always names the
+  // lane the click would land on.
+  const operator = signedIn && isPlatformOperator();
+  document.querySelectorAll('[data-operator-only]').forEach(el => { el.hidden = !operator; });
+  const laneBtn = document.getElementById('navLaneSwitch');
+  if (laneBtn) laneBtn.textContent = LANE === 'dev' ? 'Switch to live lane' : 'Switch to dev lane';
 }
 
 export function initAdminView() {
@@ -674,7 +576,7 @@ export function onAdminEnter() {
   }
 
   if (!mounted) {
-    activeSection = 'overview';
+    activeSection = 'users';
     $body.innerHTML = shellHtml();
     mounted = true;
   }

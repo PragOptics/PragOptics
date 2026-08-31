@@ -84,7 +84,7 @@ function cardHtml(p) {
         ${actionButton(p)}
         <button class="btn sw-donate" type="button" data-sw-action="donate"
                 data-product-id="${escapeHtml(p.id)}"
-                title="Free to download — donations keep it that way">♥ Donate</button>
+                title="Free to download. Donations keep it that way">♥ Donate</button>
       </div>
     </article>
   `;

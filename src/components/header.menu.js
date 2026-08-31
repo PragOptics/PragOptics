@@ -38,6 +38,10 @@ export function initHeaderMenu() {
           window.logout?.();
           break;
 
+        case 'switch-lane':
+          window.switchLaneFromMenu?.();
+          break;
+
         case 'open-docs':
           window.location.href = '/docs/';
           break;

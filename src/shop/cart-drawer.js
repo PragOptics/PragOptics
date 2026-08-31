@@ -30,7 +30,7 @@ function accountBanner() {
     return `
       <div class="cart-account cart-account-signed">
         <span class="cart-account-icon" aria-hidden="true">✓</span>
-        <span class="cart-account-text">Signed in — reservations will link to your account.</span>
+        <span class="cart-account-text">Signed in. Reservations will link to your account.</span>
       </div>
     `;
   }
@@ -76,7 +76,7 @@ function lineHtml(line) {
         <div class="cart-line-info">
           <div class="cart-line-name">${escapeHtml(p.name)}</div>
           <div class="cart-line-variant">Donation ♥</div>
-          <div class="cart-line-price muted">The software stays free — thank you.</div>
+          <div class="cart-line-price muted">The software stays free. Thank you.</div>
         </div>
         <div class="cart-line-controls">
           <div class="donate-amt" title="Adjust your donation">
@@ -119,11 +119,11 @@ function bodyHtml(items) {
   const hasStock = items.some(l => !l.isPreorder && !l.isDonation);
   const allDonations = items.every(l => l.isDonation);
   const note = allDonations
-    ? 'Donations keep the software free for everyone — thank you. Review at checkout.'
+    ? 'Donations keep the software free for everyone. Thank you. Review at checkout.'
     : hasPreorder && hasStock
       ? 'Deposits reserve preorders; in-stock items ship on order. Review everything at checkout.'
       : hasPreorder
-        ? 'A deposit reserves your preorder — the balance is due when it ships. Review at checkout.'
+        ? 'A deposit reserves your preorder. The balance is due when it ships. Review at checkout.'
         : 'In-stock items ship on order. Review your order and details at checkout.';
   const subLabel = sub == null ? 'Total: pricing at checkout' : `Due now: ${formatPrice(sub)}`;
   return `

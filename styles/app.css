@@ -1,4 +1,4 @@
-/* app.css */
+﻿/* app.css */
 :root{
       --bg-deep:#000000 !important;
       --grad:linear-gradient(130deg,#000000 0%,#18042527 50%,#0218127e 100%);
@@ -297,7 +297,7 @@
 }
 
 .pw-rules li::before{
-  content:"•";
+  content:"â€¢";
   position:absolute;
   left:0;
   color:rgba(255,255,255,.35);
@@ -309,7 +309,7 @@
 }
 
 .pw-rules li.ok::before{
-  content:"✓";
+  content:"âœ“";
   color:#21bca5;
 }
 
@@ -500,7 +500,7 @@
     .wizard{ padding:20px; border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--glass-2); }
     .wizard .step{ display:none; }
     .wizard .step.is-active{ display:block; }
-    .badge{ display:inline-block; padding:2px 8px; border-radius:999px; background:#ffffff12; border:1px solid #ffffff22; font-size:.8rem; color:var(--muted); }
+    .badge{ display:inline-block; padding:2px 8px; border-radius:var(--radius-pill); background:#ffffff12; border:1px solid #ffffff22; font-size:.8rem; color:var(--muted); }
     .field{ flex:1 1 260px; }
     .hint{ color:var(--muted); font-size:.9rem; }
     /* Generic visual key/value rows */
@@ -513,7 +513,7 @@
       align-items: center;
       justify-content: center;
       padding:2px 10px; 
-      border-radius:999px; 
+      border-radius:var(--radius-pill); 
       border:1px solid rgba(255,255,255,.14); 
       background: rgba(255,255,255,.06); 
       box-shadow: 0 0 10px rgba(0,0,0,.18);
@@ -777,7 +777,7 @@
   width:240px;
   height:34px;
   overflow:hidden;
-  border-radius:999px;
+  border-radius:var(--radius-pill);
   background:linear-gradient(90deg, rgba(255,255,255,0.02), rgba(255,255,255,0.00));
   border:1px solid rgba(255,255,255,0.10);
   animation:dnaBreath 3.2s ease-in-out infinite;
@@ -810,7 +810,7 @@
 /* Strand A (teal) */
 .strand-a{ opacity:.95; }
 
-/* Strand B (purple) — boosted so it's clearly visible */
+/* Strand B (purple) â€” boosted so it's clearly visible */
 .strand-b{
   opacity:.82;
   border-top-color: rgba(108,92,231,0.90);
@@ -852,7 +852,7 @@
   position:absolute;
   top:50%;
   width:8px; height:8px;
-  border-radius:999px;
+  border-radius:var(--radius-pill);
   transform: translate(-50%,-50%);
   opacity:0;
   will-change:left, transform, opacity, filter;
@@ -1074,7 +1074,7 @@
 }
 
 .po-status-icon.loading::after {
-  content: "⟳";
+  content: "âŸ³";
   animation: spin 1.2s linear infinite;
 }
 
@@ -1136,7 +1136,7 @@
 .billing-current .pill {
   font-size: 11px;
   padding: 4px 8px;
-  border-radius: 999px;
+  border-radius:var(--radius-pill);
   opacity: .95;
 }
 
@@ -1154,7 +1154,7 @@
 .billing-actions button:last-child:nth-child(odd) {
   grid-column: 1 / -1;
 }
-/* Exactly 3 buttons → 2 columns */
+/* Exactly 3 buttons â†’ 2 columns */
 .billing-actions:has(> button:nth-child(3)):not(:has(> button:nth-child(4))) {
   grid-template-columns: repeat(2, 1fr);
 }
@@ -1346,7 +1346,7 @@
 .auth-indicator {
   width: 10px;
   height: 10px;
-  border-radius: 999px;
+  border-radius:var(--radius-pill);
   background: var(--brand-purp);
   box-shadow: 0 0 0 0 rgba(162, 0, 255, 0.6);
   animation: authPulse 2.8s ease-in-out infinite;

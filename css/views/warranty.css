@@ -89,7 +89,7 @@
 .wr-step-contact { gap: 14px; }
 .wr-code-chip {
   align-self: center; display: inline-flex; align-items: center; gap: 12px;
-  padding: 8px 14px; border-radius: 999px;
+  padding: 8px 14px; border-radius: var(--radius-pill);
   border: 1px solid rgba(33, 188, 165, .35); background: rgba(33, 188, 165, .07);
 }
 .wr-chip-device { font-weight: 800; font-size: .88rem; color: var(--ink, #dcdbf0e1); }
@@ -125,11 +125,11 @@
 /* ---- mode tabs: Register / Transfer ---- */
 .wr-tabs {
   display: inline-flex; gap: 4px; margin: 4px 0 18px; padding: 4px;
-  border: 1px solid var(--border, rgba(255, 255, 255, .14)); border-radius: 999px;
+  border: 1px solid var(--border, rgba(255, 255, 255, .14)); border-radius: var(--radius-pill);
   background: rgba(12, 16, 26, .55);
 }
 .wr-tab {
-  padding: 9px 22px; border: 0; border-radius: 999px; cursor: pointer;
+  padding: 9px 22px; border: 0; border-radius: var(--radius-pill); cursor: pointer;
   font: 700 .9rem/1 inherit; letter-spacing: .02em;
   color: var(--muted, #c6d0f0a6); background: transparent;
   transition: color 160ms ease, background 160ms ease;
@@ -180,7 +180,7 @@
   align-items: center;
   gap: 9px;
   padding: 9px 18px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
 }
 .wr-watch-ico {
   display: inline-grid;

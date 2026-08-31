@@ -203,7 +203,7 @@ function apply3mfTransform(m, x, y, z) {
 
 export async function parse3MF(buffer) {
   if (typeof DecompressionStream === 'undefined') {
-    throw new Error('3MF preview needs a newer browser — grab the download instead.');
+    throw new Error('3MF preview needs a newer browser. Grab the download instead.');
   }
   const modelBuf = await zipExtract(buffer, n => /(^|\/)3dmodel\.model$/i.test(n) || /\.model$/i.test(n));
   const text = new TextDecoder().decode(modelBuf);

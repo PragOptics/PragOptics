@@ -56,7 +56,7 @@ function formHtml() {
           </div>
         </div>
         <div class="form-field">
-          <label for="bdHandle">Display name <span class="bd-optional">optional — blank posts as Anonymous</span></label>
+          <label for="bdHandle">Display name <span class="bd-optional">optional: blank posts as Anonymous</span></label>
           <input id="bdHandle" type="text" maxlength="40" autocomplete="nickname" placeholder="e.g. LoopTech_Hank">
         </div>
       </div>
@@ -79,7 +79,7 @@ function formHtml() {
       <div class="bd-paths">
         <button class="btn bd-path" type="button" data-bd-action="share-anon">
           <span class="bd-path-t">Share anonymously</span>
-          <span class="bd-path-s">No account, no sign-in — just the build.</span>
+          <span class="bd-path-s">No account, no sign-in. Just the build.</span>
         </button>
         <button class="cta bd-path" type="button" data-bd-action="share-account">
           <span class="bd-path-t">Share with my account</span>
@@ -95,7 +95,7 @@ function successHtml(withAccount) {
     <div class="bd-done" data-bd-step="done">
       <span class="wr-done-badge">${CHECK_ICON}</span>
       <span class="wr-thanks-big">That's a good-looking build.</span>
-      <p class="wr-thanks-sub">Thanks for sharing it — builds like yours are exactly why the designs are free.</p>
+      <p class="wr-thanks-sub">Thanks for sharing it. Builds like yours are exactly why the designs are free.</p>
       ${withAccount ? `<p class="wr-thanks-sub">Finishing up: we're taking you to sign-in so it posts under your account.</p>` : ''}
       <div class="wr-done-actions">
         <button class="btn" type="button" data-bd-action="share-another">Share another</button>
@@ -145,7 +145,7 @@ function renderGallery() {
       <div class="bg-empty">
         <span class="bg-empty-glyph" aria-hidden="true">${CAM_ICON}</span>
         <p class="bg-empty-t">The wall is waiting.</p>
-        <p class="bg-empty-s muted">No builds on this device yet — yours could be the first one on it.</p>
+        <p class="bg-empty-s muted">No builds on this device yet. Yours could be the first one on it.</p>
       </div>
     `;
     return;
@@ -174,7 +174,7 @@ function addFiles(fileList) {
     if (photos.length >= MAX_PHOTOS) break;
     if (!file.type.startsWith('image/')) continue;
     if (file.size > MAX_MB_PER_PHOTO * 1024 * 1024) {
-      if (err) { err.textContent = `"${file.name}" is over ${MAX_MB_PER_PHOTO} MB — resize it and try again.`; err.hidden = false; }
+      if (err) { err.textContent = `"${file.name}" is over ${MAX_MB_PER_PHOTO} MB. Resize it and try again.`; err.hidden = false; }
       continue;
     }
     photos.push({ file, url: URL.createObjectURL(file) });
@@ -231,7 +231,7 @@ function validate() {
   const err = $body.querySelector('#bdError');
   const device = $body.querySelector('#bdDevice')?.value;
   if (!device) { if (err) { err.textContent = 'Pick which design you built.'; err.hidden = false; } return false; }
-  if (photos.length === 0) { if (err) { err.textContent = 'Add at least one photo — the build is the point.'; err.hidden = false; } return false; }
+  if (photos.length === 0) { if (err) { err.textContent = 'Add at least one photo. The build is the point.'; err.hidden = false; } return false; }
   if (err) err.hidden = true;
   return true;
 }
@@ -271,7 +271,7 @@ function bindOnce() {
       } catch (ex) {
         path.disabled = false;
         const err = $body.querySelector('#bdError');
-        if (err) { err.textContent = ex?.message || 'Upload failed — please try again.'; err.hidden = false; }
+        if (err) { err.textContent = ex?.message || 'Upload failed. Please try again.'; err.hidden = false; }
         return;
       }
       clearPhotos();

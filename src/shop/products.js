@@ -72,8 +72,8 @@ export const HARDWARE = [
     model: {
       title: 'Print Files',
       image: '/docs/assets/products/omnisource/cad-view.png',
-      note: 'Three printed parts, two materials. Every file is pre-oriented for resin printing — the enclosure and lid print unsupported; the case prints with its included supports.',
-      profileDoc: { href: '/docs/#doc=products/OmniSource-Technical.md', label: 'Read the print profile — resin settings, plate, and release' },
+      note: 'Three printed parts, two materials. Every file is pre-oriented for resin printing: the enclosure and lid print unsupported; the case prints with its included supports.',
+      profileDoc: { href: '/docs/#doc=products/OmniSource-Technical.md', label: 'Read the print profile: resin settings, plate, and release' },
       profilesJson: { href: '/docs/assets/products/omnisource/print/print-profiles.json', label: 'Print profiles · JSON' },
       groups: [
         {
@@ -89,7 +89,7 @@ export const HARDWARE = [
         {
           name: 'Case',
           material: 'Silicone-like resin',
-          supports: 'Supported — supports included',
+          supports: 'Supported, supports included',
           formats: [
             { ext: 'STL', label: 'Case · STL', href: '/docs/assets/products/omnisource/case/OmniSource_Case.stl' },
             { ext: '3MF', label: 'Case · 3MF', href: '/docs/assets/products/omnisource/case/OmniSource_Case.3mf' }
@@ -107,7 +107,7 @@ export const HARDWARE = [
     ],
     kit: {
       title: "What's in the box",
-      intro: 'Every OmniSource ships as a complete field-ready kit — pull it out of your bag, clip on, dial the voltage, done.',
+      intro: 'Every OmniSource ships as a complete field-ready kit: pull it out of your bag, clip on, dial the voltage, done.',
       items: [
         {
           title: 'PragOptics carry case',
@@ -134,18 +134,18 @@ export const HARDWARE = [
     features: [
       { title: 'Adjustable, not fixed',              body: 'Multiturn trimpot sets the loop voltage; ships set at 25 V (24 V typical), 28 V ceiling.' },
       { title: 'HART-friendly',                       body: '270 Ω series load lands inside the 230-600 Ω HART window.' },
-      { title: 'Current-limited where it counts',    body: 'The 270 Ω resistor caps forward current to ~93 mA at 25 V (~104 mA at the 28 V ceiling) into any load — output is touch-safe.' },
-      { title: 'Self-resetting protection',          body: 'A Littelfuse 250R145 PTC (145 mA hold, 290 mA trip, 250 V interrupt) backstops an external fault and self-resets — no glass fuse to swap. A 10 µF cap steadies the output.' },
+      { title: 'Current-limited where it counts',    body: 'The 270 Ω resistor caps forward current to ~93 mA at 25 V (~104 mA at the 28 V ceiling) into any load. Output is touch-safe.' },
+      { title: 'Self-resetting protection',          body: 'A Littelfuse 250R145 PTC (145 mA hold, 290 mA trip, 250 V interrupt) backstops an external fault and self-resets. No glass fuse to swap. A 10 µF cap steadies the output.' },
       { title: 'A handful of leaded parts, no SMD',  body: 'About an hour with a soldering iron.' },
-      { title: 'Yours to open and repair',           body: 'Through-hole parts in a case that opens — nothing potted, nothing locked. Open it to probe, retune the voltage, or swap a part. A tool you own, not a sealed black box.' }
+      { title: 'Yours to open and repair',           body: 'Through-hole parts in a case that opens. Nothing potted, nothing locked. Open it to probe, retune the voltage, or swap a part. A tool you own, not a sealed black box.' }
     ],
     specs: [
-      { k: 'Input',         v: '5V USB-A (power in — input only)' },
+      { k: 'Input',         v: '5V USB-A (power in, input only)' },
       { k: 'Output',        v: 'Center-positive DC barrel jack (loop out), voltage set by exposed trimpot' },
       { k: 'Loop voltage',  v: 'Adjustable, ships set at 25 V (24 V typical); 28 V ceiling' },
       { k: 'Loop load',     v: '270 Ω 3W, inside the 230-600 Ω HART window' },
       { k: 'Forward limit', v: '~93 mA at 25 V, ~104 mA at the 28 V ceiling (set by the 270 Ω)' },
-      { k: 'Protection',    v: '270 Ω current cap + self-resetting Littelfuse 250R145 PTC (145 mA hold, 290 mA trip, 250 V interrupt) + 10 µF output cap — no glass fuse' },
+      { k: 'Protection',    v: '270 Ω current cap + self-resetting Littelfuse 250R145 PTC (145 mA hold, 290 mA trip, 250 V interrupt) + 10 µF output cap, no glass fuse' },
       { k: 'Isolation',     v: 'None (non-isolated, floating ground) by design' },
       { k: 'Build',         v: 'A handful of leaded / through-hole parts, no SMD, ~1 hour to solder' },
       { k: 'Case',          v: 'Printable, STL included' },
@@ -179,17 +179,17 @@ export const HARDWARE = [
     ],
     features: [
       { title: 'Any HART instrument',    body: 'Any vendor, over USB HART, on-board two-wire loop, HART-IP, or Wi-Fi.' },
-      { title: 'On-board 4-20 mA measure', body: 'Measures the loop current directly on board — no separate meter.' },
+      { title: 'On-board 4-20 mA measure', body: 'Measures the loop current directly on board. No separate meter.' },
       { title: 'As-Found / As-Left records', body: 'Every connection is a guided calibration record with an auto-generated certificate.' },
       { title: 'Audit trail',            body: 'Append-only ledger. Every field touch is traceable.' }
     ],
     specs: [
       { k: 'Scope', v: 'Universal HART communicator + calibration recorder + field audit node' },
       { k: 'Modes', v: 'USB HART, on-board two-wire loop, HART-IP, Wi-Fi' },
-      { k: 'Vendor lock', v: 'None — vendor-neutral across manufacturers' }
+      { k: 'Vendor lock', v: 'None. Vendor-neutral across manufacturers' }
     ],
     variants: [
-      { id: 'preorder', name: 'Preorder — $500 deposit', priceCents: 50000,
+      { id: 'preorder', name: 'Preorder: $500 deposit', priceCents: 50000,
         note: '$500 deposit reserves your OmniBus. $1,000 balance is due when it ships. Fully refundable until then.' }
     ]
   }
@@ -223,7 +223,7 @@ export const SOFTWARE = [
     category: 'software',
     name: 'PragOptics',
     tagline: 'The main platform engine.',
-    subtitle: 'The flagship app: a full production studio where you grab any element on a live canvas and shape it in place, or drop into raw code with a real repository tree. Websites, web apps, and code notebooks — one engine, AI assistance built in, and everything you make exports free.',
+    subtitle: 'The flagship app: a full production studio where you grab any element on a live canvas and shape it in place, or drop into raw code with a real repository tree. Websites, web apps, and code notebooks: one engine, AI assistance built in, and everything you make exports free.',
     icon: '/docs/assets/products/pragoptics/icon.png',
     splash: '/docs/assets/products/pragoptics/splash.png',
     splashAspect: '1024 / 450',
@@ -232,12 +232,12 @@ export const SOFTWARE = [
     priceLabel: 'Free to start',
     action: { kind: 'notify', label: 'Notify me at launch' },
     features: [
-      'Direct-manipulation canvas — click, drag, and edit every element in place',
+      'Direct-manipulation canvas: click, drag, and edit every element in place',
       'Raw code mode with a real repo tree, syntax highlighting, and live preview',
       'Three project kinds on one engine: websites, web apps, and code notebooks',
       'Notebook cells run JavaScript, HTML, and Python right in the browser',
       'AI-assisted building: describe a section, restyle by prompt',
-      'Your work is yours — free export, one-click publish, pay only as you grow'
+      'Your work is yours: free export, one-click publish, pay only as you grow'
     ]
   },
   {
@@ -245,7 +245,7 @@ export const SOFTWARE = [
     category: 'software',
     name: 'PragOptics 3D Suite',
     tagline: 'Model and slice, in one place.',
-    subtitle: 'A FreeCAD modeling core and a PrusaSlicer slicing engine in a single app — design a part and send it straight to the printer without switching tools.',
+    subtitle: 'A FreeCAD modeling core and a PrusaSlicer slicing engine in a single app: design a part and send it straight to the printer without switching tools.',
     icon: '/docs/assets/products/3d-suite/icon.png',
     splash: '/docs/assets/products/3d-suite/splash.png',
     splashAspect: '16 / 9',

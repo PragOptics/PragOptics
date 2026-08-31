@@ -1,4 +1,6 @@
 // /src/components/footer.js
+import { LANE } from '../runtime/config.js';
+
 export function initFooter() {
   // Year (tiny + deterministic)
   const y = document.getElementById("footerYear");
@@ -24,20 +26,20 @@ export function initFooter() {
     });
   }
 
-  // Environment chip (non-invasive; helps dev sanity)
+  // Environment chip: the ONE place the lane flag lives. Amber while this
+  // browser routes API calls to the dev sandbox, teal on live.
   const env = document.getElementById("footerEnv");
   if (!env) return;
 
-  const host = (location.hostname || "").toLowerCase();
-
-  // Keep this simple and deterministic — no external config dependency.
-  if (host === "localhost" || host === "127.0.0.1") {
-    env.textContent = "LOCAL";
+  if (LANE === "dev") {
+    env.textContent = "DEV LANE";
+    env.title = "This browser is routing API calls to the dev sandbox";
     env.classList.add("is-local");
     return;
   }
 
-  // If you use lanes/domains later, this won’t break anything.
-  env.textContent = "LIVE";
+  const host = (location.hostname || "").toLowerCase();
+  const local = host === "localhost" || host === "127.0.0.1";
+  env.textContent = local ? "LOCAL · LIVE API" : "LIVE";
   env.classList.add("is-live");
 }

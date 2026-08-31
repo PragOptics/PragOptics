@@ -31,6 +31,10 @@
 
       --radius:16px;
       --radius-sm:12px;
+      /* Pill shape for chips/badges/tags. 24px fully rounds anything up to
+         48px tall (radius clamps at half-height). Use this token for every
+         pill; magic-number radii are banned. Dots use 50%. */
+      --radius-pill:24px;
       --maxw: clamp(1200px, 90vw, 1600px);
       --nav-maxw: clamp(1200px, 96vw, 1900px);
 

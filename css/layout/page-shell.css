@@ -36,6 +36,19 @@
 
 .muted{
   color:var(--muted);
-  margin:0; 
+  margin:0;
   font-size:0.9rem;
+}
+
+/* In-copy links (e.g. the landing "Register your device" / "Transfer
+   ownership" lines): visibly links, same idiom as the footer's. */
+.muted a{
+  color:var(--brand-600);
+  border-bottom:1px solid rgba(33,188,165,.35);
+  padding-bottom:1px;
+  transition:color 160ms ease, border-color 160ms ease;
+}
+.muted a:hover{
+  color:#fff;
+  border-color:var(--brand-600);
 }

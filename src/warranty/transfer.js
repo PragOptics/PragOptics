@@ -162,7 +162,7 @@ function stopCooldown() {
 function lookupHtml() {
   return `
     <div class="wr-step tr-step" data-tr-step="lookup">
-      <p class="wr-contact-lede">Transfer ownership to someone else — the warranty moves with the
+      <p class="wr-contact-lede">Transfer ownership to someone else. The warranty moves with the
       product. Start with the email your products were <strong>registered under</strong>.</p>
       <div class="wr-fields">
         <div class="form-field">
@@ -170,7 +170,7 @@ function lookupHtml() {
           <input id="trEmail" type="email" autocomplete="email" placeholder="you@company.com" value="${escapeHtml(state.email)}">
         </div>
         <div class="form-field">
-          <label for="trPhone">Phone <span class="wr-optional">optional — SMS notice</span></label>
+          <label for="trPhone">Phone <span class="wr-optional">optional: SMS notice</span></label>
           <input id="trPhone" type="tel" autocomplete="tel" placeholder="(555) 555-0123" value="${escapeHtml(state.phone)}">
         </div>
       </div>
@@ -198,7 +198,7 @@ function claimCodeHtml() {
                spellcheck="false" placeholder="XXXXXX" aria-label="Claim code">
         <button id="trCodeGo" class="wr-go" type="button" aria-label="Verify code">${GO_ICON}</button>
       </div>
-      <p class="wr-error" id="trCodeError" hidden>That code didn't verify — check it and try again.</p>
+      <p class="wr-error" id="trCodeError" hidden>That code didn't verify. Check it and try again.</p>
       <div class="wr-done-actions">
         <button class="btn tr-resend" type="button" data-tr-resend disabled>Request another code (${RESEND_COOLDOWN_S}s)</button>
       </div>
@@ -248,7 +248,7 @@ function selectHtml() {
       <div class="wr-done-actions">
         <button class="cta" type="button" data-tr-action="send-transferee-code">Send them a confirmation code</button>
       </div>
-      <p class="tr-fine muted">The new owner confirms with a code sent to their email — that's what
+      <p class="tr-fine muted">The new owner confirms with a code sent to their email. That's what
       makes the hand-off theirs.</p>
     </div>
   `;
@@ -268,7 +268,7 @@ function transfereeCodeHtml() {
                spellcheck="false" placeholder="XXXXXX" aria-label="Confirmation code">
         <button id="trToCodeGo" class="wr-go" type="button" aria-label="Complete transfer">${GO_ICON}</button>
       </div>
-      <p class="wr-error" id="trToCodeError" hidden>That code didn't verify — check it and try again.</p>
+      <p class="wr-error" id="trToCodeError" hidden>That code didn't verify. Check it and try again.</p>
       <div class="wr-done-actions">
         <button class="btn tr-resend" type="button" data-tr-resend disabled>Request another code (${RESEND_COOLDOWN_S}s)</button>
       </div>
@@ -284,10 +284,10 @@ function doneHtml() {
       <span class="wr-done-badge">${CHECK_ICON}</span>
       <span class="wr-thanks-big">Transferred.</span>
       <p class="wr-thanks-sub"><strong>${n}</strong> ${n === 1 ? 'product' : 'products'} now belong${n === 1 ? 's' : ''} to
-      <code class="wr-chip-code">${escapeHtml(state.toEmail)}</code> — warranty included.
+      <code class="wr-chip-code">${escapeHtml(state.toEmail)}</code>, warranty included.
       Their email is now the key to these registrations.</p>
       ${offerAccount ? `
-        <p class="wr-done-hint">That email doesn't have a PragOptics account yet. One click sets it up —
+        <p class="wr-done-hint">That email doesn't have a PragOptics account yet. One click sets it up,
         the products are waiting there either way.</p>
         <div class="wr-done-actions">
           <button class="cta" type="button" data-tr-action="get-started">Get them started →</button>
@@ -357,7 +357,7 @@ function bindOnce() {
       btn.disabled = true;
       const r = run;
       try { await apiRequestClaimCode(email, phone); }
-      catch (ex) { if (r !== run) return; btn.disabled = false; fail('#trLookupError', ex?.message || 'Could not send the code — try again.'); return; }
+      catch (ex) { if (r !== run) return; btn.disabled = false; fail('#trLookupError', ex?.message || 'Could not send the code. Try again.'); return; }
       if (r !== run) return; // mode/flow changed while in flight
       state.step = 'claim-code';
       render();
@@ -381,7 +381,7 @@ function bindOnce() {
       if (r !== run || (state.step !== 'claim-code' && state.step !== 'transferee-code')) return;
       startCooldown();
       const b = $host.querySelector('[data-tr-resend]');
-      if (b) b.textContent = `Sent — request again in ${RESEND_COOLDOWN_S}s`;
+      if (b) b.textContent = `Sent. Request again in ${RESEND_COOLDOWN_S}s`;
       return;
     }
 
@@ -431,7 +431,7 @@ function bindOnce() {
       btn.disabled = true;
       const r = run;
       try { await apiRequestTransfereeCode(toEmail); }
-      catch (ex) { if (r !== run) return; btn.disabled = false; fail('#trSelectError', ex?.message || 'Could not send the code — try again.'); return; }
+      catch (ex) { if (r !== run) return; btn.disabled = false; fail('#trSelectError', ex?.message || 'Could not send the code. Try again.'); return; }
       if (r !== run) return;
       state.step = 'transferee-code';
       render();

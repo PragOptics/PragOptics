@@ -6,58 +6,15 @@
         <span class="shop-kicker">Hardware Shop</span>
         <h1 id="shopTitle" class="shop-title">Buy it, or build it.</h1>
         <p class="shop-sub">
-          Buy one assembled, tested, and voltage-set &mdash; ready to clip on. Or
+          Buy one assembled, tested, and voltage-set, ready to clip on. Or
           build your own from the exact parts, full schematic, and case STL, all
           free. Proven configurations, kept as accessible as we can make them, and
           updated here as they improve.
         </p>
       </div>
 
-      <!-- Sticky commerce toolbar: search, sort, category tabs -->
-      <div class="shop-toolbar" role="toolbar" aria-label="Shop filters and search">
-        <div class="shop-search">
-          <svg class="shop-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/>
-            <path d="M20 20l-3.5-3.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-          </svg>
-          <input id="shopSearch"
-                 class="shop-search-input"
-                 type="search"
-                 placeholder="Search hardware — try HART, loop, fuse…"
-                 autocomplete="off"
-                 spellcheck="false"
-                 aria-label="Search products">
-          <button class="shop-search-clear" type="button" data-shop-clear-search hidden aria-label="Clear search">✕</button>
-        </div>
-
-        <div class="shop-tabs" role="tablist" aria-label="Availability filter">
-          <button class="shop-tab is-active" type="button" role="tab" aria-selected="true"  data-shop-filter="all">All</button>
-          <button class="shop-tab"           type="button" role="tab" aria-selected="false" data-shop-filter="available">Available</button>
-          <button class="shop-tab"           type="button" role="tab" aria-selected="false" data-shop-filter="preorder">Preorder</button>
-        </div>
-
-        <label class="shop-sort" for="shopSort">
-          <span class="shop-sort-label">Sort</span>
-          <select id="shopSort" class="shop-sort-select">
-            <option value="featured">Featured</option>
-            <option value="name">Name (A-Z)</option>
-            <option value="availability">Availability</option>
-          </select>
-        </label>
-
-        <div class="shop-count" id="shopCount" aria-live="polite">&nbsp;</div>
-      </div>
-
       <!-- Gallery grid populated by src/shop/gallery.js -->
       <div class="shop-gallery" id="shopGallery"></div>
-
-      <!-- Empty state (shown by gallery.js when filters return zero) -->
-      <div class="shop-empty" id="shopEmpty" hidden>
-        <div class="shop-empty-glyph" aria-hidden="true">⌾</div>
-        <h3>No products match those filters</h3>
-        <p class="muted">Try a different search term or clear the filters.</p>
-        <button class="ph-btn" type="button" data-shop-reset>Clear filters</button>
-      </div>
 
       <aside class="shop-roadmap">
         <h3>More on the bench</h3>

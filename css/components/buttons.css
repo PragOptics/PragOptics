@@ -65,6 +65,14 @@
   transform: translateY(-2px);
 }
 
+/* Keyboard focus: the same teal ring the rest of the site uses. */
+.cta:focus-visible,
+.btn:focus-visible,
+.codeBtn:focus-visible{
+  outline:2px solid var(--brand-600);
+  outline-offset:2px;
+}
+
 .codeBtn {
   background: rgba(0,0,0,0.22);
   color: var(--ink);

@@ -69,7 +69,7 @@ function isEmail(s) {
 
 function deviceStepHtml() {
   const opts = HARDWARE.map(p =>
-    `<option value="${escapeHtml(p.id)}">${escapeHtml(p.name)} — ${escapeHtml(p.tagline)}</option>`
+    `<option value="${escapeHtml(p.id)}">${escapeHtml(p.name)}: ${escapeHtml(p.tagline)}</option>`
   ).join('');
   return `
     <div class="wr-step" data-wr-step="device">
@@ -161,7 +161,7 @@ function contactStepHtml(p) {
         <a href="#" data-wr-action="add-email-hint">Add that email to your account</a>, or
         <a href="#" data-wr-action="signout-register">sign out</a> to register it to a standalone email.</p>
       ` : `
-        <p class="wr-contact-lede">Last step — where do we reach you if this unit ever needs anything?</p>
+        <p class="wr-contact-lede">Last step: where do we reach you if this unit ever needs anything?</p>
         <div class="wr-fields">
           <div class="form-field">
             <label for="wrEmail">Email</label>
@@ -172,11 +172,11 @@ function contactStepHtml(p) {
             <input id="wrPhone" type="tel" autocomplete="tel" placeholder="(555) 555-0123">
           </div>
         </div>
-        <p class="wr-error" id="wrContactError" hidden>A valid email is required — it's how your warranty is tied to you.</p>
+        <p class="wr-error" id="wrContactError" hidden>A valid email is required. It's how your warranty is tied to you.</p>
         <div class="wr-paths">
           <button class="cta wr-path" type="button" data-wr-action="register-only">
             <span class="wr-path-t">Register my product</span>
-            <span class="wr-path-s">Just the warranty — no account, no sign-in.</span>
+            <span class="wr-path-s">Just the warranty. No account, no sign-in.</span>
           </button>
           <button class="btn wr-path" type="button" data-wr-action="register-account">
             <span class="wr-path-t">Register &amp; create an account</span>
@@ -192,17 +192,17 @@ function successHtml(p, withAccount, { linked = false } = {}) {
   const midline = withAccount
     ? `<p class="wr-thanks-sub">Finishing up: we're taking you to sign-in to create your account.</p>`
     : linked
-      ? `<p class="wr-done-hint">Added to <strong>My Products</strong> on your account — you can redeem it from there whenever you need to.</p>`
-      : `<p class="wr-done-hint">That's it. No account, no follow-up needed — keep the card with the unit.</p>`;
+      ? `<p class="wr-done-hint">Added to <strong>My Products</strong> on your account. You can redeem it from there whenever you need to.</p>`
+      : `<p class="wr-done-hint">That's it. No account, no follow-up needed. Keep the card with the unit.</p>`;
   return `
     <div class="wr-step wr-step-done" data-wr-step="done">
       <span class="wr-done-badge">${CHECK_ICON}</span>
       <span class="wr-thanks-big">Registered.</span>
-      <p class="wr-thanks-sub">Your <strong>${escapeHtml(p.name)}</strong> is on record — code
+      <p class="wr-thanks-sub">Your <strong>${escapeHtml(p.name)}</strong> is on record. Code
       <code class="wr-chip-code">${escapeHtml(state.code)}</code> is now tied to you.
       The printed case is covered for life, the unit for one year against manufacturing defects.</p>
       ${midline}
-      <p class="wr-done-hint">Passing it on someday? Ownership — warranty included — transfers
+      <p class="wr-done-hint">Passing it on someday? Ownership, warranty included, transfers
       anytime from this page: <strong>My Products → Transfer</strong>. The email you registered
       with is the key.</p>
       <div class="wr-done-actions">
@@ -377,7 +377,7 @@ function bindOnce() {
         linked.disabled = false;
         // A 403 here is the "email not on your account" guard — its message
         // tells the customer to add the email or sign out. Surface it as-is.
-        if (err) { err.textContent = ex?.message || 'Registration failed — please try again.'; err.hidden = false; }
+        if (err) { err.textContent = ex?.message || 'Registration failed. Please try again.'; err.hidden = false; }
         return;
       }
       if (mode !== 'register') return;
@@ -422,7 +422,7 @@ function bindOnce() {
       } catch (ex) {
         if (mode !== 'register') return; // user left mid-flight
         paths.forEach(b => { b.disabled = false; });
-        if (err) { err.textContent = ex?.message || 'Registration failed — please try again.'; err.hidden = false; }
+        if (err) { err.textContent = ex?.message || 'Registration failed. Please try again.'; err.hidden = false; }
         return;
       }
 
