@@ -10,7 +10,7 @@
 import { HARDWARE, getProduct } from '../shop/products.js';
 
 const BUILDS_API_LIVE = false; // ← flip when POST /builds (multipart) is deployed
-const PRAG_API_BASE = 'https://api.pragoptics.com/api/v1';
+import { PRAG_API_BASE } from '../runtime/config.js';
 const BUILDS_UPLOAD_URL = `${PRAG_API_BASE}/builds`;
 
 const INTENT_KEY = 'pragoptics_build_intent_v1'; // consumed by the account path

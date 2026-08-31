@@ -38,6 +38,7 @@
     import { initBuildsView } from '../builds/builds.js';
     import { initAdminView, onAdminEnter, refreshAdminNav } from '../admin/admin.js';
     import { initAccountView, onAccountEnter } from '../account/account.js';
+    import { PRAG_API_BASE } from './config.js';
 
     // routePostLogin is now a thin forwarder only
     function routePostLoginForward({ ping }) {
@@ -141,7 +142,7 @@
     /* ===========================
        CONFIG
        =========================== */
-    const PRAG_API_BASE   = "https://api.pragoptics.com/api/v1";
+    // PRAG_API_BASE comes from ./config.js (lane switch: dev vs live)
     const PING_URL        = `${PRAG_API_BASE}/ping`;
     const AUTH_URL        = `${PRAG_API_BASE}/auth`;
     const BILLING_PROFILE_URL  = `${PRAG_API_BASE}/billing/profile`;

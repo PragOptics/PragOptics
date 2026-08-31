@@ -35,7 +35,7 @@ function codeLen(v) {
 }
 
 const WARRANTY_API_LIVE = true;  // live: POST /warranty/register deployed to blue 2026-08-29
-const PRAG_API_BASE = 'https://api.pragoptics.com/api/v1';
+import { PRAG_API_BASE } from '../runtime/config.js';
 const WARRANTY_REGISTER_URL = `${PRAG_API_BASE}/warranty/register`;
 
 const INTENT_KEY = 'pragoptics_warranty_intent_v1'; // consumed by the account-creation path

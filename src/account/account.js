@@ -10,7 +10,7 @@
 // panel is built to that contract; until the backend ships those routes it
 // shows a friendly "not available yet" rather than breaking.
 
-const PRAG_API_BASE = 'https://api.pragoptics.com/api/v1';
+import { PRAG_API_BASE } from '../runtime/config.js';
 const ALIASES_URL = `${PRAG_API_BASE}/auth/aliases`;
 const REQUEST_CODE_URL = `${PRAG_API_BASE}/auth/request-code`;
 const STRIPE_PORTAL_URL = 'https://billing.stripe.com/p/login/4gM00beIf91O1Kzc3DdjO00';

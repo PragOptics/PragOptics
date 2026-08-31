@@ -9,7 +9,7 @@
 // own sessionStorage gets a console where every request returns 403. Tier is
 // never consulted here: a super-tier customer is still a customer.
 
-const PRAG_API_BASE = 'https://api.pragoptics.com/api/v1';
+import { PRAG_API_BASE } from '../runtime/config.js';
 const ISSUE_URL = `${PRAG_API_BASE}/warranty/codes/issue`;
 const LIST_URL  = `${PRAG_API_BASE}/warranty/codes`;
 const USERS_URL = `${PRAG_API_BASE}/admin/users`;

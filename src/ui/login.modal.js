@@ -1,5 +1,7 @@
 // ui/login.modal.js
 
+import { PRAG_API_BASE } from "../runtime/config.js";
+
 let isBound = false;
 
 /* ======================================================
@@ -496,7 +498,7 @@ function bindLoginModal(modal) {
 
     closeLoginModal();
 
-    const pingRes = await fetch("https://api.pragoptics.com/api/v1/ping", {
+    const pingRes = await fetch(`${PRAG_API_BASE}/ping`, {
       headers: {
         Authorization: `Bearer ${resp.tokens.access_token}`
       }

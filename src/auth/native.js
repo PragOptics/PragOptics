@@ -2,7 +2,7 @@
 import { getAgreementAck } from "../runtime/state.js";
 import { fetchJsonWithDna } from "../api/apiWithDna.js";
 
-const PRAG_API_BASE = "https://api.pragoptics.com/api/v1";
+import { PRAG_API_BASE } from "../runtime/config.js";
 
 async function postJson(path, body) {
   return fetchJsonWithDna(
