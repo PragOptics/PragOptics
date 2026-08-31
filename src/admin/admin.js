@@ -9,10 +9,17 @@
 // own sessionStorage gets a console where every request returns 403. Tier is
 // never consulted here: a super-tier customer is still a customer.
 
-import { PRAG_API_BASE } from '../runtime/config.js';
+import { PRAG_API_BASE, LANE } from '../runtime/config.js';
 const ISSUE_URL = `${PRAG_API_BASE}/warranty/codes/issue`;
 const LIST_URL  = `${PRAG_API_BASE}/warranty/codes`;
 const USERS_URL = `${PRAG_API_BASE}/admin/users`;
+const CATALOG_IMPORT_URL = `${PRAG_API_BASE}/admin/catalog/import`;
+
+// Catalog snapshots survive lane flips (localStorage is per-origin, and the
+// lane toggle reloads the same origin), which is the whole trick: snapshot on
+// one lane, import on the other.
+const CATALOG_SNAPSHOT_KEY = 'pragoptics_catalog_snapshot_v1';
+const LANE_OVERRIDE_KEY = 'pragoptics_lane_override';
 
 let $body = null;
 let mounted = false;
@@ -92,7 +99,8 @@ const ICONS = {
   users:     '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
   warranty:  '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/>',
   orders:    '<circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>',
-  inventory: '<path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="M3.27 6.96L12 12.01l8.73-5.05"/><path d="M12 22.08V12"/>'
+  inventory: '<path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="M3.27 6.96L12 12.01l8.73-5.05"/><path d="M12 22.08V12"/>',
+  catalog:   '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>'
 };
 
 const SECTIONS = [
@@ -100,7 +108,8 @@ const SECTIONS = [
   { id: 'users',     label: 'Users' },
   { id: 'warranty',  label: 'Warranty' },
   { id: 'orders',    label: 'Orders' },
-  { id: 'inventory', label: 'Inventory' }
+  { id: 'inventory', label: 'Inventory' },
+  { id: 'catalog',   label: 'Catalog' }
 ];
 
 function icon(id) {
@@ -434,6 +443,141 @@ function showSection(id) {
   if (id === 'warranty')  return void renderWarranty(main);
   if (id === 'orders')    return renderSoon(main, 'Orders', 'Order history and fulfillment land here once checkout is wired.');
   if (id === 'inventory') return renderSoon(main, 'Inventory', 'Physical stock levels for hardware, cases, and screwdrivers will live here.');
+  if (id === 'catalog')   return void renderCatalog(main);
+}
+
+/* ---------- section: catalog (lane mirror) ---------- */
+
+function readSnapshot() {
+  try { return JSON.parse(localStorage.getItem(CATALOG_SNAPSHOT_KEY) || 'null'); }
+  catch { return null; }
+}
+
+function renderCatalog(main) {
+  const ping = cachedPing();
+  const rows = Array.isArray(ping?.productCatalog) ? ping.productCatalog : [];
+  const snap = readSnapshot();
+  const onProdHost = /(^|\.)pragoptics\.com$/i.test(location.hostname);
+
+  main.innerHTML = `
+    <header class="adm-sec-head">
+      <h2 class="adm-sec-title">Catalog</h2>
+      <span class="adm-pill">lane: ${escapeHtml(LANE)}</span>
+    </header>
+
+    <div class="adm-card">
+      <h3 class="adm-card-h">Lane</h3>
+      <p class="muted">This browser session is talking to the <strong>${escapeHtml(LANE)}</strong> lane
+      (${escapeHtml(PRAG_API_BASE)}). ${onProdHost
+        ? 'On the production domain the lane is locked to live.'
+        : 'Flipping the lane reloads the page; sign in again on the other lane.'}</p>
+      ${onProdHost ? '' : `
+        <div class="adm-actions-row">
+          <button class="btn" type="button" data-adm-action="lane-live" ${LANE === 'live' ? 'disabled' : ''}>Use live</button>
+          <button class="btn" type="button" data-adm-action="lane-dev" ${LANE === 'dev' ? 'disabled' : ''}>Use dev</button>
+        </div>
+      `}
+    </div>
+
+    <div class="adm-card">
+      <h3 class="adm-card-h">This lane's catalog</h3>
+      ${rows.length ? `
+        <table class="adm-table">
+          <thead><tr><th>Lookup key</th><th>Interval</th><th>Amount</th></tr></thead>
+          <tbody>
+            ${rows.map(r => `<tr>
+              <td><code>${escapeHtml(r.lookupKey)}</code></td>
+              <td>${escapeHtml(r.interval || '')}</td>
+              <td>${r.amount !== '' && r.amount != null ? '$' + (Number(r.amount) / 100).toFixed(2) : ''}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+        <div class="adm-actions-row">
+          <button class="cta" type="button" data-adm-action="catalog-snapshot">Snapshot ${rows.length} rows from ${escapeHtml(LANE)}</button>
+        </div>
+      ` : `
+        <p class="muted">No catalog rows on this lane yet. Sign out and back in if you subscribed
+        recently; the catalog rides on the ping.</p>
+      `}
+    </div>
+
+    <div class="adm-card">
+      <h3 class="adm-card-h">Stored snapshot</h3>
+      ${snap ? `
+        <p class="muted"><strong>${snap.items.length}</strong> rows from the
+        <strong>${escapeHtml(snap.sourceLane)}</strong> lane, taken ${escapeHtml(new Date(snap.takenAt).toLocaleString())}.</p>
+        ${snap.sourceLane === LANE
+          ? `<p class="muted">You are on the lane this snapshot came from. Flip to the other lane to import it.</p>`
+          : `<p class="muted">Importing creates the missing products and prices in the
+             <strong>${escapeHtml(LANE)}</strong> lane's Stripe account (by lookup key, idempotent),
+             then syncs its ProductCatalog table.</p>
+             <div class="adm-actions-row">
+               <button class="cta" type="button" data-adm-action="catalog-import">Import into ${escapeHtml(LANE)}</button>
+             </div>`}
+      ` : `
+        <p class="muted">No snapshot stored. Take one on the lane that has the catalog (live), then
+        flip lanes and import it here.</p>
+      `}
+      <p class="adm-error" id="admCatalogError" hidden></p>
+      <p class="muted" id="admCatalogResult" hidden></p>
+    </div>
+  `;
+}
+
+function catalogSnapshot() {
+  const rows = cachedPing()?.productCatalog || [];
+  if (!rows.length) return;
+  try {
+    localStorage.setItem(CATALOG_SNAPSHOT_KEY, JSON.stringify({
+      sourceLane: LANE,
+      takenAt: new Date().toISOString(),
+      items: rows.map(r => ({
+        lookupKey: r.lookupKey,
+        amount: Number(r.amount),
+        currency: r.currency || 'USD',
+        interval: r.interval,
+        productName: String(r.lookupKey || '').replace(/\.(monthly|annual)$/, '')
+      }))
+    }));
+  } catch { /* storage blocked */ }
+  showSection('catalog');
+}
+
+async function catalogImport(btn) {
+  const snap = readSnapshot();
+  if (!snap || snap.sourceLane === LANE) return;
+  // Importing into live rewrites the account real customers bill against. The
+  // backend refuses without the confirm token; the operator types the word.
+  let confirm;
+  if (LANE === 'live') {
+    confirm = window.prompt('This imports into the LIVE Stripe account. Type "live" to confirm.') || '';
+    if (confirm.trim().toLowerCase() !== 'live') return;
+    confirm = 'live';
+  }
+  btn.disabled = true;
+  btn.textContent = 'Importing…';
+  try {
+    const data = await apiFetch(CATALOG_IMPORT_URL, {
+      method: 'POST',
+      body: JSON.stringify({ items: snap.items, ...(confirm ? { confirm } : {}) })
+    });
+    const out = document.getElementById('admCatalogResult');
+    if (out) {
+      out.textContent = `Done: ${data.created} created, ${data.skipped} already present, ${data.synced} table rows synced` +
+        (data.errors?.length ? `. Rejected: ${data.errors.join('; ')}` : '.');
+      out.hidden = false;
+    }
+    showError('admCatalogError', '');
+  } catch (ex) {
+    showError('admCatalogError', friendlyError(ex, 'Import failed.'));
+    btn.disabled = false;
+    btn.textContent = `Import into ${LANE}`;
+  }
+}
+
+function setLane(lane) {
+  try { localStorage.setItem(LANE_OVERRIDE_KEY, lane); } catch { return; }
+  location.reload();
 }
 
 /* ---------- behaviour ---------- */
@@ -458,6 +602,10 @@ function bindOnce() {
       e.preventDefault();
       if (act.dataset.admAction === 'mint') mint(act);
       if (act.dataset.admAction === 'copy') copyCodes(act);
+      if (act.dataset.admAction === 'catalog-snapshot') catalogSnapshot();
+      if (act.dataset.admAction === 'catalog-import') catalogImport(act);
+      if (act.dataset.admAction === 'lane-live') setLane('live');
+      if (act.dataset.admAction === 'lane-dev') setLane('dev');
       return;
     }
 

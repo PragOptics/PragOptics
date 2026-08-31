@@ -16,7 +16,9 @@
 
 import { HARDWARE, getProduct } from '../shop/products.js';
 import { renderTransfer, cancelTransfer } from './transfer.js';
-import { openVideoOverlay, hasVideoSource } from '../components/videoOverlay.js';
+import { renderRedeem, cancelRedeem } from './redeem.js';
+import { framedVideoHtml, bindFramedVideo, hasVideoSource } from '../components/videoOverlay.js';
+import { tierCardsHtml, bindTierCards } from '../components/tierCards.js';
 
 // The printed code alphabet (no I/L/O/U/0/1, so nothing is mistaken while
 // typing off a card). Kept in step with the backend mint alphabet.
@@ -107,14 +109,7 @@ function codeStepHtml(p) {
         voltage-set by hand. It is yours to open, probe, and repair for as long as you run it.
         Register it and the printed case is covered for life.</p>
       </div>
-      ${hasVideo ? `
-        <div class="wr-video-cta">
-          <button class="btn wr-watch" type="button" data-wr-action="watch-howto">
-            <span class="wr-watch-ico" aria-hidden="true">&#9658;</span>
-            Watch the How-To
-          </button>
-        </div>
-      ` : ''}
+      ${hasVideo ? framedVideoHtml(p.video) : ''}
       <label class="wr-label wr-label-center" for="wrCode">Warranty code, on the card in your case</label>
       <div class="wr-code-row">
         <input id="wrCode" class="wr-code-input" type="text" inputmode="text" autocomplete="off"
@@ -181,6 +176,10 @@ function successHtml(p, withAccount) {
         <button class="btn" type="button" data-wr-action="register-another">Register another device</button>
         <button class="btn" type="button" data-wr-action="back-home">Back to PragOptics</button>
       </div>
+      ${withAccount ? '' : tierCardsHtml({
+        heading: 'Want more than the warranty?',
+        sub: 'Optional, cancel anytime. Your registration stands either way.'
+      })}
     </div>
   `;
 }
@@ -244,6 +243,8 @@ function showCodeStep(p) {
   render(deviceStepHtml() + codeStepHtml(p));
   const sel = $body.querySelector('#wrDevice');
   if (sel) sel.value = p.id;
+  // The How-To plays right on the page, half volume, titled in its frame.
+  if (hasVideoSource(p.video)) bindFramedVideo($body, p.video);
   const input = $body.querySelector('#wrCode');
   input?.focus();
 }
@@ -330,6 +331,8 @@ function bindOnce() {
 
       const p = getProduct(state.deviceId);
       render(successHtml(p, wantsAccount));
+      // The no-account path still gets the platform offer, as tier cards.
+      if (!wantsAccount) bindTierCards($body);
 
       if (wantsAccount) {
         // Stash the intent for the account flow: after sign-in/creation the
@@ -372,21 +375,26 @@ function bindOnce() {
 const MODE_COPY = {
   register: {
     title: 'Activate your warranty.',
-    sub: 'Your warranty card carries a unique code — one code, one device. Pick your device, enter the code, and you’re covered. No account required.'
+    sub: 'Your warranty card carries a unique code: one code, one device. Pick your device, enter the code, and you’re covered. No account required.'
+  },
+  redeem: {
+    title: 'Redeem your warranty.',
+    sub: 'A cracked or worn case gets replaced, once a year, for the life of the product. Your registered code and email are all it takes. No account required.'
   },
   transfer: {
     title: 'Transfer ownership.',
-    sub: 'Products move; warranties follow. A claim code proves the current owner, a confirmation code accepts the hand-off — human to human, no account required.'
+    sub: 'Products move; warranties follow. A claim code proves the current owner, a confirmation code accepts the hand-off, human to human. No account required.'
   }
 };
 
 let mode = 'register';
 
 function setMode(next) {
-  const leavingTransfer = mode === 'transfer' && next !== 'transfer';
-  mode = next === 'transfer' ? 'transfer' : 'register';
-  // Invalidate the other flow's in-flight work + timers before rendering ours.
-  if (leavingTransfer) cancelTransfer();
+  const target = (next === 'transfer' || next === 'redeem') ? next : 'register';
+  // Invalidate the other flows' in-flight work + timers before rendering ours.
+  if (mode === 'transfer' && target !== 'transfer') cancelTransfer();
+  if (mode === 'redeem' && target !== 'redeem') cancelRedeem();
+  mode = target;
   document.querySelectorAll('#warrantyView .wr-tab').forEach(t => {
     const on = t.dataset.wrMode === mode;
     t.classList.toggle('is-active', on);
@@ -398,6 +406,7 @@ function setMode(next) {
   if (title) title.textContent = copy.title;
   if (sub) sub.textContent = copy.sub;
   if (mode === 'transfer') renderTransfer($body);
+  else if (mode === 'redeem') renderRedeem($body);
   else render(deviceStepHtml());
 }
 
@@ -417,10 +426,16 @@ function consumeHash() {
 
 export function onWarrantyEnter() {
   if (!$body) return;
-  // /#transfer deep link (How To, docs, emails) lands straight in transfer mode.
+  // /#transfer and /#redeem deep links (How To, docs, the redemption email)
+  // land straight in their mode.
   if (/^#transfer/i.test(String(location.hash || ''))) {
     consumeHash();
     setMode('transfer');
+    return;
+  }
+  if (/^#redeem/i.test(String(location.hash || ''))) {
+    consumeHash();
+    setMode('redeem');
     return;
   }
   const pre = deviceFromHash();

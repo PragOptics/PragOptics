@@ -27,7 +27,15 @@ const LANES = {
 const host = typeof location !== 'undefined' ? location.hostname : '';
 const isProdHost = host === 'pragoptics.com' || host === 'www.pragoptics.com';
 
-export const LANE = isProdHost ? 'live' : LANE_SETTING;
+// Runtime lane toggle for operators (admin panel > Catalog): a localStorage
+// override so live catalog data can be snapshotted and replayed into dev from
+// one browser session. Honored ONLY off the production domain; on
+// pragoptics.com the guard above always wins.
+let laneOverride = null;
+try { laneOverride = localStorage.getItem('pragoptics_lane_override'); } catch { /* blocked */ }
+if (laneOverride !== 'dev' && laneOverride !== 'live') laneOverride = null;
+
+export const LANE = isProdHost ? 'live' : (laneOverride || LANE_SETTING);
 
 const lane = LANES[LANE] || LANES.live;
 

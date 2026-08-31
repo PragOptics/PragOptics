@@ -499,6 +499,9 @@ window.applyPostLoginResolution = applyPostLoginResolution;
       else if (/^#warranty/i.test(String(location.hash || ""))) setAppMode("warranty");
       // Ownership-transfer short link: /#transfer (same page, transfer mode)
       else if (/^#transfer/i.test(String(location.hash || ""))) setAppMode("warranty");
+      // Redemption short link: /#redeem (same page, redeem mode; used by the
+      // replacement-card email)
+      else if (/^#redeem/i.test(String(location.hash || ""))) setAppMode("warranty");
     })();
 
 

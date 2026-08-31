@@ -473,3 +473,11 @@
   .adm-nav-item span:not(.adm-nav-ico) { display: none; }
   .adm-nav-item { padding: 9px 12px; }
 }
+
+/* ---- Catalog section ---- */
+.adm-actions-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+.adm-card-h {
+  margin: 0 0 8px; font-size: .95rem; font-weight: 800;
+  letter-spacing: .05em; text-transform: uppercase;
+  color: var(--brand-600, #21bca5);
+}

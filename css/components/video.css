@@ -160,3 +160,45 @@
 }
 
 body.vo-open { overflow: hidden; }
+
+/* ---- Framed embed (warranty page): titled frame hosting the player ---- */
+.vo-framed {
+  margin: 4px auto 16px;
+  max-width: 560px;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid var(--border, rgba(255, 255, 255, .12));
+  background: rgba(0, 0, 0, .35);
+  box-shadow: 0 14px 40px rgba(0, 0, 0, .35);
+}
+.vo-framed-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 14px;
+  background: linear-gradient(120deg, rgba(33, 188, 165, .10), rgba(162, 0, 255, .12));
+  border-bottom: 1px solid var(--border, rgba(255, 255, 255, .10));
+}
+.vo-framed-title {
+  font-weight: 800;
+  letter-spacing: .04em;
+  font-size: .92rem;
+  background: linear-gradient(120deg, var(--brand-600, #21bca5), #bf7dff);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.vo-framed-stage {
+  position: relative;
+  background: #000;
+  aspect-ratio: 16 / 9;
+}
+.vo-framed-stage .vo-frame,
+.vo-framed-stage .vo-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}

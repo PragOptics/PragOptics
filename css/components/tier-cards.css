@@ -1,0 +1,106 @@
+/* /css/components/tier-cards.css
+   The subscription offer as modern tier cards: what each tier includes, the
+   price when known, one clear action. Shown on warranty success screens and
+   reusable anywhere the offer belongs. */
+
+.tc-wrap { margin-top: 26px; text-align: left; }
+
+.tc-head { text-align: center; margin-bottom: 16px; }
+.tc-h {
+  margin: 0 0 4px;
+  font-size: 1.25rem;
+  font-weight: 900;
+  background: linear-gradient(120deg, var(--brand-600, #21bca5), #bf7dff);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.tc-sub { margin: 0; font-size: .88rem; }
+
+.tc-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 14px;
+  align-items: stretch;
+}
+
+.tc-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px 18px;
+  border-radius: 18px;
+  background: rgba(0, 0, 0, .28);
+  border: 1px solid var(--border, rgba(255, 255, 255, .12));
+  transition: border-color 160ms ease, transform 160ms ease, box-shadow 160ms ease;
+}
+.tc-card:hover {
+  border-color: rgba(33, 188, 165, .45);
+  transform: translateY(-2px);
+}
+.tc-card.is-featured {
+  border-color: var(--brand-600, #21bca5);
+  background: linear-gradient(160deg, rgba(33, 188, 165, .10), rgba(162, 0, 255, .10));
+  box-shadow: 0 14px 40px rgba(33, 188, 165, .18);
+}
+
+.tc-flag {
+  position: absolute;
+  top: -11px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 3px 12px;
+  border-radius: 999px;
+  font-size: .7rem;
+  font-weight: 800;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: #04130f;
+  background: linear-gradient(120deg, #38ffb3, var(--brand-600, #21bca5));
+  white-space: nowrap;
+}
+
+.tc-card-head { display: flex; flex-direction: column; gap: 2px; }
+.tc-name { font-size: 1.1rem; font-weight: 900; color: var(--ink, #dcdbf0e1); }
+.tc-tag { font-size: .8rem; }
+
+.tc-price { display: flex; align-items: baseline; gap: 8px; }
+.tc-amount {
+  font-size: 1.7rem;
+  font-weight: 900;
+  background: linear-gradient(120deg, var(--brand-600, #21bca5), #bf7dff);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.tc-amount-soft { font-size: 1rem; font-weight: 700; opacity: .85; }
+.tc-cadence { font-size: .8rem; }
+
+.tc-features {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+  font-size: .86rem;
+  line-height: 1.5;
+  color: var(--ink, #dcdbf0e1);
+}
+.tc-features li {
+  padding-left: 22px;
+  position: relative;
+}
+.tc-features li::before {
+  content: '✓';
+  position: absolute;
+  left: 0;
+  top: 0;
+  font-weight: 900;
+  color: var(--brand-600, #21bca5);
+}
+
+.tc-cta { width: 100%; justify-content: center; }
+.tc-cta[disabled] { opacity: .55; cursor: default; }

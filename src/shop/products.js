@@ -29,21 +29,26 @@ export const HARDWARE = [
     // is hosted externally: set ONE of mp4 (a direct URL, e.g. Azure Blob) or
     // youtube (an unlisted video id). The player stays hidden until one is set.
     video: {
-      title: 'OmniSource: How To',
-      poster: '/docs/assets/products/omnisource/product.png',
+      title: 'How To: OmniSource',
+      // No custom poster: YouTube supplies its own thumbnail. If a poster is
+      // ever needed (e.g. a self-hosted mp4), use the marketing shot with all
+      // components laid out: /docs/assets/products/omnisource/marketing.jpg
+      poster: '',
       mp4: '',
       youtube: 'bCgHOtEVbxI'
     },
     // Warranty policy shown on the registration page. Each product carries its
-    // own terms; OmniSource covers the printed case for life, one claim a year.
+    // own terms; OmniSource covers the printed case for life, one redemption a
+    // year per owner, clock starting at each redemption.
     warranty: {
       headline: 'Lifetime case warranty',
-      lede: 'Your OmniSource case is covered for the life of the product. Here is how a claim works.',
+      lede: 'Your OmniSource case is covered for the life of the product. Here is how a redemption works.',
       terms: [
         'Covers the printed hard-shell case for the life of the product.',
-        'One case replacement per year, per registration.',
-        'A replacement ships with a new case and a new registration card. Register that new card to keep your coverage active: one card, one redemption, then you re-register.',
-        'Return shipping on a warranty replacement is the customer’s responsibility.'
+        'One case redemption per year, per owner. The year runs from the date a redemption is engaged, not from purchase or registration.',
+        'A replacement ships with a new case and a new warranty card, physical and digital. Register the new card when it arrives: that keeps your coverage active for the next redemption.',
+        'Shipping on a warranty replacement is the customer’s responsibility.',
+        'Coverage does not expire. Bridges Industrial LLC reserves the right to deny, suspend, or void coverage in cases of fraud, abuse, misuse, or commercial exploitation, at its sole discretion. This warranty gives you specific legal rights; you may also have other rights that vary by jurisdiction.'
       ]
     },
     badge: 'First product',

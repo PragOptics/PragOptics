@@ -355,11 +355,24 @@ function renderSubTypeOptions(wizardCatalog, ping) {
 }
 
 function wireSubTypeEvents() {
+  // A tier chosen on the tier cards (warranty success screens) preselects
+  // here. One-shot: consumed on read so a stale pick never haunts a later run.
+  let tierPref = null;
+  try {
+    tierPref = localStorage.getItem("pragoptics_wizard_tier_pref");
+    if (tierPref) localStorage.removeItem("pragoptics_wizard_tier_pref");
+  } catch { /* storage blocked */ }
+  if (tierPref && !document.querySelector('input[name="subType"]:checked')) {
+    const radio = document.querySelector(`input[name="subType"][value="${CSS.escape(tierPref)}"]`);
+    if (radio) radio.checked = true;
+  }
+
   selectedType =
     document.querySelector('input[name="subType"]:checked')?.value || null;
 
   const nextBtn = document.getElementById("toStep2");
   if (nextBtn) nextBtn.disabled = !selectedType;
+  if (selectedType) { applySubTypeUI(); updatePriceSummary(); }
 
   document.querySelectorAll('input[name="subType"]').forEach(r => {
     r.addEventListener("change", () => {

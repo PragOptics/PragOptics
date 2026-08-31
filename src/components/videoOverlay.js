@@ -29,11 +29,12 @@ export function hasVideoSource(video) {
   return !!(video && (video.mp4 || video.youtube));
 }
 
-/** The player markup for one source, sized to fill its container. */
+/** The player markup for one source, sized to fill its container.
+ *  enablejsapi lets applyDefaultVolume set the in-player volume after load. */
 function playerHtml(video, { autoplay = false } = {}) {
   if (video.youtube) {
-    const params = `rel=0&modestbranding=1&playsinline=1${autoplay ? '&autoplay=1' : ''}`;
-    return `<iframe class="vo-frame"
+    const params = `rel=0&modestbranding=1&playsinline=1&enablejsapi=1${autoplay ? '&autoplay=1' : ''}`;
+    return `<iframe class="vo-frame" data-vo-yt
               src="https://www.youtube-nocookie.com/embed/${esc(video.youtube)}?${params}"
               title="${esc(video.title || 'Video')}"
               allow="accelerometer; autoplay; encrypted-media; picture-in-picture"
@@ -46,6 +47,27 @@ function playerHtml(video, { autoplay = false } = {}) {
             <source src="${esc(video.mp4)}" type="video/mp4">
             Your browser cannot play this video.
           </video>`;
+}
+
+// House volume: players start at half so a How-To never blasts a quiet shop
+// floor. YouTube takes the command over its iframe API (it ignores messages
+// until the player exists, so it is nudged a few times); native video is a
+// property set.
+function applyDefaultVolume(stage) {
+  if (!stage) return;
+  const vid = stage.querySelector('video');
+  if (vid) { try { vid.volume = 0.5; } catch { /* not ready */ } }
+  const yt = stage.querySelector('[data-vo-yt]');
+  if (yt) {
+    const send = () => {
+      try {
+        yt.contentWindow?.postMessage(JSON.stringify({ event: 'command', func: 'setVolume', args: [50] }), '*');
+      } catch { /* frame gone */ }
+    };
+    yt.addEventListener('load', () => { send(); setTimeout(send, 600); setTimeout(send, 1500); });
+    // Already loaded (cached) frames never fire load again: nudge now too.
+    send(); setTimeout(send, 600); setTimeout(send, 1500);
+  }
 }
 
 /* ---------- overlay (single instance, reused) ---------- */
@@ -81,7 +103,9 @@ export function openVideoOverlay(video) {
   if (!hasVideoSource(video)) return;
   const o = ensureOverlay();
   o.querySelector('.vo-title').textContent = video.title || 'How-To';
-  o.querySelector('.vo-stage').innerHTML = playerHtml(video, { autoplay: true });
+  const stage = o.querySelector('.vo-stage');
+  stage.innerHTML = playerHtml(video, { autoplay: true });
+  applyDefaultVolume(stage);
   lastFocus = document.activeElement;
   o.hidden = false;
   document.body.classList.add('vo-open');
@@ -137,7 +161,41 @@ export function bindInlineVideo(root, video) {
     if (e.target.closest('[data-vo-play]')) {
       // Play inline in place, in the poster stage.
       const stage = fig.querySelector('[data-vo-poster]');
-      if (stage) stage.innerHTML = playerHtml(video, { autoplay: true });
+      if (stage) {
+        stage.innerHTML = playerHtml(video, { autoplay: true });
+        applyDefaultVolume(stage);
+      }
     }
+  });
+}
+
+/* ---------- framed embed (warranty page) ---------- */
+
+// A titled frame hosting the player directly: the video is right there to
+// watch, no poster interstitial. YouTube supplies its own thumbnail inside
+// the iframe, and the house half-volume applies once the player is up.
+export function framedVideoHtml(video) {
+  if (!hasVideoSource(video)) return '';
+  return `
+    <figure class="vo-framed" data-vo-framed>
+      <figcaption class="vo-framed-head">
+        <span class="vo-framed-title">${esc(video.title || 'How-To')}</span>
+        <button class="vo-expand" type="button" data-vo-expand aria-label="Expand video">Expand</button>
+      </figcaption>
+      <div class="vo-framed-stage">${playerHtml(video, { autoplay: false })}</div>
+    </figure>
+  `;
+}
+
+/** Wire a container holding one framedVideoHtml block: half volume now, and
+ *  the Expand control hands the same source to the overlay. */
+export function bindFramedVideo(root, video) {
+  if (!root || !hasVideoSource(video)) return;
+  const fig = root.querySelector('[data-vo-framed]');
+  if (!fig || fig._voBound) return;
+  fig._voBound = true;
+  applyDefaultVolume(fig.querySelector('.vo-framed-stage'));
+  fig.addEventListener('click', (e) => {
+    if (e.target.closest('[data-vo-expand]')) openVideoOverlay(video);
   });
 }
