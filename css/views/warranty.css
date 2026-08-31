@@ -264,3 +264,22 @@
   padding: 12px 22px;
   margin: 6px 0 4px;
 }
+
+/* ---- Signed-in register banner + alt-email note ---- */
+.wr-signedin {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px; margin: 0 auto 12px; max-width: 520px;
+  border-radius: 12px;
+  background: linear-gradient(120deg, rgba(56, 255, 179, .08), rgba(33, 188, 165, .10));
+  border: 1px solid rgba(56, 255, 179, .28);
+  color: var(--ink, #dcdbf0e1); font-size: .88rem;
+}
+.wr-signedin-ico {
+  display: inline-flex; align-items: center; justify-content: center; flex: none;
+  width: 22px; height: 22px; border-radius: 50%;
+  background: linear-gradient(120deg, #38ffb3, var(--brand-600, #21bca5));
+  color: #04130f; font-weight: 900; font-size: .78rem;
+}
+.wr-alt-note { font-size: .82rem; line-height: 1.55; text-align: center; margin-top: 10px; }
+.wr-alt-note a { color: var(--brand-600, #21bca5); text-decoration: none; }
+.wr-alt-note a:hover { color: #fff; text-decoration: underline; }

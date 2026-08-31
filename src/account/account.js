@@ -13,6 +13,7 @@
 import { PRAG_API_BASE, LANE } from '../runtime/config.js';
 import { switchLane, isPlatformOperator } from '../runtime/lane.js';
 const ALIASES_URL = `${PRAG_API_BASE}/auth/aliases`;
+const MINE_URL = `${PRAG_API_BASE}/warranty/mine`;
 const REQUEST_CODE_URL = `${PRAG_API_BASE}/auth/request-code`;
 const STRIPE_PORTAL_URL = 'https://billing.stripe.com/p/login/4gM00beIf91O1Kzc3DdjO00';
 
@@ -76,12 +77,14 @@ function friendlyError(ex, fallback) {
 
 const ICONS = {
   profile:      '<circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1"/>',
+  products:     '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/>',
   subscription: '<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/>',
   orders:       '<circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>',
   builds:       '<path d="M12 2l9 4.9V17L12 22 3 17V6.9z"/><path d="M12 22V12"/><path d="M21 7l-9 5-9-5"/>'
 };
 const SECTIONS = [
   { id: 'profile',      label: 'Profile' },
+  { id: 'products',     label: 'My Products' },
   { id: 'subscription', label: 'Subscription' },
   { id: 'orders',       label: 'Orders' },
   { id: 'builds',       label: 'My Builds' }
@@ -351,9 +354,78 @@ function showSection(id) {
   const main = document.getElementById('acctMain');
   if (!main) return;
   if (id === 'profile')      return void renderProfile(main);
+  if (id === 'products')     return void renderProducts(main);
   if (id === 'subscription') return renderSubscription(main);
   if (id === 'orders')       return renderSoon(main, 'Orders', 'Your order history and tracking will appear here once checkout is live.');
   if (id === 'builds')       return renderSoon(main, 'My Builds', 'Builds you publish to the community wall will be managed here.');
+}
+
+/* ---------- section: my products (registered warranties) ---------- */
+
+const PRODUCT_NAMES = { omnisource: 'OmniSource', omnibus: 'OmniBus' };
+
+function fmtDate(iso) {
+  if (!iso) return '';
+  try { return new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }); }
+  catch { return iso; }
+}
+
+function productItemHtml(it) {
+  const name = PRODUCT_NAMES[it.productId] || it.productId || 'Device';
+  const e = it.eligibility || {};
+  let statusHtml, action;
+  if (e.pendingRedemptionId) {
+    statusHtml = '<span class="acct-tag is-pending">Redemption in progress</span>';
+    action = '';
+  } else if (e.eligible) {
+    statusHtml = '<span class="acct-tag is-verified">Redemption available</span>';
+    action = `<button class="btn btn-sm" type="button" data-acct-action="redeem-product" data-code="${escapeHtml(it.code || '')}">Redeem warranty</button>`;
+  } else if (e.nextEligibleAt) {
+    statusHtml = `<span class="acct-tag">Next redemption ${escapeHtml(fmtDate(e.nextEligibleAt))}</span>`;
+    action = '';
+  } else {
+    statusHtml = '<span class="acct-tag is-verified">Covered</span>';
+    action = '';
+  }
+  return `
+    <li class="acct-product">
+      <div class="acct-product-main">
+        <span class="acct-product-name">${escapeHtml(name)}</span>
+        <code class="acct-product-code">${escapeHtml(it.code || '')}</code>
+        <span class="acct-product-meta muted">Registered ${escapeHtml(fmtDate(it.registeredAt))}${
+          it.redemptionCount ? ` · ${it.redemptionCount} redemption${it.redemptionCount === 1 ? '' : 's'}` : ''}</span>
+      </div>
+      <div class="acct-product-side">
+        ${statusHtml}
+        ${action}
+      </div>
+    </li>
+  `;
+}
+
+async function renderProducts(main) {
+  main.innerHTML = `
+    <header class="acct-sec-head"><h2 class="acct-sec-title">My Products</h2></header>
+    <section class="acct-card">
+      <p class="acct-card-note">Devices registered to your account. Lifetime case coverage; one redemption per year.</p>
+      <ul class="acct-product-list" id="acctProductList"><li class="acct-loading">Loading…</li></ul>
+      <p class="acct-error" id="acctProductsError" hidden></p>
+    </section>
+  `;
+  const host = document.getElementById('acctProductList');
+  try {
+    const data = await apiFetch(`${MINE_URL}`);
+    const items = Array.isArray(data.items) ? data.items : [];
+    if (!items.length) {
+      host.innerHTML = `<li class="acct-empty">No registered products yet. Register a device at
+        <a href="#" data-acct-action="go-register">the warranty page</a>, and it will appear here.</li>`;
+      return;
+    }
+    host.innerHTML = items.map(productItemHtml).join('');
+  } catch (ex) {
+    host.innerHTML = '';
+    showError('acctProductsError', friendlyError(ex, 'Could not load your products.'));
+  }
 }
 
 function showError(id, message) {
@@ -380,6 +452,12 @@ function bindOnce() {
     if (a === 'verify-alias') return void verifyAlias(act.dataset.alias, act.dataset.claim);
     if (a === 'lane-live') return void switchLane('live');
     if (a === 'lane-dev') return void switchLane('dev');
+    if (a === 'redeem-product') {
+      try { sessionStorage.setItem('pragoptics_redeem_prefill', act.dataset.code || ''); } catch {}
+      window.location.hash = '#redeem';
+      return void window.setAppMode?.('warranty');
+    }
+    if (a === 'go-register') { window.location.hash = '#warranty'; return void window.setAppMode?.('warranty'); }
   });
 }
 
@@ -387,6 +465,13 @@ export function initAccountView() {
   $body = document.getElementById('accountBody');
   if (!$body) return;
   bindOnce();
+  // Deep link from the warranty success screen: jump to a named section.
+  window.addEventListener('pragoptics:account-section', (e) => {
+    const target = e?.detail;
+    if (target && SECTIONS.some(s => s.id === target)) {
+      if (mounted) showSection(target); else activeSection = target;
+    }
+  });
 }
 
 export function onAccountEnter() {

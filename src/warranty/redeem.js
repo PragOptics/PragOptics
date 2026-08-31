@@ -73,6 +73,11 @@ function getAccessToken() {
   try { return JSON.parse(sessionStorage.getItem('pragoptics_tokens') || 'null')?.access_token || null; }
   catch { return null; }
 }
+function isSignedIn() { return !!getAccessToken(); }
+function pingEmail() {
+  try { return JSON.parse(sessionStorage.getItem('pragoptics_ping') || 'null')?.user?.email || ''; }
+  catch { return ''; }
+}
 
 /* ====================================================== render ============ */
 
@@ -81,11 +86,15 @@ function errorHtml() {
 }
 
 function identifyHtml() {
+  const signedIn = !!getAccessToken();
+  const emailVal = state.email || (signedIn ? pingEmail() : '');
   return `
     <div class="wr-step wr-redeem" data-wr-step="redeem-identify">
       <p class="wr-thanks-sub">Your case is covered for life. Enter the code from your registered
-      warranty card and the email you registered it with. One redemption per year; a new case and a
-      new card ship to you, and shipping is on you.</p>
+      warranty card${signedIn ? '' : ' and the email you registered it with'}. One redemption per year;
+      a new case and a new card ship to you, and shipping is on you.</p>
+      ${signedIn ? `<div class="wr-signedin"><span class="wr-signedin-ico" aria-hidden="true">✓</span>
+        <span>Signed in: any device on your account, no need to match the exact email.</span></div>` : ''}
       <div class="wr-fields">
         <div class="form-field">
           <label for="rdCode">Warranty code</label>
@@ -93,8 +102,8 @@ function identifyHtml() {
                  maxlength="9" placeholder="XXXX-XXXX" value="${esc(state.code)}">
         </div>
         <div class="form-field">
-          <label for="rdEmail">Registered email</label>
-          <input id="rdEmail" type="email" autocomplete="email" placeholder="you@company.com" value="${esc(state.email)}">
+          <label for="rdEmail">${signedIn ? 'Email <span class="wr-optional">(if registered under another address)</span>' : 'Registered email'}</label>
+          <input id="rdEmail" type="email" autocomplete="email" placeholder="you@company.com" value="${esc(emailVal)}">
         </div>
       </div>
       ${errorHtml()}
@@ -373,7 +382,11 @@ async function doConfirm() {
     await new Promise(r => setTimeout(r, 2000));
     if (!isLive(e)) return;
     try {
-      const res = await fetch(`${PRAG_API_BASE}/warranty/redemption?id=${encodeURIComponent(state.redemption.redemptionId)}&email=${encodeURIComponent(state.email)}`);
+      const token = getAccessToken();
+      const res = await fetch(
+        `${PRAG_API_BASE}/warranty/redemption?id=${encodeURIComponent(state.redemption.redemptionId)}&email=${encodeURIComponent(state.email || '')}`,
+        token ? { headers: { Authorization: `Bearer ${token}` } } : undefined
+      );
       const data = await res.json().catch(() => ({}));
       if (!isLive(e)) return;
       if (res.ok && data.status === 'ENGAGED' && data.newCode) {
@@ -446,7 +459,9 @@ function bindOnce() {
       const code = formatCode($root.querySelector('#rdCode')?.value);
       const email = $root.querySelector('#rdEmail')?.value?.trim() || '';
       if (codeLen(code) < 8) { state.error = 'Enter the full code, XXXX-XXXX.'; render(); return; }
-      if (!isEmail(email)) { state.error = 'Enter the email you registered with.'; render(); return; }
+      // A signed-in owner proves by account, so the email is optional. A guest
+      // must supply the registered email.
+      if (!isSignedIn() && !isEmail(email)) { state.error = 'Enter the email you registered with.'; render(); return; }
       state.code = code; state.email = email;
       run(doCheck);
       return;
@@ -474,6 +489,12 @@ function resetRedeem() {
   state.redemption = null; state.newCode = '';
   state.busy = false; state.error = ''; state.locked = null;
   elements = null;
+  // A "Redeem" click from My Products drops the code here so it pre-fills.
+  state.code = '';
+  try {
+    const pre = sessionStorage.getItem('pragoptics_redeem_prefill');
+    if (pre) { state.code = pre; sessionStorage.removeItem('pragoptics_redeem_prefill'); }
+  } catch {}
 }
 
 /** Mount the redemption flow into the warranty body. */

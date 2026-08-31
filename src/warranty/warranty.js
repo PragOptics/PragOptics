@@ -125,40 +125,75 @@ function codeStepHtml(p) {
 }
 
 function contactStepHtml(p) {
+  const signedIn = isSignedIn();
+  const acctEmail = signedIn ? sessionEmail() : '';
   return `
     <div class="wr-step wr-step-contact" data-wr-step="contact">
       <div class="wr-code-chip">
         <span class="wr-chip-device">${escapeHtml(p.name)}</span>
         <code class="wr-chip-code">${escapeHtml(state.code)}</code>
       </div>
-      <p class="wr-contact-lede">Last step — where do we reach you if this unit ever needs anything?</p>
-      <div class="wr-fields">
-        <div class="form-field">
-          <label for="wrEmail">Email</label>
-          <input id="wrEmail" type="email" autocomplete="email" placeholder="you@company.com">
-        </div>
-        <div class="form-field">
-          <label for="wrPhone">Phone <span class="wr-optional">optional</span></label>
-          <input id="wrPhone" type="tel" autocomplete="tel" placeholder="(555) 555-0123">
-        </div>
-      </div>
-      <p class="wr-error" id="wrContactError" hidden>A valid email is required — it's how your warranty is tied to you.</p>
 
-      <div class="wr-paths">
-        <button class="cta wr-path" type="button" data-wr-action="register-only">
-          <span class="wr-path-t">Register my product</span>
-          <span class="wr-path-s">Just the warranty — no account, no sign-in.</span>
-        </button>
-        <button class="btn wr-path" type="button" data-wr-action="register-account">
-          <span class="wr-path-t">Register &amp; create an account</span>
-          <span class="wr-path-s">Adds the platform: cloud sync, API access, optional subscription.</span>
-        </button>
-      </div>
+      ${signedIn ? `
+        <div class="wr-signedin">
+          <span class="wr-signedin-ico" aria-hidden="true">✓</span>
+          <span>Signed in as <strong>${escapeHtml(acctEmail)}</strong>. This device registers to your account.</span>
+        </div>
+        <p class="wr-contact-lede">Where do we reach you if this unit ever needs anything?</p>
+        <div class="wr-fields">
+          <div class="form-field">
+            <label for="wrEmail">Email</label>
+            <input id="wrEmail" type="email" autocomplete="email" value="${escapeHtml(acctEmail)}" placeholder="you@company.com">
+          </div>
+          <div class="form-field">
+            <label for="wrPhone">Phone <span class="wr-optional">optional</span></label>
+            <input id="wrPhone" type="tel" autocomplete="tel" placeholder="(555) 555-0123">
+          </div>
+        </div>
+        <p class="wr-error" id="wrContactError" hidden></p>
+        <div class="wr-paths">
+          <button class="cta wr-path" type="button" data-wr-action="register-account-linked">
+            <span class="wr-path-t">Register to my account</span>
+            <span class="wr-path-s">Added to My Products, ready to redeem when you need it.</span>
+          </button>
+        </div>
+        <p class="wr-alt-note muted">Registering this for someone else, or under a different email?
+        <a href="#" data-wr-action="add-email-hint">Add that email to your account</a>, or
+        <a href="#" data-wr-action="signout-register">sign out</a> to register it to a standalone email.</p>
+      ` : `
+        <p class="wr-contact-lede">Last step — where do we reach you if this unit ever needs anything?</p>
+        <div class="wr-fields">
+          <div class="form-field">
+            <label for="wrEmail">Email</label>
+            <input id="wrEmail" type="email" autocomplete="email" placeholder="you@company.com">
+          </div>
+          <div class="form-field">
+            <label for="wrPhone">Phone <span class="wr-optional">optional</span></label>
+            <input id="wrPhone" type="tel" autocomplete="tel" placeholder="(555) 555-0123">
+          </div>
+        </div>
+        <p class="wr-error" id="wrContactError" hidden>A valid email is required — it's how your warranty is tied to you.</p>
+        <div class="wr-paths">
+          <button class="cta wr-path" type="button" data-wr-action="register-only">
+            <span class="wr-path-t">Register my product</span>
+            <span class="wr-path-s">Just the warranty — no account, no sign-in.</span>
+          </button>
+          <button class="btn wr-path" type="button" data-wr-action="register-account">
+            <span class="wr-path-t">Register &amp; create an account</span>
+            <span class="wr-path-s">Adds the platform: cloud sync, API access, optional subscription.</span>
+          </button>
+        </div>
+      `}
     </div>
   `;
 }
 
-function successHtml(p, withAccount) {
+function successHtml(p, withAccount, { linked = false } = {}) {
+  const midline = withAccount
+    ? `<p class="wr-thanks-sub">Finishing up: we're taking you to sign-in to create your account.</p>`
+    : linked
+      ? `<p class="wr-done-hint">Added to <strong>My Products</strong> on your account — you can redeem it from there whenever you need to.</p>`
+      : `<p class="wr-done-hint">That's it. No account, no follow-up needed — keep the card with the unit.</p>`;
   return `
     <div class="wr-step wr-step-done" data-wr-step="done">
       <span class="wr-done-badge">${CHECK_ICON}</span>
@@ -166,13 +201,12 @@ function successHtml(p, withAccount) {
       <p class="wr-thanks-sub">Your <strong>${escapeHtml(p.name)}</strong> is on record — code
       <code class="wr-chip-code">${escapeHtml(state.code)}</code> is now tied to you.
       The printed case is covered for life, the unit for one year against manufacturing defects.</p>
-      ${withAccount
-        ? `<p class="wr-thanks-sub">Finishing up: we're taking you to sign-in to create your account.</p>`
-        : `<p class="wr-done-hint">That's it. No account, no follow-up needed — keep the card with the unit.</p>`}
+      ${midline}
       <p class="wr-done-hint">Passing it on someday? Ownership — warranty included — transfers
       anytime from this page: <strong>My Products → Transfer</strong>. The email you registered
       with is the key.</p>
       <div class="wr-done-actions">
+        ${linked ? '<button class="cta" type="button" data-wr-action="go-my-products">View My Products</button>' : ''}
         <button class="btn" type="button" data-wr-action="register-another">Register another device</button>
         <button class="btn" type="button" data-wr-action="back-home">Back to PragOptics</button>
       </div>
@@ -184,9 +218,26 @@ function successHtml(p, withAccount) {
   `;
 }
 
+/* ---------- session ---------- */
+
+function isSignedIn() {
+  try {
+    if (typeof window.isAccessTokenValid === 'function') return window.isAccessTokenValid();
+    return !!JSON.parse(sessionStorage.getItem('pragoptics_tokens') || 'null')?.access_token;
+  } catch { return false; }
+}
+function accessToken() {
+  try { return JSON.parse(sessionStorage.getItem('pragoptics_tokens') || 'null')?.access_token || ''; }
+  catch { return ''; }
+}
+function sessionEmail() {
+  try { return JSON.parse(sessionStorage.getItem('pragoptics_ping') || 'null')?.user?.email || ''; }
+  catch { return ''; }
+}
+
 /* ---------- submission ---------- */
 
-async function submitRegistration({ wantsAccount }) {
+async function submitRegistration({ wantsAccount, linkAccount = false }) {
   const payload = {
     productId: state.deviceId,
     code: state.code,
@@ -200,10 +251,17 @@ async function submitRegistration({ wantsAccount }) {
   if (WARRANTY_API_LIVE) {
     // Real call — shape mirrors the platform's other POSTs; the backend
     // validates the code against the device-code table and records the
-    // registration (see warranty backend notes).
+    // registration (see warranty backend notes). When linking to the signed-in
+    // account, the token goes along so the backend stamps ownership and
+    // enforces that the email is one the account owns.
+    const headers = { 'Content-Type': 'application/json' };
+    if (linkAccount) {
+      const tok = accessToken();
+      if (tok) headers.Authorization = `Bearer ${tok}`;
+    }
     const res = await fetch(WARRANTY_REGISTER_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify(payload)
     });
     if (!res.ok) {
@@ -301,6 +359,48 @@ function bindOnce() {
       return;
     }
 
+    // Signed-in: register straight to the account (no create-account step).
+    const linked = e.target.closest('[data-wr-action="register-account-linked"]');
+    if (linked) {
+      const email = $body.querySelector('#wrEmail')?.value?.trim() || '';
+      const phone = $body.querySelector('#wrPhone')?.value?.trim() || '';
+      const err = $body.querySelector('#wrContactError');
+      if (!isEmail(email)) { if (err) { err.textContent = 'A valid email is required.'; err.hidden = false; } $body.querySelector('#wrEmail')?.focus(); return; }
+      if (err) err.hidden = true;
+      state.email = email;
+      state.phone = phone;
+      linked.disabled = true;
+      try {
+        await submitRegistration({ wantsAccount: false, linkAccount: true });
+      } catch (ex) {
+        if (mode !== 'register') return;
+        linked.disabled = false;
+        // A 403 here is the "email not on your account" guard — its message
+        // tells the customer to add the email or sign out. Surface it as-is.
+        if (err) { err.textContent = ex?.message || 'Registration failed — please try again.'; err.hidden = false; }
+        return;
+      }
+      if (mode !== 'register') return;
+      const p = getProduct(state.deviceId);
+      render(successHtml(p, false, { linked: true }));
+      bindTierCards($body);
+      return;
+    }
+
+    // Signed-in affordances: use a different email / register standalone.
+    if (e.target.closest('[data-wr-action="add-email-hint"]')) {
+      e.preventDefault();
+      window.setAppMode?.('account'); // Profile section holds the add-email UI
+      return;
+    }
+    if (e.target.closest('[data-wr-action="signout-register"]')) {
+      e.preventDefault();
+      try { window.logout?.(); } catch {}
+      // Re-render the contact step as a guest once the session is gone.
+      setTimeout(() => { if (mode === 'register') showContactStep(getProduct(state.deviceId)); }, 150);
+      return;
+    }
+
     const path = e.target.closest('[data-wr-action="register-only"], [data-wr-action="register-account"]');
     if (path) {
       const email = $body.querySelector('#wrEmail')?.value?.trim() || '';
@@ -354,6 +454,12 @@ function bindOnce() {
           }
         }, 1600);
       }
+      return;
+    }
+
+    if (e.target.closest('[data-wr-action="go-my-products"]')) {
+      window.setAppMode?.('account');
+      setTimeout(() => window.dispatchEvent(new CustomEvent('pragoptics:account-section', { detail: 'products' })), 100);
       return;
     }
 
