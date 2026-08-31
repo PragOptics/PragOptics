@@ -58,3 +58,19 @@ header{
   font-size:.85rem;
   color:var(--muted);
 }
+/* ---- Lane badge: unmissable while this browser routes to the sandbox ---- */
+.lane-badge {
+  position: fixed;
+  top: 10px;
+  right: 12px;
+  z-index: 9999;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: .7rem;
+  font-weight: 900;
+  letter-spacing: .12em;
+  color: #04130f;
+  background: linear-gradient(120deg, #ffd166, #ff9f1c);
+  box-shadow: 0 6px 20px rgba(255, 159, 28, .4);
+  pointer-events: none;
+}

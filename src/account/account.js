@@ -10,7 +10,8 @@
 // panel is built to that contract; until the backend ships those routes it
 // shows a friendly "not available yet" rather than breaking.
 
-import { PRAG_API_BASE } from '../runtime/config.js';
+import { PRAG_API_BASE, LANE } from '../runtime/config.js';
+import { switchLane, isPlatformOperator } from '../runtime/lane.js';
 const ALIASES_URL = `${PRAG_API_BASE}/auth/aliases`;
 const REQUEST_CODE_URL = `${PRAG_API_BASE}/auth/request-code`;
 const STRIPE_PORTAL_URL = 'https://billing.stripe.com/p/login/4gM00beIf91O1Kzc3DdjO00';
@@ -153,8 +154,33 @@ async function renderProfile(main) {
       </div>
       <p class="acct-error" id="acctProfileError" hidden></p>
     </section>
+    ${platformLaneCardHtml()}
   `;
   await loadAliases();
+}
+
+/* ---------- platform lane (operators only) ---------- */
+
+// Platform-level operators (isAdmin or isDev on the OWNER's Users table) can
+// route this browser to the dev sandbox. Each lane is its own platform with
+// its own accounts, so switching signs you out and opens sign-in on the
+// target lane; nothing from this session carries over or runs stale. The
+// gate is cosmetic, like every front-end gate: the sandbox authenticates
+// server-side against its own tables regardless.
+function platformLaneCardHtml() {
+  if (!isPlatformOperator()) return '';
+  return `
+    <section class="acct-card">
+      <h3 class="acct-card-h">Platform lane</h3>
+      <p class="acct-card-note">This browser is routing API calls to the <strong>${escapeHtml(LANE)}</strong> lane.
+      Switching lanes signs you out and asks you to sign in on the other lane with that lane's
+      account; the site itself never changes, only where your calls go.</p>
+      <div class="acct-add-row">
+        <button class="btn btn-sm" type="button" data-acct-action="lane-live" ${LANE === 'live' ? 'disabled' : ''}>Sign in to live</button>
+        <button class="btn btn-sm" type="button" data-acct-action="lane-dev" ${LANE === 'dev' ? 'disabled' : ''}>Sign in to dev</button>
+      </div>
+    </section>
+  `;
 }
 
 async function loadAliases() {
@@ -352,6 +378,8 @@ function bindOnce() {
     if (a === 'make-primary') return void makePrimary(act.dataset.alias);
     if (a === 'remove-alias') return void removeAlias(act.dataset.alias);
     if (a === 'verify-alias') return void verifyAlias(act.dataset.alias, act.dataset.claim);
+    if (a === 'lane-live') return void switchLane('live');
+    if (a === 'lane-dev') return void switchLane('dev');
   });
 }
 

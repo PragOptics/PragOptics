@@ -10,6 +10,7 @@
 // never consulted here: a super-tier customer is still a customer.
 
 import { PRAG_API_BASE, LANE } from '../runtime/config.js';
+import { switchLane } from '../runtime/lane.js';
 const ISSUE_URL = `${PRAG_API_BASE}/warranty/codes/issue`;
 const LIST_URL  = `${PRAG_API_BASE}/warranty/codes`;
 const USERS_URL = `${PRAG_API_BASE}/admin/users`;
@@ -19,7 +20,6 @@ const CATALOG_IMPORT_URL = `${PRAG_API_BASE}/admin/catalog/import`;
 // lane toggle reloads the same origin), which is the whole trick: snapshot on
 // one lane, import on the other.
 const CATALOG_SNAPSHOT_KEY = 'pragoptics_catalog_snapshot_v1';
-const LANE_OVERRIDE_KEY = 'pragoptics_lane_override';
 
 let $body = null;
 let mounted = false;
@@ -457,7 +457,6 @@ function renderCatalog(main) {
   const ping = cachedPing();
   const rows = Array.isArray(ping?.productCatalog) ? ping.productCatalog : [];
   const snap = readSnapshot();
-  const onProdHost = /(^|\.)pragoptics\.com$/i.test(location.hostname);
 
   main.innerHTML = `
     <header class="adm-sec-head">
@@ -467,16 +466,15 @@ function renderCatalog(main) {
 
     <div class="adm-card">
       <h3 class="adm-card-h">Lane</h3>
-      <p class="muted">This browser session is talking to the <strong>${escapeHtml(LANE)}</strong> lane
-      (${escapeHtml(PRAG_API_BASE)}). ${onProdHost
-        ? 'On the production domain the lane is locked to live.'
-        : 'Flipping the lane reloads the page; sign in again on the other lane.'}</p>
-      ${onProdHost ? '' : `
-        <div class="adm-actions-row">
-          <button class="btn" type="button" data-adm-action="lane-live" ${LANE === 'live' ? 'disabled' : ''}>Use live</button>
-          <button class="btn" type="button" data-adm-action="lane-dev" ${LANE === 'dev' ? 'disabled' : ''}>Use dev</button>
-        </div>
-      `}
+      <p class="muted">This browser is routing API calls to the <strong>${escapeHtml(LANE)}</strong> lane
+      (${escapeHtml(PRAG_API_BASE)}). Each lane is its own platform: its own accounts, keys, and
+      Stripe mode. Switching signs you out here and opens sign-in on the other lane, so every
+      endpoint and cached response comes back fresh. The deployed site never changes; only where
+      this browser routes.</p>
+      <div class="adm-actions-row">
+        <button class="btn" type="button" data-adm-action="lane-live" ${LANE === 'live' ? 'disabled' : ''}>Sign in to live</button>
+        <button class="btn" type="button" data-adm-action="lane-dev" ${LANE === 'dev' ? 'disabled' : ''}>Sign in to dev</button>
+      </div>
     </div>
 
     <div class="adm-card">
@@ -575,9 +573,10 @@ async function catalogImport(btn) {
   }
 }
 
+// A lane switch is a sign-out + fresh sign-in on the target lane; see
+// src/runtime/lane.js for why nothing survives the crossing.
 function setLane(lane) {
-  try { localStorage.setItem(LANE_OVERRIDE_KEY, lane); } catch { return; }
-  location.reload();
+  switchLane(lane);
 }
 
 /* ---------- behaviour ---------- */

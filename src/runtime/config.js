@@ -27,15 +27,20 @@ const LANES = {
 const host = typeof location !== 'undefined' ? location.hostname : '';
 const isProdHost = host === 'pragoptics.com' || host === 'www.pragoptics.com';
 
-// Runtime lane toggle for operators (admin panel > Catalog): a localStorage
-// override so live catalog data can be snapshotted and replayed into dev from
-// one browser session. Honored ONLY off the production domain; on
-// pragoptics.com the guard above always wins.
+// Runtime lane toggle for platform operators (see src/runtime/lane.js): a
+// localStorage override set only by an explicit sign-out-and-switch gesture.
+// It changes where THIS browser routes API calls (and which Stripe
+// publishable key rides along); the deployed site itself never changes.
+//
+// The production default stays untouchable: absent that explicit gesture,
+// pragoptics.com is ALWAYS live, so a committed LANE_SETTING = 'dev' can
+// never route customers to the sandbox. The override is honored everywhere
+// because it cannot exist without the gesture.
 let laneOverride = null;
 try { laneOverride = localStorage.getItem('pragoptics_lane_override'); } catch { /* blocked */ }
 if (laneOverride !== 'dev' && laneOverride !== 'live') laneOverride = null;
 
-export const LANE = isProdHost ? 'live' : (laneOverride || LANE_SETTING);
+export const LANE = laneOverride || (isProdHost ? 'live' : LANE_SETTING);
 
 const lane = LANES[LANE] || LANES.live;
 

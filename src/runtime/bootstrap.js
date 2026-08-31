@@ -38,7 +38,8 @@
     import { initBuildsView } from '../builds/builds.js';
     import { initAdminView, onAdminEnter, refreshAdminNav } from '../admin/admin.js';
     import { initAccountView, onAccountEnter } from '../account/account.js';
-    import { PRAG_API_BASE } from './config.js';
+    import { PRAG_API_BASE, LANE } from './config.js';
+    import { consumeLaneSigninFlag } from './lane.js';
 
     // routePostLogin is now a thin forwarder only
     function routePostLoginForward({ ping }) {
@@ -503,6 +504,22 @@ window.applyPostLoginResolution = applyPostLoginResolution;
       // replacement-card email)
       else if (/^#redeem/i.test(String(location.hash || ""))) setAppMode("warranty");
     })();
+
+    // A lane switch just landed: the old session was cleared, so open sign-in
+    // straight away for a fresh session (and fresh ping) on THIS lane.
+    if (consumeLaneSigninFlag()) {
+      setTimeout(() => openLoginModal("login"), 400);
+    }
+
+    // Operators live on the dev lane by choice; make it unmissable. The badge
+    // rides the header so every page carries it while the sandbox is routed.
+    if (LANE === "dev") {
+      const badge = document.createElement("div");
+      badge.className = "lane-badge";
+      badge.textContent = "DEV LANE";
+      badge.title = "This browser is routing API calls to the dev sandbox";
+      document.getElementById("view-header")?.appendChild(badge);
+    }
 
 
     /* ===========================
