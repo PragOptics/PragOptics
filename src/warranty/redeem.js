@@ -1,7 +1,7 @@
 // src/warranty/redeem.js
 // Case-replacement redemption: the customer-facing side of the lifetime
 // warranty. No account required: the registered code plus the email it was
-// registered under proves ownership. One redemption per year per owner; the
+// registered under proves ownership. One redemption per year per device; the
 // year starts when a redemption is engaged (paid), and each redemption ships
 // a new case with a new warranty card, physical and digital.
 //

@@ -407,7 +407,7 @@ async function renderProducts(main) {
   main.innerHTML = `
     <header class="acct-sec-head"><h2 class="acct-sec-title">My Products</h2></header>
     <section class="acct-card">
-      <p class="acct-card-note">Devices registered to your account. Lifetime case coverage; one redemption per year.</p>
+      <p class="acct-card-note">Devices registered to your account. Lifetime case coverage; one redemption per year, per device.</p>
       <ul class="acct-product-list" id="acctProductList"><li class="acct-loading">Loading…</li></ul>
       <p class="acct-error" id="acctProductsError" hidden></p>
     </section>
