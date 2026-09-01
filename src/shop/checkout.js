@@ -305,6 +305,9 @@ function paymentHtml(ls) {
       ${stepperHtml(ls)}
       <h2 class="co-h2">Payment</h2>
 
+      ${state.order.linked === false && !!getAccessToken()
+        ? `<p class="muted co-note">Your sign-in expired while checking out, so this order will not appear in your account's Orders section. Your receipt and tracking arrive by email either way.</p>`
+        : ''}
       <div class="co-breakdown">
         <div class="co-sumrow"><span>Items</span><span>${formatPrice(bd.goodsCents)}</span></div>
         ${bd.shippingCents ? `<div class="co-sumrow"><span>Shipping</span><span>${formatPrice(bd.shippingCents)}</span></div>`
@@ -478,7 +481,15 @@ async function createOrder() {
           zip: state.address.zip,
           country: 'US'
         },
-        rate: { carrier: chosen?.carrier || '', service: chosen?.service || '' }
+        rate: {
+          carrier: chosen?.carrier || '',
+          service: chosen?.service || '',
+          // The price this customer was SHOWN, echoed so the server can
+          // refuse a silent upcharge if the live quote drifted; and whether
+          // this option displayed as the free one.
+          amountCents: chosen ? Math.round(chosen.amount * 100) : null,
+          expectFree: freeShipEligible(ls) && chosen?.id === state.rates[0]?.id
+        }
       } : {})
     })
   });
