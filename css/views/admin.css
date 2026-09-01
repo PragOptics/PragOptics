@@ -285,11 +285,20 @@ th.adm-num { text-align: right; }
    (Element-qualified: the table's own td color rule outranks a lone class.) */
 .adm-money-pos, .adm-table td.adm-money-pos, .adm-table td .adm-money-pos { color: #38ffb3; }
 .adm-money-neg, .adm-table td.adm-money-neg, .adm-table td .adm-money-neg { color: #ff5d6c; }
-/* Cells may wrap on tables that must fit their container at desktop width
-   (customer orders, invoices); the scroll wrapper stays as the small-screen
-   fallback only. */
-.adm-table--wrap tbody td { white-space: normal; overflow-wrap: anywhere; }
-.adm-table--wrap tbody td code { overflow-wrap: anywhere; white-space: normal; }
+/* Column content policy for tables that must fit their container at desktop
+   width. Prose cells wrap at WORD BOUNDARIES only (never mid-token); short
+   data (dates, money, pills) never wraps; long single tokens (emails,
+   tracking and invoice numbers) ellipsize with the full value on the title.
+   The scroll wrapper stays as the small-screen fallback only. */
+.adm-table--wrap tbody td { white-space: normal; overflow-wrap: normal; word-break: normal; }
+.adm-table td.cell-tight, .adm-table--wrap tbody td.cell-tight { white-space: nowrap; }
+.adm-table td.cell-ellip, .adm-table--wrap tbody td.cell-ellip {
+  max-width: 220px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.adm-table td.cell-ellip code { white-space: nowrap; }
 .adm-table code {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: .9rem;

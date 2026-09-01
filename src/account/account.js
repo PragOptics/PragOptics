@@ -665,10 +665,10 @@ function subManagerHtml(data) {
             <tbody>
               ${data.invoices.map(i => `
                 <tr>
-                  <td class="adm-muted">${escapeHtml(fmtDate(i.createdAt))}</td>
-                  <td><code>${escapeHtml(i.number || i.id)}</code></td>
-                  <td class="adm-num">${escapeHtml(usdCents(i.totalCents))}</td>
-                  <td>${invoicePill(i.status)}</td>
+                  <td class="adm-muted cell-tight">${escapeHtml(fmtDate(i.createdAt))}</td>
+                  <td class="cell-ellip" title="${escapeHtml(i.number || i.id)}"><code>${escapeHtml(i.number || i.id)}</code></td>
+                  <td class="adm-num cell-tight">${escapeHtml(usdCents(i.totalCents))}</td>
+                  <td class="cell-tight">${invoicePill(i.status)}</td>
                   <td>${safeUrl(i.hostedInvoiceUrl) ? `<a class="acct-inline-link" href="${escapeHtml(safeUrl(i.hostedInvoiceUrl))}" target="_blank" rel="noopener">View</a>` : ''}
                       ${safeUrl(i.pdfUrl) ? ` <a class="acct-inline-link" href="${escapeHtml(safeUrl(i.pdfUrl))}" target="_blank" rel="noopener">PDF</a>` : ''}</td>
                 </tr>
@@ -880,11 +880,11 @@ async function renderOrders(main) {
           <tbody>
             ${orders.map(o => `
               <tr>
-                <td class="adm-muted">${escapeHtml(fmtDate(o.createdAt))}</td>
+                <td class="adm-muted cell-tight">${escapeHtml(fmtDate(o.createdAt))}</td>
                 <td>${escapeHtml(orderLinesLabel(o.lines))}</td>
-                <td class="adm-num">${escapeHtml(usdCents(o.totalCents))}</td>
-                <td>${orderStatusPill(o.status)}</td>
-                <td>${o.trackingNumber
+                <td class="adm-num cell-tight">${escapeHtml(usdCents(o.totalCents))}</td>
+                <td class="cell-tight">${orderStatusPill(o.status)}</td>
+                <td class="cell-ellip" title="${escapeHtml(o.trackingNumber || '')}">${o.trackingNumber
                   ? (safeUrl(o.trackingUrl)
                       ? `<a class="acct-inline-link" href="${escapeHtml(safeUrl(o.trackingUrl))}" target="_blank" rel="noopener">${escapeHtml(o.trackingNumber)}</a>`
                       : `<code>${escapeHtml(o.trackingNumber)}</code>`)
@@ -992,7 +992,7 @@ async function loadAdminUsage() {
               <tbody>
                 ${d.top.map(u => `
                   <tr>
-                    <td class="adm-cell-email">${escapeHtml(u.email)}</td>
+                    <td class="adm-cell-email cell-ellip" title="${escapeHtml(u.email)}">${escapeHtml(u.email)}</td>
                     <td>${tierPill(u.tier)}</td>
                     <td class="adm-num">${escapeHtml(nFmt(u.apiCalls))}</td>
                     <td class="adm-num ${u.apiPctOfBase >= 80 ? 'adm-money-neg' : ''}">${escapeHtml(String(u.apiPctOfBase))}%</td>
@@ -1036,7 +1036,7 @@ function usersTableHtml(users) {
         <tbody>
           ${users.map(u => `
             <tr>
-              <td class="adm-cell-email">${escapeHtml(u.email || '—')}</td>
+              <td class="adm-cell-email cell-ellip" title="${escapeHtml(u.email || '')}">${escapeHtml(u.email || '—')}</td>
               <td>${tierPill(u.tier)}</td>
               <td>${statusPill(u.status)}</td>
               <td class="adm-muted">${escapeHtml(u.role || '—')}</td>
@@ -1115,17 +1115,17 @@ function admOrderRowHtml(o) {
   const physical = !!(o.shipCarrier || o.shippingCents);
   return `
     <tr>
-      <td class="adm-muted">${escapeHtml(fmtDate(o.createdAt))}</td>
-      <td class="adm-cell-email">${escapeHtml(o.email || '')}</td>
+      <td class="adm-muted cell-tight">${escapeHtml(fmtDate(o.createdAt))}</td>
+      <td class="adm-cell-email cell-ellip" title="${escapeHtml(o.email || '')}">${escapeHtml(o.email || '')}</td>
       <td>${escapeHtml(orderLinesLabel(o.lines))}</td>
-      <td class="adm-num">${escapeHtml(usdCents(o.totalCents))}</td>
-      <td>${orderStatusPill(o.status)}${o.refundedCents ? `<div class="adm-muted adm-money-neg">-${escapeHtml(usdCents(o.refundedCents))}</div>` : ''}${o.labelError ? `<div class="adm-muted" title="${escapeHtml(o.labelError)}">label error</div>` : ''}</td>
-      <td>${o.trackingNumber
+      <td class="adm-num cell-tight">${escapeHtml(usdCents(o.totalCents))}</td>
+      <td class="cell-tight">${orderStatusPill(o.status)}${o.refundedCents ? `<div class="adm-muted adm-money-neg">-${escapeHtml(usdCents(o.refundedCents))}</div>` : ''}${o.labelError ? `<div class="adm-muted" title="${escapeHtml(o.labelError)}">label error</div>` : ''}</td>
+      <td class="cell-ellip" title="${escapeHtml(o.trackingNumber || '')}">${o.trackingNumber
         ? (safeUrl(o.trackingUrl)
             ? `<a class="acct-inline-link" href="${escapeHtml(safeUrl(o.trackingUrl))}" target="_blank" rel="noopener">${escapeHtml(o.trackingNumber)}</a>`
             : `<code>${escapeHtml(o.trackingNumber)}</code>`)
         : '<span class="adm-muted">—</span>'}</td>
-      <td>
+      <td class="cell-tight">
         ${safeUrl(o.labelUrl)
           ? `<a class="btn adm-copy" href="${escapeHtml(safeUrl(o.labelUrl))}" target="_blank" rel="noopener" title="Opens the 4x6 label PDF for printing">Print label</a>`
           : (paid && physical
@@ -1167,8 +1167,8 @@ async function loadAdminOrders(status) {
     if (!orders.length) { host.innerHTML = `<p class="adm-empty">No orders in this view.</p>`; return; }
     host.innerHTML = `
       <div class="adm-table-scroll">
-        <table class="adm-table">
-          <thead><tr><th>Date</th><th>Customer</th><th>Items</th><th>Total</th><th>Status</th><th>Tracking</th><th>Label</th></tr></thead>
+        <table class="adm-table adm-table--wrap">
+          <thead><tr><th>Date</th><th>Customer</th><th>Items</th><th class="adm-num">Total</th><th>Status</th><th>Tracking</th><th>Label</th></tr></thead>
           <tbody>${orders.map(admOrderRowHtml).join('')}</tbody>
         </table>
       </div>
@@ -1254,7 +1254,7 @@ async function renderPayments(main) {
                     <td class="adm-muted">${escapeHtml(fmtDate(c.createdAt))}</td>
                     <td class="adm-num ${c.refunded ? 'adm-money-neg' : c.status === 'succeeded' ? 'adm-money-pos' : ''}">${c.refunded ? '-' : ''}${escapeHtml(usdCents(c.amountCents))}</td>
                     <td><span class="adm-pill ${c.refunded ? 'is-bad' : c.status === 'succeeded' ? 'is-available' : 'is-claimed'}">${escapeHtml(c.refunded ? 'refunded' : c.status)}</span></td>
-                    <td class="adm-cell-email">${escapeHtml(c.email || '—')}</td>
+                    <td class="adm-cell-email cell-ellip" title="${escapeHtml(c.email || '')}">${escapeHtml(c.email || '—')}</td>
                     <td>${safeUrl(c.receiptUrl) ? `<a class="acct-inline-link" href="${escapeHtml(safeUrl(c.receiptUrl))}" target="_blank" rel="noopener">Receipt</a>` : ''}</td>
                   </tr>
                 `).join('')}
@@ -1318,9 +1318,9 @@ async function loadLabelsAndQueue() {
                 ${queue.jobs.map(j => `
                   <tr>
                     <td class="adm-muted">${escapeHtml(fmtDate(j.createdAt))}</td>
-                    <td><code>${escapeHtml(j.trackingNumber || j.jobId.slice(0, 10))}</code></td>
-                    <td><span class="adm-pill ${j.state === 'PRINTED' ? 'is-available' : 'is-claimed'}">${escapeHtml(j.state.toLowerCase())}</span></td>
-                    <td class="adm-muted">${escapeHtml(j.printedBy || '—')}</td>
+                    <td class="cell-ellip" title="${escapeHtml(j.trackingNumber || '')}"><code>${escapeHtml(j.trackingNumber || j.jobId.slice(0, 10))}</code></td>
+                    <td class="cell-tight"><span class="adm-pill ${j.state === 'PRINTED' ? 'is-available' : 'is-claimed'}">${escapeHtml(j.state.toLowerCase())}</span></td>
+                    <td class="adm-muted cell-ellip" title="${escapeHtml(j.printedBy || '')}">${escapeHtml(j.printedBy || '—')}</td>
                     <td>${safeUrl(j.labelUrl) ? `<a class="acct-inline-link" href="${escapeHtml(safeUrl(j.labelUrl))}" target="_blank" rel="noopener">PDF</a>` : ''}</td>
                   </tr>
                 `).join('')}
@@ -1340,7 +1340,7 @@ async function loadLabelsAndQueue() {
                   <tr>
                     <td class="adm-muted">${escapeHtml(fmtDate(l.createdAt))}${l.isTest ? ' <span class="adm-pill">test</span>' : ''}</td>
                     <td><span class="adm-pill ${l.status === 'SUCCESS' ? 'is-available' : 'is-claimed'}">${escapeHtml(l.status.toLowerCase())}</span></td>
-                    <td>${l.trackingNumber
+                    <td class="cell-ellip" title="${escapeHtml(l.trackingNumber || '')}">${l.trackingNumber
                       ? (safeUrl(l.trackingUrl)
                           ? `<a class="acct-inline-link" href="${escapeHtml(safeUrl(l.trackingUrl))}" target="_blank" rel="noopener">${escapeHtml(l.trackingNumber)}</a>`
                           : `<code>${escapeHtml(l.trackingNumber)}</code>`)
@@ -1416,7 +1416,7 @@ function inventoryHtml(data) {
               <td><span class="adm-pill ${r.status === 'CLAIMED' ? 'is-claimed' : 'is-available'}">${escapeHtml(r.status)}</span></td>
               <td>${escapeHtml(r.productId || 'Any')}</td>
               <td class="adm-muted">${escapeHtml((r.issuedAt || '').slice(0, 10))}</td>
-              <td class="adm-muted">${escapeHtml(r.claimedByEmail || '')}</td>
+              <td class="adm-muted cell-ellip" title="${escapeHtml(r.claimedByEmail || '')}">${escapeHtml(r.claimedByEmail || '')}</td>
             </tr>
           `).join('')}
         </tbody>
