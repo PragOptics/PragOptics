@@ -13,15 +13,23 @@ International shipping is not yet available at checkout. If you are outside the 
 
 ---
 
-## 2. Rates and Carriers
+## 2. Rates, Carriers, and What You Pay
 
-Shipping is carried by commercial carriers (for example USPS and UPS). At checkout you are shown **live carrier rates** for your address and cart, and you choose the service you want.
+Shipping is carried by commercial carriers (for example USPS and UPS). At checkout you are shown **live carrier rates** for your address and cart, from the lowest-cost service up through faster options such as priority and express, and you choose the service you want.
 
-The amount you are charged for shipping is exactly the rate you selected. Rates are verified server-side against your order's own address and contents at the time of purchase; a rate can never be substituted for a different one without your agreement.
+### 2.1 The Rule, Plainly
 
-### Free Shipping
+- **Under $50 of physical goods:** you pay the exact listed rate of whichever service you select.
+- **$50 or more of physical goods:** the **lowest-cost quoted service is free**. Every faster service (priority, express, overnight, or any other upgrade) remains available as your own choice at its **full listed price**. Free shipping is the lowest-cost service or nothing; it is never a credit or discount toward a faster one.
+- Donations and preorder deposits never count toward the $50 threshold and never ship.
 
-Orders with **$50 or more of physical goods** (before shipping; donations and preorder deposits do not count) ship **free with the lowest-cost service** quoted for your address. Faster services remain available at their listed price.
+### 2.2 What BI Covers and What It Does Not
+
+On qualifying orders BI covers the cost of the lowest-cost quoted service, and nothing beyond it. A faster or costlier service is never covered by BI, in whole or in part, regardless of order size. Free shipping applies to the original outbound shipment only; it does not extend to reshipment after an address error (Section 5) or to hand-quoted international orders (Section 1).
+
+### 2.3 Verification
+
+The amount you are charged for shipping is exactly the rate you selected, or nothing when free shipping applies. Rates and eligibility are verified server-side against your order's own address and contents at the time of purchase; a rate can never be substituted for a different one without your agreement.
 
 ---
 
