@@ -53,6 +53,27 @@
 .acct-inline-link:focus-visible { outline: 2px solid var(--brand-600, #21bca5); outline-offset: 2px; }
 #acctPmElement { margin: 12px 0; }
 #acctPricing { margin: 6px 0 12px; }
+
+/* usage meters (customer Billing card; recipes shared with internal views) */
+.use-row { margin: 12px 0 0; }
+.use-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 5px; }
+.use-name { font-weight: 700; font-size: .88rem; color: var(--ink, #dcdbf0e1); }
+.use-val {
+  font: 600 .76rem/1 ui-monospace, "Cascadia Code", Consolas, monospace;
+  font-variant-numeric: tabular-nums; color: var(--muted, #c6d0f0a6);
+}
+.use-track {
+  height: 8px; border-radius: var(--radius-pill); overflow: hidden;
+  background: rgba(255, 255, 255, .06);
+  border: 1px solid rgba(255, 255, 255, .08);
+}
+.use-fill {
+  height: 100%; border-radius: var(--radius-pill);
+  background: linear-gradient(90deg, var(--brand-600, #21bca5), #38ffb3);
+  transition: width 400ms ease;
+}
+.use-fill.is-warn { background: linear-gradient(90deg, #ffb347, #ffd489); }
+.use-fill.is-hot { background: linear-gradient(90deg, #ff5d6c, #ff8a94); }
 /* Same trap as .adm-sec-head: the global `header { position: fixed }` rule is
    for the site nav; these section headers must stay in flow. */
 .acct-sec-head {

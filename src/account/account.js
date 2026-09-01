@@ -36,6 +36,8 @@ const SHIPPO_WH_SYNC_URL = `${PRAG_API_BASE}/admin/shippo/webhook-sync`;
 const STRIPE_OVERVIEW_URL = `${PRAG_API_BASE}/admin/stripe/overview`;
 const SHIPPO_LABELS_URL = `${PRAG_API_BASE}/admin/shipping/labels`;
 const PRINT_QUEUE_URL = `${PRAG_API_BASE}/admin/print-queue`;
+const USAGE_MINE_URL = `${PRAG_API_BASE}/usage/mine`;
+const ADMIN_USAGE_URL = `${PRAG_API_BASE}/admin/usage/overview`;
 
 // Catalog snapshots survive lane flips (localStorage is per-origin, and the
 // lane toggle reloads the same origin): snapshot on one lane, import on the
@@ -496,6 +498,52 @@ function sameKeySets(a, b) {
   return true;
 }
 
+/* ---------- usage meters ---------- */
+
+function nFmt(n) { return Number(n || 0).toLocaleString('en-US'); }
+function gbFmt(bytes) {
+  const gb = Number(bytes || 0) / (1024 * 1024 * 1024);
+  return gb >= 100 ? `${Math.round(gb)} GB` : `${gb.toFixed(1)} GB`;
+}
+
+function meterRowHtml(name, used, limit, fmt = nFmt) {
+  if (!limit) return '';
+  const pct = Math.min(100, (used / limit) * 100);
+  const cls = pct >= 95 ? 'is-hot' : pct >= 70 ? 'is-warn' : '';
+  return `
+    <div class="use-row">
+      <div class="use-head">
+        <span class="use-name">${escapeHtml(name)}</span>
+        <span class="use-val">${escapeHtml(fmt(used))} / ${escapeHtml(fmt(limit))}</span>
+      </div>
+      <div class="use-track"><div class="use-fill ${cls}" style="width:${pct.toFixed(1)}%"></div></div>
+    </div>
+  `;
+}
+
+async function loadUsageCard() {
+  const host = document.getElementById('acctUsageCard');
+  if (!host) return;
+  try {
+    const d = await apiFetch(USAGE_MINE_URL);
+    const activeAddons = Object.entries(d.addons || {}).filter(([, on]) => on).map(([k]) => k);
+    host.innerHTML = `
+      <section class="acct-card">
+        <h3 class="acct-card-h">Usage this month</h3>
+        <p class="acct-card-note">${escapeHtml(d.month)} on the ${escapeHtml(d.tier)} plan${activeAddons.length
+          ? `, limits raised by ${activeAddons.length} add-on${activeAddons.length === 1 ? '' : 's'}` : ''}.</p>
+        ${meterRowHtml('API calls', d.usage.apiCalls, d.limits.apiCalls)}
+        ${meterRowHtml('Flow runs', d.usage.flowRuns, d.limits.flowRuns)}
+        ${meterRowHtml('Storage', d.usage.storageBytes, d.limits.storageBytes, gbFmt)}
+        ${meterRowHtml('Custom domains', d.usage.domainsCount, d.limits.domains)}
+      </section>
+    `;
+  } catch (ex) {
+    // Endpoint not deployed yet, or a blip: the card simply does not render.
+    host.innerHTML = '';
+  }
+}
+
 function invoicePill(status) {
   const s = String(status || '').toLowerCase();
   const cls = s === 'paid' ? 'is-verified' : (s === 'open' ? 'is-pending' : '');
@@ -662,11 +710,13 @@ async function renderSubscription(main) {
   }
 
   if (!subData?.subscription) {
-    host.innerHTML = subNotSubscribedHtml(subData);
+    host.innerHTML = subNotSubscribedHtml(subData) + '<div id="acctUsageCard"></div>';
+    loadUsageCard();
     return;
   }
 
-  host.innerHTML = subManagerHtml(subData);
+  host.innerHTML = subManagerHtml(subData) + '<div id="acctUsageCard"></div>';
+  loadUsageCard();
 
   // Change-plan surface: the same catalog-driven cards as the wizard,
   // preloaded with what is billing today. Apply arms only on a real change.
@@ -893,7 +943,9 @@ async function renderOverview(main) {
       </div>
       <p class="muted" id="admIntegrationsResult" hidden></p>
     </div>
+    <div id="admUsageBlock"></div>
   `;
+  loadAdminUsage();
   const grid = main.querySelector('#admOverviewGrid');
   try {
     const [users, avail, claimed] = await Promise.all([
@@ -914,6 +966,48 @@ async function renderOverview(main) {
         claimed.truncated ? 'capped at first 1000' : '');
   } catch (ex) {
     grid.innerHTML = `<p class="adm-empty">${escapeHtml(friendlyError(ex, 'Could not load overview.'))}</p>`;
+  }
+}
+
+async function loadAdminUsage() {
+  const host = document.getElementById('admUsageBlock');
+  if (!host) return;
+  try {
+    const d = await apiFetch(ADMIN_USAGE_URL);
+    host.innerHTML = `
+      <div class="adm-stat-grid" style="margin-top:12px;">
+        ${statCard(nFmt(d.totals?.apiCalls), 'API calls this month')}
+        ${statCard(nFmt(d.totals?.flowRuns), 'Flow runs this month')}
+        ${statCard(nFmt(d.meteredUsers), 'Metered accounts', d.truncated ? 'capped at first 2000' : '')}
+        ${statCard(nFmt(d.nearBaseCap), 'Near base cap', `past ${d.nearCapThresholdPct}% of base allowance`, d.nearBaseCap > 0 ? 'amber' : '')}
+      </div>
+      ${(d.top || []).length ? `
+        <div class="adm-card">
+          <h3 class="adm-card-h">Top consumers (${escapeHtml(d.month)})</h3>
+          <div class="adm-table-scroll">
+            <table class="adm-table">
+              <thead><tr><th>Account</th><th>Tier</th><th class="adm-num">API calls</th><th class="adm-num">% of base</th><th class="adm-num">Flow runs</th><th class="adm-num">% of base</th></tr></thead>
+              <tbody>
+                ${d.top.map(u => `
+                  <tr>
+                    <td class="adm-cell-email">${escapeHtml(u.email)}</td>
+                    <td>${tierPill(u.tier)}</td>
+                    <td class="adm-num">${escapeHtml(nFmt(u.apiCalls))}</td>
+                    <td class="adm-num ${u.apiPctOfBase >= 80 ? 'adm-money-neg' : ''}">${escapeHtml(String(u.apiPctOfBase))}%</td>
+                    <td class="adm-num">${escapeHtml(nFmt(u.flowRuns))}</td>
+                    <td class="adm-num ${u.flowPctOfBase >= 80 ? 'adm-money-neg' : ''}">${escapeHtml(String(u.flowPctOfBase))}%</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+          <p class="adm-note">Accounts pressing base allowances are the add-on demand signal. Base
+          numbers are placeholders until the real allowances are set.</p>
+        </div>
+      ` : ''}
+    `;
+  } catch (ex) {
+    host.innerHTML = '';
   }
 }
 
