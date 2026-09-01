@@ -33,6 +33,9 @@ const ADMIN_ORDERS_URL = `${PRAG_API_BASE}/admin/orders`;
 const ADMIN_ORDER_LABEL_URL = `${PRAG_API_BASE}/admin/orders/label`;
 const STRIPE_WH_SYNC_URL = `${PRAG_API_BASE}/admin/stripe/webhook-sync`;
 const SHIPPO_WH_SYNC_URL = `${PRAG_API_BASE}/admin/shippo/webhook-sync`;
+const STRIPE_OVERVIEW_URL = `${PRAG_API_BASE}/admin/stripe/overview`;
+const SHIPPO_LABELS_URL = `${PRAG_API_BASE}/admin/shipping/labels`;
+const PRINT_QUEUE_URL = `${PRAG_API_BASE}/admin/print-queue`;
 
 // Catalog snapshots survive lane flips (localStorage is per-origin, and the
 // lane toggle reloads the same origin): snapshot on one lane, import on the
@@ -124,6 +127,7 @@ const ICONS = {
   subscription: '<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/>',
   orders:       '<circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>',
   shiporders:   '<path d="M16 3h5v13h-2"/><path d="M1 3h15v13H8"/><path d="M16 8h4l1 3"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/>',
+  payments:     '<path d="M12 1v22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>',
   builds:       '<path d="M12 2l9 4.9V17L12 22 3 17V6.9z"/><path d="M12 22V12"/><path d="M21 7l-9 5-9-5"/>',
   overview:     '<path d="M4 13h6V4H4z"/><path d="M14 20h6v-9h-6z"/><path d="M14 8h6V4h-6z"/><path d="M4 20h6v-4H4z"/>',
   users:        '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
@@ -144,6 +148,7 @@ const INTERNAL_SECTIONS = [
   { id: 'overview',   label: 'Overview' },
   { id: 'users',      label: 'Users' },
   { id: 'shiporders', label: 'Orders' },
+  { id: 'payments',   label: 'Payments' },
   { id: 'warranty',   label: 'Warranty' },
   { id: 'inventory',  label: 'Inventory' },
   { id: 'catalog',    label: 'Catalog' }
@@ -1047,8 +1052,10 @@ async function renderAdminOrders(main) {
     </header>
     <p class="adm-error" id="admOrdersError" hidden></p>
     <div id="admOrdersBody"><p class="adm-note">Loading…</p></div>
+    <div id="admLabelsBody"></div>
   `;
   loadAdminOrders('');
+  loadLabelsAndQueue();
 }
 
 async function loadAdminOrders(status) {
@@ -1094,6 +1101,143 @@ async function buyOrderLabel(btn) {
       btn.textContent = orig;
     }
   });
+}
+
+/* ---------- payments: the Stripe account, read from here ---------- */
+
+async function renderPayments(main) {
+  main.innerHTML = `
+    <header class="adm-sec-head"><h2 class="adm-sec-title">Payments</h2></header>
+    <p class="adm-error" id="admPayError" hidden></p>
+    <div id="admPayBody"><p class="adm-note">Loading from Stripe…</p></div>
+  `;
+  const host = document.getElementById('admPayBody');
+  try {
+    const d = await apiFetch(STRIPE_OVERVIEW_URL);
+    const money = (arr) => (arr || []).map(b => `${usdCents(b.amountCents)} ${escapeHtml(b.currency)}`).join(' · ') || '$0.00';
+    host.innerHTML = `
+      <div class="adm-stat-grid">
+        ${statCard(money(d.balance?.available), 'Available balance')}
+        ${statCard(money(d.balance?.pending), 'Pending balance')}
+        ${statCard(d.activeSubscriptions ?? '—', 'Active subscriptions')}
+        ${statCard(d.livemode === false ? 'TEST' : d.livemode === true ? 'LIVE' : '—', 'Stripe mode')}
+      </div>
+      <div class="adm-card">
+        <h3 class="adm-card-h">Recent charges</h3>
+        ${(d.charges || []).length ? `
+          <div class="adm-table-scroll">
+            <table class="adm-table">
+              <thead><tr><th>Date</th><th>Amount</th><th>Status</th><th>Customer</th><th></th></tr></thead>
+              <tbody>
+                ${d.charges.map(c => `
+                  <tr>
+                    <td class="adm-muted">${escapeHtml(fmtDate(c.createdAt))}</td>
+                    <td>${escapeHtml(usdCents(c.amountCents))}</td>
+                    <td><span class="adm-pill ${c.status === 'succeeded' && !c.refunded ? 'is-available' : 'is-claimed'}">${escapeHtml(c.refunded ? 'refunded' : c.status)}</span></td>
+                    <td class="adm-cell-email">${escapeHtml(c.email || '—')}</td>
+                    <td>${safeUrl(c.receiptUrl) ? `<a class="acct-inline-link" href="${escapeHtml(safeUrl(c.receiptUrl))}" target="_blank" rel="noopener">Receipt</a>` : ''}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        ` : `<p class="adm-empty">No charges yet.</p>`}
+      </div>
+      <div class="adm-card">
+        <h3 class="adm-card-h">Payouts</h3>
+        ${(d.payouts || []).length ? `
+          <div class="adm-table-scroll">
+            <table class="adm-table">
+              <thead><tr><th>Created</th><th>Arrives</th><th>Amount</th><th>Status</th></tr></thead>
+              <tbody>
+                ${d.payouts.map(p => `
+                  <tr>
+                    <td class="adm-muted">${escapeHtml(fmtDate(p.createdAt))}</td>
+                    <td class="adm-muted">${escapeHtml(fmtDate(p.arrivalAt))}</td>
+                    <td>${escapeHtml(usdCents(p.amountCents))}</td>
+                    <td><span class="adm-pill ${p.status === 'paid' ? 'is-available' : 'is-claimed'}">${escapeHtml(p.status)}</span></td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        ` : `<p class="adm-empty">No payouts yet.</p>`}
+      </div>
+      <p class="adm-note">Read-only by design. Refunds and disputes stay in Stripe's own dashboard.</p>
+    `;
+  } catch (ex) {
+    host.innerHTML = '';
+    showError('admPayError', friendlyError(ex, 'Could not load Stripe.'));
+  }
+}
+
+/* ---------- shipping labels + print queue (below the orders table) ---------- */
+
+async function loadLabelsAndQueue() {
+  const host = document.getElementById('admLabelsBody');
+  if (!host) return;
+  try {
+    const [labels, queue] = await Promise.all([
+      apiFetch(`${SHIPPO_LABELS_URL}?limit=50`).catch(() => null),
+      apiFetch(`${PRINT_QUEUE_URL}?limit=50`).catch(() => null)
+    ]);
+    const pending = (queue?.jobs || []).filter(j => j.state === 'PENDING').length;
+    host.innerHTML = `
+      <div class="adm-card">
+        <h3 class="adm-card-h">Print queue</h3>
+        <p class="adm-note">${!queue
+          ? 'Could not reach the print queue endpoint.'
+          : pending
+            ? `${pending} label${pending === 1 ? '' : 's'} waiting for the print agent.`
+            : 'Queue is clear. Labels queue here automatically when bought; the agent on your network prints and acks them.'}</p>
+        ${(queue?.jobs || []).length ? `
+          <div class="adm-table-scroll">
+            <table class="adm-table">
+              <thead><tr><th>Queued</th><th>Tracking</th><th>State</th><th>Printed by</th><th></th></tr></thead>
+              <tbody>
+                ${queue.jobs.map(j => `
+                  <tr>
+                    <td class="adm-muted">${escapeHtml(fmtDate(j.createdAt))}</td>
+                    <td><code>${escapeHtml(j.trackingNumber || j.jobId.slice(0, 10))}</code></td>
+                    <td><span class="adm-pill ${j.state === 'PRINTED' ? 'is-available' : 'is-claimed'}">${escapeHtml(j.state.toLowerCase())}</span></td>
+                    <td class="adm-muted">${escapeHtml(j.printedBy || '—')}</td>
+                    <td>${safeUrl(j.labelUrl) ? `<a class="acct-inline-link" href="${escapeHtml(safeUrl(j.labelUrl))}" target="_blank" rel="noopener">PDF</a>` : ''}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        ` : ''}
+      </div>
+      <div class="adm-card">
+        <h3 class="adm-card-h">Labels in Shippo</h3>
+        ${labels?.labels?.length ? `
+          <div class="adm-table-scroll">
+            <table class="adm-table">
+              <thead><tr><th>Created</th><th>Status</th><th>Tracking</th><th>Order</th><th></th></tr></thead>
+              <tbody>
+                ${labels.labels.map(l => `
+                  <tr>
+                    <td class="adm-muted">${escapeHtml(fmtDate(l.createdAt))}${l.isTest ? ' <span class="adm-pill">test</span>' : ''}</td>
+                    <td><span class="adm-pill ${l.status === 'SUCCESS' ? 'is-available' : 'is-claimed'}">${escapeHtml(l.status.toLowerCase())}</span></td>
+                    <td>${l.trackingNumber
+                      ? (safeUrl(l.trackingUrl)
+                          ? `<a class="acct-inline-link" href="${escapeHtml(safeUrl(l.trackingUrl))}" target="_blank" rel="noopener">${escapeHtml(l.trackingNumber)}</a>`
+                          : `<code>${escapeHtml(l.trackingNumber)}</code>`)
+                      : '<span class="adm-muted">—</span>'}</td>
+                    <td class="adm-muted">${escapeHtml((l.orderId || '').slice(0, 8) || '—')}</td>
+                    <td>${safeUrl(l.labelUrl) ? `<a class="btn adm-copy" href="${escapeHtml(safeUrl(l.labelUrl))}" target="_blank" rel="noopener" title="Opens the 4x6 label PDF for printing">Print</a>` : ''}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        ` : `<p class="adm-empty">${labels ? 'No labels in this Shippo mode yet.' : 'Could not reach the labels endpoint.'}</p>`}
+      </div>
+    `;
+  } catch (ex) {
+    host.innerHTML = `<p class="adm-empty">${escapeHtml(friendlyError(ex, 'Could not load labels.'))}</p>`;
+  }
 }
 
 async function runWebhookSync(btn, url, label) {
@@ -1417,6 +1561,7 @@ function showSection(id) {
   if (id === 'overview')     return void renderOverview(main);
   if (id === 'users')        return void renderUsers(main);
   if (id === 'shiporders')   return void renderAdminOrders(main);
+  if (id === 'payments')     return void renderPayments(main);
   if (id === 'warranty')     return void renderWarranty(main);
   if (id === 'inventory')    return renderSoon(main, 'Inventory', 'Physical stock levels for hardware, cases, and screwdrivers will live here.');
   if (id === 'catalog')      return void renderCatalog(main);
