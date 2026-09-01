@@ -65,6 +65,28 @@
   transform: translateY(-2px);
 }
 
+/* Disabled buttons must not glow, lift, or invite a click. Order matters:
+   these follow the hover rules so equal specificity resolves by cascade, and
+   the .cta re-assert keeps its gradient at rest. No pointer-events:none - the
+   disabled lane buttons carry title tooltips that it would suppress. */
+.btn:disabled,
+.cta:disabled{
+  opacity:.55;
+  cursor:not-allowed;
+}
+.btn:disabled:hover,
+.cta:disabled:hover{
+  transform:none;
+  box-shadow:none;
+  background:var(--glass-2);
+  border-color:var(--border);
+  color:var(--ink);
+}
+.cta:disabled:hover{
+  background:linear-gradient(180deg, var(--brand), var(--brand-600));
+  color:var(--on-brand);
+}
+
 /* Keyboard focus: the same teal ring the rest of the site uses. */
 .cta:focus-visible,
 .btn:focus-visible,
@@ -146,6 +168,15 @@
   to {
     transform: translateX(40%);
   }
+}
+
+/* Press feedback, console-style. Placed after every hover rule so the press
+   wins the equal-specificity cascade while the pointer is down. */
+.btn:not(:disabled):active,
+.cta:not(:disabled):active,
+.codeBtn:not(:disabled):active{
+  transform: translateY(0px);
+  transition-duration: 60ms;
 }
 
 

@@ -33,7 +33,9 @@ export function hasVideoSource(video) {
  *  enablejsapi lets applyDefaultVolume set the in-player volume after load. */
 function playerHtml(video, { autoplay = false } = {}) {
   if (video.youtube) {
-    const params = `rel=0&modestbranding=1&playsinline=1&enablejsapi=1${autoplay ? '&autoplay=1' : ''}`;
+    // cc_load_policy=0 + the captions-off nudge in tuneYtPlayer: the How-To
+    // videos carry burned-in captions, so the player's own track is noise.
+    const params = `rel=0&modestbranding=1&playsinline=1&enablejsapi=1&cc_load_policy=0&iv_load_policy=3${autoplay ? '&autoplay=1' : ''}`;
     return `<iframe class="vo-frame" data-vo-yt
               src="https://www.youtube-nocookie.com/embed/${esc(video.youtube)}?${params}"
               title="${esc(video.title || 'Video')}"
@@ -49,24 +51,44 @@ function playerHtml(video, { autoplay = false } = {}) {
           </video>`;
 }
 
-// House volume: players start at half so a How-To never blasts a quiet shop
-// floor. YouTube takes the command over its iframe API (it ignores messages
-// until the player exists, so it is nudged a few times); native video is a
-// property set.
+// House tuning: players start at half volume so a How-To never blasts a quiet
+// shop floor, and the caption module is unloaded because the videos carry
+// burned-in captions. YouTube takes both over its iframe API (it ignores
+// messages until the player exists, so it is nudged a few times); native video
+// is a property set.
+function tuneYtPlayer(yt) {
+  const send = () => {
+    try {
+      yt.contentWindow?.postMessage(JSON.stringify({ event: 'command', func: 'setVolume', args: [50] }), '*');
+      yt.contentWindow?.postMessage(JSON.stringify({ event: 'command', func: 'unloadModule', args: ['captions'] }), '*');
+      yt.contentWindow?.postMessage(JSON.stringify({ event: 'command', func: 'unloadModule', args: ['cc'] }), '*');
+    } catch { /* frame gone */ }
+  };
+  yt.addEventListener('load', () => { send(); setTimeout(send, 600); setTimeout(send, 1500); });
+  // Already loaded (cached) frames never fire load again: nudge now too.
+  send(); setTimeout(send, 600); setTimeout(send, 1500);
+}
+
 function applyDefaultVolume(stage) {
   if (!stage) return;
   const vid = stage.querySelector('video');
   if (vid) { try { vid.volume = 0.5; } catch { /* not ready */ } }
   const yt = stage.querySelector('[data-vo-yt]');
+  if (yt) tuneYtPlayer(yt);
+}
+
+// Stop whatever is playing inside a stage, without tearing the player down.
+// Used before the overlay opens so the inline/framed player never doubles the
+// overlay's audio.
+function pausePlayback(stage) {
+  if (!stage) return;
+  const vid = stage.querySelector('video');
+  if (vid) { try { vid.pause(); } catch { /* not started */ } }
+  const yt = stage.querySelector('[data-vo-yt]');
   if (yt) {
-    const send = () => {
-      try {
-        yt.contentWindow?.postMessage(JSON.stringify({ event: 'command', func: 'setVolume', args: [50] }), '*');
-      } catch { /* frame gone */ }
-    };
-    yt.addEventListener('load', () => { send(); setTimeout(send, 600); setTimeout(send, 1500); });
-    // Already loaded (cached) frames never fire load again: nudge now too.
-    send(); setTimeout(send, 600); setTimeout(send, 1500);
+    try {
+      yt.contentWindow?.postMessage(JSON.stringify({ event: 'command', func: 'pauseVideo', args: [] }), '*');
+    } catch { /* frame gone */ }
   }
 }
 
@@ -128,12 +150,17 @@ export function closeVideoOverlay() {
 // product modal simply shows nothing until the video is hosted.
 export function inlineVideoHtml(video, { label = 'How-To' } = {}) {
   if (!hasVideoSource(video)) return '';
+  // Same thumbnail everywhere: with no custom poster, a YouTube source uses
+  // YouTube's own frame, which is exactly what the warranty page's framed
+  // player shows.
+  const poster = video.poster ||
+    (video.youtube ? `https://i.ytimg.com/vi/${encodeURIComponent(video.youtube)}/hqdefault.jpg` : '');
   return `
     <figure class="vo-inline" data-vo-inline>
       <div class="vo-inline-stage" data-vo-poster>
-        ${video.poster ? `<img class="vo-inline-poster" src="${esc(video.poster)}" alt="${esc(video.title || label)}">` : ''}
+        ${poster ? `<img class="vo-inline-poster" src="${esc(poster)}" alt="${esc(video.title || label)}">` : ''}
         <button class="vo-play" type="button" data-vo-play aria-label="Play ${esc(label)}">
-          <span class="vo-play-icon" aria-hidden="true">&#9658;</span>
+          <svg class="vo-play-icon" viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M8 5.5v13l11-6.5z"/></svg>
           <span class="vo-play-label">${esc(label)}</span>
         </button>
       </div>
@@ -155,6 +182,9 @@ export function bindInlineVideo(root, video) {
 
   fig.addEventListener('click', (e) => {
     if (e.target.closest('[data-vo-expand]')) {
+      // The overlay is about to own the audio: silence the inline player
+      // first or both stream at once.
+      pausePlayback(fig.querySelector('[data-vo-poster]'));
       openVideoOverlay(video);
       return;
     }
@@ -196,6 +226,10 @@ export function bindFramedVideo(root, video) {
   fig._voBound = true;
   applyDefaultVolume(fig.querySelector('.vo-framed-stage'));
   fig.addEventListener('click', (e) => {
-    if (e.target.closest('[data-vo-expand]')) openVideoOverlay(video);
+    if (e.target.closest('[data-vo-expand]')) {
+      // Same rule as the inline embed: one player audible at a time.
+      pausePlayback(fig.querySelector('.vo-framed-stage'));
+      openVideoOverlay(video);
+    }
   });
 }

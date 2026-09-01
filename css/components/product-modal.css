@@ -175,8 +175,14 @@
 .pm-kit-intro { margin: 0 0 12px; color: var(--muted, #c6d0f0a6); line-height: 1.55; font-size: .9rem; }
 .pm-kit-list {
   margin: 0; padding: 0; list-style: none !important; counter-reset: kit;
-  display: flex; flex-direction: column; gap: 8px;
+  /* Two columns on desktop so the kit fills the info column instead of
+     stacking into a tall strip with dead space beside it. */
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px;
 }
+/* An odd count leaves a lone card in the last row: let it own the whole row.
+   With five items today that is the Warranty and Registration Card; a sixth
+   item makes this rule a silent no-op. */
+.pm-kit-item:last-child:nth-child(odd) { grid-column: 1 / -1; }
 .pm-kit-item {
   counter-increment: kit;
   display: grid; grid-template-columns: 30px 1fr; gap: 12px; align-items: start;
@@ -376,6 +382,8 @@
   .pm-panel { width: 96vw; top: 2vh; max-height: 96vh; }
   .pm-grid { grid-template-columns: 1fr; }
   .pm-spec-grid { grid-template-columns: 1fr; }
+  .pm-kit-list { grid-template-columns: 1fr; }
+  .pm-kit-item:last-child:nth-child(odd) { grid-column: auto; }
   .pm-name { font-size: 1.6rem; }
   .pm-body { padding: 22px 20px 26px; }
 }

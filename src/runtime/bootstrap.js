@@ -39,11 +39,7 @@
     import { initAdminView, onAdminEnter, refreshAdminNav } from '../admin/admin.js';
     import { initAccountView, onAccountEnter } from '../account/account.js';
     import { PRAG_API_BASE, LANE } from './config.js';
-    import { consumeLaneSigninFlag, consumeLaneHandoff, switchLane } from './lane.js';
-
-    // Menu entry (operators only; see refreshAdminNav): flips this browser to
-    // the other lane. A full re-auth ritual; lane.js owns the mechanics.
-    window.switchLaneFromMenu = () => switchLane(LANE === 'dev' ? 'live' : 'dev');
+    import { consumeLaneSigninFlag, consumeLaneHandoff } from './lane.js';
 
     // routePostLogin is now a thin forwarder only
     function routePostLoginForward({ ping }) {

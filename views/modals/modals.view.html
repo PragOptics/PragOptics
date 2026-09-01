@@ -84,10 +84,11 @@
               <input
                 id="loginCode"
                 type="text"
-                inputmode="text"
+                inputmode="numeric"
+                pattern="[0-9]*"
                 autocomplete="one-time-code"
                 maxlength="6"
-                placeholder="a1B2c3"
+                placeholder="6-digit code"
               >
               <button
                 id="requestCodeBtn"
@@ -97,7 +98,7 @@
               </button>
             </div>
 
-            <div class="field-hint">
+            <div class="field-hint" id="codeHint">
               We will send a one-time code to your email (and optionally SMS).
             </div>
           </div>

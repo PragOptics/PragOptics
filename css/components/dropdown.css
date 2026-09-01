@@ -34,9 +34,16 @@
   transition: transform 160ms ease, box-shadow 160ms ease;
 }
 
-.dropdown-toggle:focus,
-.dropdown-toggle:focus-visible{
+.dropdown-toggle:focus{
   outline:none;
+  box-shadow:none;
+}
+/* Keyboard users get a ring on the site's only navigation control; mouse
+   clicks stay clean via the plain :focus suppression above. */
+.dropdown-toggle:focus-visible{
+  outline:2px solid var(--brand-600);
+  outline-offset:3px;
+  border-radius:10px;
   box-shadow:none;
 }
 
@@ -48,6 +55,8 @@
 
 .dropdown-menu{
   display:none;
+  opacity:0;
+  transform:translateY(-6px);
   position:absolute;
   top:110%;
   right:0;
@@ -60,7 +69,10 @@
   z-index:100;
   -webkit-backdrop-filter: blur(14px) saturate(160%);
   backdrop-filter: blur(14px) saturate(160%);
-  transition: transform 160ms ease, box-shadow 160ms ease;
+  /* Real open motion: fade + drop-in. `display ... allow-discrete` +
+     @starting-style animate the open in modern engines; elsewhere the menu
+     simply appears, exactly as before. */
+  transition: opacity 160ms ease, transform 160ms ease, display 160ms allow-discrete;
   /* Never taller than the screen — scroll inside the panel instead */
   max-height: calc(100vh - 96px);
   overflow-y: auto;
@@ -78,33 +90,25 @@
 /* ====== MEGA PANEL (desktop) ======
    Same DOM, hero-card layout: each .menu-section starts its own vertical
    column, so the sections sit side by side under one wide glass panel. */
-@media (min-width: 760px){
+@media (min-width: 800px){
   .dropdown-menu{
-    /* Five sections, not four. An admin adds the Internal section (Platform,
-       Resources, Shop, Internal, Account), and each section forces its own
-       column via break-before below. columns:4 meant the fifth column -
-       Account, which holds Login and Logout - flowed past the fixed-width,
-       right-anchored box and off the right edge of the screen. The items were
-       in the DOM the whole time, just rendered off-screen, so only an admin
-       ever hit it and only a screenshot showed it. Size for five, and cap the
-       count so the panel can never bleed sideways again.
+    /* Four sections (Platform, Resources, Shop, Account), one column each via
+       break-before below. The old Internal admin section is gone: everything
+       internal now lives inside the account panel, so the count is fixed.
 
-       overflow-x:auto is the backstop: if a future section or a narrow desktop
-       ever can't fit, the panel scrolls inside itself rather than pushing a
-       column off-screen where it silently vanishes. */
+       No scrollbars in the mega format, ever: the 800px breakpoint guarantees
+       the 760px panel plus margins genuinely fits, and anything narrower gets
+       the single vertical pane below instead of a cramped columns view. */
     width: min(760px, calc(100vw - 24px));
     padding: 16px 12px 18px;
     border-radius: 16px;
-    /* One column per section, exactly. Four sections normally; five when the
-       admin Internal section is present (.has-internal, toggled in
-       refreshAdminNav). A count HIGHER than the section count let
-       column-fill:balance fill the extra column by splitting the tallest
-       section (Shop), which is how Cart and Checkout ended up looking like
-       their own group. */
+    /* One column per section, exactly. A count HIGHER than the section count
+       lets column-fill:balance split the tallest section (Shop), which is how
+       Cart and Checkout once ended up looking like their own group. */
     columns: 4;
     column-gap: 10px;
     max-height: none;
-    overflow-x: auto;
+    overflow-x: visible;
     overflow-y: visible;
     background-image:
       radial-gradient(420px 220px at 88% -10%, rgba(162,0,255,.14), transparent 62%),
@@ -113,8 +117,6 @@
   .dropdown-menu > li { break-inside: avoid; }
   /* each section header opens a new column (first one already starts col 1) */
   .dropdown-menu > li:has(> .menu-section):not(:first-child){ break-before: column; }
-  /* Admin adds a fifth section (Internal), so it needs a fifth column. */
-  .dropdown-menu.has-internal{ columns: 5; }
   /* A column may start only at a section header. Forbidding a break before any
      non-header item keeps every section whole in its own column, so balancing
      can never split Shop (or any section) across two columns. */
@@ -157,17 +159,32 @@
   background:none;
   border:0;
   cursor:pointer;
-  transition:.2s ease;
+  transition: background 160ms ease, color 160ms ease;
 }
 
 .dropdown-menu li a:hover,
 .dropdown-menu li button:hover{
-  background:rgba(151, 39, 216, 0.185);
+  background:rgba(162, 0, 255, .16);
+  color:var(--brand-600);
+}
+/* Keyboard focus mirrors hover, same as the console's controls. */
+.dropdown-menu li a:focus-visible,
+.dropdown-menu li button:focus-visible{
+  outline:none;
+  background:rgba(162, 0, 255, .16);
   color:var(--brand-600);
 }
 
 .dropdown.open .dropdown-menu{
   display:block;
+  opacity:1;
+  transform:none;
+}
+@starting-style{
+  .dropdown.open .dropdown-menu{
+    opacity:0;
+    transform:translateY(-6px);
+  }
 }
 
 .dropdown-toggle svg,

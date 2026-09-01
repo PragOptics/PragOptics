@@ -65,8 +65,8 @@
   border-radius: 50%;
   background: var(--brand-600, #21bca5);
   color: #04120f;
-  font-size: .7rem;
-  padding-left: 2px; /* optical centering of the triangle */
+  flex: none;
+  padding-left: 1px; /* optical centering of the triangle */
 }
 
 .vo-inline-cap {

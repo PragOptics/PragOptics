@@ -68,7 +68,12 @@ function isEmail(s) {
 /* ---------- step templates ---------- */
 
 function deviceStepHtml() {
-  const opts = HARDWARE.map(p =>
+  // Only shipped hardware can hold a warranty card: a preorder or coming-soon
+  // device has no unit in the field and must not be offered. Today that means
+  // OmniSource only; when OmniBus ships, flipping its availability lists it
+  // here automatically.
+  const registerable = HARDWARE.filter(p => p.availability === 'available');
+  const opts = registerable.map(p =>
     `<option value="${escapeHtml(p.id)}">${escapeHtml(p.name)}: ${escapeHtml(p.tagline)}</option>`
   ).join('');
   return `

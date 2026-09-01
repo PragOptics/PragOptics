@@ -1,6 +1,7 @@
 // ui/login.modal.js
 
 import { PRAG_API_BASE } from "../runtime/config.js";
+import { getAgreementAck } from "../runtime/state.js";
 
 let isBound = false;
 
@@ -119,8 +120,10 @@ function bindLoginModal(modal) {
   }
 
   function isCodeValid() {
+    // The backend mints 6-digit numeric codes (crypto.randomInt padded);
+    // letters were never valid.
     const v = (codeInput?.value || "").trim();
-    return /^[A-Za-z0-9]{6}$/.test(v);
+    return /^\d{6}$/.test(v);
   }
 
   function applyCodeState() {
@@ -300,9 +303,21 @@ function bindLoginModal(modal) {
     show(meter, !isLogin);
     show(rules, !isLogin);
 
-    // Phone/SMS + Code only in signup/reset
-    show(phoneBlock, !isLogin);
+    // Code entry exists in signup/reset. The phone/SMS block is SIGNUP ONLY:
+    // for reset (and login) the backend delivers codes to the address on the
+    // account, or a phone that was verified on the account beforehand - never
+    // to a number typed into this form. Showing the field on reset promised
+    // an SMS that will not come.
+    show(phoneBlock, isSignup);
     show(codeBlock, !isLogin);
+
+    // The delivery hint must tell the truth per mode.
+    const codeHint = modal.querySelector("#codeHint");
+    if (codeHint) {
+      codeHint.textContent = isReset
+        ? "We will email a one-time code to the address on your account."
+        : "We will send a one-time code to your email (and optionally SMS).";
+    }
 
     // Buttons swap
     show(forgotBtn, isLogin);
@@ -470,6 +485,17 @@ function bindLoginModal(modal) {
 
 
     if (mode === "signup") {
+      // The backend refuses signup without the agreement acknowledgement.
+      // Catch it HERE, before the request, and route the user straight into
+      // the agreement modal instead of letting the submit dead-end on a 400.
+      if (!getAgreementAck()) {
+        showError2("Read and accept the Subscriber Agreement to continue.");
+        if (typeof globalThis.openAgreementModal === "function") {
+          closeLoginModal();
+          globalThis.openAgreementModal();
+        }
+        return;
+      }
       try {
         const resp = await globalThis.pragSignup?.({
           email: emailVal,
@@ -613,8 +639,11 @@ function bindLoginModal(modal) {
       return;
     }
 
-    const sms = !!smsOptIn?.checked;
-    const phoneVal = phoneInput?.value?.trim() || "";
+    // SMS is a signup-only delivery: on reset the backend routes the code to
+    // the account's own address (or its pre-verified phone) and ignores any
+    // phone in the request, so never send one.
+    const sms = mode === "signup" && !!smsOptIn?.checked;
+    const phoneVal = mode === "signup" ? (phoneInput?.value?.trim() || "") : "";
     if (sms && !phoneVal) { showError2("Phone is required when SMS verification is enabled."); phoneInput.focus(); return; }
 
     clearError2();

@@ -1,7 +1,9 @@
 <!-- ============ ACCOUNT ============ -->
-<!-- Signed-in customer account panel (My Products / Plan & billing / Sign-in).
-     Built into #accountBody by src/account/account.js. Requires a live session;
-     onAccountEnter bounces to the login modal otherwise. -->
-<section id="accountView" class="glass panel account hidden" aria-label="Your account">
+<!-- THE panel: account sections for every customer, plus the Internal operator
+     group in the same sidebar when the ping says isAdmin. Built into
+     #accountBody by src/account/account.js. Requires a live session;
+     onAccountEnter bounces to the login modal otherwise. The `admin` class
+     keeps the console's instrument-panel styling (css/views/admin.css). -->
+<section id="accountView" class="account admin hidden" aria-label="Your account">
   <div class="acct-body" id="accountBody"><!-- built by src/account/account.js --></div>
 </section>

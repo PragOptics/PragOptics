@@ -45,7 +45,7 @@
 
                 <li><span class="menu-section">Resources</span></li>
                 <li><button type="button" data-action="open-docs">Documentation</button></li>
-                <li><button type="button" data-action="set-mode" data-mode="builds">Share Your Build</button></li>
+                <li><button type="button" data-action="set-mode" data-mode="builds">Builds</button></li>
 
                 <li><span class="menu-section">Shop</span></li>
                 <li><button type="button" data-action="set-mode" data-mode="shop">Hardware</button></li>
@@ -57,14 +57,10 @@
                 </li>
                 <li><button type="button" data-action="checkout">Checkout</button></li>
 
-                <li data-admin-only hidden><span class="menu-section">Internal</span></li>
-                <li data-admin-only hidden><button type="button" data-action="set-mode" data-mode="admin">Admin</button></li>
-
                 <li><span class="menu-section">Account</span></li>
-                <li><button type="button" data-action="set-mode" data-mode="account">Account</button></li>
+                <li data-auth-only hidden><button type="button" data-action="set-mode" data-mode="account">Profile</button></li>
                 <li><button type="button" data-action="set-mode" data-mode="warranty">Warranty</button></li>
                 <li><button type="button" data-action="open-billing">Billing</button></li>
-                <li data-operator-only hidden><button type="button" data-action="switch-lane" id="navLaneSwitch">Switch lane</button></li>
                 <li data-guest-only><button type="button" data-action="open-login">Login</button></li>
                 <li data-auth-only hidden><button type="button" data-action="logout">Logout</button></li>
 

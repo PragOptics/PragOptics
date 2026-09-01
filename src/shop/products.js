@@ -102,8 +102,7 @@ export const HARDWARE = [
       { label: 'Technical doc', href: '/docs/#doc=products/OmniSource-Technical.md', kind: 'link' },
       // The licence that governs every design download. Also copied into each
       // design folder so it travels with the files themselves.
-      { label: 'Design licence · CC BY-NC-SA', href: '/docs/omni-LICENSE.md', kind: 'legal', legal: 'license' },
-      { label: 'BOM · coming soon',             kind: 'pending' }
+      { label: 'Design licence · CC BY-NC-SA', href: '/docs/omni-LICENSE.md', kind: 'legal', legal: 'license' }
     ],
     kit: {
       title: "What's in the box",
