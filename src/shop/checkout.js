@@ -70,6 +70,18 @@ function physicalLines(ls) {
   return ls.filter(l => !l.isDonation && !l.isPreorder);
 }
 
+// Free shipping: physical subtotal at or above the threshold ships free with
+// the lowest-cost service in the quote. Faster services stay full price. The
+// display here MIRRORS the rule; the server decides it authoritatively from
+// its own re-quote at checkout.
+const FREE_SHIPPING_MIN_CENTS = 5000; // $50
+function physicalSubtotalCents(ls) {
+  return physicalLines(ls).reduce((n, l) => n + (l.lineCents || 0), 0);
+}
+function freeShipEligible(ls) {
+  return physicalSubtotalCents(ls) >= FREE_SHIPPING_MIN_CENTS;
+}
+
 // Cart lines in the backend's wire shape.
 function wireLines(ls) {
   return ls.map(l => ({
@@ -117,9 +129,9 @@ function summaryHtml(ls) {
   const subLabel = sub == null ? 'Pricing at checkout' : formatPrice(sub);
   const hasPreorder = ls.some(l => l.isPreorder);
   const shippingLine = state.order
-    ? `<div class="co-sumrow"><span>Shipping</span><span>${formatPrice(state.order.breakdown.shippingCents)}</span></div>`
+    ? `<div class="co-sumrow"><span>Shipping</span><span>${state.order.breakdown.freeShipping ? 'Free' : formatPrice(state.order.breakdown.shippingCents)}</span></div>`
     : physicalLines(ls).length
-      ? `<div class="co-sumrow muted"><span>Shipping</span><span>calculated next</span></div>`
+      ? `<div class="co-sumrow muted"><span>Shipping</span><span>${freeShipEligible(ls) ? 'free at the lowest rate' : 'calculated next'}</span></div>`
       : '';
   const totalLabel = state.order ? formatPrice(state.order.breakdown.totalCents) : subLabel;
   return `
@@ -247,11 +259,13 @@ function detailsHtml(ls) {
    ====================================================== */
 
 function ratesHtml(ls) {
+  const free = freeShipEligible(ls);
   return `
     <form class="co-form" id="coRatesForm" novalidate>
       ${stepperHtml(ls)}
       <h2 class="co-h2">Choose shipping</h2>
-      <p class="muted co-note">Live rates to ${escapeHtml(state.address.city)}, ${escapeHtml(state.address.state)} ${escapeHtml(state.address.zip)}.</p>
+      <p class="muted co-note">Live rates to ${escapeHtml(state.address.city)}, ${escapeHtml(state.address.state)} ${escapeHtml(state.address.zip)}.${free
+        ? ' Your order is $50 or more, so the lowest-cost service ships free; faster services are yours at their listed price.' : ''}</p>
 
       <div class="co-rates" role="radiogroup" aria-label="Shipping options">
         ${state.rates.map((r, i) => `
@@ -261,7 +275,9 @@ function ratesHtml(ls) {
               <strong>${escapeHtml(r.carrier)} ${escapeHtml(r.service)}</strong>
               <span class="muted">${r.estDays != null ? `about ${r.estDays} day${r.estDays === 1 ? '' : 's'}` : 'transit time varies'}</span>
             </span>
-            <span class="co-rate-price">${formatPrice(Math.round(r.amount * 100))}</span>
+            <span class="co-rate-price">${free && i === 0
+              ? `<s class="muted">${formatPrice(Math.round(r.amount * 100))}</s> Free`
+              : formatPrice(Math.round(r.amount * 100))}</span>
           </label>
         `).join('')}
       </div>
@@ -291,7 +307,8 @@ function paymentHtml(ls) {
 
       <div class="co-breakdown">
         <div class="co-sumrow"><span>Items</span><span>${formatPrice(bd.goodsCents)}</span></div>
-        ${bd.shippingCents ? `<div class="co-sumrow"><span>Shipping</span><span>${formatPrice(bd.shippingCents)}</span></div>` : ''}
+        ${bd.shippingCents ? `<div class="co-sumrow"><span>Shipping</span><span>${formatPrice(bd.shippingCents)}</span></div>`
+          : bd.freeShipping ? `<div class="co-sumrow"><span>Shipping</span><span>Free</span></div>` : ''}
         <div class="co-sumrow co-sumrow-total"><span>Total</span><span>${formatPrice(bd.totalCents)}</span></div>
       </div>
 

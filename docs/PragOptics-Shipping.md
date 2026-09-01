@@ -19,6 +19,10 @@ Shipping is carried by commercial carriers (for example USPS and UPS). At checko
 
 The amount you are charged for shipping is exactly the rate you selected. Rates are verified server-side against your order's own address and contents at the time of purchase; a rate can never be substituted for a different one without your agreement.
 
+### Free Shipping
+
+Orders with **$50 or more of physical goods** (before shipping; donations and preorder deposits do not count) ship **free with the lowest-cost service** quoted for your address. Faster services remain available at their listed price.
+
 ---
 
 ## 3. Processing and Tracking
