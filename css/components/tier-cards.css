@@ -61,7 +61,13 @@
   white-space: nowrap;
 }
 
-.tc-card-head { display: flex; flex-direction: column; gap: 2px; }
+/* In-flow <header> element: needs the reset or the global
+   header{position:fixed} rule pins every card title over the site nav. */
+.tc-card-head {
+  display: flex; flex-direction: column; gap: 2px;
+  position: static; background: none; border: 0;
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+}
 .tc-name { font-size: 1.1rem; font-weight: 900; color: var(--ink, #dcdbf0e1); }
 .tc-tag { font-size: .8rem; }
 

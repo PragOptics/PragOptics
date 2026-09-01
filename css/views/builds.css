@@ -105,6 +105,7 @@
 /* ================= publish form ================= */
 
 .bd-share-head { margin: 0 0 12px; padding-top: 18px; border-top: 1px solid rgba(255, 255, 255, .08); }
+.bd-share-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
 .bd-share-title { margin: 0; font-size: 1.25rem; letter-spacing: .01em; }
 .bd-share-sub { margin: 4px 0 0; font-size: .86rem; }
 

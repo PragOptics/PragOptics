@@ -15,7 +15,6 @@
     import { handleBillingProfile, startPaymentStep, pollUntilResolved } from "../api/billing.js";
     import { setDnaMode } from "../components/dnaController.js";
     import { showStatusModal } from "../components/statusModal.js";
-    import { renderBillingLanding } from "../billing/billingLanding.js";
     import { initHeaderMenu } from '../components/header.menu.js';
     import { initWizardNavigation } from '../wizard/wizard.controller.js';
     import { initConsoleController } from '../components/console.controller.js';
@@ -37,7 +36,7 @@
     import { initWarrantyView, onWarrantyEnter } from '../warranty/warranty.js';
     import { initBuildsView } from '../builds/builds.js';
     import { initAdminView, onAdminEnter, refreshAdminNav } from '../admin/admin.js';
-    import { initAccountView, onAccountEnter } from '../account/account.js';
+    import { initAccountView, onAccountEnter, presetAccountSection } from '../account/account.js';
     import { PRAG_API_BASE, LANE } from './config.js';
     import { consumeLaneSigninFlag, consumeLaneHandoff } from './lane.js';
 
@@ -345,9 +344,6 @@ function applyPostLoginResolution({ ping }) {
   if (decision.mode === "wizard") {
     ensureWizardStepsPresent();
 
-    const flow = document.getElementById("platformFlow");
-    if (flow) flow.classList.remove("mode-billing-landing");
-
     setAppMode("wizard");
 
     showWizardFlow();
@@ -398,7 +394,10 @@ function applyPostLoginResolution({ ping }) {
 
 
   if (decision.mode === "billingLanding") {
-    showBillingLanding(ping, decision.urgent === true);
+    // Billing is managed natively in the account panel now; the old
+    // read-only billing landing surface is gone.
+    presetAccountSection('subscription');
+    setAppMode('account');
     return;
   }
 
@@ -567,37 +566,11 @@ window.applyPostLoginResolution = applyPostLoginResolution;
   host.prepend(banner);
 }
 
-    function showBillingLanding(ping, urgent = false) {
-      setAppMode("wizard");
-
-      // one authoritative wipe (global + platformFlow)
-      clearAllWizardSurfaces();
-
-      const flow = document.getElementById("platformFlow");
-      if (!flow) return;
-
-      flow.classList.add("mode-billing-landing");
-
-      ensureWizardVisibleAndBranded(ping, {
-        title: "PragOptics™ Billing",
-        hint: urgent
-          ? "Payment action required."
-          : "Manage your subscription and billing details.",
-        hasTokens: true
-      });
-
-      renderBillingLanding({
-        containerId: "platformFlow",
-        billingProfile: ping.billingProfile,
-        catalog: ping.productCatalog
-      });
-    }
-
     /* Environment provisioning happens in the PragOptics software, not here.
        The front-end wizard ends at the subscription payment step; active
        subscribers resolve straight to the console. */
 
-   async function openBillingFromMenu() {    
+   async function openBillingFromMenu() {
     if (!isSessionActive()) {
       invalidateSession("expired");
       return;
@@ -613,40 +586,26 @@ window.applyPostLoginResolution = applyPostLoginResolution;
       return;
     }
 
-    // Always fetch latest ping before routing
-    let ping;
+    // Refresh the ping so the panel opens on current state, then manage
+    // billing NATIVELY in the account panel. The wizard exists only for the
+    // first run (no billing profile yet); everything after that - plan,
+    // add-ons, card, invoices, cancel - lives on the Billing section.
     try {
-      ping = await fetchJson(PING_URL, {
+      const ping = await fetchJson(PING_URL, {
         headers: { Authorization: `Bearer ${token}` }
       });
       sessionStorage.setItem("pragoptics_ping", JSON.stringify(ping));
 
-      // ✅ Force wizard re-init on menu entry
-      window.__wizardInit = false;
+      if (!ping?.billingProfile) {
+        // Nothing to manage yet: run first-time setup.
+        window.__wizardInit = false;
+        applyPostLoginResolution({ ping });
+        return;
+      }
+    } catch { /* stale ping is still enough to open the panel */ }
 
-    } catch {
-      ensureWizardVisibleAndBranded(null, {
-        title: "PragOptics™ Billing",
-        hint: "Sign in to manage billing.",
-        hasTokens: false
-      });
-      gotoStep1();
-      return;
-    }
-
-    if (!ping) return;
-
-    const billingStatus = String(ping?.billingProfile?.status || "").toUpperCase();
-    const needsBillingSetup = ping?.needsBillingSetup === true;
-
-    // Billing menu must always go to billing surface when billing is already active.
-    if (ping.billingProfile && !needsBillingSetup && (billingStatus === "ACTIVE" || billingStatus === "PAST_DUE")) {
-      showBillingLanding(ping, billingStatus === "PAST_DUE");
-      return;
-    }
-
-    // Otherwise, billing is incomplete → go to billing wizard (safe to reuse standard resolver)
-    applyPostLoginResolution({ ping });
+    presetAccountSection('subscription');
+    setAppMode('account');
   }
 
   async function openWizardFromMenu() { 
@@ -744,7 +703,6 @@ function clearAllWizardSurfaces() {
   if (!flow) return;
 
   // Reset the shared container completely
-  flow.classList.remove("mode-billing-landing");
   flow.innerHTML = "";
   flow.style.display = "block";
 }

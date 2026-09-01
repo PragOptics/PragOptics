@@ -14,52 +14,20 @@
       <!-- Wizard container -->
       <div id="platformFlow" class="wizard" aria-live="polite">
 
-        <!-- Step 1 -->
+        <!-- Step 1: plan, cadence, and add-ons in one selection surface -->
         <div id="step1" class="step is-active">
-          <h3>Step 1: Choose Subscriber Type</h3>
-          <div class="row" id="subTypeOptions"></div>
+          <h3>Step 1: Choose your plan</h3>
+          <div id="pricingSelect" aria-label="Plans and add-ons"></div>
           <div class="stepBtn">
-            <button class="btn" id="toStep2" data-wizard-nav="2" disabled>Next</button>
+            <button class="btn" id="toStep2" data-wizard-nav="3" disabled>Next</button>
           </div>
         </div>
 
-        <!-- Step 2 -->
-        <div id="step2" class="step">
-          <h3>Step 2: Select Plan & Add‑Ons</h3>
-          <div class="row">
-            <div class="field login-panel">
-              <label class="hint"><strong>Plan cadence</strong></label><br>
-              <label><input type="radio" name="cadence" value="monthly" checked> Monthly</label>&nbsp;&nbsp;
-              <label><input type="radio" name="cadence" value="annual"> Annual</label>
-            </div>
-          </div>
-
-          <div class="row">
-            <div class="field">
-              <div id="addonSection">
-                <label class="hint"><strong>Add‑ons</strong></label>
-                <div id="addonOptions"></div>
-              </div>
-            </div>
-
-            <div class="field">
-              <div class="login-panel pricing-card">
-                <strong>Pricing Summary</strong>
-                <div id="priceSummary" class="hint">Select options to view an estimate.</div>
-              </div>
-            </div>
-
-          </div>
-
-          <div class="dblStepBtn">
-            <button class="btn" data-wizard-nav="1">Back</button>
-            <button class="btn" data-wizard-nav="3">Next</button>
-          </div>
-        </div>
-
-        <!-- Step 3 -->
+        <!-- Step 2 (id kept as step3: the ids are wired through the resume
+             logic; only the displayed numbering changed when the old plan and
+             add-on steps merged) -->
         <div id="step3" class="step">
-          <h3>Step 3: Billing Profile</h3>
+          <h3>Step 2: Billing Profile</h3>
           <p class="hint">Contact details used to create your Stripe customer and BillingProfile.</p>
 
           <form id="billingProfileForm">
@@ -173,7 +141,7 @@
             </div>
 
             <div class="dblStepBtn">
-              <button class="btn" type="button" data-wizard-nav="2">Back</button>
+              <button class="btn" type="button" data-wizard-nav="1">Back</button>
               <button class="cta" type="submit">Create Billing Profile</button>
             </div>
           </form>
@@ -181,7 +149,7 @@
 
         <!-- Step 4 -->
         <div id="step4" class="step">
-          <h3>Step 4: Payment Method</h3>
+          <h3>Step 3: Payment Method</h3>
           <p class="hint">Secure payment method capture powered by Stripe.</p>
 
           <div class="login-panel-paymentEl">
@@ -198,7 +166,7 @@
 
         <!-- Step 5 -->
         <div id="step5" class="step">
-          <h3>Step 5: Finalizing</h3>
+          <h3>Step 4: Finalizing</h3>
           <p class="hint">We’re confirming your subscription with Stripe. This usually takes a few seconds.</p>
 
           <div class="login-panel dna-container" data-dna="idle">

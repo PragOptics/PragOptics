@@ -1,3 +1,14 @@
+// The lookup key itself is the naming authority (po.<role>.<plan>.<cadence>,
+// po.addon.* for add-ons). The stored role column used to be inferred with a
+// contains-".partner." check on the backend, which stamped po.super.base.* as
+// role=user and hid the super tier from every catalog-driven surface - so the
+// role is re-derived here and the column is only a fallback.
+function roleFromLookupKey(lk = "") {
+  if (lk.startsWith("po.addon.")) return "any";
+  const m = lk.match(/^po\.([a-z0-9]+)\./);
+  return m ? m[1] : null;
+}
+
 export function normalizeCatalog(productCatalog = []) {
   const normalized = {
     plans: {},
@@ -8,7 +19,8 @@ export function normalizeCatalog(productCatalog = []) {
   for (const item of productCatalog) {
     if (!item || item.active !== "true") continue;
 
-    const { lookupKey, productId, interval, role, priceId, amount } = item;
+    const { lookupKey, productId, interval, priceId, amount } = item;
+    const role = roleFromLookupKey(lookupKey) || item.role;
     if (!lookupKey || !productId || !interval || !role) continue;
 
     // Ensure role bucket exists (future roles supported automatically)

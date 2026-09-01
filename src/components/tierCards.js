@@ -46,7 +46,7 @@ const TIERS = [
     id: 'partner',
     name: 'Partner',
     tag: 'Build on PragOptics',
-    lookupKey: 'po.partner.base.monthly',
+    lookupKey: 'po.partner.premium.monthly',
     cadence: 'per month',
     features: [
       'Everything in User',

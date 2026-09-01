@@ -20,15 +20,20 @@
   </div>
 
   <div class="bd-share-head">
-    <h2 class="bd-share-title">Publish a build</h2>
-    <p class="bd-share-sub muted">
-      Publishing is free. While the marketplace is in development, a new
-      listing saves as a draft on this device; publish it again when uploads
-      open to put it on the live board.
-    </p>
+    <div class="bd-share-row">
+      <div>
+        <h2 class="bd-share-title">Publish a build</h2>
+        <p class="bd-share-sub muted">
+          Publishing is for subscribers. Browsing and downloading are for
+          everyone.
+        </p>
+      </div>
+      <button class="cta" id="bdPublishToggle" type="button">Publish a build</button>
+    </div>
+    <p class="bd-share-sub muted" id="bdGateNote" hidden></p>
   </div>
 
-  <div class="bd-body" id="buildsBody">
+  <div class="bd-body" id="buildsBody" hidden>
     <!-- Populated by src/builds/builds.js (publish form) -->
   </div>
 

@@ -296,13 +296,6 @@
   margin-top: 10px;
 }
 
-/* Step 2 layout:
-   Remove add-on column entirely when no add-ons exist */
-.wizard .field:has(#addonSection.hidden) {
-  display: none;
-}
-
-/* When billing landing is rendered into #platformFlow, hide wizard steps */
-.wizard.mode-billing-landing .step {
-  display: none !important;
-}
+/* The old add-on column and the read-only billing landing are gone: the plan
+   step is the pricing card surface (pricing.css) and billing is managed in
+   the account panel. */

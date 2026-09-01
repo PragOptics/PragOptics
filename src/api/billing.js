@@ -1,6 +1,7 @@
 // src/api/billing.js
 
 import { fetchJson } from "../api/client.js";
+import { getPricingSelection } from "../wizard/index.js";
 
 export async function handleBillingProfile({
   e,
@@ -33,20 +34,20 @@ export async function handleBillingProfile({
   }
 
   const customerName = `${firstName} ${lastName}`;
-  const cadence =
-    document.querySelector('input[name="cadence"]:checked')?.value || "monthly";
 
-  const addons = {
-    domains: !!document.getElementById("aoDomains")?.checked,
-    storage: !!document.getElementById("aoStorage")?.checked,
-    flows:   !!document.getElementById("aoFlows")?.checked,
-    api:     !!document.getElementById("aoApi")?.checked
-  };
+  // The plan step's selection, verbatim. This used to hardcode subType
+  // "user", so choosing Partner still subscribed the customer to the user
+  // plan; the tier now follows what the cards actually show.
+  const sel = getPricingSelection();
+  if (!sel?.subType) {
+    alert("Pick a plan first.");
+    return;
+  }
 
   const requestedSubscription = buildRequestedSubscription({
-    subType: "user",
-    cadence,
-    addons
+    subType: sel.subType,
+    cadence: sel.cadence,
+    addons: sel.addons
   });
 
   const payload = {

@@ -36,6 +36,18 @@
 
 /* main */
 .acct-main { padding: 22px 24px 26px; min-width: 0; }
+
+/* billing manager */
+.acct-card-warn { border-color: rgba(255, 212, 137, .45); }
+.acct-inline-link {
+  color: var(--brand-600, #21bca5); text-decoration: none; font-weight: 700;
+  border-bottom: 1px solid rgba(33, 188, 165, .35);
+  transition: color 160ms ease, border-color 160ms ease;
+}
+.acct-inline-link:hover { color: #fff; border-color: var(--brand-purp, #a200ff); }
+.acct-inline-link:focus-visible { outline: 2px solid var(--brand-600, #21bca5); outline-offset: 2px; }
+#acctPmElement { margin: 12px 0; }
+#acctPricing { margin: 6px 0 12px; }
 /* Same trap as .adm-sec-head: the global `header { position: fixed }` rule is
    for the site nav; these section headers must stay in flow. */
 .acct-sec-head {

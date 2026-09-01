@@ -13,7 +13,6 @@ const BUILDS_API_LIVE = false; // ← flip when POST /builds (multipart) is depl
 import { PRAG_API_BASE } from '../runtime/config.js';
 const BUILDS_UPLOAD_URL = `${PRAG_API_BASE}/builds`;
 
-const INTENT_KEY = 'pragoptics_build_intent_v1'; // consumed by the account path
 const QUEUE_KEY  = 'pragoptics_builds_queue_v2'; // local metadata queue until live
                                                  // (v2: board shape — v1 held the
                                                  //  old photo-wall entries)
@@ -48,6 +47,20 @@ function escapeHtml(s) {
   return String(s ?? '').replace(/[&<>"']/g, c => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
   }[c]));
+}
+
+/* Publishing is a subscriber feature; browsing and downloading are open to
+   everyone. The gate here is cosmetic (the real enforcement lands with the
+   /builds endpoint, which checks the tier server-side like every other
+   authed route). */
+function publisherState() {
+  let tokens = null, ping = null;
+  try { tokens = JSON.parse(sessionStorage.getItem('pragoptics_tokens') || 'null'); } catch { tokens = null; }
+  try { ping = JSON.parse(sessionStorage.getItem('pragoptics_ping') || 'null'); } catch { ping = null; }
+  if (!tokens?.access_token) return 'signedout';
+  const tier = String(ping?.user?.tier || 'free').toLowerCase();
+  if (ping?.user?.isAdmin === true) return 'ok';
+  return ['user', 'partner', 'super'].includes(tier) ? 'ok' : 'free';
 }
 
 function typeOf(id) { return BUILD_TYPES.find(t => t.id === id) || null; }
@@ -118,20 +131,16 @@ function formHtml() {
       <p class="wr-error" id="bdError" hidden></p>
 
       <div class="bd-paths">
-        <button class="btn bd-path" type="button" data-bd-action="share-anon">
-          <span class="bd-path-t">Publish anonymously</span>
-          <span class="bd-path-s">No account, no sign-in. Credit goes to your display name.</span>
-        </button>
-        <button class="cta bd-path" type="button" data-bd-action="share-account">
-          <span class="bd-path-t">Publish with my account</span>
-          <span class="bd-path-s">Your builds live on your profile, under your name.</span>
+        <button class="cta bd-path" type="button" data-bd-action="publish">
+          <span class="bd-path-t">Publish to the board</span>
+          <span class="bd-path-s">Listed under your account. Credit shows your display name.</span>
         </button>
       </div>
     </div>
   `;
 }
 
-function successHtml(withAccount, queuedLocally) {
+function successHtml(queuedLocally) {
   // Honest split: a local draft stores metadata only (the files stay on the
   // builder's machine), so it will need a fresh publish once uploads open.
   const sub = queuedLocally
@@ -142,7 +151,6 @@ function successHtml(withAccount, queuedLocally) {
       <span class="wr-done-badge">${CHECK_ICON}</span>
       <span class="wr-thanks-big">${queuedLocally ? `That's a solid build.` : `It's on the board.`}</span>
       <p class="wr-thanks-sub">${sub}</p>
-      ${withAccount ? `<p class="wr-thanks-sub">Finishing up: we're taking you to sign-in so it posts under your account.</p>` : ''}
       <div class="wr-done-actions">
         <button class="btn" type="button" data-bd-action="share-another">Publish another</button>
         <button class="btn" type="button" data-bd-action="back-home">Back to PragOptics</button>
@@ -270,10 +278,18 @@ async function submitBuild({ anonymous }) {
   if (BUILDS_API_LIVE) {
     // Real call — multipart: the build files + a metadata part. The backend
     // stores the files and writes the build entity (moderated before listing).
+    // Publishing is a subscriber feature, so the session token rides along;
+    // the server re-checks the tier like every other authed route.
+    let token = '';
+    try { token = JSON.parse(sessionStorage.getItem('pragoptics_tokens') || 'null')?.access_token || ''; } catch { token = ''; }
     const fd = new FormData();
     files.forEach((f, i) => fd.append(`file${i}`, f.file, f.file.name));
     fd.append('meta', JSON.stringify(meta));
-    const res = await fetch(BUILDS_UPLOAD_URL, { method: 'POST', body: fd });
+    const res = await fetch(BUILDS_UPLOAD_URL, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: fd
+    });
     if (!res.ok) throw new Error(`Upload failed (${res.status})`);
     return res.json().catch(() => ({}));
   }
@@ -316,23 +332,14 @@ function bindOnce() {
       return;
     }
 
-    const path = e.target.closest('[data-bd-action="share-anon"], [data-bd-action="share-account"]');
+    const path = e.target.closest('[data-bd-action="publish"]');
     if (path) {
+      if (publisherState() !== 'ok') { gatePublish(); return; }
       if (!validate()) return;
-      const withAccount = path.dataset.bdAction === 'share-account';
       path.disabled = true;
-      let intent = null;
-      if (withAccount) {
-        intent = {
-          name: ($body.querySelector('#bdName')?.value || '').trim(),
-          type: $body.querySelector('#bdType')?.value || null,
-          handle: ($body.querySelector('#bdHandle')?.value || '').trim() || null,
-          fileCount: files.length
-        };
-      }
       let res = null;
       try {
-        res = await submitBuild({ anonymous: !withAccount });
+        res = await submitBuild({ anonymous: false });
       } catch (ex) {
         path.disabled = false;
         const err = $body.querySelector('#bdError');
@@ -341,16 +348,7 @@ function bindOnce() {
       }
       files = [];
       renderBoard(); // the new draft appears on the board immediately
-      $body.innerHTML = successHtml(withAccount, !!res?.queued);
-      if (withAccount) {
-        // Same handoff as warranty: stash the intent, run the normal sign-in /
-        // account-creation flow; the backend ties the build to the account.
-        try { localStorage.setItem(INTENT_KEY, JSON.stringify(intent)); } catch {}
-        setTimeout(() => {
-          window.setAppMode?.('landing');
-          setTimeout(() => { window.openAgreementModal?.(); }, 250);
-        }, 1600);
-      }
+      $body.innerHTML = successHtml(!!res?.queued);
       return;
     }
 
@@ -397,6 +395,29 @@ function bindOnce() {
   });
 }
 
+/* The publish gate: subscribers get the form, a signed-out visitor gets
+   sign-in, a free-tier account gets routed to the plans. */
+function gatePublish() {
+  const note = document.getElementById('bdGateNote');
+  const state = publisherState();
+  if (state === 'ok') {
+    const body = document.getElementById('buildsBody');
+    if (body) {
+      body.hidden = !body.hidden;
+      if (note) note.hidden = true;
+    }
+    return;
+  }
+  if (state === 'signedout') {
+    if (note) { note.textContent = 'Sign in with a subscriber account to publish.'; note.hidden = false; }
+    window.openLoginModal?.('login');
+    return;
+  }
+  // Signed in, free tier: the plans are one click away.
+  if (note) { note.textContent = 'Publishing needs a subscription. Pick a plan and come back with your build.'; note.hidden = false; }
+  window.openWizardFromMenu?.() || window.setAppMode?.('wizard');
+}
+
 export function initBuildsView() {
   $body = document.getElementById('buildsBody');
   $board = document.getElementById('buildsBoard');
@@ -404,4 +425,5 @@ export function initBuildsView() {
   $body.innerHTML = formHtml();
   renderBoard();
   bindOnce();
+  document.getElementById('bdPublishToggle')?.addEventListener('click', gatePublish);
 }

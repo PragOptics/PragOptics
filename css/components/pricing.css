@@ -1,0 +1,159 @@
+/* /css/components/pricing.css
+   The plan selector (pricingCards.js): cadence toggle, tier cards, add-on
+   toggles, running total. Same family as tier-cards.css, tuned for selection
+   rather than marketing. */
+
+.pc-wrap { display: flex; flex-direction: column; gap: 18px; text-align: left; }
+
+/* ---- cadence toggle ---- */
+.pc-toggle {
+  align-self: center;
+  display: inline-flex; gap: 4px; padding: 4px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border, rgba(255, 255, 255, .14));
+  background: rgba(12, 16, 26, .66);
+}
+.pc-toggle-btn {
+  border: 0; cursor: pointer; padding: 8px 18px;
+  border-radius: var(--radius-pill);
+  background: transparent; color: var(--muted, #c6d0f0a6);
+  font: 700 .88rem/1 inherit;
+  transition: background 160ms ease, color 160ms ease;
+}
+.pc-toggle-btn:hover { color: var(--ink, #dcdbf0e1); }
+.pc-toggle-btn:active { transform: translateY(1px); }
+.pc-toggle-btn:focus-visible { outline: 2px solid var(--brand-600, #21bca5); outline-offset: 2px; }
+.pc-toggle-btn.is-active {
+  color: #04130f;
+  background: linear-gradient(120deg, #38ffb3, var(--brand-600, #21bca5));
+}
+.pc-save {
+  margin-left: 6px; padding: 2px 8px; border-radius: var(--radius-pill);
+  font-size: .66rem; font-weight: 800; letter-spacing: .04em;
+  color: #ffd489; border: 1px solid rgba(255, 212, 137, .4);
+  background: rgba(10, 8, 2, .5);
+}
+.pc-toggle-btn.is-active .pc-save { color: #04130f; border-color: rgba(4, 19, 15, .35); background: rgba(255, 255, 255, .25); }
+
+/* ---- tier cards ---- */
+.pc-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 14px; align-items: stretch;
+}
+.pc-card {
+  position: relative; display: flex; flex-direction: column; gap: 12px;
+  padding: 22px 18px 18px; border-radius: 18px;
+  background: rgba(0, 0, 0, .28);
+  border: 1px solid var(--border, rgba(255, 255, 255, .12));
+  transition: border-color 160ms ease, transform 160ms ease, box-shadow 160ms ease;
+}
+.pc-card:hover {
+  border-color: rgba(162, 0, 255, .45); transform: translateY(-2px);
+  box-shadow: 0 0 0 1px rgba(162, 0, 255, .18), 0 0 18px rgba(162, 0, 255, .12);
+}
+.pc-card.is-featured {
+  background: linear-gradient(160deg, rgba(33, 188, 165, .08), rgba(162, 0, 255, .08));
+}
+.pc-card.is-selected {
+  border-color: var(--brand-600, #21bca5);
+  box-shadow: 0 0 0 2px rgba(33, 188, 165, .35), 0 14px 40px rgba(33, 188, 165, .16);
+}
+.pc-flag {
+  position: absolute; top: -11px; left: 50%; transform: translateX(-50%);
+  padding: 3px 12px; border-radius: var(--radius-pill);
+  font-size: .68rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase;
+  color: #04130f; background: linear-gradient(120deg, #38ffb3, var(--brand-600, #21bca5));
+  white-space: nowrap;
+}
+.pc-card-head { display: flex; flex-direction: column; gap: 2px; }
+.pc-name { font-size: 1.12rem; font-weight: 900; color: var(--ink, #dcdbf0e1); }
+.pc-tag { font-size: .8rem; }
+
+.pc-price { display: flex; align-items: baseline; gap: 6px; }
+.pc-amount {
+  font-size: 1.8rem; font-weight: 900;
+  background: linear-gradient(120deg, var(--brand-600, #21bca5), #bf7dff);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.pc-amount-soft { font-size: .95rem; font-weight: 700; opacity: .8; }
+.pc-per { font-size: .85rem; }
+.pc-equiv { font-size: .76rem; margin-top: -8px; }
+
+.pc-features {
+  margin: 0; padding: 0; list-style: none;
+  display: flex; flex-direction: column; gap: 8px; flex: 1;
+  font-size: .86rem; line-height: 1.5; color: var(--ink, #dcdbf0e1);
+}
+.pc-features li { padding-left: 22px; position: relative; }
+.pc-features li::before {
+  content: '✓'; position: absolute; left: 0; top: 0;
+  font-weight: 900; color: var(--brand-600, #21bca5);
+}
+.pc-choose { width: 100%; justify-content: center; text-align: center; }
+
+/* ---- add-ons ---- */
+.pc-addons { display: flex; flex-direction: column; gap: 10px; }
+.pc-addons-h {
+  font-size: .72rem; font-weight: 800; letter-spacing: .18em; text-transform: uppercase;
+  color: var(--brand-600, #21bca5);
+}
+.pc-addon-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px;
+}
+.pc-addon {
+  display: flex; flex-direction: column; gap: 6px; text-align: left; cursor: pointer;
+  padding: 12px 14px; border-radius: 14px;
+  border: 1px solid var(--border, rgba(255, 255, 255, .12));
+  background: rgba(12, 16, 26, .55); color: var(--ink, #dcdbf0e1);
+  font: inherit;
+  transition: border-color 160ms ease, background 160ms ease, box-shadow 160ms ease, transform 120ms ease;
+}
+.pc-addon:hover {
+  border-color: rgba(162, 0, 255, .45);
+  box-shadow: 0 0 0 1px rgba(162, 0, 255, .2), 0 0 14px rgba(162, 0, 255, .12);
+}
+.pc-addon:focus-visible { outline: 2px solid var(--brand-600, #21bca5); outline-offset: 2px; }
+.pc-addon:active { transform: translateY(1px); }
+.pc-addon.is-on {
+  border-color: var(--brand-600, #21bca5);
+  background: linear-gradient(120deg, rgba(33, 188, 165, .10), rgba(162, 0, 255, .10));
+}
+.pc-addon-top { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; }
+.pc-addon-name { font-weight: 800; font-size: .92rem; }
+.pc-addon-price {
+  font-weight: 800; font-size: .85rem; white-space: nowrap;
+  background: linear-gradient(120deg, var(--brand-600, #21bca5), #bf7dff);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.pc-addon-blurb { font-size: .78rem; line-height: 1.45; }
+.pc-addon-check {
+  align-self: flex-start; margin-top: 2px;
+  font-size: .72rem; font-weight: 800; letter-spacing: .04em;
+  padding: 3px 10px; border-radius: var(--radius-pill);
+  border: 1px solid var(--border, rgba(255, 255, 255, .2));
+  color: var(--muted, #c6d0f0a6);
+}
+.pc-addon.is-on .pc-addon-check {
+  color: #04130f; border-color: transparent;
+  background: linear-gradient(120deg, #38ffb3, var(--brand-600, #21bca5));
+}
+
+/* ---- total bar ---- */
+.pc-total {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 14px;
+  padding: 14px 18px; border-radius: 14px;
+  border: 1px solid var(--border, rgba(255, 255, 255, .12));
+  background: rgba(12, 16, 26, .66);
+}
+.pc-total-label { font-weight: 700; font-size: .92rem; color: var(--ink, #dcdbf0e1); }
+.pc-total-amount {
+  font-size: 1.3rem; font-weight: 900;
+  background: linear-gradient(120deg, var(--brand-600, #21bca5), #bf7dff);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+
+@media (max-width: 640px) {
+  .pc-grid, .pc-addon-grid { grid-template-columns: 1fr; }
+  .pc-total { flex-direction: column; align-items: flex-start; gap: 4px; }
+}

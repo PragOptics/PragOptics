@@ -13,16 +13,26 @@
 
 import { PRAG_API_BASE, LANE } from '../runtime/config.js';
 import { switchLane, isPlatformOperator } from '../runtime/lane.js';
+import { mountPricingSelect } from '../components/pricingCards.js';
 
 const ALIASES_URL = `${PRAG_API_BASE}/auth/aliases`;
 const MINE_URL = `${PRAG_API_BASE}/warranty/mine`;
 const REQUEST_CODE_URL = `${PRAG_API_BASE}/auth/request-code`;
-const STRIPE_PORTAL_URL = 'https://billing.stripe.com/p/login/4gM00beIf91O1Kzc3DdjO00';
+
+const SUB_URL        = `${PRAG_API_BASE}/billing/subscription`;
+const SUB_UPDATE_URL = `${PRAG_API_BASE}/billing/subscription/update`;
+const SUB_CANCEL_URL = `${PRAG_API_BASE}/billing/subscription/cancel`;
+const PM_URL         = `${PRAG_API_BASE}/billing/payment-method`;
+const ORDERS_MINE_URL = `${PRAG_API_BASE}/orders/mine`;
 
 const ISSUE_URL = `${PRAG_API_BASE}/warranty/codes/issue`;
 const LIST_URL  = `${PRAG_API_BASE}/warranty/codes`;
 const USERS_URL = `${PRAG_API_BASE}/admin/users`;
 const CATALOG_IMPORT_URL = `${PRAG_API_BASE}/admin/catalog/import`;
+const ADMIN_ORDERS_URL = `${PRAG_API_BASE}/admin/orders`;
+const ADMIN_ORDER_LABEL_URL = `${PRAG_API_BASE}/admin/orders/label`;
+const STRIPE_WH_SYNC_URL = `${PRAG_API_BASE}/admin/stripe/webhook-sync`;
+const SHIPPO_WH_SYNC_URL = `${PRAG_API_BASE}/admin/shippo/webhook-sync`;
 
 // Catalog snapshots survive lane flips (localStorage is per-origin, and the
 // lane toggle reloads the same origin): snapshot on one lane, import on the
@@ -40,6 +50,14 @@ function escapeHtml(s) {
   return String(s ?? '').replace(/[&<>"']/g, c => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
   }[c]));
+}
+
+// Third-party URLs (Stripe invoices, Shippo labels and tracking) become
+// clickable links here. escapeHtml stops attribute breakout but not a
+// javascript: scheme, so only plain https ever reaches an href.
+function safeUrl(u) {
+  const s = String(u || '');
+  return /^https:\/\/[^\s]+$/i.test(s) ? s : '';
 }
 
 /* ---------- identity / session ---------- */
@@ -84,10 +102,16 @@ async function apiFetch(url, options = {}) {
   return data || {};
 }
 
-function friendlyError(ex, fallback) {
+function friendlyError(ex, fallback, { passwordFlow = false } = {}) {
   if (ex?.status === 404) return 'This feature is not available yet.';
   if (ex?.status === 403) return 'This account is not an administrator.';
-  if (ex?.status === 401) return 'That password did not match. Try again.';
+  // 401 means "wrong password" only in the step-up flows that just asked for
+  // one; on a plain data fetch it means the session died.
+  if (ex?.status === 401) {
+    return passwordFlow
+      ? 'That password did not match. Try again.'
+      : 'Your session is no longer valid. Sign in again.';
+  }
   if (ex instanceof TypeError) return 'Could not reach the API. Check that you are online.';
   return ex?.message || fallback;
 }
@@ -99,6 +123,7 @@ const ICONS = {
   products:     '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/>',
   subscription: '<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/>',
   orders:       '<circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>',
+  shiporders:   '<path d="M16 3h5v13h-2"/><path d="M1 3h15v13H8"/><path d="M16 8h4l1 3"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/>',
   builds:       '<path d="M12 2l9 4.9V17L12 22 3 17V6.9z"/><path d="M12 22V12"/><path d="M21 7l-9 5-9-5"/>',
   overview:     '<path d="M4 13h6V4H4z"/><path d="M14 20h6v-9h-6z"/><path d="M14 8h6V4h-6z"/><path d="M4 20h6v-4H4z"/>',
   users:        '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
@@ -110,17 +135,18 @@ const ICONS = {
 const ACCOUNT_SECTIONS = [
   { id: 'profile',      label: 'Profile' },
   { id: 'products',     label: 'My Products' },
-  { id: 'subscription', label: 'Subscription' },
+  { id: 'subscription', label: 'Billing' },
   { id: 'orders',       label: 'Orders' },
   { id: 'builds',       label: 'My Builds' }
 ];
 
 const INTERNAL_SECTIONS = [
-  { id: 'overview',  label: 'Overview' },
-  { id: 'users',     label: 'Users' },
-  { id: 'warranty',  label: 'Warranty' },
-  { id: 'inventory', label: 'Inventory' },
-  { id: 'catalog',   label: 'Catalog' }
+  { id: 'overview',   label: 'Overview' },
+  { id: 'users',      label: 'Users' },
+  { id: 'shiporders', label: 'Orders' },
+  { id: 'warranty',   label: 'Warranty' },
+  { id: 'inventory',  label: 'Inventory' },
+  { id: 'catalog',    label: 'Catalog' }
 ];
 
 function allSections() {
@@ -321,7 +347,7 @@ async function addAlias() {
     if (input) input.value = '';
     await loadAliases();
     showError('acctProfileError', `Check ${address} for a verification code, then use "Enter code".`);
-  } catch (ex) { showError('acctProfileError', friendlyError(ex, 'Could not add that address.')); }
+  } catch (ex) { showError('acctProfileError', friendlyError(ex, 'Could not add that address.', { passwordFlow: true })); }
 }
 
 async function verifyAlias(aliasId, claimId) {
@@ -346,7 +372,7 @@ async function makePrimary(aliasId) {
     await loadAliases();
     // Primary drives the sidebar title; re-render the shell brand.
     const t = document.querySelector('.adm-side-title'); if (t) t.textContent = currentEmail();
-  } catch (ex) { showError('acctProfileError', friendlyError(ex, 'Could not change your primary address.')); }
+  } catch (ex) { showError('acctProfileError', friendlyError(ex, 'Could not change your primary address.', { passwordFlow: true })); }
 }
 
 async function removeAlias(aliasId) {
@@ -357,7 +383,7 @@ async function removeAlias(aliasId) {
   try {
     await apiFetch(`${ALIASES_URL}/remove`, { method: 'POST', body: JSON.stringify({ aliasId, password: su.password, code: su.code }) });
     await loadAliases();
-  } catch (ex) { showError('acctProfileError', friendlyError(ex, 'Could not remove that address.')); }
+  } catch (ex) { showError('acctProfileError', friendlyError(ex, 'Could not remove that address.', { passwordFlow: true })); }
 }
 
 /* ---------- my products (registered warranties) ---------- */
@@ -428,32 +454,393 @@ async function renderProducts(main) {
   }
 }
 
-/* ---------- subscription ---------- */
+/* ---------- subscription: the native billing manager ----------
+   Everything Stripe knows about this account, managed here: plan, cadence,
+   add-ons, the card on file, invoices, cancel and resume. The wizard is only
+   the FIRST-run path (address + first card); after that, billing lives on
+   this section and never leaves the site. */
 
-function renderSubscription(main) {
-  const bp = cachedPing()?.billingProfile || null;
+let subData = null;      // last GET /billing/subscription payload
+let subPricing = null;   // mounted plan selector (change-plan card)
+let subPmCtx = null;     // { stripe, elements } while a card update is open
+
+// fmtDate lives with the products section above; reused here for billing.
+function usdCents(cents) {
+  const n = Number(cents);
+  if (!Number.isFinite(n)) return '';
+  return `$${(n / 100).toFixed(2)}`;
+}
+
+// Two-step confirm for money buttons: first click arms, second fires.
+function armConfirm(btn, armedText, onConfirm) {
+  if (btn.dataset.armed) { delete btn.dataset.armed; return void onConfirm(); }
+  btn.dataset.armed = '1';
+  const orig = btn.textContent;
+  btn.textContent = armedText;
+  setTimeout(() => {
+    if (btn.isConnected && btn.dataset.armed) { delete btn.dataset.armed; btn.textContent = orig; }
+  }, 5000);
+}
+
+function keysOfCurrent(data) {
+  return new Set((data?.subscription?.items || []).map(i => i.lookupKey).filter(Boolean));
+}
+function sameKeySets(a, b) {
+  if (a.size !== b.size) return false;
+  for (const k of a) if (!b.has(k)) return false;
+  return true;
+}
+
+function invoicePill(status) {
+  const s = String(status || '').toLowerCase();
+  const cls = s === 'paid' ? 'is-verified' : (s === 'open' ? 'is-pending' : '');
+  return `<span class="acct-tag ${cls}">${escapeHtml(s || '')}</span>`;
+}
+
+function subNotSubscribedHtml(data) {
   const tier = cachedPing()?.user?.tier || 'free';
-  const status = (bp?.status || '').toUpperCase();
-  const active = status === 'ACTIVE';
-  main.innerHTML = `
-    <header class="acct-sec-head"><h2 class="acct-sec-title">Subscription</h2></header>
+  const status = String(data?.status || '').toUpperCase();
+  const midCheckout = ['PAYMENT_PENDING', 'CHECKOUT_IN_PROGRESS', 'PENDING_SUBSCRIPTION'].includes(status)
+    && status !== 'PENDING_SUBSCRIPTION';
+  return `
     <section class="acct-card">
       <div class="acct-plan">
         <div>
           <span class="acct-plan-tier">${escapeHtml(tier)}</span>
-          <span class="acct-tag ${active ? 'is-verified' : 'is-pending'}">${escapeHtml(status || 'Not subscribed')}</span>
+          <span class="acct-tag is-pending">${escapeHtml(status === 'NONE' || !status ? 'Not subscribed' : status)}</span>
         </div>
-        <p class="acct-card-note">${active
-          ? 'Your platform subscription is active. Manage the plan, payment method, add-ons, or cancel through the billing portal.'
-          : 'You are on the free tier. Subscribe to publish builds, sync to the cloud, and use the API.'}</p>
+        <p class="acct-card-note">${status === 'PAYMENT_PENDING'
+          ? 'Your payment is processing. This settles within a minute; check back shortly.'
+          : midCheckout
+            ? 'You have a subscription checkout in progress. Pick up where you left off.'
+            : 'You are on the free tier. Subscribe to publish builds, sync to the cloud, and use the API.'}</p>
       </div>
       <div class="acct-actions-row">
-        ${active
-          ? `<a class="cta" href="${STRIPE_PORTAL_URL}" target="_blank" rel="noopener">Manage billing</a>`
-          : `<button class="cta" type="button" data-acct-action="subscribe">Subscribe</button>`}
+        ${status === 'PAYMENT_PENDING' ? '' : `<button class="cta" type="button" data-acct-action="subscribe">${midCheckout ? 'Resume checkout' : 'Subscribe'}</button>`}
       </div>
     </section>
   `;
+}
+
+function subManagerHtml(data) {
+  const sub = data.subscription;
+  const tier = data.tier || cachedPing()?.user?.tier || '';
+  const status = String(data.status || '').toUpperCase();
+  const req = data.requestedSubscription || {};
+  const cadence = req.cadence === 'annual' ? 'annual' : 'monthly';
+  const per = cadence === 'annual' ? '/yr' : '/mo';
+  const totalCents = (sub.items || []).reduce((n, i) => n + (Number(i.amountCents) || 0) * (i.quantity || 1), 0);
+  const pm = data.paymentMethod;
+  const openInvoice = (data.invoices || []).find(i => String(i.status).toLowerCase() === 'open' && i.hostedInvoiceUrl);
+
+  return `
+    ${data.paymentActionRequired && openInvoice ? `
+      <section class="acct-card acct-card-warn">
+        <h3 class="acct-card-h">Action needed</h3>
+        <p class="acct-card-note">Your bank asked for extra authentication on the latest charge.
+        Finish it and the subscription continues untouched.</p>
+        <div class="acct-actions-row">
+          <a class="cta" href="${escapeHtml(safeUrl(openInvoice.hostedInvoiceUrl))}" target="_blank" rel="noopener">Finish authentication</a>
+        </div>
+      </section>
+    ` : ''}
+    ${status === 'PAST_DUE' ? `
+      <section class="acct-card acct-card-warn">
+        <h3 class="acct-card-h">Payment past due</h3>
+        <p class="acct-card-note">The last charge did not go through. Update the card below;
+        the retry happens automatically.</p>
+      </section>
+    ` : ''}
+
+    <section class="acct-card">
+      <div class="acct-plan">
+        <div>
+          <span class="acct-plan-tier">${escapeHtml(tier)}</span>
+          <span class="acct-tag ${status === 'ACTIVE' ? 'is-verified' : 'is-pending'}">${escapeHtml(status)}</span>
+          ${sub.cancelAtPeriodEnd ? `<span class="acct-tag is-pending">Ends ${escapeHtml(fmtDate(sub.currentPeriodEnd))}</span>` : ''}
+        </div>
+        <p class="acct-card-note">
+          ${escapeHtml(usdCents(totalCents))}${per} ·
+          ${sub.cancelAtPeriodEnd
+            ? `runs until ${escapeHtml(fmtDate(sub.currentPeriodEnd))}, then ends`
+            : `renews ${escapeHtml(fmtDate(sub.currentPeriodEnd))}`}${
+          data.upcomingInvoice?.amountDueCents != null && !sub.cancelAtPeriodEnd
+            ? ` · next charge ${escapeHtml(usdCents(data.upcomingInvoice.amountDueCents))}` : ''}
+        </p>
+      </div>
+    </section>
+
+    <section class="acct-card">
+      <h3 class="acct-card-h">Plan and add-ons</h3>
+      <div id="acctPricing"></div>
+      <div class="acct-actions-row">
+        <button class="cta" type="button" id="acctPlanApply" data-acct-action="sub-apply" disabled
+          title="Changes charge or credit the difference today; your tier follows the paid invoice">Apply changes</button>
+      </div>
+      <p class="acct-error" id="acctPlanError" hidden></p>
+      <p class="muted" id="acctPlanMsg" hidden></p>
+    </section>
+
+    <section class="acct-card">
+      <h3 class="acct-card-h">Payment method</h3>
+      ${pm ? `
+        <p class="acct-card-note">${escapeHtml((pm.brand || 'card').toUpperCase())} ending in ${escapeHtml(pm.last4 || '????')}
+        ${pm.expMonth ? `· expires ${escapeHtml(String(pm.expMonth))}/${escapeHtml(String(pm.expYear))}` : ''}</p>
+      ` : `<p class="acct-card-note">No card on file yet.</p>`}
+      <div class="acct-actions-row" id="acctPmActions">
+        <button class="btn" type="button" data-acct-action="pm-update">Update card</button>
+      </div>
+      <div id="acctPmHost" hidden>
+        <div id="acctPmElement"></div>
+        <div class="acct-actions-row">
+          <button class="cta" type="button" data-acct-action="pm-save">Save card</button>
+          <button class="btn" type="button" data-acct-action="pm-cancel">Never mind</button>
+        </div>
+      </div>
+      <p class="acct-error" id="acctPmError" hidden></p>
+      <p class="muted" id="acctPmMsg" hidden></p>
+    </section>
+
+    <section class="acct-card">
+      <h3 class="acct-card-h">Invoices</h3>
+      ${(data.invoices || []).length ? `
+        <div class="adm-table-scroll">
+          <table class="adm-table">
+            <thead><tr><th>Date</th><th>Number</th><th>Total</th><th>Status</th><th></th></tr></thead>
+            <tbody>
+              ${data.invoices.map(i => `
+                <tr>
+                  <td class="adm-muted">${escapeHtml(fmtDate(i.createdAt))}</td>
+                  <td><code>${escapeHtml(i.number || i.id)}</code></td>
+                  <td>${escapeHtml(usdCents(i.totalCents))}</td>
+                  <td>${invoicePill(i.status)}</td>
+                  <td>${safeUrl(i.hostedInvoiceUrl) ? `<a class="acct-inline-link" href="${escapeHtml(safeUrl(i.hostedInvoiceUrl))}" target="_blank" rel="noopener">View</a>` : ''}
+                      ${safeUrl(i.pdfUrl) ? ` <a class="acct-inline-link" href="${escapeHtml(safeUrl(i.pdfUrl))}" target="_blank" rel="noopener">PDF</a>` : ''}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      ` : `<p class="acct-card-note">No invoices yet.</p>`}
+    </section>
+
+    <section class="acct-card">
+      <h3 class="acct-card-h">${sub.cancelAtPeriodEnd ? 'Resume subscription' : 'Cancel subscription'}</h3>
+      <p class="acct-card-note">${sub.cancelAtPeriodEnd
+        ? `The plan is set to end on ${escapeHtml(fmtDate(sub.currentPeriodEnd))}. Resume to keep it running.`
+        : 'Canceling keeps everything running until the end of the paid period, then the plan ends. No partial refunds, no surprises.'}</p>
+      <div class="acct-actions-row">
+        ${sub.cancelAtPeriodEnd
+          ? `<button class="cta" type="button" data-acct-action="sub-resume">Resume</button>`
+          : `<button class="btn" type="button" data-acct-action="sub-cancel">Cancel at period end</button>`}
+      </div>
+      <p class="acct-error" id="acctCancelError" hidden></p>
+    </section>
+  `;
+}
+
+async function renderSubscription(main) {
+  main.innerHTML = `
+    <header class="acct-sec-head"><h2 class="acct-sec-title">Billing</h2></header>
+    <p class="acct-error" id="acctSubError" hidden></p>
+    <div id="acctSubBody"><p class="acct-loading">Loading your subscription…</p></div>
+  `;
+  const host = document.getElementById('acctSubBody');
+  subPricing = null;
+  subPmCtx = null;
+  try {
+    subData = await apiFetch(SUB_URL);
+  } catch (ex) {
+    host.innerHTML = '';
+    showError('acctSubError', friendlyError(ex, 'Could not load billing.'));
+    return;
+  }
+
+  if (!subData?.subscription) {
+    host.innerHTML = subNotSubscribedHtml(subData);
+    return;
+  }
+
+  host.innerHTML = subManagerHtml(subData);
+
+  // Change-plan surface: the same catalog-driven cards as the wizard,
+  // preloaded with what is billing today. Apply arms only on a real change.
+  const pricingHost = document.getElementById('acctPricing');
+  const applyBtn = document.getElementById('acctPlanApply');
+  const currentKeys = keysOfCurrent(subData);
+  const req = subData.requestedSubscription || {};
+  if (pricingHost) {
+    subPricing = mountPricingSelect(pricingHost, {
+      catalog: cachedPing()?.productCatalog || [],
+      initial: { subType: req.subType || null, cadence: req.cadence || 'monthly', addons: req.addons || {} },
+      onChange: (sel) => {
+        if (!applyBtn) return;
+        const dirty = sel.subType && !sameKeySets(new Set(sel.lookupKeys), currentKeys);
+        applyBtn.disabled = !dirty;
+      }
+    });
+    const sel = subPricing.get();
+    if (applyBtn) applyBtn.disabled = !sel.subType || sameKeySets(new Set(sel.lookupKeys), currentKeys);
+  }
+}
+
+async function applyPlanChange(btn) {
+  const sel = subPricing?.get();
+  if (!sel?.subType) return;
+  armConfirm(btn, `Confirm: ${usdCents(sel.totalCents)}${sel.cadence === 'annual' ? '/yr' : '/mo'} from today`, async () => {
+    btn.disabled = true;
+    const orig = btn.textContent;
+    btn.textContent = 'Applying…';
+    showError('acctPlanError', '');
+    try {
+      await apiFetch(SUB_UPDATE_URL, {
+        method: 'POST',
+        body: JSON.stringify({ subType: sel.subType, cadence: sel.cadence, addons: sel.addons })
+      });
+      const msg = document.getElementById('acctPlanMsg');
+      if (msg) { msg.textContent = 'Plan updated. The difference settles today; your tier follows the paid invoice.'; msg.hidden = false; }
+      setTimeout(() => { const m = document.getElementById('acctMain'); if (m && activeSection === 'subscription') renderSubscription(m); }, 1800);
+    } catch (ex) {
+      showError('acctPlanError', friendlyError(ex, 'Could not update the plan.'));
+      btn.disabled = false;
+      btn.textContent = orig;
+    }
+  });
+}
+
+async function startPmUpdate(btn) {
+  // In-flight guard: every extra click would mint another SetupIntent.
+  if (btn?.disabled || subPmCtx) return;
+  if (btn) btn.disabled = true;
+  showError('acctPmError', '');
+  const hostWrap = document.getElementById('acctPmHost');
+  const actions = document.getElementById('acctPmActions');
+  try {
+    const res = await apiFetch(PM_URL, { method: 'POST', body: '{}' });
+    const stripe = window.Stripe?.(window.STRIPE_PUBLISHABLE_KEY);
+    if (!stripe) throw new Error('Stripe is not available.');
+    const elements = stripe.elements({ clientSecret: res.clientSecret, appearance: { theme: 'night' } });
+    const el = elements.create('payment');
+    const mountAt = document.getElementById('acctPmElement');
+    mountAt.innerHTML = '';
+    el.mount(mountAt);
+    subPmCtx = { stripe, elements };
+    if (hostWrap) hostWrap.hidden = false;
+    if (actions) actions.hidden = true;
+  } catch (ex) {
+    showError('acctPmError', friendlyError(ex, 'Could not start the card update.'));
+    if (btn) btn.disabled = false;
+  }
+}
+
+async function savePmUpdate(btn) {
+  if (!subPmCtx) return;
+  btn.disabled = true;
+  const orig = btn.textContent;
+  btn.textContent = 'Saving…';
+  showError('acctPmError', '');
+  try {
+    const { error } = await subPmCtx.stripe.confirmSetup({
+      elements: subPmCtx.elements,
+      confirmParams: { return_url: `${location.origin}${location.pathname}?post=pm` },
+      redirect: 'if_required'
+    });
+    if (error) throw new Error(error.message || 'Card setup failed.');
+    const msg = document.getElementById('acctPmMsg');
+    if (msg) { msg.textContent = 'Card saved. It becomes the default within a few seconds.'; msg.hidden = false; }
+    subPmCtx = null;
+    setTimeout(() => { const m = document.getElementById('acctMain'); if (m && activeSection === 'subscription') renderSubscription(m); }, 2500);
+  } catch (ex) {
+    showError('acctPmError', ex?.message || 'Card setup failed.');
+    btn.disabled = false;
+    btn.textContent = orig;
+  }
+}
+
+function cancelPmUpdate() {
+  subPmCtx = null;
+  const hostWrap = document.getElementById('acctPmHost');
+  const actions = document.getElementById('acctPmActions');
+  if (hostWrap) hostWrap.hidden = true;
+  if (actions) {
+    actions.hidden = false;
+    const btn = actions.querySelector('[data-acct-action="pm-update"]');
+    if (btn) btn.disabled = false;
+  }
+}
+
+async function setCancelState(btn, action) {
+  const go = async () => {
+    btn.disabled = true;
+    showError('acctCancelError', '');
+    try {
+      await apiFetch(SUB_CANCEL_URL, { method: 'POST', body: JSON.stringify({ action }) });
+      const m = document.getElementById('acctMain');
+      if (m && activeSection === 'subscription') renderSubscription(m);
+    } catch (ex) {
+      showError('acctCancelError', friendlyError(ex, 'Could not update the subscription.'));
+      btn.disabled = false;
+    }
+  };
+  if (action === 'cancel') armConfirm(btn, 'Confirm: end at period close', go);
+  else go();
+}
+
+/* ---------- orders (the customer's own) ---------- */
+
+function orderStatusPill(status) {
+  const s = String(status || '').toUpperCase();
+  const good = ['PAID', 'LABEL_PURCHASED', 'SHIPPED', 'DELIVERED'].includes(s);
+  return `<span class="acct-tag ${good ? 'is-verified' : 'is-pending'}">${escapeHtml(s.replaceAll('_', ' ').toLowerCase() || 'pending')}</span>`;
+}
+
+function orderLinesLabel(lines) {
+  return (lines || []).map(l => `${l.label || l.productId}${(l.qty || 1) > 1 ? ` ×${l.qty}` : ''}`).join(', ');
+}
+
+async function renderOrders(main) {
+  main.innerHTML = `
+    <header class="acct-sec-head"><h2 class="acct-sec-title">Orders</h2></header>
+    <section class="acct-card">
+      <p class="acct-card-note">Orders placed while signed in. Guest orders live on their receipt email.</p>
+      <p class="acct-error" id="acctOrdersError" hidden></p>
+      <div id="acctOrdersBody"><p class="acct-loading">Loading…</p></div>
+    </section>
+  `;
+  const host = document.getElementById('acctOrdersBody');
+  try {
+    const data = await apiFetch(ORDERS_MINE_URL);
+    const orders = data.orders || [];
+    if (!orders.length) {
+      host.innerHTML = `<p class="acct-empty">No orders on this account yet.</p>`;
+      return;
+    }
+    host.innerHTML = `
+      <div class="adm-table-scroll">
+        <table class="adm-table">
+          <thead><tr><th>Date</th><th>Items</th><th>Total</th><th>Status</th><th>Tracking</th></tr></thead>
+          <tbody>
+            ${orders.map(o => `
+              <tr>
+                <td class="adm-muted">${escapeHtml(fmtDate(o.createdAt))}</td>
+                <td>${escapeHtml(orderLinesLabel(o.lines))}</td>
+                <td>${escapeHtml(usdCents(o.totalCents))}</td>
+                <td>${orderStatusPill(o.status)}</td>
+                <td>${o.trackingNumber
+                  ? (safeUrl(o.trackingUrl)
+                      ? `<a class="acct-inline-link" href="${escapeHtml(safeUrl(o.trackingUrl))}" target="_blank" rel="noopener">${escapeHtml(o.trackingNumber)}</a>`
+                      : `<code>${escapeHtml(o.trackingNumber)}</code>`)
+                  : '<span class="adm-muted">—</span>'}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+  } catch (ex) {
+    host.innerHTML = '';
+    showError('acctOrdersError', friendlyError(ex, 'Could not load your orders.'));
+  }
 }
 
 /* ---------- placeholder sections ---------- */
@@ -487,6 +874,18 @@ async function renderOverview(main) {
     <div class="adm-stat-grid" id="admOverviewGrid">
       ${statCard('…', 'Users')}${statCard('…', 'Active')}
       ${statCard('…', 'Codes available')}${statCard('…', 'Codes claimed')}
+    </div>
+    <div class="adm-card">
+      <h3 class="adm-card-h">Integrations</h3>
+      <p class="adm-note">Each sync converges the provider to the exact event list this backend
+      dispatches: nothing hand-maintained in a dashboard, nothing silently missing.</p>
+      <div class="adm-actions-row">
+        <button class="btn" type="button" data-adm-action="wh-stripe"
+          title="Creates or updates this lane's Stripe webhook endpoint to the canonical event list">Sync Stripe webhooks</button>
+        <button class="btn" type="button" data-adm-action="wh-shippo"
+          title="Registers this lane's Shippo webhooks (labels, transactions, tracking)">Sync Shippo webhooks</button>
+      </div>
+      <p class="muted" id="admIntegrationsResult" hidden></p>
     </div>
   `;
   const grid = main.querySelector('#admOverviewGrid');
@@ -604,6 +1003,118 @@ async function renderUsers(main) {
   } catch (ex) {
     document.getElementById('admUsersBody').innerHTML = '';
     showError('admUsersError', friendlyError(ex, 'Could not load users.'));
+  }
+}
+
+/* ---------- internal orders: the fulfillment desk ---------- */
+
+function admOrderRowHtml(o) {
+  const paid = String(o.status).toUpperCase() === 'PAID';
+  const physical = !!(o.shipCarrier || o.shippingCents);
+  return `
+    <tr>
+      <td class="adm-muted">${escapeHtml(fmtDate(o.createdAt))}</td>
+      <td class="adm-cell-email">${escapeHtml(o.email || '')}</td>
+      <td>${escapeHtml(orderLinesLabel(o.lines))}</td>
+      <td>${escapeHtml(usdCents(o.totalCents))}</td>
+      <td>${orderStatusPill(o.status)}${o.labelError ? `<div class="adm-muted" title="${escapeHtml(o.labelError)}">label error</div>` : ''}</td>
+      <td>${o.trackingNumber
+        ? (safeUrl(o.trackingUrl)
+            ? `<a class="acct-inline-link" href="${escapeHtml(safeUrl(o.trackingUrl))}" target="_blank" rel="noopener">${escapeHtml(o.trackingNumber)}</a>`
+            : `<code>${escapeHtml(o.trackingNumber)}</code>`)
+        : '<span class="adm-muted">—</span>'}</td>
+      <td>
+        ${safeUrl(o.labelUrl)
+          ? `<a class="btn adm-copy" href="${escapeHtml(safeUrl(o.labelUrl))}" target="_blank" rel="noopener" title="Opens the 4x6 label PDF for printing">Print label</a>`
+          : (paid && physical
+              ? `<button class="btn adm-copy" type="button" data-adm-action="order-label" data-order="${escapeHtml(o.orderId)}" title="Buys the shipping label from Shippo with the rate the customer paid for">Buy label</button>`
+              : '<span class="adm-muted">—</span>')}
+      </td>
+    </tr>
+  `;
+}
+
+async function renderAdminOrders(main) {
+  main.innerHTML = `
+    <header class="adm-sec-head">
+      <h2 class="adm-sec-title">Orders</h2>
+      <div class="adm-tabs" role="tablist">
+        <button class="adm-tab is-active" type="button" role="tab" aria-selected="true" data-adm-orders="">All</button>
+        <button class="adm-tab" type="button" role="tab" aria-selected="false" data-adm-orders="PAID">Paid</button>
+        <button class="adm-tab" type="button" role="tab" aria-selected="false" data-adm-orders="LABEL_PURCHASED">Labeled</button>
+        <button class="adm-tab" type="button" role="tab" aria-selected="false" data-adm-orders="SHIPPED">Shipped</button>
+      </div>
+    </header>
+    <p class="adm-error" id="admOrdersError" hidden></p>
+    <div id="admOrdersBody"><p class="adm-note">Loading…</p></div>
+  `;
+  loadAdminOrders('');
+}
+
+async function loadAdminOrders(status) {
+  const host = document.getElementById('admOrdersBody');
+  if (!host) return;
+  showError('admOrdersError', '');
+  host.innerHTML = `<p class="adm-note">Loading…</p>`;
+  try {
+    const q = status ? `?status=${encodeURIComponent(status)}&limit=200` : '?limit=200';
+    const data = await apiFetch(`${ADMIN_ORDERS_URL}${q}`);
+    const orders = data.orders || [];
+    if (!orders.length) { host.innerHTML = `<p class="adm-empty">No orders in this view.</p>`; return; }
+    host.innerHTML = `
+      <div class="adm-table-scroll">
+        <table class="adm-table">
+          <thead><tr><th>Date</th><th>Customer</th><th>Items</th><th>Total</th><th>Status</th><th>Tracking</th><th>Label</th></tr></thead>
+          <tbody>${orders.map(admOrderRowHtml).join('')}</tbody>
+        </table>
+      </div>
+    `;
+  } catch (ex) {
+    host.innerHTML = '';
+    showError('admOrdersError', friendlyError(ex, 'Could not load orders.'));
+  }
+}
+
+async function buyOrderLabel(btn) {
+  const orderId = btn.dataset.order;
+  if (!orderId) return;
+  armConfirm(btn, 'Confirm: buy label', async () => {
+    btn.disabled = true;
+    const orig = btn.textContent;
+    btn.textContent = 'Buying…';
+    showError('admOrdersError', '');
+    try {
+      const res = await apiFetch(ADMIN_ORDER_LABEL_URL, { method: 'POST', body: JSON.stringify({ orderId }) });
+      const lu = safeUrl(res.labelUrl); if (lu) window.open(lu, '_blank', 'noopener');
+      const active = document.querySelector('[data-adm-orders].is-active')?.dataset.admOrders || '';
+      loadAdminOrders(active);
+    } catch (ex) {
+      showError('admOrdersError', friendlyError(ex, 'Label purchase failed.'));
+      btn.disabled = false;
+      btn.textContent = orig;
+    }
+  });
+}
+
+async function runWebhookSync(btn, url, label) {
+  btn.disabled = true;
+  const orig = btn.textContent;
+  btn.textContent = 'Syncing…';
+  const out = document.getElementById('admIntegrationsResult');
+  try {
+    const res = await apiFetch(url, { method: 'POST', body: '{}' });
+    let text = `${label}: ${res.action || 'ok'}`;
+    if (res.action === 'created' && res.secret) {
+      text += `. NEW SIGNING SECRET (shown once, set it as the app setting now): ${res.secret}`;
+    }
+    if (Array.isArray(res.created) && res.created.length) text += `. Registered: ${res.created.join(', ')}`;
+    if (Array.isArray(res.missingBefore) && res.missingBefore.length) text += `. Added events: ${res.missingBefore.join(', ')}`;
+    if (out) { out.textContent = text; out.hidden = false; }
+  } catch (ex) {
+    if (out) { out.textContent = `${label}: ${friendlyError(ex, 'sync failed')}`; out.hidden = false; }
+  } finally {
+    btn.disabled = false;
+    btn.textContent = orig;
   }
 }
 
@@ -900,11 +1411,12 @@ function showSection(id) {
   if (!main) return;
   if (id === 'profile')      return void renderProfile(main);
   if (id === 'products')     return void renderProducts(main);
-  if (id === 'subscription') return renderSubscription(main);
-  if (id === 'orders')       return renderSoon(main, 'Orders', 'Your order history and tracking will appear here once checkout is live.');
+  if (id === 'subscription') return void renderSubscription(main);
+  if (id === 'orders')       return void renderOrders(main);
   if (id === 'builds')       return renderSoon(main, 'My Builds', 'Builds you publish to the board will be managed here: your listings and your credit.');
   if (id === 'overview')     return void renderOverview(main);
   if (id === 'users')        return void renderUsers(main);
+  if (id === 'shiporders')   return void renderAdminOrders(main);
   if (id === 'warranty')     return void renderWarranty(main);
   if (id === 'inventory')    return renderSoon(main, 'Inventory', 'Physical stock levels for hardware, cases, and screwdrivers will live here.');
   if (id === 'catalog')      return void renderCatalog(main);
@@ -930,6 +1442,12 @@ function bindOnce() {
       const a = act.dataset.acctAction;
       if (a === 'logout') return void window.logout?.();
       if (a === 'subscribe') return void (window.openWizardFromMenu?.() || window.setAppMode?.('wizard'));
+      if (a === 'sub-apply') return void applyPlanChange(act);
+      if (a === 'sub-cancel') return void setCancelState(act, 'cancel');
+      if (a === 'sub-resume') return void setCancelState(act, 'resume');
+      if (a === 'pm-update') return void startPmUpdate(act);
+      if (a === 'pm-save') return void savePmUpdate(act);
+      if (a === 'pm-cancel') return void cancelPmUpdate();
       if (a === 'add-alias') return void addAlias();
       if (a === 'make-primary') return void makePrimary(act.dataset.alias);
       if (a === 'remove-alias') return void removeAlias(act.dataset.alias);
@@ -954,6 +1472,21 @@ function bindOnce() {
       if (admAct.dataset.admAction === 'catalog-import') catalogImport(admAct);
       if (admAct.dataset.admAction === 'lane-live') switchLane('live');
       if (admAct.dataset.admAction === 'lane-dev') switchLane('dev');
+      if (admAct.dataset.admAction === 'order-label') buyOrderLabel(admAct);
+      if (admAct.dataset.admAction === 'wh-stripe') runWebhookSync(admAct, STRIPE_WH_SYNC_URL, 'Stripe');
+      if (admAct.dataset.admAction === 'wh-shippo') runWebhookSync(admAct, SHIPPO_WH_SYNC_URL, 'Shippo');
+      return;
+    }
+
+    const ordersTab = e.target.closest('[data-adm-orders]');
+    if (ordersTab) {
+      e.preventDefault();
+      document.querySelectorAll('[data-adm-orders]').forEach(t => {
+        const on = t === ordersTab;
+        t.classList.toggle('is-active', on);
+        t.setAttribute('aria-selected', on ? 'true' : 'false');
+      });
+      loadAdminOrders(ordersTab.dataset.admOrders || '');
       return;
     }
 
@@ -982,9 +1515,12 @@ function bindOnce() {
  *  on Overview; the warranty success screen lands on My Products). */
 export function presetAccountSection(id) {
   const all = [...ACCOUNT_SECTIONS, ...INTERNAL_SECTIONS];
-  if (all.some(s => s.id === id)) {
-    if (mounted) showSection(id); else activeSection = id;
-  }
+  if (!all.some(s => s.id === id)) return;
+  // Render immediately only when the panel is actually on screen. When the
+  // caller is about to setAppMode('account'), onAccountEnter renders once;
+  // rendering here too double-fetched every section that loads data.
+  const visible = mounted && !document.getElementById('accountView')?.classList?.contains('hidden');
+  if (visible) showSection(id); else activeSection = id;
 }
 
 export function initAccountView() {
