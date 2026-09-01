@@ -161,23 +161,14 @@
 .pm-spec-row dt { color: var(--brand-600, #21bca5); font-weight: 800; font-size: .85rem; }
 .pm-spec-row dd { margin: 0; color: var(--muted, #c6d0f0a6); font-size: .9rem; line-height: 1.5; }
 
-/* ---- What's in the box (now inside the main .pm-info column) ---- */
-.pm-kit {
-  margin-top: 6px;
-  padding-top: 16px;
-  border-top: 1px solid var(--border, rgba(255, 255, 255, .10));
-}
-.pm-kit-h {
-  margin: 0 0 6px; font-size: .78rem; font-weight: 800;
-  letter-spacing: .18em; text-transform: uppercase;
-  color: var(--brand-600, #21bca5);
-}
+/* ---- What's in the box (full-width section below the gallery/info grid,
+        alongside Specs; living inside the info column left a column-tall
+        hole under the gallery) ---- */
+.pm-kit { margin-top: 6px; }
 .pm-kit-intro { margin: 0 0 12px; color: var(--muted, #c6d0f0a6); line-height: 1.55; font-size: .9rem; }
 .pm-kit-list {
   margin: 0; padding: 0; list-style: none !important; counter-reset: kit;
-  /* Two columns on desktop so the kit fills the info column instead of
-     stacking into a tall strip with dead space beside it. */
-  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px;
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px;
 }
 /* An odd count leaves a lone card in the last row: let it own the whole row.
    With five items today that is the Warranty and Registration Card; a sixth

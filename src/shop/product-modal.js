@@ -351,23 +351,23 @@ function bodyHtml(p) {
         ${priceBlockHtml(p)}
 
         ${actionsHtml(p)}
-
-        ${p.kit?.items?.length ? `
-          <section class="pm-kit">
-            <h3 class="pm-kit-h">${escapeHtml(p.kit.title || "What's in the box")}</h3>
-            ${p.kit.intro ? `<p class="pm-kit-intro">${escapeHtml(p.kit.intro)}</p>` : ''}
-            <ol class="pm-kit-list">
-              ${p.kit.items.map(it => `
-                <li class="pm-kit-item">
-                  <span class="pm-kit-title">${escapeHtml(it.title)}</span>
-                  <span class="pm-kit-body">${escapeHtml(it.body)}</span>
-                </li>
-              `).join('')}
-            </ol>
-          </section>
-        ` : ''}
       </div>
     </div>
+
+    ${p.kit?.items?.length ? `
+      <section class="pm-kit">
+        <h3 class="pm-h3">${escapeHtml(p.kit.title || "What's in the box")}</h3>
+        ${p.kit.intro ? `<p class="pm-kit-intro">${escapeHtml(p.kit.intro)}</p>` : ''}
+        <ol class="pm-kit-list">
+          ${p.kit.items.map(it => `
+            <li class="pm-kit-item">
+              <span class="pm-kit-title">${escapeHtml(it.title)}</span>
+              <span class="pm-kit-body">${escapeHtml(it.body)}</span>
+            </li>
+          `).join('')}
+        </ol>
+      </section>
+    ` : ''}
 
     ${p.specs?.length ? `
       <section class="pm-specs">

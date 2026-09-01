@@ -902,7 +902,7 @@ function showSection(id) {
   if (id === 'products')     return void renderProducts(main);
   if (id === 'subscription') return renderSubscription(main);
   if (id === 'orders')       return renderSoon(main, 'Orders', 'Your order history and tracking will appear here once checkout is live.');
-  if (id === 'builds')       return renderSoon(main, 'My Builds', 'Builds you publish to the community wall will be managed here.');
+  if (id === 'builds')       return renderSoon(main, 'My Builds', 'Builds you publish to the board will be managed here: your listings and your credit.');
   if (id === 'overview')     return void renderOverview(main);
   if (id === 'users')        return void renderUsers(main);
   if (id === 'warranty')     return void renderWarranty(main);
