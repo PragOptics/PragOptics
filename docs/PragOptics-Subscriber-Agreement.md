@@ -1,6 +1,6 @@
 # PragOptics™ Platform Agreement
 
-**Version:** 2026-04  
+**Version:** 2026-09  
 **Effective Date:** Upon electronic acceptance (“I Agree”)
 
 ---
@@ -194,6 +194,14 @@ Usage beyond included thresholds may result in overages, including but not limit
 Overages may be billed directly to the Participant or allocated to a controlling account, depending on role configuration and subscription structure.
 
 BI may apply administrative surcharges or pass-through costs as disclosed at billing time.
+
+### 5.3 Service Allowances
+
+Each subscription tier includes monthly usage allowances (for example: API calls, workflow executions, storage, and custom domains) as published on the plan selection surface and shown in the account's **Billing** section. Allowances reset each calendar month. Active add-ons raise the applicable allowance for as long as they remain on the subscription.
+
+Usage beyond an included allowance, plus any published grace margin, may result in metered platform functions being limited until capacity is added or the month resets. **Account access, billing management, and warranty services are never restricted by usage-based limits.**
+
+Allowance values displayed in documentation are informational; the values in effect for a Participant are those shown in the account's Billing section, and may be adjusted with reasonable notice consistent with Section 11.
 
 ---
 

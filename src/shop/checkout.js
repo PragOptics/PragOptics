@@ -223,7 +223,7 @@ function detailsHtml(ls) {
                    inputmode="numeric" placeholder="77001" value="${escapeHtml(state.address.zip)}">
           </div>
         </div>
-        <p class="muted co-note">US shipping for now. International is coming; email support@bridgesindust.com and we will quote it by hand.</p>
+        <p class="muted co-note">US shipping for now. International is coming; email support@bridgesindust.com and we will quote it by hand. <a href="#" data-legal="shipping">Shipping policy</a></p>
       ` : ''}
 
       ${errorHtml()}
