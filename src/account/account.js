@@ -610,14 +610,14 @@ function subManagerHtml(data) {
       <h3 class="acct-card-h">Invoices</h3>
       ${(data.invoices || []).length ? `
         <div class="adm-table-scroll">
-          <table class="adm-table">
-            <thead><tr><th>Date</th><th>Number</th><th>Total</th><th>Status</th><th></th></tr></thead>
+          <table class="adm-table adm-table--wrap">
+            <thead><tr><th>Date</th><th>Number</th><th class="adm-num">Total</th><th>Status</th><th></th></tr></thead>
             <tbody>
               ${data.invoices.map(i => `
                 <tr>
                   <td class="adm-muted">${escapeHtml(fmtDate(i.createdAt))}</td>
                   <td><code>${escapeHtml(i.number || i.id)}</code></td>
-                  <td>${escapeHtml(usdCents(i.totalCents))}</td>
+                  <td class="adm-num">${escapeHtml(usdCents(i.totalCents))}</td>
                   <td>${invoicePill(i.status)}</td>
                   <td>${safeUrl(i.hostedInvoiceUrl) ? `<a class="acct-inline-link" href="${escapeHtml(safeUrl(i.hostedInvoiceUrl))}" target="_blank" rel="noopener">View</a>` : ''}
                       ${safeUrl(i.pdfUrl) ? ` <a class="acct-inline-link" href="${escapeHtml(safeUrl(i.pdfUrl))}" target="_blank" rel="noopener">PDF</a>` : ''}</td>
@@ -796,7 +796,8 @@ async function setCancelState(btn, action) {
 function orderStatusPill(status) {
   const s = String(status || '').toUpperCase();
   const good = ['PAID', 'LABEL_PURCHASED', 'SHIPPED', 'DELIVERED'].includes(s);
-  return `<span class="acct-tag ${good ? 'is-verified' : 'is-pending'}">${escapeHtml(s.replaceAll('_', ' ').toLowerCase() || 'pending')}</span>`;
+  const bad = ['REFUNDED', 'PARTIALLY_REFUNDED', 'PAYMENT_FAILED', 'RETURNED'].includes(s);
+  return `<span class="acct-tag ${bad ? 'is-bad' : good ? 'is-verified' : 'is-pending'}">${escapeHtml(s.replaceAll('_', ' ').toLowerCase() || 'pending')}</span>`;
 }
 
 function orderLinesLabel(lines) {
@@ -822,14 +823,14 @@ async function renderOrders(main) {
     }
     host.innerHTML = `
       <div class="adm-table-scroll">
-        <table class="adm-table">
-          <thead><tr><th>Date</th><th>Items</th><th>Total</th><th>Status</th><th>Tracking</th></tr></thead>
+        <table class="adm-table adm-table--wrap">
+          <thead><tr><th>Date</th><th>Items</th><th class="adm-num">Total</th><th>Status</th><th>Tracking</th></tr></thead>
           <tbody>
             ${orders.map(o => `
               <tr>
                 <td class="adm-muted">${escapeHtml(fmtDate(o.createdAt))}</td>
                 <td>${escapeHtml(orderLinesLabel(o.lines))}</td>
-                <td>${escapeHtml(usdCents(o.totalCents))}</td>
+                <td class="adm-num">${escapeHtml(usdCents(o.totalCents))}</td>
                 <td>${orderStatusPill(o.status)}</td>
                 <td>${o.trackingNumber
                   ? (safeUrl(o.trackingUrl)
@@ -1022,7 +1023,7 @@ function admOrderRowHtml(o) {
       <td class="adm-cell-email">${escapeHtml(o.email || '')}</td>
       <td>${escapeHtml(orderLinesLabel(o.lines))}</td>
       <td class="adm-num">${escapeHtml(usdCents(o.totalCents))}</td>
-      <td>${orderStatusPill(o.status)}${o.labelError ? `<div class="adm-muted" title="${escapeHtml(o.labelError)}">label error</div>` : ''}</td>
+      <td>${orderStatusPill(o.status)}${o.refundedCents ? `<div class="adm-muted adm-money-neg">-${escapeHtml(usdCents(o.refundedCents))}</div>` : ''}${o.labelError ? `<div class="adm-muted" title="${escapeHtml(o.labelError)}">label error</div>` : ''}</td>
       <td>${o.trackingNumber
         ? (safeUrl(o.trackingUrl)
             ? `<a class="acct-inline-link" href="${escapeHtml(safeUrl(o.trackingUrl))}" target="_blank" rel="noopener">${escapeHtml(o.trackingNumber)}</a>`
@@ -1123,6 +1124,28 @@ async function renderPayments(main) {
         ${statCard(d.livemode === false ? 'TEST' : d.livemode === true ? 'LIVE' : '—', 'Stripe mode',
           '', d.livemode === false ? 'amber' : d.livemode === true ? 'teal' : '')}
       </div>
+      ${d.planCounts && Object.keys(d.planCounts).length ? `
+        <div class="adm-card">
+          <h3 class="adm-card-h">Subscriptions in force</h3>
+          <div class="adm-table-scroll">
+            <table class="adm-table">
+              <thead><tr><th>Price</th><th class="adm-num">Subscribers</th><th class="adm-num">Monthly run rate</th></tr></thead>
+              <tbody>
+                ${Object.entries(d.planCounts).map(([lk, v]) => `
+                  <tr>
+                    <td><code>${escapeHtml(lk)}</code></td>
+                    <td class="adm-num">${escapeHtml(String(v.count))}</td>
+                    <td class="adm-num adm-money-pos">${escapeHtml(usdCents(v.runRateCents))}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+          <p class="adm-note">Attach counts against the base plans show whether each add-on earns its
+          keep. Per-account usage metering (what people actually consume against their limits) is the
+          next build and needs its own counters.</p>
+        </div>
+      ` : ''}
       <div class="adm-card">
         <h3 class="adm-card-h">Recent charges</h3>
         ${(d.charges || []).length ? `
@@ -1133,8 +1156,8 @@ async function renderPayments(main) {
                 ${d.charges.map(c => `
                   <tr>
                     <td class="adm-muted">${escapeHtml(fmtDate(c.createdAt))}</td>
-                    <td class="adm-num">${escapeHtml(usdCents(c.amountCents))}</td>
-                    <td><span class="adm-pill ${c.status === 'succeeded' && !c.refunded ? 'is-available' : 'is-claimed'}">${escapeHtml(c.refunded ? 'refunded' : c.status)}</span></td>
+                    <td class="adm-num ${c.refunded ? 'adm-money-neg' : c.status === 'succeeded' ? 'adm-money-pos' : ''}">${c.refunded ? '-' : ''}${escapeHtml(usdCents(c.amountCents))}</td>
+                    <td><span class="adm-pill ${c.refunded ? 'is-bad' : c.status === 'succeeded' ? 'is-available' : 'is-claimed'}">${escapeHtml(c.refunded ? 'refunded' : c.status)}</span></td>
                     <td class="adm-cell-email">${escapeHtml(c.email || '—')}</td>
                     <td>${safeUrl(c.receiptUrl) ? `<a class="acct-inline-link" href="${escapeHtml(safeUrl(c.receiptUrl))}" target="_blank" rel="noopener">Receipt</a>` : ''}</td>
                   </tr>
@@ -1155,7 +1178,7 @@ async function renderPayments(main) {
                   <tr>
                     <td class="adm-muted">${escapeHtml(fmtDate(p.createdAt))}</td>
                     <td class="adm-muted">${escapeHtml(fmtDate(p.arrivalAt))}</td>
-                    <td class="adm-num">${escapeHtml(usdCents(p.amountCents))}</td>
+                    <td class="adm-num ${p.status === 'paid' ? 'adm-money-pos' : ''}">${escapeHtml(usdCents(p.amountCents))}</td>
                     <td><span class="adm-pill ${p.status === 'paid' ? 'is-available' : 'is-claimed'}">${escapeHtml(p.status)}</span></td>
                   </tr>
                 `).join('')}
