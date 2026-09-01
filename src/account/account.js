@@ -527,11 +527,13 @@ async function loadUsageCard() {
   try {
     const d = await apiFetch(USAGE_MINE_URL);
     const activeAddons = Object.entries(d.addons || {}).filter(([, on]) => on).map(([k]) => k);
+    const over = Object.entries(d.capState || {}).filter(([, s]) => s === 'grace' || s === 'blocked');
     host.innerHTML = `
-      <section class="acct-card">
+      <section class="acct-card ${over.length ? 'acct-card-warn' : ''}">
         <h3 class="acct-card-h">Usage this month</h3>
         <p class="acct-card-note">${escapeHtml(d.month)} on the ${escapeHtml(d.tier)} plan${activeAddons.length
-          ? `, limits raised by ${activeAddons.length} add-on${activeAddons.length === 1 ? '' : 's'}` : ''}.</p>
+          ? `, limits raised by ${activeAddons.length} add-on${activeAddons.length === 1 ? '' : 's'}` : ''}.${over.length
+          ? ` <span class="acct-tag is-bad">past allowance</span> Add capacity in Plan and add-ons above; nothing you rely on is cut off.` : ''}</p>
         ${meterRowHtml('API calls', d.usage.apiCalls, d.limits.apiCalls)}
         ${meterRowHtml('Flow runs', d.usage.flowRuns, d.limits.flowRuns)}
         ${meterRowHtml('Storage', d.usage.storageBytes, d.limits.storageBytes, gbFmt)}
