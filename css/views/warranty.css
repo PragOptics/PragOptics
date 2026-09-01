@@ -39,10 +39,14 @@
 .wr-step-code { text-align: center; gap: 14px; margin-top: 6px; }
 .wr-thanks { display: flex; flex-direction: column; gap: 10px; margin-bottom: 4px; }
 .wr-thanks-big {
-  font-size: 2.4rem; font-weight: 900; line-height: 1.08; letter-spacing: -.01em;
+  font-size: 2.4rem; font-weight: 900; line-height: 1.16; letter-spacing: -.01em;
   background: linear-gradient(120deg, #fff 8%, var(--brand-600, #21bca5) 55%, #bf7dff 96%);
   -webkit-background-clip: text; background-clip: text; color: transparent;
   text-wrap: balance;
+  /* Gradient-clipped text only paints inside its line box: the old 1.08
+     line-height cut the descenders clean off, which read as the heading
+     being cropped by the block below it. */
+  padding-bottom: .06em;
 }
 .wr-thanks-sub { margin: 0 auto; max-width: 52ch; color: var(--muted, #c6d0f0a6); line-height: 1.6; }
 .wr-thanks-sub strong, .wr-thanks-sub code { color: var(--ink, #dcdbf0e1); }

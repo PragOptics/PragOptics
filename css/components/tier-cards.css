@@ -17,11 +17,30 @@
 }
 .tc-sub { margin: 0; font-size: .88rem; }
 
+/* Horizontal card gallery: the tiers stand side by side in one row, and a
+   narrow container scrolls the row instead of stacking the cards into a
+   vertical pile. */
 .tc-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(215px, 250px);
   gap: 14px;
   align-items: stretch;
+  /* `safe` matters: plain center + overflow clips the row's leading edge
+     unreachably when the gallery is wider than the container. */
+  justify-content: safe center;
+  overflow-x: auto;
+  padding: 12px 4px 14px;
+  scroll-snap-type: x proximity;
+  scrollbar-width: thin;
+}
+.tc-grid > .tc-card { scroll-snap-align: start; }
+.tc-grid::-webkit-scrollbar { height: 8px; }
+.tc-grid::-webkit-scrollbar-track { background: rgba(255,255,255,.04); border-radius: var(--radius-pill); }
+.tc-grid::-webkit-scrollbar-thumb {
+  border-radius: var(--radius-pill);
+  background: linear-gradient(90deg, rgba(255,255,255,.26), rgba(255,255,255,.12));
+  border: 2px solid rgba(10,14,24,.65); background-clip: padding-box;
 }
 
 .tc-card {

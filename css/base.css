@@ -9,6 +9,14 @@ html,body{
   background:transparent !important;
 }
 
+/* Reserve the scrollbar's lane even when the page is short. Switching from a
+   tall surface (landing) to a short one (console, right after sign-in) used
+   to drop the scrollbar, widen the viewport by its width, and visibly shove
+   the whole UI sideways mid-transition. */
+html{
+  scrollbar-gutter: stable;
+}
+
 a{
   color:inherit;
   text-decoration:none;

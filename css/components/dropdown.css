@@ -53,7 +53,7 @@
   transform: translateY(-2px);
 }
 
-.dropdown-menu{
+.dev-nav .dropdown-menu{
   display:none;
   opacity:0;
   transform:translateY(-6px);
@@ -91,7 +91,11 @@
    Same DOM, hero-card layout: each .menu-section starts its own vertical
    column, so the sections sit side by side under one wide glass panel. */
 @media (min-width: 800px){
-  .dropdown-menu{
+  /* .dev-nav prefix matters: the `.dev-nav ul { padding: 0 }` reset above is
+     MORE specific than a bare .dropdown-menu, so this panel's padding never
+     actually applied - the columns ran flush against the border and the
+     fourth column's hover highlights poked past the container edge. */
+  .dev-nav .dropdown-menu{
     /* Four sections (Platform, Resources, Shop, Account), one column each via
        break-before below. The old Internal admin section is gone: everything
        internal now lives inside the account panel, so the count is fixed.
