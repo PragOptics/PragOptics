@@ -865,8 +865,8 @@ function renderSoon(main, title, line) {
 
 /* ---------- overview ---------- */
 
-function statCard(n, label, hint) {
-  return `<div class="adm-stat-card">
+function statCard(n, label, hint, accent) {
+  return `<div class="adm-stat-card${accent ? ` adm-stat-${escapeHtml(accent)}` : ''}">
       <span class="adm-stat-n">${escapeHtml(String(n))}</span>
       <span class="adm-stat-l">${escapeHtml(label)}</span>
       ${hint ? `<span class="adm-stat-h">${escapeHtml(hint)}</span>` : ''}
@@ -1021,7 +1021,7 @@ function admOrderRowHtml(o) {
       <td class="adm-muted">${escapeHtml(fmtDate(o.createdAt))}</td>
       <td class="adm-cell-email">${escapeHtml(o.email || '')}</td>
       <td>${escapeHtml(orderLinesLabel(o.lines))}</td>
-      <td>${escapeHtml(usdCents(o.totalCents))}</td>
+      <td class="adm-num">${escapeHtml(usdCents(o.totalCents))}</td>
       <td>${orderStatusPill(o.status)}${o.labelError ? `<div class="adm-muted" title="${escapeHtml(o.labelError)}">label error</div>` : ''}</td>
       <td>${o.trackingNumber
         ? (safeUrl(o.trackingUrl)
@@ -1120,19 +1120,20 @@ async function renderPayments(main) {
         ${statCard(money(d.balance?.available), 'Available balance')}
         ${statCard(money(d.balance?.pending), 'Pending balance')}
         ${statCard(d.activeSubscriptions ?? '—', 'Active subscriptions')}
-        ${statCard(d.livemode === false ? 'TEST' : d.livemode === true ? 'LIVE' : '—', 'Stripe mode')}
+        ${statCard(d.livemode === false ? 'TEST' : d.livemode === true ? 'LIVE' : '—', 'Stripe mode',
+          '', d.livemode === false ? 'amber' : d.livemode === true ? 'teal' : '')}
       </div>
       <div class="adm-card">
         <h3 class="adm-card-h">Recent charges</h3>
         ${(d.charges || []).length ? `
           <div class="adm-table-scroll">
             <table class="adm-table">
-              <thead><tr><th>Date</th><th>Amount</th><th>Status</th><th>Customer</th><th></th></tr></thead>
+              <thead><tr><th>Date</th><th class="adm-num">Amount</th><th>Status</th><th>Customer</th><th></th></tr></thead>
               <tbody>
                 ${d.charges.map(c => `
                   <tr>
                     <td class="adm-muted">${escapeHtml(fmtDate(c.createdAt))}</td>
-                    <td>${escapeHtml(usdCents(c.amountCents))}</td>
+                    <td class="adm-num">${escapeHtml(usdCents(c.amountCents))}</td>
                     <td><span class="adm-pill ${c.status === 'succeeded' && !c.refunded ? 'is-available' : 'is-claimed'}">${escapeHtml(c.refunded ? 'refunded' : c.status)}</span></td>
                     <td class="adm-cell-email">${escapeHtml(c.email || '—')}</td>
                     <td>${safeUrl(c.receiptUrl) ? `<a class="acct-inline-link" href="${escapeHtml(safeUrl(c.receiptUrl))}" target="_blank" rel="noopener">Receipt</a>` : ''}</td>
@@ -1148,13 +1149,13 @@ async function renderPayments(main) {
         ${(d.payouts || []).length ? `
           <div class="adm-table-scroll">
             <table class="adm-table">
-              <thead><tr><th>Created</th><th>Arrives</th><th>Amount</th><th>Status</th></tr></thead>
+              <thead><tr><th>Created</th><th>Arrives</th><th class="adm-num">Amount</th><th>Status</th></tr></thead>
               <tbody>
                 ${d.payouts.map(p => `
                   <tr>
                     <td class="adm-muted">${escapeHtml(fmtDate(p.createdAt))}</td>
                     <td class="adm-muted">${escapeHtml(fmtDate(p.arrivalAt))}</td>
-                    <td>${escapeHtml(usdCents(p.amountCents))}</td>
+                    <td class="adm-num">${escapeHtml(usdCents(p.amountCents))}</td>
                     <td><span class="adm-pill ${p.status === 'paid' ? 'is-available' : 'is-claimed'}">${escapeHtml(p.status)}</span></td>
                   </tr>
                 `).join('')}
