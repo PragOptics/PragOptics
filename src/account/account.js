@@ -16,6 +16,9 @@ import { switchLane, isPlatformOperator } from '../runtime/lane.js';
 import { mountPricingSelect } from '../components/pricingCards.js';
 
 const ALIASES_URL = `${PRAG_API_BASE}/auth/aliases`;
+const PHONE_START_URL = `${PRAG_API_BASE}/auth/phone/start`;
+const PHONE_CONFIRM_URL = `${PRAG_API_BASE}/auth/phone/confirm`;
+const PHONE_REMOVE_URL = `${PRAG_API_BASE}/auth/phone/remove`;
 const MINE_URL = `${PRAG_API_BASE}/warranty/mine`;
 const REQUEST_CODE_URL = `${PRAG_API_BASE}/auth/request-code`;
 
@@ -244,9 +247,75 @@ async function renderProfile(main) {
       </div>
       <p class="acct-error" id="acctProfileError" hidden></p>
     </section>
+    <section class="acct-card">
+      <h3 class="acct-card-h">Mobile number</h3>
+      <p class="acct-card-note">Used for sign-in codes when you ask for them by text. A number counts only once you confirm a code sent to it.</p>
+      <div class="acct-alias-list" id="acctPhoneState"><span class="acct-loading">Loading…</span></div>
+      <div class="acct-add-row">
+        <input class="acct-input" id="acctNewPhone" type="tel" autocomplete="tel" placeholder="+1 555 123 4567" aria-label="Mobile number">
+        <button class="cta btn-sm" type="button" data-acct-action="phone-start">Send code</button>
+      </div>
+      <p class="acct-error" id="acctPhoneError" hidden></p>
+    </section>
     ${platformLaneCardHtml()}
   `;
   await loadAliases();
+  await loadPhone();
+}
+
+/* ---------- mobile number ---------- */
+
+function phoneStateHtml({ phone, phoneVerified }) {
+  if (!phone) return `<span class="acct-card-note">No mobile number on this account.</span>`;
+  return `
+    <div class="acct-alias">
+      <div class="acct-alias-main">
+        <span class="acct-alias-email">${escapeHtml(phone)}</span>
+        <span class="acct-alias-tags">
+          ${phoneVerified
+            ? '<span class="acct-tag is-verified">Verified</span>'
+            : '<span class="acct-tag is-pending">Unverified</span>'}
+        </span>
+      </div>
+      <div class="acct-alias-actions">
+        <button class="btn btn-sm btn-ghost" type="button" data-acct-action="phone-remove">Remove</button>
+      </div>
+    </div>
+  `;
+}
+
+async function loadPhone() {
+  const host = document.getElementById('acctPhoneState');
+  if (!host) return;
+  try {
+    const data = await apiFetch(ALIASES_URL);
+    host.innerHTML = phoneStateHtml({ phone: data.phone || '', phoneVerified: data.phoneVerified === true });
+  } catch {
+    host.innerHTML = `<span class="acct-card-note">Could not load the number.</span>`;
+  }
+}
+
+async function startPhone() {
+  const input = document.getElementById('acctNewPhone');
+  const phone = (input?.value || '').trim();
+  showError('acctPhoneError', '');
+  if (!phone) { showError('acctPhoneError', 'Enter a mobile number.'); return; }
+  try {
+    const started = await apiFetch(PHONE_START_URL, { method: 'POST', body: JSON.stringify({ phone }) });
+    const su = await stepUp({ title: 'Confirm your number', note: `Enter the code we texted to ${phone}.`, needCode: true });
+    if (!su) return;
+    await apiFetch(PHONE_CONFIRM_URL, { method: 'POST', body: JSON.stringify({ requestId: started.requestId, code: su.code }) });
+    if (input) input.value = '';
+    await loadPhone();
+  } catch (ex) { showError('acctPhoneError', friendlyError(ex, 'Could not verify that number.')); }
+}
+
+async function removePhone() {
+  showError('acctPhoneError', '');
+  try {
+    await apiFetch(PHONE_REMOVE_URL, { method: 'POST', body: JSON.stringify({}) });
+    await loadPhone();
+  } catch (ex) { showError('acctPhoneError', friendlyError(ex, 'Could not remove that number.')); }
 }
 
 /* ---------- platform lane (operators only) ---------- */
@@ -1713,6 +1782,8 @@ function bindOnce() {
       if (a === 'pm-update') return void startPmUpdate(act);
       if (a === 'pm-save') return void savePmUpdate(act);
       if (a === 'pm-cancel') return void cancelPmUpdate();
+      if (a === 'phone-start') return void startPhone();
+      if (a === 'phone-remove') return void removePhone();
       if (a === 'add-alias') return void addAlias();
       if (a === 'make-primary') return void makePrimary(act.dataset.alias);
       if (a === 'remove-alias') return void removeAlias(act.dataset.alias);
