@@ -393,9 +393,14 @@ function stepUp({ title, note, needCode }) {
     if (!host) { host = document.createElement('div'); host.id = 'acctStepUp'; host.className = 'acct-modal-host'; document.body.appendChild(host); }
     host.innerHTML = stepUpHtml({ title, note, needCode });
     host.hidden = false;
-    const close = (val) => { host.hidden = true; host.innerHTML = ''; resolve(val); };
-    host.querySelector('#suPass')?.focus();
-    host.addEventListener('click', (e) => {
+    // The host element outlives every prompt, so the listener MUST come off
+    // again. It used to be added on each call and never removed: by the second
+    // step-up two handlers were bound, the stale one ran first and cleared
+    // host.innerHTML, and the live one then read a null #suPass and returned
+    // without resolving. Its promise never settled, so `await stepUp(...)`
+    // hung and the caller never sent its request - silently, with no error.
+    // One prompt per session worked; every account change after it did nothing.
+    function onClick(e) {
       if (e.target.closest('[data-acct-close]')) return close(null);
       if (e.target.closest('[data-acct-confirm]')) {
         const password = host.querySelector('#suPass')?.value || '';
@@ -404,7 +409,13 @@ function stepUp({ title, note, needCode }) {
         if (needCode && !code) { const er = host.querySelector('#suError'); er.textContent = 'Enter the code we emailed you.'; er.hidden = false; return; }
         close({ password, code });
       }
-    }, { once: false });
+    }
+    const close = (val) => {
+      host.removeEventListener('click', onClick);
+      host.hidden = true; host.innerHTML = ''; resolve(val);
+    };
+    host.querySelector('#suPass')?.focus();
+    host.addEventListener('click', onClick);
   });
 }
 
