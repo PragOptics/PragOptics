@@ -31,6 +31,22 @@ import { PRAG_API_BASE } from './config.js';
 const OVERRIDE_KEY = 'pragoptics_lane_override';
 const SIGNIN_FLAG = 'pragoptics_lane_signin_v1';
 const HANDOFF_KEY = 'pragoptics_lane_handoff_v1';
+const HANDOFF_VERIFIER_KEY = 'pragoptics_lane_handoff_verifier_v1';
+
+// Proof of possession for the handoff token. The browser mints a 256-bit
+// verifier, sends only its sha256 at exchange, keeps the verifier in this
+// tab's sessionStorage across the reload, and presents it at redeem. A token
+// captured on its own (a log, a proxy, the exchange response) is useless
+// without it.
+function randomHex(bytes) {
+  const a = new Uint8Array(bytes);
+  crypto.getRandomValues(a);
+  return Array.from(a, (b) => b.toString(16).padStart(2, '0')).join('');
+}
+async function sha256Hex(str) {
+  const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(d), (b) => b.toString(16).padStart(2, '0')).join('');
+}
 
 /** Platform-level operator on the CURRENT lane's ping: admin or dev. */
 export function isPlatformOperator() {
@@ -45,13 +61,17 @@ function currentToken() {
   catch { return null; }
 }
 
-function landOnTarget(lane, { handoff } = {}) {
+function landOnTarget(lane, { handoff, verifier } = {}) {
   try {
     localStorage.setItem(OVERRIDE_KEY, lane);
     sessionStorage.removeItem('pragoptics_tokens');
     sessionStorage.removeItem('pragoptics_ping');
-    if (handoff) sessionStorage.setItem(HANDOFF_KEY, handoff);
-    else sessionStorage.setItem(SIGNIN_FLAG, '1');
+    if (handoff) {
+      sessionStorage.setItem(HANDOFF_KEY, handoff);
+      if (verifier) sessionStorage.setItem(HANDOFF_VERIFIER_KEY, verifier);
+    } else {
+      sessionStorage.setItem(SIGNIN_FLAG, '1');
+    }
   } catch { /* blocked storage: nothing to clear, fall through to reload */ }
   location.reload();
 }
@@ -66,14 +86,16 @@ export async function switchLane(lane) {
   const token = currentToken();
   if (token) {
     try {
+      const verifier = randomHex(32);
+      const bindingHash = await sha256Hex(verifier);
       const res = await fetch(`${PRAG_API_BASE}/auth/lane/exchange`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ toLane: lane })
+        body: JSON.stringify({ toLane: lane, bindingHash })
       });
       if (res.ok) {
         const data = await res.json();
-        if (data?.token) { landOnTarget(lane, { handoff: data.token }); return; }
+        if (data?.token) { landOnTarget(lane, { handoff: data.token, verifier }); return; }
       }
       // 403 (not an operator) / 409 (not linked) / anything else -> fall back.
     } catch { /* offline etc. -> fall back */ }
@@ -86,6 +108,15 @@ export function consumeLaneHandoff() {
   try {
     const t = sessionStorage.getItem(HANDOFF_KEY);
     if (t) { sessionStorage.removeItem(HANDOFF_KEY); return t; }
+  } catch { /* fine */ }
+  return null;
+}
+
+/** One-shot: the verifier bound to the handoff token, if a switch just landed. */
+export function consumeLaneVerifier() {
+  try {
+    const v = sessionStorage.getItem(HANDOFF_VERIFIER_KEY);
+    if (v) { sessionStorage.removeItem(HANDOFF_VERIFIER_KEY); return v; }
   } catch { /* fine */ }
   return null;
 }

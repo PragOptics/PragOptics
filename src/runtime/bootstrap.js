@@ -38,7 +38,7 @@
     import { initAdminView, onAdminEnter, refreshAdminNav } from '../admin/admin.js';
     import { initAccountView, onAccountEnter, presetAccountSection } from '../account/account.js';
     import { PRAG_API_BASE, LANE } from './config.js';
-    import { consumeLaneSigninFlag, consumeLaneHandoff } from './lane.js';
+    import { consumeLaneSigninFlag, consumeLaneVerifier, consumeLaneHandoff } from './lane.js';
 
     // routePostLogin is now a thin forwarder only
     function routePostLoginForward({ ping }) {
@@ -508,13 +508,16 @@ window.applyPostLoginResolution = applyPostLoginResolution;
     // a fresh session on THIS lane - no password. Falls back to sign-in if the
     // token is stale/rejected.
     const __handoff = consumeLaneHandoff();
+    const __verifier = consumeLaneVerifier();
     if (__handoff) {
       (async () => {
         try {
+          // The verifier proves this is the browser that started the switch;
+          // the target lane refuses the token without it.
           const res = await fetch(`${PRAG_API_BASE}/auth/lane/redeem`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ token: __handoff })
+            body: JSON.stringify({ token: __handoff, verifier: __verifier })
           });
           if (!res.ok) throw new Error("handoff rejected");
           const data = await res.json();
