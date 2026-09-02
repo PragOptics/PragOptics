@@ -87,7 +87,15 @@ function accessToken() {
   try { return JSON.parse(sessionStorage.getItem('pragoptics_tokens') || 'null')?.access_token || ''; }
   catch { return ''; }
 }
-function currentEmail() { return cachedPing()?.user?.email || ''; }
+// The primary address as the server last reported it. cachedPing() is a
+// snapshot taken at sign-in and is NEVER refreshed when the primary changes,
+// so reading the address from it after a switch returns the OLD one. That is
+// the address makePrimary/removeAlias then hand to request-code, while the
+// confirm looks the code up under the CURRENT primary - so the code lands in
+// the wrong inbox and the confirm fails with "That code has expired". A
+// second address change in one page session was impossible without a reload.
+let knownPrimary = '';
+function currentEmail() { return knownPrimary || cachedPing()?.user?.email || ''; }
 
 async function apiFetch(url, options = {}) {
   const token = accessToken();
@@ -116,9 +124,13 @@ function friendlyError(ex, fallback, { passwordFlow = false } = {}) {
   // 401 means "wrong password" only in the step-up flows that just asked for
   // one; on a plain data fetch it means the session died.
   if (ex?.status === 401) {
-    return passwordFlow
-      ? 'That password did not match. Try again.'
-      : 'Your session is no longer valid. Sign in again.';
+    // Every 401 these routes raise names its own cause: "That password is not
+    // correct.", "That code has expired.", "That code is not valid.".
+    // Flattening them all to "wrong password" sent the user to retype a
+    // password that was already right, with no way to learn the code was the
+    // problem. The server's wording is the authoritative one.
+    if (passwordFlow) return ex?.message || 'That password did not match. Try again.';
+    return 'Your session is no longer valid. Sign in again.';
   }
   if (ex instanceof TypeError) return 'Could not reach the API. Check that you are online.';
   return ex?.message || fallback;
@@ -350,6 +362,10 @@ async function loadAliases() {
   try {
     const data = await apiFetch(ALIASES_URL);
     const list = data.aliases || data.addresses || [];
+    // The freshest statement of which address is primary; keeps currentEmail()
+    // honest for the next step-up in this page session.
+    const primaryRow = list.find(a => a.isPrimary || a.primary);
+    knownPrimary = primaryRow ? (primaryRow.displayEmail || primaryRow.email || primaryRow.value || '') : '';
     if (!list.length) {
       // Fall back to the ping's primary so the section is never empty.
       host.innerHTML = aliasRowHtml({ displayEmail: currentEmail(), isPrimary: true, state: 'VERIFIED' });
@@ -357,6 +373,9 @@ async function loadAliases() {
     }
     host.innerHTML = list.map(aliasRowHtml).join('');
   } catch (ex) {
+    // Could not read the list, so nothing is known about the primary; fall
+    // back to the ping rather than trusting a value from a previous account.
+    knownPrimary = '';
     // Until the endpoint ships, show the current primary from the ping.
     host.innerHTML = aliasRowHtml({ displayEmail: currentEmail(), isPrimary: true, state: 'VERIFIED' });
     if (ex.status && ex.status !== 404) showError('acctProfileError', friendlyError(ex, 'Could not load addresses.'));
