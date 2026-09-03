@@ -342,6 +342,14 @@ function bindLoginModal(modal) {
   function resetUI() {
   delete modal.dataset.requestId;
 
+  // Clear the identity/verification inputs too, not just the passwords. These
+  // persisted across a modal reopen, so a second signup attempt started with
+  // the previous address already in the field: a click landed the cursor
+  // mid-string and produced a mangled address. A reopened form must be blank.
+  if (email) email.value = "";
+  if (codeInput) codeInput.value = "";
+  if (phoneInput) phoneInput.value = "";
+
   pwd.value = "";
   pwd2.value = "";
   modal.querySelectorAll(".pw-toggle").forEach(btn => {

@@ -21,6 +21,7 @@ const PHONE_CONFIRM_URL = `${PRAG_API_BASE}/auth/phone/confirm`;
 const PHONE_REMOVE_URL = `${PRAG_API_BASE}/auth/phone/remove`;
 const MINE_URL = `${PRAG_API_BASE}/warranty/mine`;
 const REQUEST_CODE_URL = `${PRAG_API_BASE}/auth/request-code`;
+const PING_URL = `${PRAG_API_BASE}/ping`;
 
 const SUB_URL        = `${PRAG_API_BASE}/billing/subscription`;
 const SUB_UPDATE_URL = `${PRAG_API_BASE}/billing/subscription/update`;
@@ -96,6 +97,18 @@ function accessToken() {
 // second address change in one page session was impossible without a reload.
 let knownPrimary = '';
 function currentEmail() { return knownPrimary || cachedPing()?.user?.email || ''; }
+
+// Re-fetch the ping and rewrite the cached copy. knownPrimary keeps
+// currentEmail() honest within a page session, but it is a module variable
+// that resets on reload - after which currentEmail() falls back to the cached
+// ping, which is a snapshot from sign-in and still names the OLD primary. Call
+// this after a change that moves the primary so the new one survives a reload.
+async function refreshCachedPing() {
+  try {
+    const fresh = await apiFetch(PING_URL);
+    if (fresh && fresh.user) sessionStorage.setItem('pragoptics_ping', JSON.stringify(fresh));
+  } catch { /* best-effort; knownPrimary still covers this session */ }
+}
 
 async function apiFetch(url, options = {}) {
   const token = accessToken();
@@ -511,6 +524,9 @@ async function makePrimary(aliasId) {
   try {
     await apiFetch(`${ALIASES_URL}/primary`, { method: 'POST', body: JSON.stringify({ aliasId, password: su.password, code: su.code }) });
     await loadAliases();
+    // The primary moved, so the sign-in ping snapshot is now stale; refresh it
+    // so the new primary survives a page reload, not just this session.
+    await refreshCachedPing();
     // Primary drives the sidebar title; re-render the shell brand.
     const t = document.querySelector('.adm-side-title'); if (t) t.textContent = currentEmail();
   } catch (ex) { showError('acctProfileError', friendlyError(ex, 'Could not change your primary address.', { passwordFlow: true })); }
