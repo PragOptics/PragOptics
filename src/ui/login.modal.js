@@ -2,6 +2,7 @@
 
 import { PRAG_API_BASE } from "../runtime/config.js";
 import { getAgreementAck } from "../runtime/state.js";
+import { finalizeAuth } from "../auth/twoFactorFlow.js";
 
 let isBound = false;
 
@@ -515,48 +516,13 @@ function bindLoginModal(modal) {
           phone: phoneVal
         });
 
-        // tokens come back from backend
-    if (!resp?.tokens?.access_token) {
-      showError2("Signup did not return access token.");
-      return;
-    }
-
-    if (typeof globalThis.setToken === "function") {
-      globalThis.setToken(resp.tokens);
-    } else {
-      sessionStorage.setItem(
-        "pragoptics_tokens",
-        JSON.stringify(resp.tokens)
-      );
-    }
-
-    closeLoginModal();
-
-    const pingRes = await fetch(`${PRAG_API_BASE}/ping`, {
-      headers: {
-        Authorization: `Bearer ${resp.tokens.access_token}`
-      }
-    });
-
-    if (!pingRes.ok) {
-      throw new Error(`Ping failed: HTTP ${pingRes.status}`);
-    }
-
-    const ping = await pingRes.json();
-    sessionStorage.setItem("pragoptics_ping", JSON.stringify(ping));
-
-    if (typeof globalThis.routePostLogin === "function") {
-      globalThis.routePostLogin({ ping });
-      return;
-    }
-
-    if (typeof globalThis.applyPostLoginResolution === "function") {
-      globalThis.applyPostLoginResolution({ ping });
-      return;
-    }
-
-    return;
-
+        // A new account always owes 2FA enrollment. finalizeAuth opens the
+        // enrollment modal from the returned enrollment_token and only writes a
+        // session once the authenticator is confirmed. It also still handles a
+        // plain access_token, so this stays correct if signup ever returns one.
+        closeLoginModal();
+        await finalizeAuth(resp, { email: emailVal });
+        return;
 
       } catch (e) {
         showError2(e?.message || "Signup failed.");

@@ -1,6 +1,7 @@
 // src/auth/native.js
 import { getAgreementAck } from "../runtime/state.js";
 import { fetchJsonWithDna } from "../api/apiWithDna.js";
+import { finalizeAuth } from "./twoFactorFlow.js";
 
 import { PRAG_API_BASE } from "../runtime/config.js";
 
@@ -67,51 +68,17 @@ export async function submitNativeLogin(e) {
   try {
     const data = await postJson("/auth/login-password", { email, password });
 
-    
-    // Persist tokens via bootstrap (single authority)
-    if (!data?.tokens?.access_token) {
-      throw new Error("Login did not return access token.");
-    }
-
-    if (typeof globalThis.setToken === "function") {
-      globalThis.setToken(data.tokens);
-    } else {
-      sessionStorage.setItem(
-        "pragoptics_tokens",
-        JSON.stringify(data.tokens)
-      );
-    }
-
-    // Offer to save the credential now that we know it was correct.
+    // The password is proven here even when a second factor is still owed, so
+    // offer to save the credential now.
     await saveCredential(email, password);
 
     closeLoginUi();
 
-    // ALWAYS run the same post-login resolution path
-    const pingRes = await fetch(`${PRAG_API_BASE}/ping`, {
-      headers: {
-        Authorization: `Bearer ${data.tokens.access_token}`
-      }
-    });
-
-    if (!pingRes.ok) {
-      throw new Error(`Ping failed: HTTP ${pingRes.status}`);
-    }
-
-    const ping = await pingRes.json();
-    sessionStorage.setItem("pragoptics_ping", JSON.stringify(ping));
-
-    if (typeof globalThis.routePostLogin === "function") {
-      globalThis.routePostLogin({ ping });
-      return;
-    }
-
-    if (typeof globalThis.applyPostLoginResolution === "function") {
-      globalThis.applyPostLoginResolution({ ping });
-      return;
-    }
-
-    return;
+    // finalizeAuth resolves all three sign-in shapes: a full access token, an
+    // mfa challenge (enrolled account), or mandatory enrollment (an account
+    // with no authenticator yet). Only it writes a session to storage, and
+    // only after the backend returns an access token.
+    await finalizeAuth(data, { email });
 
   } catch (err) {
     setCodeError(err?.message || "Invalid email or password.");
@@ -173,8 +140,10 @@ export async function submitNativeSignup({
   };
 
   const result = await postJson("/auth/signup", body);
-  // A brand-new account just set a password: offer to save it too.
-  if (result?.tokens?.access_token) {
+  // A brand-new account just set a password: offer to save it. Signup now
+  // returns an enrollment token rather than an access token, so gate on
+  // success, not on the token shape.
+  if (result?.success) {
     await saveCredential(body.email, body.password);
   }
   return result;
