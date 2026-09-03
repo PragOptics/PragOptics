@@ -118,7 +118,42 @@ async function apiFetch(url, options = {}) {
   return data || {};
 }
 
+// A throttled action, said in a way the user can act on.
+//
+// The API only ever describes limits that belong to the CALLER - their own
+// burst allowance, their own day, or the day of a number they are verifying.
+// The platform-wide ceiling arrives with no scope at all and falls through to
+// the server's generic message, which is deliberate: naming it would publish
+// how many messages it takes to deny service to every customer at once.
+const LIMIT_COPY = {
+  'account-burst': (max) => `You can request ${max} codes every 15 minutes.`,
+  'number-daily':  (max) => `A number can receive ${max} codes per day.`,
+  'account-daily': (max) => `You can request ${max} codes per day.`
+};
+
+function formatReset(iso) {
+  const at = new Date(iso);
+  if (isNaN(at.getTime())) return '';
+  const time = at.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  // These windows are UTC-aligned, so a daily one often clears on the viewer's
+  // next calendar day. Naming the day avoids "try again after 7:00" reading as
+  // seven o'clock this morning.
+  return at.toDateString() === new Date().toDateString()
+    ? `Try again after ${time}.`
+    : `Try again ${at.toLocaleDateString([], { weekday: 'long' })} after ${time}.`;
+}
+
+function rateLimitMessage(data) {
+  const copy = LIMIT_COPY[data.limitScope];
+  const head = copy ? copy(data.limitMax) : 'You have reached a limit on this action.';
+  const when = data.resetAt ? formatReset(data.resetAt) : '';
+  return when ? `${head} ${when}` : head;
+}
+
 function friendlyError(ex, fallback, { passwordFlow = false } = {}) {
+  // Scoped throttles carry their own ceiling and reset; unscoped ones (the
+  // platform ceiling) intentionally do not, and use the generic path.
+  if (ex?.status === 429 && ex?.data?.limitScope) return rateLimitMessage(ex.data);
   if (ex?.status === 404) return 'This feature is not available yet.';
   if (ex?.status === 403) return 'This account is not an administrator.';
   // 401 means "wrong password" only in the step-up flows that just asked for
