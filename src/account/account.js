@@ -22,6 +22,7 @@ const PHONE_REMOVE_URL = `${PRAG_API_BASE}/auth/phone/remove`;
 const MINE_URL = `${PRAG_API_BASE}/warranty/mine`;
 const REQUEST_CODE_URL = `${PRAG_API_BASE}/auth/request-code`;
 const PING_URL = `${PRAG_API_BASE}/ping`;
+const CHANGE_PW_URL = `${PRAG_API_BASE}/auth/change-password`;
 
 const SUB_URL        = `${PRAG_API_BASE}/billing/subscription`;
 const SUB_UPDATE_URL = `${PRAG_API_BASE}/billing/subscription/update`;
@@ -317,6 +318,14 @@ async function renderProfile(main) {
       </div>
       <p class="acct-error" id="acctPhoneError" hidden></p>
     </section>
+    <section class="acct-card">
+      <h3 class="acct-card-h">Password</h3>
+      <p class="acct-card-note">Change your password without signing out. Doing so signs out every other device.</p>
+      <div class="acct-add-row">
+        <button class="cta btn-sm" type="button" data-acct-action="change-password">Change password</button>
+      </div>
+      <p class="acct-error" id="acctPasswordError" hidden></p>
+    </section>
     ${platformLaneCardHtml()}
   `;
   await loadAliases();
@@ -530,6 +539,73 @@ async function makePrimary(aliasId) {
     // Primary drives the sidebar title; re-render the shell brand.
     const t = document.querySelector('.adm-side-title'); if (t) t.textContent = currentEmail();
   } catch (ex) { showError('acctProfileError', friendlyError(ex, 'Could not change your primary address.', { passwordFlow: true })); }
+}
+
+async function changePassword() {
+  showError('acctPasswordError', '');
+  const su = await changePasswordPrompt();
+  if (!su) return;
+  try {
+    const data = await apiFetch(CHANGE_PW_URL, {
+      method: 'POST',
+      body: JSON.stringify({ currentPassword: su.current, newPassword: su.next })
+    });
+    // The epoch was bumped, so the token we authenticated with is now revoked
+    // along with every other session; swap in the fresh one so THIS session
+    // survives seamlessly.
+    if (data?.tokens?.access_token) {
+      if (typeof globalThis.setToken === 'function') globalThis.setToken(data.tokens);
+      else sessionStorage.setItem('pragoptics_tokens', JSON.stringify(data.tokens));
+    }
+    showError('acctPasswordError', 'Password changed. Other devices have been signed out.');
+  } catch (ex) {
+    showError('acctPasswordError', friendlyError(ex, 'Could not change your password.', { passwordFlow: true }));
+  }
+}
+
+// A three-field prompt (current + new + confirm) with the same live rules the
+// signup form enforces, resolved to { current, next } or null on cancel.
+function changePasswordPrompt() {
+  return new Promise((resolve) => {
+    let hostEl = document.getElementById('acctChangePw');
+    if (!hostEl) { hostEl = document.createElement('div'); hostEl.id = 'acctChangePw'; hostEl.className = 'acct-modal-host'; document.body.appendChild(hostEl); }
+    hostEl.innerHTML = `
+      <div class="acct-modal-mask" data-cp-close></div>
+      <div class="acct-modal" role="dialog" aria-modal="true" aria-label="Change password">
+        <h3 class="acct-modal-h">Change password</h3>
+        <p class="acct-modal-note">Enter your current password, then a new one. Every other device is signed out.</p>
+        <label class="acct-label" for="cpCurrent">Current password</label>
+        <input class="acct-input" id="cpCurrent" type="password" autocomplete="current-password" placeholder="Current password">
+        <label class="acct-label" for="cpNew">New password</label>
+        <input class="acct-input" id="cpNew" type="password" autocomplete="new-password" placeholder="At least 12 characters">
+        <label class="acct-label" for="cpConfirm">Confirm new password</label>
+        <input class="acct-input" id="cpConfirm" type="password" autocomplete="new-password" placeholder="Re-enter new password">
+        <p class="acct-error" id="cpError" hidden></p>
+        <div class="acct-modal-actions">
+          <button class="btn btn-ghost" type="button" data-cp-close>Cancel</button>
+          <button class="cta" type="button" data-cp-confirm>Change password</button>
+        </div>
+      </div>`;
+    hostEl.hidden = false;
+    const cur = hostEl.querySelector('#cpCurrent');
+    const nw = hostEl.querySelector('#cpNew');
+    const cf = hostEl.querySelector('#cpConfirm');
+    const er = hostEl.querySelector('#cpError');
+    cur.focus();
+    function onClick(e) {
+      if (e.target.closest('[data-cp-close]')) return close(null);
+      if (e.target.closest('[data-cp-confirm]')) {
+        const current = cur.value, next = nw.value, confirm = cf.value;
+        if (!current) { er.textContent = 'Enter your current password.'; er.hidden = false; return; }
+        if (next.length < 12) { er.textContent = 'Your new password must be at least 12 characters.'; er.hidden = false; return; }
+        if (next !== confirm) { er.textContent = 'The new passwords do not match.'; er.hidden = false; return; }
+        if (next === current) { er.textContent = 'Your new password must be different from your current one.'; er.hidden = false; return; }
+        close({ current, next });
+      }
+    }
+    const close = (val) => { hostEl.removeEventListener('click', onClick); hostEl.hidden = true; hostEl.innerHTML = ''; resolve(val); };
+    hostEl.addEventListener('click', onClick);
+  });
 }
 
 async function removeAlias(aliasId) {
@@ -1866,6 +1942,7 @@ function bindOnce() {
       if (a === 'phone-start') return void startPhone();
       if (a === 'phone-remove') return void removePhone();
       if (a === 'add-alias') return void addAlias();
+      if (a === 'change-password') return void changePassword();
       if (a === 'make-primary') return void makePrimary(act.dataset.alias);
       if (a === 'remove-alias') return void removeAlias(act.dataset.alias);
       if (a === 'verify-alias') return void verifyAlias(act.dataset.alias, act.dataset.claim);
