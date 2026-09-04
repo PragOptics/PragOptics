@@ -1,5 +1,6 @@
 /* /css/tokens.css */
 :root{
+      color-scheme: dark;
       --bg-deep:#000000 !important;
       --grad:linear-gradient(130deg,#000000 0%,#18042527 50%,#0218127e 100%);
       --menu:#000000e1 ;
@@ -61,4 +62,56 @@
          For taglines and section labels only; never on actions/buttons. */
       --accent-gold:#e6c688;
 
+}
+
+/* =========================================================================
+   DAYLIGHT NEBULA — optional light theme (opt-in via [data-theme="light"]).
+   Same token NAMES as the dark default above, re-valued for a light slate/
+   indigo ground with dark ink and softened glows, so anything that reads a
+   token flips automatically. The teal/purple/gold brand accents are kept.
+   Applied before first paint by the inline script in index.html; toggled at
+   runtime by src/runtime/theme.js (footer control).
+
+   The attribute selector outranks bare :root, so these win without
+   !important — except --bg-deep, which is !important in the dark block and
+   therefore needs !important here too.
+
+   NOTE: the API-console syntax tokens (--console-*, --json-mod) and a few
+   ambiguous accents are intentionally NOT redefined here yet. The console is
+   a dark terminal in both themes; those are finalized after the CSS audit
+   confirms which tokens are console-only vs general-use.
+   ========================================================================= */
+:root[data-theme="light"]{
+      color-scheme: light;
+
+      --bg-deep:#e9edf7 !important;                                   /* light periwinkle-slate ground */
+      --grad:linear-gradient(130deg,#eef1fb 0%,#e8e6f5 50%,#e6eef6 100%);
+      --menu:#f6f8fee6;                                               /* light, slightly translucent menu */
+      --glass:#ffffff8c;                                             /* light glass surface */
+      --glass-2:#1a21400f;                                          /* faint dark tint for subtle fills */
+      --border:#1b234021;                                           /* dark hairline on light */
+      --ink:#1b2340e6;                                              /* deep indigo-slate ink */
+      --muted:#3a4370b3;                                            /* muted slate ink */
+      --brand:#0f8f7d;                                              /* teal, deepened for light contrast */
+      --brand-600:#0fa891;
+      --brandsoft:#12a08c26;
+      --brand-purp:#6d28d9d9;                                       /* deeper purple for light contrast */
+
+      --aura:
+        0 4px 18px rgba(27, 35, 64, 0.06),
+        0 8px 18px rgba(15, 143, 125, 0.10),
+        1px 8px 18px rgba(109, 40, 217, 0.08);
+
+      /* Unified card language on light */
+      --card-title:#141a3a;
+      --card-surface: linear-gradient(150deg, rgba(255,255,255,.85), rgba(255,255,255,.62));
+      --card-border: rgba(27,35,64,.12);
+      --card-border-hover: rgba(15,143,125,.5);
+      --card-shadow-rest: 0 10px 30px rgba(30,40,80,.12);
+      --card-shadow-hover: 0 18px 42px rgba(30,40,80,.18);
+
+      --on-brand:#04130f;                                          /* unchanged: dark text on the teal fill */
+      --brand-cyan:#0aa6c4;
+      --teal-bright:#0f9c88;                                        /* deeper teal for ✦ starred labels on light */
+      --accent-gold:#9a7420;                                        /* deeper champagne for contrast on light */
 }

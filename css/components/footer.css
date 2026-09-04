@@ -231,6 +231,39 @@
   justify-content: flex-end;
 }
 
+/* Theme toggle (public — everyone sees it). Token-driven so the button itself
+   adapts to whichever theme is active; the sun/moon swap is pure CSS off the
+   html[data-theme] attribute, JS only flips the theme and the aria-label. */
+.footer-theme-toggle{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: var(--glass-2);
+  color: var(--muted);
+  cursor: pointer;
+  transition: color 160ms ease, border-color 160ms ease,
+              box-shadow 160ms ease, transform 160ms ease;
+}
+
+.footer-theme-toggle:hover,
+.footer-theme-toggle:focus-visible{
+  color: var(--brand-600);
+  border-color: var(--card-border-hover);
+  box-shadow: 0 0 18px rgba(33, 188, 165, 0.14);
+  transform: translateY(-1px);
+  outline: none;
+}
+
+.footer-theme-toggle .ft-ico{ display: block; }
+.footer-theme-toggle .ft-moon{ display: none; }
+html[data-theme="light"] .footer-theme-toggle .ft-sun{ display: none; }
+html[data-theme="light"] .footer-theme-toggle .ft-moon{ display: block; }
+
 /* Responsive */
 @media (max-width: 900px){
   .footer-inner{

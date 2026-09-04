@@ -1,6 +1,7 @@
 // /src/components/footer.js
 import { LANE } from '../runtime/config.js';
 import { isPlatformOperator } from '../runtime/lane.js';
+import { getTheme, toggleTheme } from '../runtime/theme.js';
 
 export function initFooter() {
   // Year (tiny + deterministic)
@@ -25,6 +26,22 @@ export function initFooter() {
       // printed warranty cards: /#warranty).
       window.setAppMode?.("warranty");
     });
+  }
+
+  // Theme toggle — public, for everyone. Dark (galactic) <-> light (daylight
+  // nebula). The icon swap is pure CSS off html[data-theme]; JS only flips the
+  // theme and keeps the button's accessible label in sync. Wired BEFORE the
+  // lane-badge block below, which has early returns.
+  const themeBtn = document.getElementById("footerThemeToggle");
+  if (themeBtn) {
+    const label = () => {
+      const next = getTheme() === "light" ? "dark" : "light";
+      const text = `Switch to ${next} theme`;
+      themeBtn.setAttribute("aria-label", text);
+      themeBtn.title = text;
+    };
+    label();
+    themeBtn.addEventListener("click", () => { toggleTheme(); label(); });
   }
 
   // Lane badge — an operator ESCAPE HATCH, not a public element.
