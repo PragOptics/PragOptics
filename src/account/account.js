@@ -39,6 +39,7 @@ const ADMIN_ORDERS_URL = `${PRAG_API_BASE}/admin/orders`;
 const ADMIN_ORDER_LABEL_URL = `${PRAG_API_BASE}/admin/orders/label`;
 const STRIPE_WH_SYNC_URL = `${PRAG_API_BASE}/admin/stripe/webhook-sync`;
 const SHIPPO_WH_SYNC_URL = `${PRAG_API_BASE}/admin/shippo/webhook-sync`;
+const BILLING_RECONCILE_URL = `${PRAG_API_BASE}/admin/billing/reconcile`;
 const STRIPE_OVERVIEW_URL = `${PRAG_API_BASE}/admin/stripe/overview`;
 const SHIPPO_LABELS_URL = `${PRAG_API_BASE}/admin/shipping/labels`;
 const PRINT_QUEUE_URL = `${PRAG_API_BASE}/admin/print-queue`;
@@ -1240,6 +1241,19 @@ async function renderOverview(main) {
           title="Registers this lane's Shippo webhooks (labels, transactions, tracking)">Sync Shippo webhooks</button>
       </div>
       <p class="muted" id="admIntegrationsResult" hidden></p>
+      <h4 class="adm-card-h">Reconcile billing from Stripe</h4>
+      <p class="adm-note">For an account whose live, paid subscription is no longer linked (a canceled
+      profile, migrated customer, or stale metadata). Finds the live subscription on the customer,
+      stamps this account on it, relinks the profile, and brings status and tier to what Stripe says,
+      under the same proofs the webhook uses. Dry run shows the plan and writes nothing.</p>
+      <div class="adm-actions-row">
+        <input class="adm-input" type="text" id="admReconcileWho" placeholder="account email or userId" autocomplete="off" spellcheck="false">
+        <button class="btn" type="button" data-adm-action="billing-reconcile-dry"
+          title="Compute the plan for this account and show it; nothing is written">Dry run</button>
+        <button class="btn" type="button" data-adm-action="billing-reconcile"
+          title="Write the plan: Stripe metadata, the profile link, status and tier">Reconcile</button>
+      </div>
+      <pre class="muted adm-pre" id="admReconcileResult" hidden></pre>
     </div>
     <div id="admUsageBlock"></div>
   `;
@@ -1678,6 +1692,41 @@ async function runWebhookSync(btn, url, label) {
   }
 }
 
+// Reconcile one account's billing to Stripe's truth (admin). dryRun=true
+// only computes and shows the plan; the write path asks for confirmation
+// because it changes Stripe metadata and the live profile.
+async function runBillingReconcile(btn, dryRun) {
+  const who = String(document.getElementById('admReconcileWho')?.value || '').trim();
+  const out = document.getElementById('admReconcileResult');
+  const show = (text) => { if (out) { out.textContent = text; out.hidden = false; } };
+  if (!who) { show('Enter the account email or userId first.'); return; }
+  if (!dryRun && !window.confirm(`Reconcile billing for ${who} from Stripe? This writes Stripe metadata, the profile link, status and tier.`)) return;
+
+  const body = who.includes('@') ? { email: who.toLowerCase(), dryRun } : { userId: who, dryRun };
+  btn.disabled = true;
+  const orig = btn.textContent;
+  btn.textContent = dryRun ? 'Planning…' : 'Reconciling…';
+  try {
+    const r = await apiFetch(BILLING_RECONCILE_URL, { method: 'POST', body: JSON.stringify(body) });
+    const lines = [
+      `${r.dryRun ? 'DRY RUN (nothing written)' : 'RECONCILED'} for user ${r.userId}`,
+      `profile ${r.billingProfileId}`,
+      `customer ${r.stripeCustomerId}  subscription ${r.stripeSubscriptionId} (${r.subscriptionStatus})${r.owed ? '  money owed' : '  nothing owed'}`,
+      `status  ${r.before?.status || '?'} -> ${r.after?.status}`,
+      `tier    ${r.before?.tier || '?'} -> ${r.after?.tier}`,
+      `stamp metadata: customer ${r.stamped?.customer ? 'yes' : 'already correct'}, subscription ${r.stamped?.subscription ? 'yes' : 'already correct'}`,
+      r.lookupKeys?.length ? `prices  ${r.lookupKeys.join(', ')}` : 'prices  (none reported)',
+      ...(r.notes || []).map(n => `note    ${n}`)
+    ];
+    show(lines.join('\n'));
+  } catch (ex) {
+    show(`Reconcile: ${friendlyError(ex, 'failed')}`);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = orig;
+  }
+}
+
 /* ---------- warranty (mint + inventory) ---------- */
 
 function mintResultHtml(result) {
@@ -2040,6 +2089,8 @@ function bindOnce() {
       if (admAct.dataset.admAction === 'order-label') buyOrderLabel(admAct);
       if (admAct.dataset.admAction === 'wh-stripe') runWebhookSync(admAct, STRIPE_WH_SYNC_URL, 'Stripe');
       if (admAct.dataset.admAction === 'wh-shippo') runWebhookSync(admAct, SHIPPO_WH_SYNC_URL, 'Shippo');
+      if (admAct.dataset.admAction === 'billing-reconcile-dry') runBillingReconcile(admAct, true);
+      if (admAct.dataset.admAction === 'billing-reconcile') runBillingReconcile(admAct, false);
       return;
     }
 
