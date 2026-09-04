@@ -1,7 +1,6 @@
 // /src/components/footer.js
 import { LANE } from '../runtime/config.js';
 import { isPlatformOperator } from '../runtime/lane.js';
-import { getTheme, toggleTheme } from '../runtime/theme.js';
 
 export function initFooter() {
   // Year (tiny + deterministic)
@@ -28,21 +27,9 @@ export function initFooter() {
     });
   }
 
-  // Theme toggle — public, for everyone. Dark (galactic) <-> light (daylight
-  // nebula). The icon swap is pure CSS off html[data-theme]; JS only flips the
-  // theme and keeps the button's accessible label in sync. Wired BEFORE the
-  // lane-badge block below, which has early returns.
-  const themeBtn = document.getElementById("footerThemeToggle");
-  if (themeBtn) {
-    const label = () => {
-      const next = getTheme() === "light" ? "dark" : "light";
-      const text = `Switch to ${next} theme`;
-      themeBtn.setAttribute("aria-label", text);
-      themeBtn.title = text;
-    };
-    label();
-    themeBtn.addEventListener("click", () => { toggleTheme(); label(); });
-  }
+  // (The daylight-nebula light-theme toggle is parked: src/runtime/theme.js,
+  // the [data-theme="light"] tokens and css/theme-light.css stay in place and
+  // inert, with no control exposed, until that work resumes.)
 
   // Lane badge — an operator ESCAPE HATCH, not a public element.
   //
@@ -64,7 +51,14 @@ export function initFooter() {
   try { overrideDev = localStorage.getItem("pragoptics_lane_override") === "dev"; } catch { /* blocked */ }
 
   const showLaneBadge = LANE === "dev" && (overrideDev || isPlatformOperator());
-  if (!showLaneBadge) { env.remove(); return; }
+  if (!showLaneBadge) {
+    // Take the separator that precedes the chip with it, so the public footer
+    // never ends in a dangling "|".
+    const sep = env.previousElementSibling;
+    if (sep && sep.classList.contains("footer-sep")) sep.remove();
+    env.remove();
+    return;
+  }
 
   env.textContent = "DEV LANE";
   env.classList.add("is-local", "footer-lane-btn");

@@ -114,4 +114,6 @@
       --brand-cyan:#0aa6c4;
       --teal-bright:#0f9c88;                                        /* deeper teal for ✦ starred labels on light */
       --accent-gold:#9a7420;                                        /* deeper champagne for contrast on light */
+      --brand-warn:#a8730a;                                         /* deeper amber so warning TEXT reads on light */
+      --brandsoft-purp:#6d28d926;                                   /* soft purple wash on light */
 }

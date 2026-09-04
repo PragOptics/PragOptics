@@ -1,0 +1,50 @@
+/* =========================================================================
+   /css/theme-light.css — DAYLIGHT NEBULA (optional light theme)
+
+   Every rule here is scoped to html[data-theme="light"], so this file is
+   INERT on the galactic-dark default: nothing in it applies until a viewer
+   opts into the light theme (footer toggle; src/runtime/theme.js). That is
+   the whole point of keeping it in one file — the dark theme stays byte-for-
+   byte untouched, and the light theme has a single, reviewable source.
+
+   The PALETTE lives in css/tokens.css ([data-theme="light"] re-values every
+   design token). This file is the leftover: component rules that hardcode a
+   dark-surface assumption with a literal color and therefore do not follow
+   the tokens. Sections are grouped by the stylesheet they correct.
+
+   Loaded after every component/view stylesheet (before the responsive
+   overrides) so cascade order and the extra [data-theme] specificity both
+   favour these corrections.
+   ========================================================================= */
+
+/* ---- Global, cross-cutting -------------------------------------------- */
+
+/* A full-viewport 25% black scrim exists only to deepen the dark ground.
+   On a light ground it just greys everything. */
+html[data-theme="light"] .global-darken{ display: none; }
+
+/* The blurred ground gradient is dimmed with brightness(.9) to deepen the
+   dark theme; on light that reads as a grey cast, so restore full brightness. */
+html[data-theme="light"] .bg{ filter: blur(6px) brightness(1) saturate(1.05); }
+
+/* The starfield canvas draws its own pixels (src/components/starfield.js
+   handles the star colour per theme); on light the fade-in also lands much
+   subtler so dark specks stay a texture, not a pattern. */
+html[data-theme="light"] #bg-stars{ animation: fvStarFadeLight 3.7s ease forwards; }
+@keyframes fvStarFadeLight{
+  0%{opacity:0}
+  60%{opacity:.10}
+  100%{opacity:.28}
+}
+
+/* Intentionally-dark surfaces stay dark in BOTH themes: the API console and
+   code blocks are terminals. Pin their surface AND text locally so a flipped
+   --ink can never leave them dark-on-dark. (Component sections below may
+   restate these with more specific selectors; same values, harmless.) */
+html[data-theme="light"] pre,
+html[data-theme="light"] code,
+html[data-theme="light"] .md-view pre,
+html[data-theme="light"] .md-view code{
+  background: #0f1626;
+  color: #dfe7ff;
+}

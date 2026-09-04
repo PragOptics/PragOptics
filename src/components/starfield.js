@@ -23,6 +23,18 @@ export function initStarfield({ canvasId = "bg-stars", starCount = 160 } = {}) {
     delta: Math.random() * 0.015 + 0.005
   }));
 
+  // Star colour follows the theme: white on the galactic-dark ground, dark
+  // indigo specks on the daylight-nebula light ground (a canvas cannot be
+  // recoloured by CSS). The inline no-flash script in index.html has already
+  // stamped data-theme before this runs, and theme.js announces every later
+  // switch; because the draw loop reads this each frame, a change shows up
+  // immediately with no forced redraw.
+  const isLight = () => document.documentElement.getAttribute("data-theme") === "light";
+  let starRGB = isLight() ? "27,35,64" : "255,255,255";
+  addEventListener("pragoptics:themechange", () => {
+    starRGB = isLight() ? "27,35,64" : "255,255,255";
+  });
+
   function animate() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -32,7 +44,7 @@ export function initStarfield({ canvasId = "bg-stars", starCount = 160 } = {}) {
 
       ctx.beginPath();
       ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
-      ctx.fillStyle = `rgba(255,255,255,${s.alpha})`;
+      ctx.fillStyle = `rgba(${starRGB},${s.alpha})`;
       ctx.fill();
     }
 

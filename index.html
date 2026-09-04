@@ -5,16 +5,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <!-- No-flash theme: apply the saved "daylight nebula" light theme before the
-       stylesheets paint, so a light-theme viewer never sees a dark flash. Dark
-       is the default and needs no attribute. See src/runtime/theme.js. -->
-  <script>
-    try {
-      if (localStorage.getItem('pragoptics_theme') === 'light') {
-        document.documentElement.setAttribute('data-theme', 'light');
-      }
-    } catch (e) { /* storage blocked: stay on the dark default */ }
-  </script>
+  <!-- The daylight-nebula light theme is PARKED: nothing applies data-theme,
+       so css/theme-light.css and the [data-theme="light"] tokens stay inert.
+       (Re-enable by restoring the pre-paint no-flash script here and the
+       footer toggle; see src/runtime/theme.js.) -->
 
   <title>PragOptics&trade;</title>
   <meta name="description" content="PragOptics is the platform for HART field data, calibration records, and the OmniBus universal HART communicator. Capture, certify, and audit every instrument connection.">
@@ -38,8 +32,8 @@
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebSite","name":"PragOptics","url":"https://pragoptics.com","publisher":{"@type":"Organization","name":"PragOptics"},"potentialAction":{"@type":"SearchAction","target":{"@type":"EntryPoint","urlTemplate":"https://pragoptics.com/search?q={search_term_string}"},"query-input":"required name=search_term_string"}}</script>
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"Product","name":"OmniBus","image":"https://pragoptics.com/docs/assets/OmniBusProductFlyer.png","description":"OmniBus is a handheld, vendor-neutral universal HART communicator, calibration recorder, and field audit node. It works any HART instrument across manufacturers over USB HART, on-board two-wire loop, HART-IP, and Wi-Fi, measures 4-20 mA loop current directly on board, and turns every connection into a guided As-Found / As-Left calibration record with auto-generated certificates and an append-only audit trail.","category":"HART field communicator and calibrator","brand":{"@type":"Brand","name":"PragOptics"},"manufacturer":{"@type":"Organization","name":"PragOptics","parentOrganization":{"@type":"Organization","name":"Bridges Industrial"}},"url":"https://pragoptics.com","offers":{"@type":"Offer","url":"https://pragoptics.com/","price":"1500.00","priceCurrency":"USD","availability":"https://schema.org/PreOrder","itemCondition":"https://schema.org/NewCondition","shippingDetails":{"@type":"OfferShippingDetails","shippingRate":{"@type":"MonetaryAmount","value":"0","currency":"USD"},"shippingDestination":{"@type":"DefinedRegion","addressCountry":"US"}},"hasMerchantReturnPolicy":{"@type":"MerchantReturnPolicy","applicableCountry":"US","returnPolicyCategory":"https://schema.org/MerchantReturnFiniteReturnWindow","merchantReturnDays":30,"returnMethod":"https://schema.org/ReturnByMail","returnFees":"https://schema.org/ReturnShippingFees"}}}</script>
 
-  <!-- Theme (dark is default; the daylight-nebula light theme opts in) -->
-  <meta name="color-scheme" content="dark light">
+  <!-- Theme -->
+  <meta name="color-scheme" content="dark">
 
   <!-- Icons -->
   <link rel="icon" type="image/x-icon" href="https://pragoptics.com/images/favicon.ico" sizes="48x48">
@@ -108,6 +102,9 @@
 <link rel="stylesheet" href="./css/views/builds.css">
 <link rel="stylesheet" href="./css/views/admin.css">
 <link rel="stylesheet" href="./css/views/account.css">
+
+<!-- ===== CSS: Optional light theme (inert unless html[data-theme="light"]) ===== -->
+<link rel="stylesheet" href="./css/theme-light.css">
 
 <!-- ===== CSS: Responsive Overrides (LAST) ===== -->
 <link rel="stylesheet" href="./css/responsive/mobile-overrides.css">
