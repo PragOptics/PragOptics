@@ -256,11 +256,13 @@
    DNA GLOBAL PROCESSING BLUR
    =========================== */
 
-/* Blur + mute main application content during API calls */
+/* Mute interaction during API calls. NO `filter` here: applying a filter to
+   `main` promoted it to a containing block and forced a reflow that visibly
+   shoved the featured galleries sideways ("carousel flex") every time the
+   processing animation ran. The blur is now done by the overlay below via
+   backdrop-filter, so `main`'s layout is never touched. */
 body.is-processing main {
-  filter: blur(2.5px) saturate(0.9);
   pointer-events: none;
-  transition: filter 220ms ease;
 }
 
 /* Keep header visible, but prevent interaction */
@@ -268,7 +270,9 @@ body.is-processing header {
   pointer-events: none;
 }
 
-/* Optional: very light cinematic dim (NO collapse) */
+/* The processing veil: a fixed overlay that BLURS what's behind it instead of
+   filtering the content itself. backdrop-filter reads the pixels underneath
+   without changing their layout, so nothing reflows. */
 body.is-processing::after {
   content: "";
   position: fixed;
@@ -277,6 +281,8 @@ body.is-processing::after {
   right: 0;
   bottom: 0;
   background: rgba(0, 0, 0, 0.06);
+  backdrop-filter: blur(2.5px) saturate(0.9);
+  -webkit-backdrop-filter: blur(2.5px) saturate(0.9);
   pointer-events: none;
   transition: opacity 180ms ease;
 }

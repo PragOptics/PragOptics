@@ -269,6 +269,11 @@ function setToken(tokens) {
     // Reset stored auth (frontend-only; backend remains authoritative)
     sessionStorage.removeItem("pragoptics_tokens");
 
+    // Drop any lane override too, so an expired session on the dev lane returns
+    // this browser to its host default (live on pragoptics.com) on next load,
+    // rather than stranding it on the sandbox. localStorage cart/queues stay.
+    try { localStorage.removeItem("pragoptics_lane_override"); } catch {}
+
     // The token is gone, so Login must come back and Logout/Admin must go.
     // logout() reloads the page and boot handles it, but expiry does not
     // reload, so refresh the nav here too.

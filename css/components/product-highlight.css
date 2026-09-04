@@ -178,7 +178,7 @@
   /* Uniform media tile for every featured card: a fixed box + object-fit contain,
      so a square flyer and a tall poster read as the SAME clean tile. The dark
      background blends the letterbox so it never looks like empty space. */
-  width: 190px; height: 250px; flex: none; align-self: center;
+  width: clamp(148px, 34%, 176px); height: 250px; flex: none; align-self: center;
   object-fit: contain; object-position: center;
   border-radius: 12px; border: 1px solid var(--border, rgba(255, 255, 255, .12)); background: #05070d;
 }
@@ -219,6 +219,19 @@
 .ph-price .muted { font-weight: 600; }
 .ph-actions { display: flex; gap: 10px; flex-wrap: wrap; }
 .ph-actions .ph-btn { align-self: auto; }
+
+/* Row (brochure) cards give the body only ~230px next to the flyer - too tight
+   for two natural-width buttons, so they wrapped raggedly and clipped. Let the
+   two actions SHARE the row, and when even that is too narrow, wrap to clean
+   full-width lines instead of overflowing the card. The .ph-vert (software
+   splash) cards have a full-width body and are intentionally left as-is. */
+.ph-brochure:not(.ph-vert) .ph-actions > .cta,
+.ph-brochure:not(.ph-vert) .ph-actions > .btn {
+  flex: 1 1 118px;
+  min-width: 0;
+  white-space: nowrap;
+  text-align: center;
+}
 
 /* (FNM now uses the standard .ph-brochure card; its old bespoke styles were removed.) */
 
