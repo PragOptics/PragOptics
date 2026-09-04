@@ -23,6 +23,7 @@ const MINE_URL = `${PRAG_API_BASE}/warranty/mine`;
 const REQUEST_CODE_URL = `${PRAG_API_BASE}/auth/request-code`;
 const PING_URL = `${PRAG_API_BASE}/ping`;
 const CHANGE_PW_URL = `${PRAG_API_BASE}/auth/change-password`;
+const RESET_2FA_URL = `${PRAG_API_BASE}/auth/2fa/reset`;
 
 const SUB_URL        = `${PRAG_API_BASE}/billing/subscription`;
 const SUB_UPDATE_URL = `${PRAG_API_BASE}/billing/subscription/update`;
@@ -326,6 +327,14 @@ async function renderProfile(main) {
       </div>
       <p class="acct-error" id="acctPasswordError" hidden></p>
     </section>
+    <section class="acct-card">
+      <h3 class="acct-card-h">Two-factor authentication</h3>
+      <p class="acct-card-note">Your account is protected by an authenticator app. Reset it if you switch phones or lose your authenticator. You will set up a new one right away.</p>
+      <div class="acct-add-row">
+        <button class="cta btn-sm" type="button" data-acct-action="reset-2fa">Reset authenticator</button>
+      </div>
+      <p class="acct-error" id="acct2faError" hidden></p>
+    </section>
     ${platformLaneCardHtml()}
   `;
   await loadAliases();
@@ -539,6 +548,67 @@ async function makePrimary(aliasId) {
     // Primary drives the sidebar title; re-render the shell brand.
     const t = document.querySelector('.adm-side-title'); if (t) t.textContent = currentEmail();
   } catch (ex) { showError('acctProfileError', friendlyError(ex, 'Could not change your primary address.', { passwordFlow: true })); }
+}
+
+async function resetTwoFactor() {
+  showError('acct2faError', '');
+  const su = await resetTwoFactorPrompt();
+  if (!su) return;
+  try {
+    const data = await apiFetch(RESET_2FA_URL, {
+      method: 'POST',
+      body: JSON.stringify({ currentPassword: su.password, code: su.code })
+    });
+    // The old authenticator is cleared and an enrollment token is returned;
+    // hand it straight to the shared 2FA flow, which opens the enrollment modal
+    // and mints a fresh secret with the current issuer label.
+    if (data?.mfaEnrollmentRequired && data?.tokens?.enrollment_token && typeof globalThis.pragFinalizeAuth === 'function') {
+      await globalThis.pragFinalizeAuth(data, { email: currentEmail() });
+    } else {
+      showError('acct2faError', 'Reset done, but enrollment did not start. Sign out and back in to set up your authenticator.');
+    }
+  } catch (ex) {
+    showError('acct2faError', friendlyError(ex, 'Could not reset your authenticator.', { passwordFlow: true }));
+  }
+}
+
+// Current password + a CURRENT authenticator or recovery code, resolved to
+// { password, code } or null on cancel.
+function resetTwoFactorPrompt() {
+  return new Promise((resolve) => {
+    let hostEl = document.getElementById('acctReset2fa');
+    if (!hostEl) { hostEl = document.createElement('div'); hostEl.id = 'acctReset2fa'; hostEl.className = 'acct-modal-host'; document.body.appendChild(hostEl); }
+    hostEl.innerHTML = `
+      <div class="acct-modal-mask" data-r2-close></div>
+      <div class="acct-modal" role="dialog" aria-modal="true" aria-label="Reset authenticator">
+        <h3 class="acct-modal-h">Reset authenticator</h3>
+        <p class="acct-modal-note">Confirm it's you: your password and a code from your current authenticator (or a recovery code). Then you'll set up a new one.</p>
+        <label class="acct-label" for="r2Pass">Account password</label>
+        <input class="acct-input" id="r2Pass" type="password" autocomplete="current-password" placeholder="Your password">
+        <label class="acct-label" for="r2Code">Authenticator or recovery code</label>
+        <input class="acct-input" id="r2Code" type="text" autocomplete="one-time-code" placeholder="6-digit code or recovery code">
+        <p class="acct-error" id="r2Error" hidden></p>
+        <div class="acct-modal-actions">
+          <button class="btn btn-ghost" type="button" data-r2-close>Cancel</button>
+          <button class="cta" type="button" data-r2-confirm>Continue</button>
+        </div>
+      </div>`;
+    hostEl.hidden = false;
+    const pass = hostEl.querySelector('#r2Pass');
+    const code = hostEl.querySelector('#r2Code');
+    const er = hostEl.querySelector('#r2Error');
+    pass.focus();
+    function onClick(e) {
+      if (e.target.closest('[data-r2-close]')) return close(null);
+      if (e.target.closest('[data-r2-confirm]')) {
+        if (!pass.value) { er.textContent = 'Enter your password.'; er.hidden = false; return; }
+        if (!code.value.trim()) { er.textContent = 'Enter a current authenticator or recovery code.'; er.hidden = false; return; }
+        close({ password: pass.value, code: code.value.trim() });
+      }
+    }
+    const close = (val) => { hostEl.removeEventListener('click', onClick); hostEl.hidden = true; hostEl.innerHTML = ''; resolve(val); };
+    hostEl.addEventListener('click', onClick);
+  });
 }
 
 async function changePassword() {
@@ -1943,6 +2013,7 @@ function bindOnce() {
       if (a === 'phone-remove') return void removePhone();
       if (a === 'add-alias') return void addAlias();
       if (a === 'change-password') return void changePassword();
+      if (a === 'reset-2fa') return void resetTwoFactor();
       if (a === 'make-primary') return void makePrimary(act.dataset.alias);
       if (a === 'remove-alias') return void removeAlias(act.dataset.alias);
       if (a === 'verify-alias') return void verifyAlias(act.dataset.alias, act.dataset.claim);
