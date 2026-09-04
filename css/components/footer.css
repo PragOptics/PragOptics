@@ -152,6 +152,85 @@
   box-shadow: 0 0 18px rgba(28, 164, 144, 0.07);
 }
 
+/* Lane badge as an operator escape hatch (dev -> live). Only rendered for
+   platform operators on the dev lane; see src/components/footer.js. The amber
+   .is-local styling above already reads as "sandbox"; this makes it feel
+   pressable and reveals its purpose on hover/focus. */
+#footerEnv.footer-lane-btn{
+  cursor: pointer;
+  user-select: none;
+  transition: color 160ms ease, border-color 160ms ease,
+              box-shadow 160ms ease, transform 160ms ease;
+}
+
+#footerEnv.footer-lane-btn::after{
+  content: "\21BB live";      /* ↻ live */
+  margin-left: 0;
+  max-width: 0;
+  opacity: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  transition: max-width 220ms ease, opacity 160ms ease, margin-left 160ms ease;
+}
+
+#footerEnv.footer-lane-btn:hover,
+#footerEnv.footer-lane-btn:focus-visible{
+  color: rgba(255, 224, 130, 1);
+  border-color: rgba(255, 208, 90, 0.60);
+  box-shadow: 0 0 22px rgba(255, 208, 90, 0.18);
+  transform: translateY(-1px);
+  outline: none;
+}
+
+#footerEnv.footer-lane-btn:hover::after,
+#footerEnv.footer-lane-btn:focus-visible::after{
+  max-width: 5rem;
+  margin-left: 0.4rem;
+  opacity: 0.9;
+}
+
+/* Return-to-live popup — sized down from the shared .modal-card and given a
+   little extra galactic aura, but otherwise pure modals.css language. Uses a
+   two-class selector so it beats .modal-card (same specificity would lose on
+   cascade order, since modals.css loads after footer.css). */
+.modal-card.lane-return-card{
+  width: min(440px, 92vw);
+  max-height: none;
+  grid-template-rows: auto auto auto;
+  box-shadow:
+    var(--aura),
+    0 0 60px rgba(255, 208, 90, 0.06);
+}
+
+.lane-return-body{
+  padding: 16px 20px;
+  background: var(--grad);
+  color: rgba(220, 230, 245, 0.86);
+  font-size: 0.94rem;
+  line-height: 1.55;
+}
+
+.lane-return-body p{ margin: 0 0 0.7rem; }
+.lane-return-body p:last-child{ margin-bottom: 0; }
+
+.lane-return-body code{
+  background: rgba(255,255,255,0.06);
+  border: 1px solid var(--border);
+  padding: 1px 6px;
+  border-radius: 6px;
+  font-size: 0.86em;
+  color: var(--console-prop);
+}
+
+.lane-return-note{
+  color: rgba(255, 208, 90, 0.82);
+  font-size: 0.86rem;
+}
+
+.lane-return-foot{
+  justify-content: flex-end;
+}
+
 /* Responsive */
 @media (max-width: 900px){
   .footer-inner{
