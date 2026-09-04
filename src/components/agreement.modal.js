@@ -4,6 +4,8 @@ import { setAgreementAck } from "../runtime/state.js";
 import { openLoginModal } from "../ui/login.modal.js";
 
 export function initAgreementModal({ agreementUrl }) {
+  // Parsed from the document each time it is shown; see openAgreementModal.
+  let agreementVersion = "";
   const $mask  = document.getElementById("agreementMask");
   const $modal = document.getElementById("agreementModal");
   const $md    = document.getElementById("mdContainer");
@@ -88,9 +90,17 @@ export function initAgreementModal({ agreementUrl }) {
     $modal.classList.add("is-open");
     $modal.setAttribute("aria-hidden", "false");
 
+    agreementVersion = "";
     fetch(agreementUrl, { cache: "no-store" })
       .then(r => r.text())
-      .then(t => { $md.innerHTML = mdToHtml(t); })
+      .then(t => {
+        // The Version line near the top identifies the exact text being
+        // accepted; it rides on the acceptance record so a dispute can name
+        // which terms (tiers, allowances, billing rules) the customer agreed to.
+        const m = t.match(/\*\*Version:\*\*\s*([^\s*]+)/);
+        agreementVersion = m ? m[1] : "";
+        $md.innerHTML = mdToHtml(t);
+      })
       .catch(() => { $md.innerHTML = `<p class="muted">Unable to load agreement.</p>`; });
   }
 
@@ -113,6 +123,7 @@ export function initAgreementModal({ agreementUrl }) {
 
     setAgreementAck({
       agreementUrl,
+      agreementVersion,
       acceptedAt: new Date().toISOString(),
       userAgent: navigator.userAgent
     });

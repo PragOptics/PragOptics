@@ -13,6 +13,7 @@
 
 import { PRAG_API_BASE, LANE } from '../runtime/config.js';
 import { switchLane, isPlatformOperator } from '../runtime/lane.js';
+import { tierName, ADDON_NAME } from '../components/tierCopy.js';
 import { mountPricingSelect } from '../components/pricingCards.js';
 
 const ALIASES_URL = `${PRAG_API_BASE}/auth/aliases`;
@@ -171,7 +172,9 @@ function friendlyError(ex, fallback, { passwordFlow = false } = {}) {
   // platform ceiling) intentionally do not, and use the generic path.
   if (ex?.status === 429 && ex?.data?.limitScope) return rateLimitMessage(ex.data);
   if (ex?.status === 404) return 'This feature is not available yet.';
-  if (ex?.status === 403) return 'This account is not an administrator.';
+  // Shared by admin and customer billing actions: a customer refused for a
+  // non-admin reason must not be told they are "not an administrator".
+  if (ex?.status === 403) return 'This action is not available for your account.';
   // 401 means "wrong password" only in the step-up flows that just asked for
   // one; on a plain data fetch it means the session died.
   if (ex?.status === 401) {
@@ -795,6 +798,57 @@ function sameKeySets(a, b) {
   return true;
 }
 
+// The LIVE shape read off the subscription's own items, the same reading the
+// backend makes: tier from po.<tier>.*, cadence from the price interval,
+// add-ons from po.addon.<slug>. requestedSubscription is only the last
+// REQUEST; a relinked or migrated account may carry none at all.
+const ADDON_SLUG_TO_KEY = { storage5gb: 'storage', flows10k: 'flows', api50k: 'api', domains: 'domains' };
+function shapeOfItems(items = []) {
+  const out = { subType: null, cadence: 'monthly', addons: { domains: false, storage: false, flows: false, api: false } };
+  for (const it of items) {
+    const lk = String(it.lookupKey || '');
+    const base = lk.match(/^po\.(user|partner|super)\./);
+    if (base) { out.subType = base[1]; out.cadence = it.interval === 'year' ? 'annual' : 'monthly'; continue; }
+    const addon = lk.match(/^po\.addon\.([a-z0-9]+)\./);
+    if (addon && ADDON_SLUG_TO_KEY[addon[1]]) out.addons[ADDON_SLUG_TO_KEY[addon[1]]] = true;
+  }
+  return out;
+}
+
+const TIER_RANK = { free: 0, user: 1, partner: 2, super: 3 };
+const rankOf = (t) => TIER_RANK[String(t || 'free').toLowerCase()] ?? 0;
+
+// Mirrors the backend rule (auth/subscriptionShape.js) so the confirm button
+// can say what will happen: "more" (a higher tier, monthly to annual, an
+// add-on added) applies now with a prorated charge; "less" (a lower tier,
+// annual to monthly, an add-on removed) at the end of the paid period with
+// no charge; "both" splits.
+function changeKind(cur, des) {
+  const up = rankOf(des.subType) > rankOf(cur.subType);
+  const down = rankOf(des.subType) < rankOf(cur.subType);
+  const cadUp = cur.cadence === 'monthly' && des.cadence === 'annual';
+  const cadDown = cur.cadence === 'annual' && des.cadence === 'monthly';
+  const added = Object.keys(des.addons || {}).filter(k => des.addons[k] && !cur.addons?.[k]);
+  const removed = Object.keys(cur.addons || {}).filter(k => cur.addons[k] && !des.addons?.[k]);
+  if (up || (cadUp && !down)) return 'more';
+  if (down || cadDown) return 'less';
+  if (added.length && removed.length) return 'both';
+  if (added.length) return 'more';
+  if (removed.length) return 'less';
+  return 'none';
+}
+
+const STATUS_LABEL = {
+  ACTIVE: 'Active', PAYMENT_PENDING: 'Payment pending', PAST_DUE: 'Past due', CANCELED: 'Canceled',
+  PENDING_SUBSCRIPTION: 'Not subscribed', CHECKOUT_IN_PROGRESS: 'Checkout in progress', NONE: 'Not subscribed',
+  UNKNOWN: 'Unavailable'
+};
+function statusLabel(s) {
+  const k = String(s || '').toUpperCase();
+  if (!k) return 'Not subscribed';
+  return STATUS_LABEL[k] || (k.charAt(0) + k.slice(1).toLowerCase().replace(/_/g, ' '));
+}
+
 /* ---------- usage meters ---------- */
 
 function nFmt(n) { return Number(n || 0).toLocaleString('en-US'); }
@@ -824,13 +878,24 @@ async function loadUsageCard() {
   try {
     const d = await apiFetch(USAGE_MINE_URL);
     const activeAddons = Object.entries(d.addons || {}).filter(([, on]) => on).map(([k]) => k);
-    const over = Object.entries(d.capState || {}).filter(([, s]) => s === 'grace' || s === 'blocked');
+    const states = Object.values(d.capState || {});
+    const blocked = states.includes('blocked');
+    const over = states.filter(s => s === 'grace' || s === 'blocked');
+    const gracePct = Math.round(((Number(d.graceRatio) || 1.1) - 1) * 100);
+    const tier = String(d.tier || 'free').toLowerCase();
+    // Where more capacity comes from depends on the plan: add-ons scale the
+    // User plan; Partner and Super include higher limits and move up instead.
+    const morePath = tier === 'user' ? 'Add an add-on in Plan and add-ons above'
+      : tier === 'super' ? 'Contact support@bridgesindust.com for more capacity'
+      : 'Upgrade in Plan and add-ons above';
     host.innerHTML = `
       <section class="acct-card ${over.length ? 'acct-card-warn' : ''}">
         <h3 class="acct-card-h">Usage this month</h3>
-        <p class="acct-card-note">${escapeHtml(d.month)} on the ${escapeHtml(d.tier)} plan${activeAddons.length
-          ? `, limits raised by ${activeAddons.length} add-on${activeAddons.length === 1 ? '' : 's'}` : ''}.${over.length
-          ? ` <span class="acct-tag is-bad">past allowance</span> Add capacity in Plan and add-ons above; nothing you rely on is cut off.` : ''}</p>
+        <p class="acct-card-note">${escapeHtml(d.month)} on the ${escapeHtml(tierName(tier))} plan${activeAddons.length
+          ? `, limits raised by ${activeAddons.length} add-on${activeAddons.length === 1 ? '' : 's'}` : ''}. Each allowance has a ${gracePct}% grace margin.${over.length
+          ? ` <span class="acct-tag is-bad">${blocked ? 'past allowance and grace' : 'past allowance'}</span> ${escapeHtml(morePath)}.${blocked
+            ? ' Metered platform functions are paused until capacity is added or the month resets; your account, billing, and warranty are unaffected.'
+            : ' Nothing is limited yet.'}` : ''}</p>
         ${meterRowHtml('API calls', d.usage.apiCalls, d.limits.apiCalls)}
         ${meterRowHtml('Flow runs', d.usage.flowRuns, d.limits.flowRuns)}
         ${meterRowHtml('Storage', d.usage.storageBytes, d.limits.storageBytes, gbFmt)}
@@ -852,20 +917,21 @@ function invoicePill(status) {
 function subNotSubscribedHtml(data) {
   const tier = cachedPing()?.user?.tier || 'free';
   const status = String(data?.status || '').toUpperCase();
-  const midCheckout = ['PAYMENT_PENDING', 'CHECKOUT_IN_PROGRESS', 'PENDING_SUBSCRIPTION'].includes(status)
-    && status !== 'PENDING_SUBSCRIPTION';
+  const midCheckout = status === 'CHECKOUT_IN_PROGRESS';
   return `
     <section class="acct-card">
       <div class="acct-plan">
         <div>
-          <span class="acct-plan-tier">${escapeHtml(tier)}</span>
-          <span class="acct-tag is-pending">${escapeHtml(status === 'NONE' || !status ? 'Not subscribed' : status)}</span>
+          <span class="acct-plan-tier">${escapeHtml(tierName(tier))}</span>
+          <span class="acct-tag is-pending">${escapeHtml(statusLabel(status))}</span>
         </div>
         <p class="acct-card-note">${status === 'PAYMENT_PENDING'
           ? 'Your payment is processing. This settles within a minute; check back shortly.'
           : midCheckout
             ? 'You have a subscription checkout in progress. Pick up where you left off.'
-            : 'You are on the free tier. Subscribe to publish builds, sync to the cloud, and use the API.'}</p>
+            : status === 'CANCELED'
+              ? 'Your subscription has ended and you are on the Free tier. Subscribe again any time.'
+              : 'You are on the Free tier. Subscribe for cloud sync, API access with your own keys, and a provisioned workspace.'}</p>
       </div>
       <div class="acct-actions-row">
         ${status === 'PAYMENT_PENDING' ? '' : `<button class="cta" type="button" data-acct-action="subscribe">${midCheckout ? 'Resume checkout' : 'Subscribe'}</button>`}
@@ -878,12 +944,20 @@ function subManagerHtml(data) {
   const sub = data.subscription;
   const tier = data.tier || cachedPing()?.user?.tier || '';
   const status = String(data.status || '').toUpperCase();
-  const req = data.requestedSubscription || {};
-  const cadence = req.cadence === 'annual' ? 'annual' : 'monthly';
+  // The LIVE shape comes from the subscription's own items, not the last
+  // request: a relinked or migrated account may carry no request at all.
+  const shape = shapeOfItems(sub.items || []);
+  const cadence = shape.cadence;
   const per = cadence === 'annual' ? '/yr' : '/mo';
   const totalCents = (sub.items || []).reduce((n, i) => n + (Number(i.amountCents) || 0) * (i.quantity || 1), 0);
   const pm = data.paymentMethod;
   const openInvoice = (data.invoices || []).find(i => String(i.status).toLowerCase() === 'open' && i.hostedInvoiceUrl);
+  const pending = data.pendingChange || null;
+  // An add-on riding a Partner or Super plan does not belong there (add-ons
+  // scale the User plan; an upgrade removes them). Offer its removal at the
+  // period end, unless a scheduled change already covers it.
+  const strayAddons = shape.subType && shape.subType !== 'user'
+    ? Object.keys(shape.addons).filter(k => shape.addons[k]) : [];
 
   return `
     ${data.paymentActionRequired && openInvoice ? `
@@ -907,8 +981,8 @@ function subManagerHtml(data) {
     <section class="acct-card">
       <div class="acct-plan">
         <div>
-          <span class="acct-plan-tier">${escapeHtml(tier)}</span>
-          <span class="acct-tag ${status === 'ACTIVE' ? 'is-verified' : 'is-pending'}">${escapeHtml(status)}</span>
+          <span class="acct-plan-tier">${escapeHtml(tierName(tier))}</span>
+          <span class="acct-tag ${status === 'ACTIVE' ? 'is-verified' : 'is-pending'}">${escapeHtml(statusLabel(status))}</span>
           ${sub.cancelAtPeriodEnd ? `<span class="acct-tag is-pending">Ends ${escapeHtml(fmtDate(sub.currentPeriodEnd))}</span>` : ''}
         </div>
         <p class="acct-card-note">
@@ -922,13 +996,37 @@ function subManagerHtml(data) {
       </div>
     </section>
 
+    ${pending ? `
+      <section class="acct-card acct-card-warn">
+        <h3 class="acct-card-h">Scheduled change</h3>
+        <p class="acct-card-note">On ${escapeHtml(fmtDate(pending.effectiveAt))}: ${escapeHtml(pending.summary || 'your plan changes')}.
+        Your current plan runs until then. No charge, no credit.</p>
+        <div class="acct-actions-row">
+          <button class="btn" type="button" data-acct-action="sub-keep">Keep my current plan</button>
+        </div>
+        <p class="acct-error" id="acctPendingError" hidden></p>
+      </section>
+    ` : strayAddons.length ? `
+      <section class="acct-card acct-card-warn">
+        <h3 class="acct-card-h">Add-on not on this plan</h3>
+        <p class="acct-card-note">${escapeHtml(strayAddons.map(k => ADDON_NAME[k] || k).join(', '))} ${strayAddons.length === 1 ? 'does' : 'do'} not apply to the
+        ${escapeHtml(tierName(shape.subType))} plan, which includes higher limits. Remove ${strayAddons.length === 1 ? 'it' : 'them'} at the end of the
+        paid period and ${strayAddons.length === 1 ? 'it' : 'they'} will not be billed again. No charge, no credit.</p>
+        <div class="acct-actions-row">
+          <button class="btn" type="button" data-acct-action="sub-drop-addons">Remove at period end</button>
+        </div>
+        <p class="acct-error" id="acctPendingError" hidden></p>
+      </section>
+    ` : ''}
+
     <section class="acct-card">
       <h3 class="acct-card-h">Plan and add-ons</h3>
       <div id="acctPricing"></div>
       <div class="acct-actions-row">
         <button class="cta" type="button" id="acctPlanApply" data-acct-action="sub-apply" disabled
-          title="Changes charge or credit the difference today; your tier follows the paid invoice">Apply changes</button>
+          title="Upgrades charge the difference today and apply once paid. Downgrades and add-on removals take effect at the end of the paid period, with no charge.">Apply changes</button>
       </div>
+      <p class="acct-card-note muted">Upgrades charge the difference today and apply once paid. Downgrades and add-on removals take effect on ${escapeHtml(fmtDate(sub.currentPeriodEnd))}, with no charge and no credit.</p>
       <p class="acct-error" id="acctPlanError" hidden></p>
       <p class="muted" id="acctPlanMsg" hidden></p>
     </section>
@@ -1021,12 +1119,14 @@ async function renderSubscription(main) {
   // preloaded with what is billing today. Apply arms only on a real change.
   const pricingHost = document.getElementById('acctPricing');
   const applyBtn = document.getElementById('acctPlanApply');
-  const currentKeys = keysOfCurrent(subData);
-  const req = subData.requestedSubscription || {};
+  const live = shapeOfItems(subData.subscription.items || []);
+  // The keys the selector can represent. A stray add-on on a Partner/Super
+  // plan is handled by its own card above, so it must not arm Apply here.
+  const currentKeys = new Set([...keysOfCurrent(subData)].filter(k => live.subType === 'user' || !k.startsWith('po.addon.')));
   if (pricingHost) {
     subPricing = mountPricingSelect(pricingHost, {
       catalog: cachedPing()?.productCatalog || [],
-      initial: { subType: req.subType || null, cadence: req.cadence || 'monthly', addons: req.addons || {} },
+      initial: { subType: live.subType, cadence: live.cadence, addons: live.subType === 'user' ? live.addons : {} },
       onChange: (sel) => {
         if (!applyBtn) return;
         const dirty = sel.subType && !sameKeySets(new Set(sel.lookupKeys), currentKeys);
@@ -1041,23 +1141,77 @@ async function renderSubscription(main) {
 async function applyPlanChange(btn) {
   const sel = subPricing?.get();
   if (!sel?.subType) return;
-  armConfirm(btn, `Confirm: ${usdCents(sel.totalCents)}${sel.cadence === 'annual' ? '/yr' : '/mo'} from today`, async () => {
+  const live = shapeOfItems(subData?.subscription?.items || []);
+  const kind = changeKind(live, { subType: sel.subType, cadence: sel.cadence, addons: sel.addons });
+  const endDate = fmtDate(subData?.subscription?.currentPeriodEnd);
+  const per = sel.cadence === 'annual' ? '/yr' : '/mo';
+  // The confirm says what will actually happen, per the backend's rule.
+  const armed = kind === 'less'
+    ? `Confirm: ${usdCents(sel.totalCents)}${per} from ${endDate}, no charge now`
+    : kind === 'both'
+      ? `Confirm: additions charge today; removals on ${endDate}`
+      : `Confirm: ${usdCents(sel.totalCents)}${per}, difference charged today`;
+  armConfirm(btn, armed, async () => {
     btn.disabled = true;
     const orig = btn.textContent;
     btn.textContent = 'Applying…';
     showError('acctPlanError', '');
     try {
-      await apiFetch(SUB_UPDATE_URL, {
+      const r = await apiFetch(SUB_UPDATE_URL, {
         method: 'POST',
         body: JSON.stringify({ subType: sel.subType, cadence: sel.cadence, addons: sel.addons })
       });
       const msg = document.getElementById('acctPlanMsg');
-      if (msg) { msg.textContent = 'Plan updated. The difference settles today; your tier follows the paid invoice.'; msg.hidden = false; }
+      const when = r?.effectiveAt ? fmtDate(r.effectiveAt) : endDate;
+      const text = r?.applied === 'scheduled'
+        ? `Scheduled. Your current plan runs until ${when}; the new plan starts then. No charge, no credit.`
+        : r?.applied === 'both'
+          ? `Additions applied; the difference settles today. Removals take effect on ${when}.`
+          : r?.applied === 'none'
+            ? 'No change to make.'
+            : 'Plan updated. The difference settles today; your tier follows the paid invoice.';
+      if (msg) { msg.textContent = text; msg.hidden = false; }
       setTimeout(() => { const m = document.getElementById('acctMain'); if (m && activeSection === 'subscription') renderSubscription(m); }, 1800);
     } catch (ex) {
       showError('acctPlanError', friendlyError(ex, 'Could not update the plan.'));
       btn.disabled = false;
       btn.textContent = orig;
+    }
+  });
+}
+
+// Drop a scheduled period-end change; the live plan is untouched.
+async function keepCurrentPlan(btn) {
+  btn.disabled = true;
+  showError('acctPendingError', '');
+  try {
+    await apiFetch(SUB_UPDATE_URL, { method: 'POST', body: JSON.stringify({ cancelPending: true }) });
+    const m = document.getElementById('acctMain');
+    if (m && activeSection === 'subscription') renderSubscription(m);
+  } catch (ex) {
+    showError('acctPendingError', friendlyError(ex, 'Could not cancel the scheduled change.'));
+    btn.disabled = false;
+  }
+}
+
+// Schedule the removal of add-ons that do not belong on this plan at the end
+// of the paid period. The backend classifies it as "less": no charge, no credit.
+async function dropStrayAddons(btn) {
+  const live = shapeOfItems(subData?.subscription?.items || []);
+  if (!live.subType) return;
+  armConfirm(btn, `Confirm: remove on ${fmtDate(subData?.subscription?.currentPeriodEnd)}`, async () => {
+    btn.disabled = true;
+    showError('acctPendingError', '');
+    try {
+      await apiFetch(SUB_UPDATE_URL, {
+        method: 'POST',
+        body: JSON.stringify({ subType: live.subType, cadence: live.cadence, addons: {} })
+      });
+      const m = document.getElementById('acctMain');
+      if (m && activeSection === 'subscription') renderSubscription(m);
+    } catch (ex) {
+      showError('acctPendingError', friendlyError(ex, 'Could not schedule the removal.'));
+      btn.disabled = false;
     }
   });
 }
@@ -2055,6 +2209,8 @@ function bindOnce() {
       if (a === 'sub-apply') return void applyPlanChange(act);
       if (a === 'sub-cancel') return void setCancelState(act, 'cancel');
       if (a === 'sub-resume') return void setCancelState(act, 'resume');
+      if (a === 'sub-keep') return void keepCurrentPlan(act);
+      if (a === 'sub-drop-addons') return void dropStrayAddons(act);
       if (a === 'pm-update') return void startPmUpdate(act);
       if (a === 'pm-save') return void savePmUpdate(act);
       if (a === 'pm-cancel') return void cancelPmUpdate();
@@ -2140,6 +2296,9 @@ export function presetAccountSection(id) {
 }
 
 export function initAccountView() {
+  // Lets other surfaces (the tier gallery) land on a section without
+  // importing this module.
+  window.presetAccountSection = presetAccountSection;
   $body = document.getElementById('accountBody');
   if (!$body) return;
   bindOnce();

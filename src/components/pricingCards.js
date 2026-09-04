@@ -26,53 +26,10 @@ function usd(cents) {
   return (n % 100 === 0) ? `$${d.toLocaleString('en-US')}` : `$${d.toFixed(2)}`;
 }
 
-// Display copy for the tiers the catalog can carry. Prices always come from
-// the catalog rows; this is names, taglines, and what each plan includes.
-const TIER_COPY = {
-  user: {
-    name: 'User',
-    tag: 'The platform',
-    featured: true,
-    features: [
-      'Cloud sync for field data and calibration records',
-      'API access with your own keys',
-      'Provisioned workspace and storage',
-      'Add-ons: scale storage, flows, API, and domains',
-      'Email support'
-    ]
-  },
-  partner: {
-    name: 'Partner',
-    tag: 'Build on PragOptics',
-    features: [
-      'Everything in User',
-      'Publish your own APIs under the platform',
-      'Usage billed through your subscription',
-      'Your commerce stays yours',
-      'Priority support'
-    ]
-  },
-  super: {
-    name: 'Super',
-    tag: 'The platform at full scale',
-    features: [
-      'Everything in Partner',
-      'The highest platform limits',
-      'First in line for support'
-    ]
-  }
-};
-
-// Add-on display copy, keyed by the catalog's normalized add-on keys.
-const ADDON_COPY = {
-  domains:    { name: 'Custom domains', blurb: 'Serve your environment under your own domain names.' },
-  storage5gb: { name: 'Storage +5 GB',  blurb: 'Five more gigabytes on your workspace.' },
-  flows10k:   { name: 'Flows +10k',     blurb: 'Ten thousand more flow runs each month.' },
-  api50k:     { name: 'API +50k',       blurb: 'Fifty thousand more API calls each month.' }
-};
-
-// Stable order for known tiers; anything new the catalog grows lands after.
-const TIER_ORDER = ['user', 'partner', 'super'];
+// Display copy (names, taglines, what each plan includes) is the shared
+// tierCopy.js, the same copy the warranty tier gallery renders. Prices always
+// come from the catalog rows.
+import { TIER_COPY, ADDON_COPY, TIER_ORDER } from './tierCopy.js';
 
 // The state key the backend understands per normalized add-on key.
 const ADDON_STATE_KEY = { domains: 'domains', storage5gb: 'storage', flows10k: 'flows', api50k: 'api' };
@@ -128,12 +85,18 @@ export function mountPricingSelect(host, { catalog = [], initial = {}, onChange 
       const baseLk = model.plans[state.subType]?.base?.[cadence]?.lookupKey;
       if (baseLk) lookupKeys.push(baseLk);
     }
+    // Only add-ons the User plan can actually buy in this cadence are
+    // reported: a toggle left on from another cadence, or on a plan that
+    // takes no add-ons, must not send a boolean the backend has no price for.
+    const addonsOut = { domains: false, storage: false, flows: false, api: false };
     if (state.subType === 'user') {
       for (const key of addonKeys) {
         const sk = ADDON_STATE_KEY[key] || key;
         if (!state.addons[sk]) continue;
         const amt = addonPrice(key, cadence);
-        if (amt != null) total += Number(amt);
+        if (amt == null) continue;
+        addonsOut[sk] = true;
+        total += Number(amt);
         const lk = addonsModel[key]?.[cadence]?.lookupKey;
         if (lk) lookupKeys.push(lk);
       }
@@ -141,7 +104,7 @@ export function mountPricingSelect(host, { catalog = [], initial = {}, onChange 
     return {
       subType: state.subType,
       cadence,
-      addons: { ...state.addons },
+      addons: addonsOut,
       totalCents: state.subType != null && base != null ? total : null,
       lookupKeys
     };
@@ -157,6 +120,9 @@ export function mountPricingSelect(host, { catalog = [], initial = {}, onChange 
     const equiv = (cadence === 'annual' && amt != null)
       ? `${usd(Math.round(amt / 12))}/mo, billed yearly`
       : (monthly != null ? '' : '');
+    // This tier's OWN annual saving, not the best across tiers.
+    const save = (cadence === 'annual' && amt != null && monthly != null && monthly > 0)
+      ? Math.round((1 - amt / (monthly * 12)) * 100) : 0;
     return `
       <article class="pc-card ${copy.featured ? 'is-featured' : ''} ${selected ? 'is-selected' : ''}" data-pc-tier="${esc(role)}">
         ${copy.featured ? '<span class="pc-flag">Popular</span>' : ''}
@@ -168,8 +134,8 @@ export function mountPricingSelect(host, { catalog = [], initial = {}, onChange 
         </div>
         <div class="pc-price">
           ${amt != null
-            ? `<span class="pc-amount">${esc(usd(amt))}</span><span class="pc-per muted">${per}</span>`
-            : `<span class="pc-amount pc-amount-soft">Not offered ${esc(cadence)}</span>`}
+            ? `<span class="pc-amount">${esc(usd(amt))}</span><span class="pc-per muted">${per}</span>${save > 0 ? ` <span class="pc-save">Save ${save}%</span>` : ''}`
+            : `<span class="pc-amount pc-amount-soft">Not offered ${cadence === 'annual' ? 'yearly' : 'monthly'}</span>`}
         </div>
         ${equiv ? `<span class="pc-equiv muted">${esc(equiv)}</span>` : ''}
         <ul class="pc-features">
@@ -188,14 +154,17 @@ export function mountPricingSelect(host, { catalog = [], initial = {}, onChange 
     const on = !!state.addons[sk];
     const amt = addonPrice(key, state.cadence);
     const per = state.cadence === 'annual' ? '/yr' : '/mo';
+    // An add-on with no price in this cadence cannot be chosen: it would add
+    // nothing to the total and send a boolean the backend has no price for.
+    const offered = amt != null;
     return `
-      <button class="pc-addon ${on ? 'is-on' : ''}" type="button" data-pc-addon="${esc(sk)}" aria-pressed="${on}">
+      <button class="pc-addon ${on && offered ? 'is-on' : ''}" type="button" data-pc-addon="${esc(sk)}" aria-pressed="${on && offered}" ${offered ? '' : 'disabled'}>
         <span class="pc-addon-top">
           <span class="pc-addon-name">${esc(copy.name)}</span>
-          <span class="pc-addon-price">${amt != null ? `+${esc(usd(amt))}${per}` : ''}</span>
+          <span class="pc-addon-price">${offered ? `+${esc(usd(amt))}${per}` : `Not offered ${state.cadence === 'annual' ? 'yearly' : 'monthly'}`}</span>
         </span>
         ${copy.blurb ? `<span class="pc-addon-blurb muted">${esc(copy.blurb)}</span>` : ''}
-        <span class="pc-addon-check" aria-hidden="true">${on ? '✓ Added' : 'Add'}</span>
+        <span class="pc-addon-check" aria-hidden="true">${on && offered ? '✓ Added' : 'Add'}</span>
       </button>
     `;
   }
@@ -221,7 +190,7 @@ export function mountPricingSelect(host, { catalog = [], initial = {}, onChange 
         <div class="pc-toggle" role="group" aria-label="Billing cadence">
           <button type="button" class="pc-toggle-btn ${state.cadence === 'monthly' ? 'is-active' : ''}" data-pc-cadence="monthly">Monthly</button>
           <button type="button" class="pc-toggle-btn ${state.cadence === 'annual' ? 'is-active' : ''}" data-pc-cadence="annual">
-            Annual${pct ? ` <span class="pc-save">${pct}% off</span>` : ''}
+            Annual${pct ? ` <span class="pc-save">up to ${pct}% off</span>` : ''}
           </button>
         </div>
         <div class="pc-grid">
@@ -230,6 +199,7 @@ export function mountPricingSelect(host, { catalog = [], initial = {}, onChange 
         ${addonKeys.length ? `
           <div class="pc-addons ${state.subType === 'user' ? '' : 'hidden'}" id="pcAddons">
             <span class="pc-addons-h">Add-ons for the User plan</span>
+            <span class="pc-addons-note muted">Add-ons scale the User plan. Partner and Super include higher limits, so upgrading removes any add-ons.</span>
             <div class="pc-addon-grid">
               ${addonKeys.map(addonCardHtml).join('')}
             </div>
@@ -261,7 +231,7 @@ export function mountPricingSelect(host, { catalog = [], initial = {}, onChange 
       const choose = e.target.closest('[data-pc-choose]');
       if (choose && !choose.disabled) { state.subType = choose.dataset.pcChoose; emit(); return; }
       const addon = e.target.closest('[data-pc-addon]');
-      if (addon) {
+      if (addon && !addon.disabled) {
         const k = addon.dataset.pcAddon;
         state.addons[k] = !state.addons[k];
         emit();

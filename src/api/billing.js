@@ -177,6 +177,11 @@ export async function pollUntilResolved({
 
   const started = Date.now();
   const TIMEOUT = 60000;
+  // A profile can still read PAST_DUE or CANCELED from a PREVIOUS attempt for
+  // the first seconds after a re-subscribe (the activation moves it on once
+  // the subscription exists). Only treat those as a real problem once the
+  // activation has had time to land.
+  const SETTLE_MS = 8000;
 
   while (Date.now() - started < TIMEOUT) {
     await new Promise(r => setTimeout(r, 1500));
@@ -195,7 +200,20 @@ export async function pollUntilResolved({
       return;
     }
 
-    if (status === "PAST_DUE" || status === "CANCELED") {
+    // The bank asked for extra authentication on the first charge: the
+    // account panel's Billing section carries the "Finish authentication"
+    // link, so send the customer there instead of leaving "Still working…".
+    if (ping?.billingProfile?.paymentActionRequired === true) {
+      setDnaMode(
+        "idle",
+        "Authentication needed",
+        "Your bank needs one more step. Open Billing in your account to finish."
+      );
+      onResolved(ping);
+      return;
+    }
+
+    if ((status === "PAST_DUE" || status === "CANCELED") && Date.now() - started >= SETTLE_MS) {
       setDnaMode(
         "idle",
         "Subscription issue",

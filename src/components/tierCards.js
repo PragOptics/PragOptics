@@ -11,59 +11,10 @@
 // with feature lists; the price line invites them in. Selecting a paid tier
 // stashes the preference and routes into the account + wizard path.
 
-// Free is not a catalog row; it is the baseline every owner already has.
-const FREE_TIER = {
-  id: 'free',
-  name: 'Free',
-  tag: 'For every owner',
-  features: [
-    'Warranty registration and transfers',
-    'All PragOptics software, free to run',
-    'Product docs, print profiles, and schematics',
-    'Community support'
-  ]
-};
-
-// Display copy per paid tier; prices always come from the catalog.
-const TIER_COPY = {
-  user: {
-    name: 'User',
-    tag: 'The platform',
-    featured: true,
-    features: [
-      'Everything in Free',
-      'Cloud sync for field data and calibration records',
-      'API access with your own keys',
-      'Provisioned workspace and storage',
-      'Email support'
-    ],
-    cta: 'Start with User'
-  },
-  partner: {
-    name: 'Partner',
-    tag: 'Build on PragOptics',
-    features: [
-      'Everything in User',
-      'Publish your own APIs under the platform',
-      'Usage billed through your subscription',
-      'Your commerce stays yours',
-      'Priority support'
-    ],
-    cta: 'Start with Partner'
-  },
-  super: {
-    name: 'Super',
-    tag: 'The platform at full scale',
-    features: [
-      'Everything in Partner',
-      'The highest platform limits',
-      'First in line for support'
-    ],
-    cta: 'Start with Super'
-  }
-};
-
-const TIER_ORDER = ['user', 'partner', 'super'];
+// Display copy (Free baseline, each paid tier, canonical order) is the shared
+// tierCopy.js, the same copy the plan selector renders. Prices always come
+// from the catalog.
+import { FREE_TIER, TIER_COPY, TIER_ORDER } from './tierCopy.js';
 
 function esc(s) {
   return String(s ?? '').replace(/[&<>"']/g, c => ({
@@ -88,6 +39,7 @@ function catalogTiers() {
   const rows = cachedPing()?.productCatalog || [];
   const byTier = {};
   for (const r of rows) {
+    if (String(r.active) === 'false') continue;   // retired in Stripe: never advertised
     const m = String(r.lookupKey || '').match(/^po\.([a-z0-9]+)\.(?!.*addon)[a-z0-9]+\.monthly$/);
     if (!m || m[1] === 'addon') continue;
     byTier[m[1]] = centsToUSD(r.amount);
@@ -164,6 +116,16 @@ export function bindTierCards(root) {
     const btn = e.target.closest('[data-tc-select]');
     if (!btn || btn.disabled) return;
     const tier = btn.dataset.tcSelect;
+    // An existing SUBSCRIBER changes plan in Billing (the proration-aware
+    // path), never through signup. Everyone else goes through the agreement
+    // and the wizard, which reads the stashed preference.
+    const ping = cachedPing();
+    const subscribed = !!ping?.user && String(ping?.user?.tier || 'free').toLowerCase() !== 'free';
+    if (subscribed) {
+      window.presetAccountSection?.('subscription');
+      window.setAppMode?.('account');
+      return;
+    }
     try { localStorage.setItem('pragoptics_wizard_tier_pref', tier); } catch { /* fine */ }
     // Same path the warranty account flow uses: the agreement gates account
     // creation, and the wizard it opens into reads the stashed preference.

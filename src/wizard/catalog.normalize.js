@@ -17,7 +17,9 @@ export function normalizeCatalog(productCatalog = []) {
   };
 
   for (const item of productCatalog) {
-    if (!item || item.active !== "true") continue;
+    // String compare: the table stores "true"/"false" as strings, but a
+    // boolean from any other producer must not empty the whole selector.
+    if (!item || String(item.active) !== "true") continue;
 
     const { lookupKey, productId, interval, priceId, amount } = item;
     const role = roleFromLookupKey(lookupKey) || item.role;
