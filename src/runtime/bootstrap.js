@@ -203,6 +203,11 @@ function setToken(tokens) {
        =========================== */
        initDropdownMenu();
 
+    // Mark which lane this browser is on so lane-specific UI can react in CSS.
+    // Public signup is a LIVE-only path; on dev the entry points are hidden
+    // (and the route is refused server-side regardless).
+    try { document.documentElement.setAttribute('data-lane', LANE); } catch {}
+
 
 
 

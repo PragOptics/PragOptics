@@ -17,6 +17,11 @@ html{
   scrollbar-gutter: stable;
 }
 
+/* Public self-signup is a LIVE-only path. On the dev lane the account there is
+   provisioned, never self-created, so every signup entry point is hidden. The
+   server refuses the route on dev regardless; this just keeps the UI honest. */
+html[data-lane="dev"] [data-signup-entry]{ display: none !important; }
+
 a{
   color:inherit;
   text-decoration:none;
