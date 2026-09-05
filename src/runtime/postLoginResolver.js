@@ -49,7 +49,6 @@ export function resolvePostLoginUI({ ping }) {
       };
 
     case "ACTIVE":
-    case "PAST_DUE":
       // Subscription is the front end's final step. Environment provisioning
       // and account management live in the PragOptics software, so an active
       // subscriber always resolves to the console regardless of provisioning
@@ -58,12 +57,23 @@ export function resolvePostLoginUI({ ping }) {
         mode: "console"
       };
 
-    default:
+    case "PAST_DUE":
+      // A past-due account keeps its console access (the card problem is fixable
+      // from Billing), but it lands with a banner pointing at the fix instead of
+      // silently working until the next failed renewal.
       return {
-        mode: "wizard",
-        wizardStep: 1,
-        banner: null,
-        dna: null
+        mode: "console",
+        banner: "past-due"
       };
+
+    default:
+      // An unrecognized status on an account that ALREADY has a billing
+      // profile must not be forced back through setup: the wizard's
+      // checkout-session call would refuse the state that sent it there, a
+      // closed loop with no exit. A profile in an unknown state resolves to
+      // the console; only an account with no profile at all sets up.
+      return ping.billingProfile
+        ? { mode: "console" }
+        : { mode: "wizard", wizardStep: 1, banner: null, dna: null };
   }
 }

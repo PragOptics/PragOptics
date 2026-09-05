@@ -1062,9 +1062,7 @@ async function loadUsageCard() {
             ? ' Metered platform functions are paused until capacity is added or the month resets; your account, billing, and warranty are unaffected.'
             : ' Nothing is limited yet.'}` : ''}</p>
         ${meterRowHtml('API calls', d.usage.apiCalls, d.limits.apiCalls)}
-        ${meterRowHtml('Flow runs', d.usage.flowRuns, d.limits.flowRuns)}
         ${meterRowHtml('Storage', d.usage.storageBytes, d.limits.storageBytes, gbFmt)}
-        ${meterRowHtml('Custom domains', d.usage.domainsCount, d.limits.domains)}
       </section>
     `;
   } catch (ex) {
@@ -1623,7 +1621,6 @@ async function loadAdminUsage() {
     host.innerHTML = `
       <div class="adm-stat-grid" style="margin-top:12px;">
         ${statCard(nFmt(d.totals?.apiCalls), 'API calls this month')}
-        ${statCard(nFmt(d.totals?.flowRuns), 'Flow runs this month')}
         ${statCard(nFmt(d.meteredUsers), 'Metered accounts', d.truncated ? 'capped at first 2000' : '')}
         ${statCard(nFmt(d.nearBaseCap), 'Near base cap', `past ${d.nearCapThresholdPct}% of base allowance`, d.nearBaseCap > 0 ? 'amber' : '')}
       </div>
@@ -1632,7 +1629,7 @@ async function loadAdminUsage() {
           <h3 class="adm-card-h">Top consumers (${escapeHtml(d.month)})</h3>
           <div class="adm-table-scroll">
             <table class="adm-table">
-              <thead><tr><th>Account</th><th>Tier</th><th class="adm-num">API calls</th><th class="adm-num">% of base</th><th class="adm-num">Flow runs</th><th class="adm-num">% of base</th></tr></thead>
+              <thead><tr><th>Account</th><th>Tier</th><th class="adm-num">API calls</th><th class="adm-num">% of base</th></tr></thead>
               <tbody>
                 ${d.top.map(u => `
                   <tr>
@@ -1640,8 +1637,6 @@ async function loadAdminUsage() {
                     <td>${tierPill(u.tier)}</td>
                     <td class="adm-num">${escapeHtml(nFmt(u.apiCalls))}</td>
                     <td class="adm-num ${u.apiPctOfBase >= 80 ? 'adm-money-neg' : ''}">${escapeHtml(String(u.apiPctOfBase))}%</td>
-                    <td class="adm-num">${escapeHtml(nFmt(u.flowRuns))}</td>
-                    <td class="adm-num ${u.flowPctOfBase >= 80 ? 'adm-money-neg' : ''}">${escapeHtml(String(u.flowPctOfBase))}%</td>
                   </tr>
                 `).join('')}
               </tbody>

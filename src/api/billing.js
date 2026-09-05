@@ -112,6 +112,14 @@ export async function startPaymentStep({
       await pollUntilResolved();
       return;
     }
+    if (err?.status === 503) {
+      // The backend returns 503 (retryable) when the billing profile row cannot
+      // be read or keeps changing. It used to surface nothing; give the customer
+      // a clear, honest message so they retry instead of staring at a dead step.
+      const e = new Error("Payment setup is busy right now. Wait a moment and try the payment step again.");
+      e.status = 503;
+      throw e;
+    }
     throw err;
   }
 

@@ -30,11 +30,33 @@
 // registrations, so the whole flow is testable end to end today.
 
 import { getProduct } from '../shop/products.js';
+import { PRAG_API_BASE } from '../runtime/config.js';
 
-const TRANSFER_API_LIVE = false;      // ← flip when the transfer endpoints are deployed and named
+const TRANSFER_API_LIVE = true;       // live: POST /warranty/transfer/* deployed 2026-09-05
 const RESEND_COOLDOWN_S = 90;         // stale-code timeout between (re)requests
 const REG_QUEUE_KEY      = 'pragoptics_warranty_queue_v1';
 const TRANSFER_QUEUE_KEY = 'pragoptics_transfer_queue_v1';
+
+const CLAIM_URL     = `${PRAG_API_BASE}/warranty/transfer/claim`;
+const VERIFY_URL    = `${PRAG_API_BASE}/warranty/transfer/verify`;
+const RECIPIENT_URL = `${PRAG_API_BASE}/warranty/transfer/recipient`;
+const COMPLETE_URL  = `${PRAG_API_BASE}/warranty/transfer/complete`;
+
+async function postJson(url, body) {
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  let data = {};
+  try { data = await res.json(); } catch { /* empty body */ }
+  if (!res.ok) {
+    const e = new Error(data.error || 'Could not reach the transfer service. Try again.');
+    e.status = res.status;
+    throw e;
+  }
+  return data;
+}
 
 const GO_ICON = '<svg class="wr-go-ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12h14"/><path d="M12 6l6 6-6 6"/></svg>';
 const CHECK_ICON = '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12.5l5.5 5.5L20 6.5"/></svg>';
@@ -52,6 +74,7 @@ const state = {
   products: [],            // registrations found for state.email
   selected: new Set(),     // indexes into state.products
   toEmail: '',
+  grant: '',               // signed proof-of-ownership token from the verify step
   transfereeHasAccount: null,
   resendLeft: 0            // seconds remaining on the resend cooldown
 };
@@ -79,10 +102,10 @@ function readRegQueue() {
 
 async function apiRequestClaimCode(email, phone) {
   if (TRANSFER_API_LIVE) {
-    // Endpoint TBD — named with the backend. Sends a claim code to `email`
-    // (and optionally notifies `phone`) ONLY if the email is on file; the
-    // response is identical either way so nothing is enumerable.
-    throw new Error('Transfer endpoints not wired yet.');
+    // Sends a claim code to `email` ONLY if registrations exist under it. The
+    // response is identical either way, so nothing is enumerable.
+    await postJson(CLAIM_URL, { email, phone });
+    return { sent: true };
   }
   await new Promise(r => setTimeout(r, 600));
   return { sent: true };
@@ -90,20 +113,23 @@ async function apiRequestClaimCode(email, phone) {
 
 async function apiVerifyClaimCode(email, code) {
   if (TRANSFER_API_LIVE) {
-    // Endpoint TBD — verifies the claim code and returns the registrations
-    // tied to `email`.
-    throw new Error('Transfer endpoints not wired yet.');
+    // Verifies the claim code, returns the registrations tied to `email` plus
+    // a signed grant that binds this proven ownership to the completion step.
+    const r = await postJson(VERIFY_URL, { email, code });
+    return { ok: !!r.ok, products: r.products || [], grant: r.grant || '' };
   }
   await new Promise(r => setTimeout(r, 500));
   if (normCode(code).length < 6) return { ok: false };
   const mine = readRegQueue().filter(q => String(q.email || '').toLowerCase() === email.toLowerCase());
-  return { ok: true, products: mine };
+  return { ok: true, products: mine, grant: 'sim' };
 }
 
 async function apiRequestTransfereeCode(toEmail) {
   if (TRANSFER_API_LIVE) {
-    // Endpoint TBD — sends a confirmation code to the transferee.
-    throw new Error('Transfer endpoints not wired yet.');
+    // Sends a confirmation code to the transferee. The grant proves the caller
+    // is the verified from-owner, so a stranger cannot spam this.
+    await postJson(RECIPIENT_URL, { grant: state.grant, toEmail });
+    return { sent: true };
   }
   await new Promise(r => setTimeout(r, 600));
   return { sent: true };
@@ -111,9 +137,10 @@ async function apiRequestTransfereeCode(toEmail) {
 
 async function apiCompleteTransfer({ fromEmail, toEmail, code, items }) {
   if (TRANSFER_API_LIVE) {
-    // Endpoint TBD — verifies the transferee code, re-assigns the selected
-    // registrations, reports whether `toEmail` already has an account.
-    throw new Error('Transfer endpoints not wired yet.');
+    // Verifies the transferee code and moves only the registrations the grant
+    // covers that are still owned by the from-email.
+    const r = await postJson(COMPLETE_URL, { grant: state.grant, toEmail, code, items });
+    return { ok: !!r.ok, transfereeHasAccount: r.transfereeHasAccount === true, moved: r.moved };
   }
   await new Promise(r => setTimeout(r, 550));
   if (normCode(code).length < 6) return { ok: false };
@@ -412,6 +439,7 @@ function bindOnce() {
       if (r !== run) return;
       if (!resp?.ok) { go.disabled = false; fail('#trCodeError'); return; }
       stopCooldown();
+      state.grant = resp.grant || '';
       state.products = resp.products || [];
       state.selected = new Set();
       state.step = 'select';
@@ -483,6 +511,7 @@ export function renderTransfer(host) {
   state.products = [];
   state.selected = new Set();
   state.toEmail = '';            // never carry a previous transferee across runs
+  state.grant = '';             // a grant is bound to one verified lookup
   state.transfereeHasAccount = null;
   stopCooldown();
   render();
