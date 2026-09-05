@@ -276,7 +276,7 @@ function ratesHtml(ls) {
               <span class="muted">${r.estDays != null ? `about ${r.estDays} day${r.estDays === 1 ? '' : 's'}` : 'transit time varies'}</span>
             </span>
             <span class="co-rate-price">${free && i === 0
-              ? `<s class="muted">${formatPrice(Math.round(r.amount * 100))}</s> Free`
+              ? `<s class="muted">${formatPrice(Math.round(r.amount * 100))}</s><span class="co-free">Free</span>`
               : formatPrice(Math.round(r.amount * 100))}</span>
           </label>
         `).join('')}

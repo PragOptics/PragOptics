@@ -16,7 +16,9 @@
   display: flex; flex-direction: column; gap: 10px;
 }
 .co-h2 {
-  margin: 0 0 6px; font-size: 1.05rem; font-weight: 800; letter-spacing: .05em; text-transform: uppercase;
+  margin: 0 0 6px;
+  font: 700 .78rem/1.4 ui-monospace, "Cascadia Code", Consolas, monospace;
+  letter-spacing: .2em; text-transform: uppercase;
   color: var(--brand-600, #21bca5);
 }
 .co-lines { display: flex; flex-direction: column; gap: 8px; }
@@ -28,7 +30,8 @@
 .co-line-name { color: var(--ink, #dcdbf0e1); }
 .co-line-qty  { color: var(--muted, #c6d0f0a6); font-weight: 700; }
 .co-line-price { text-align: right; color: var(--muted, #c6d0f0a6); font-size: .88rem; }
-.co-line-total { text-align: right; font-weight: 800; color: var(--ink, #dcdbf0e1); }
+.co-line-total { text-align: right; font-weight: 800; color: var(--ink, #dcdbf0e1); font-variant-numeric: tabular-nums; }
+.co-line-price { font-variant-numeric: tabular-nums; }
 
 .co-totals {
   display: flex; align-items: baseline; justify-content: space-between; margin-top: 8px;
@@ -106,10 +109,16 @@
 .co-field input,
 .co-field textarea {
   padding: 10px 12px; border-radius: 12px;
-  background: rgba(255, 255, 255, .03); color: var(--ink, #dcdbf0e1);
+  background: rgba(12, 16, 26, .66); color: var(--ink, #dcdbf0e1);
   border: 1px solid var(--border, rgba(255, 255, 255, .12));
   font-size: .95rem; font-family: inherit;
-  transition: border-color 160ms ease, background 160ms ease;
+  color-scheme: dark;
+  transition: border-color 160ms ease, background 160ms ease, box-shadow 160ms ease;
+}
+.co-field input:hover,
+.co-field textarea:hover {
+  border-color: rgba(162, 0, 255, .35);
+  box-shadow: 0 0 0 1px rgba(162, 0, 255, .18), 0 0 14px rgba(162, 0, 255, .10);
 }
 .co-field input:focus,
 .co-field textarea:focus {
@@ -152,7 +161,8 @@
 }
 .co-step {
   display: inline-flex; align-items: center; gap: 7px;
-  font-size: .78rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+  font: 700 .66rem/1.4 ui-monospace, "Cascadia Code", Consolas, monospace;
+  letter-spacing: .14em; text-transform: uppercase;
   color: var(--muted, #c6d0f0a6);
 }
 .co-step + .co-step::before {
@@ -185,11 +195,16 @@
 .co-rate {
   display: flex; align-items: center; gap: 12px; cursor: pointer;
   padding: 12px 14px; border-radius: 12px;
-  background: rgba(255, 255, 255, .03);
+  background: rgba(12, 16, 26, .55);
   border: 1px solid var(--border, rgba(255, 255, 255, .12));
-  transition: border-color 160ms ease, background 160ms ease;
+  transition: border-color 160ms ease, background 160ms ease, box-shadow 160ms ease, transform 120ms ease;
 }
-.co-rate:hover { border-color: rgba(33, 188, 165, .45); }
+.co-rate:hover {
+  border-color: rgba(162, 0, 255, .45);
+  box-shadow: 0 0 0 1px rgba(162, 0, 255, .2), 0 0 16px rgba(162, 0, 255, .12);
+  transform: translateY(-1px);
+}
+.co-rate:active { transform: translateY(1px); }
 .co-rate.is-selected {
   border-color: var(--brand-600, #21bca5);
   background: rgba(33, 188, 165, .07);
@@ -198,7 +213,12 @@
 .co-rate input[type="radio"] { accent-color: var(--brand-600, #21bca5); width: 16px; height: 16px; flex: none; }
 .co-rate-main { display: flex; flex-direction: column; gap: 2px; flex: 1; color: var(--ink, #dcdbf0e1); }
 .co-rate-main .muted { font-size: .8rem; }
-.co-rate-price { font-weight: 800; color: var(--ink, #dcdbf0e1); }
+.co-rate-price {
+  font-weight: 800; color: var(--ink, #dcdbf0e1);
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.co-rate-price s { font-weight: 600; font-size: .82rem; margin-right: 4px; }
+.co-free { color: #38ffb3; font-weight: 900; }
 
 /* ---- Payment ---- */
 .co-breakdown {
@@ -211,12 +231,19 @@
   display: flex; justify-content: space-between; align-items: baseline;
   color: var(--ink, #dcdbf0e1); font-size: .9rem;
 }
+.co-sumrow span:last-child { font-variant-numeric: tabular-nums; }
 .co-sumrow-total {
   margin-top: 4px; padding-top: 8px;
   border-top: 1px solid var(--border, rgba(255, 255, 255, .10));
   font-weight: 900; font-size: 1.05rem;
 }
-.co-payment-el { min-height: 220px; }
+.co-payment-el {
+  min-height: 220px;
+  padding: 14px;
+  border-radius: 14px;
+  background: rgba(12, 16, 26, .55);
+  border: 1px solid var(--border, rgba(255, 255, 255, .12));
+}
 
 /* ---- Errors ---- */
 .co-error {
