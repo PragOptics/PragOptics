@@ -414,13 +414,34 @@ function doneHtml() {
           : `Thanks! A receipt is on its way to <strong>${escapeHtml(state.contact.email)}</strong>.`}
       </p>
       <p class="muted">Order reference: <code>${escapeHtml(shortId)}</code></p>
+      ${getAccessToken()
+        ? `<p class="muted">This order is saved to your account. Track it under Orders.</p>`
+        : `<p class="muted">Want to track this order and keep its history? Create an account with
+           <strong>${escapeHtml(state.contact.email)}</strong> and it links to you automatically once the address is verified.</p>`}
       <div class="co-empty-actions">
-        <button class="ph-btn" type="button" onclick="window.setAppMode?.('shop')">Keep shopping</button>
+        ${getAccessToken()
+          ? `<button class="ph-btn" type="button" onclick="window.pragOrderToAccount?.()">View in your account</button>`
+          : `<button class="ph-btn" type="button" onclick="window.pragAccountForOrder?.()">Create an account to track this order</button>`}
+        <button class="ph-btn ph-btn-ghost" type="button" onclick="window.setAppMode?.('shop')">Keep shopping</button>
         <button class="ph-btn ph-btn-ghost" type="button" onclick="window.setAppMode?.('landing')">Back to home</button>
       </div>
     </div>
   `;
 }
+
+// Order-confirmation actions. A guest starts an account through the same
+// agreement -> signup path as everywhere else, with the order's email stashed
+// for the signup form; once that address is verified the backend claims every
+// guest order placed under it. A signed-in buyer's order is already theirs.
+window.pragAccountForOrder = () => {
+  try { sessionStorage.setItem('pragoptics_signup_prefill_email', state.contact.email || ''); } catch { /* fine */ }
+  window.setAppMode?.('landing');
+  setTimeout(() => { window.openAgreementModal?.(); }, 250);
+};
+window.pragOrderToAccount = () => {
+  window.presetAccountSection?.('orders');
+  window.setAppMode?.('account');
+};
 
 /* ======================================================
    API CALLS

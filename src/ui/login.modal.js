@@ -26,6 +26,20 @@ export function openLoginModal(mode = "login") {
   // reset UI/state every time modal opens (without rebinding listeners)
   modal.__loginRefresh?.();
 
+  // A guest who just placed an order can start an account from the order
+  // confirmation; the checkout stashes the email they bought with, and it is
+  // consumed here exactly once so the form opens with it already in place.
+  if (mode === "signup") {
+    try {
+      const pre = sessionStorage.getItem("pragoptics_signup_prefill_email");
+      if (pre) {
+        sessionStorage.removeItem("pragoptics_signup_prefill_email");
+        const emailEl = modal.querySelector("#loginEmail");
+        if (emailEl && !emailEl.value) emailEl.value = pre;
+      }
+    } catch { /* storage blocked: the user types it */ }
+  }
+
   requestAnimationFrame(() => {
     modal.querySelector("#loginEmail")?.focus();
   });
@@ -639,6 +653,14 @@ function bindLoginModal(modal) {
 
         // store requestId for later submit (signup/reset)
         modal.dataset.requestId = resp?.requestId || "";
+
+        // The backend declines to text a number that is already verified on
+        // another account (it would hand this code to that phone's holder).
+        // The code still went by email; say so instead of implying a text.
+        if (resp?.smsSkipped) {
+          const hint = modal.querySelector("#codeHint");
+          if (hint) hint.textContent = "Code sent by email. That phone number is already verified on another account, so it was not texted.";
+        }
 
         // advance state
         codeState = "requested";
