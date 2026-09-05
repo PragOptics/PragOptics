@@ -9,7 +9,7 @@
 // preorder deposits, donations, the cart drawer, and the checkout review page.
 // While false, "Place order" reads as coming soon and the cart stays saved on
 // the device, so nothing is collected into a void.
-export const SHOP_LIVE = false; // ← flip when the goods checkout endpoint is deployed
+export const SHOP_LIVE = true; // goods checkout endpoint is live on api.pragoptics.com (2026-09-05)
 
 export const HARDWARE = [
   {
