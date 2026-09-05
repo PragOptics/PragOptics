@@ -1106,6 +1106,12 @@ async function renderSubscription(main) {
     return;
   }
 
+  // A render that lost the race to a newer one (the section was re-rendered
+  // while this fetch was in flight) must neither mount into its now-detached
+  // tree nor leave subPricing pointing at a selector nobody can see: Apply
+  // would then read a stale selection and post "no change".
+  if (!host.isConnected) return;
+
   if (!subData?.subscription) {
     host.innerHTML = subNotSubscribedHtml(subData) + '<div id="acctUsageCard"></div>';
     loadUsageCard();
