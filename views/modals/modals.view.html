@@ -52,9 +52,9 @@
             </div>
           </div>
 
-          <!-- PHONE + SMS (optional, used for signup/reset) -->
+          <!-- MOBILE (optional, signup only; verified later in the profile) -->
           <div class="form-field hidden" id="loginPhoneBlock">
-            <label for="loginPhone">Phone (optional)</label>
+            <label for="loginPhone">Mobile number (optional)</label>
 
             <input
               id="loginPhone"
@@ -65,13 +65,8 @@
               placeholder="+1 (555) 555-5555"
             >
 
-            <div class="hint hint-inline">
-              <input id="loginSmsOptIn" type="checkbox">
-              <label for="loginSmsOptIn">Use SMS verification (requires phone)</label>
-            </div>
-
             <div class="field-hint">
-              Email verification is always available. SMS is optional.
+              You can verify it later in your profile. Codes are sent by email.
             </div>
           </div>
 
@@ -99,7 +94,7 @@
             </div>
 
             <div class="field-hint" id="codeHint">
-              We will send a one-time code to your email (and optionally SMS).
+              We will email you a one-time code.
             </div>
           </div>
 

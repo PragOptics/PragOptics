@@ -174,3 +174,63 @@
   .acct-product { flex-direction: column; align-items: flex-start; gap: 10px; }
   .acct-product-side { width: 100%; justify-content: space-between; }
 }
+
+/* ---- danger buttons: the panel's red recipe ----
+   .btn-danger is the outline form (card and modal actions); .btn-danger-solid
+   rides .cta for the one confirm that ends an account. Both keep the global
+   hover/focus/disabled discipline; class-doubled selectors outrank the
+   buttons.css state rules of equal name count. */
+.btn.btn-danger {
+  color: #ff5d6c;
+  background: rgba(239, 95, 107, .08);
+  border: 1px solid rgba(239, 95, 107, .35);
+}
+.btn.btn-danger:hover {
+  color: #ff7c88;
+  background: rgba(239, 95, 107, .16);
+  border-color: rgba(239, 95, 107, .6);
+  box-shadow: 0 0 14px rgba(239, 95, 107, .18);
+}
+.btn.btn-danger:focus-visible { outline: 2px solid #ff5d6c; outline-offset: 2px; }
+.btn.btn-danger:disabled,
+.btn.btn-danger:disabled:hover {
+  color: #ff5d6c;
+  background: rgba(239, 95, 107, .08);
+  border-color: rgba(239, 95, 107, .35);
+  box-shadow: none;
+  transform: none;
+}
+.cta.btn-danger-solid {
+  background: linear-gradient(180deg, #ff5d6c, #d9404f);
+  color: #fff;
+}
+.cta.btn-danger-solid:hover {
+  background: linear-gradient(180deg, #ff7480, #e34b5a);
+  color: #fff;
+  box-shadow: 0 0 18px rgba(255, 93, 108, .35);
+}
+.cta.btn-danger-solid:focus-visible { outline: 2px solid #ff5d6c; outline-offset: 2px; }
+.cta.btn-danger-solid:disabled,
+.cta.btn-danger-solid:disabled:hover {
+  background: linear-gradient(180deg, #ff5d6c, #d9404f);
+  color: #fff;
+  box-shadow: none;
+  transform: none;
+}
+
+/* close-account card and confirm */
+.acct-card-danger { border-color: rgba(255, 93, 108, .35); }
+.acct-modal.is-wide { width: min(520px, 94vw); }
+.acct-check {
+  display: flex; align-items: flex-start; gap: 8px;
+  margin: 12px 0 2px; color: var(--ink); font-size: .88rem; line-height: 1.4; cursor: pointer;
+}
+.acct-check input { margin: 3px 0 0; accent-color: var(--brand-600, #21bca5); flex: none; }
+.acct-modal-hint { margin: 8px 0 0; }
+.acct-closed { display: grid; place-items: center; min-height: min(50vh, 420px); }
+.acct-closed-card { text-align: center; max-width: 30rem; padding: 32px 28px; }
+.acct-closed-card .acct-sec-title { margin-bottom: 8px; }
+.acct-closed-card .cta { margin-top: 4px; }
+
+/* mobile number: the verify-again note sits inside the state list */
+.acct-phone-reverify { margin: 0; color: #ffcf6a; }

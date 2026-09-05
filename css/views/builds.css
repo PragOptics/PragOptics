@@ -1,8 +1,7 @@
 /* /css/views/builds.css
-   The builds board — marketplace rows of user-published builds, publish form
-   beneath. Shares the page header with the shops (shop-head) and borrows the
-   warranty select/error/done styles (wr-select, wr-error, wr-done-badge,
-   wr-thanks-*) plus the console control recipes (dark glass, purple glow). */
+   The builds board: marketplace rows of verified builds, read-only. Shares the
+   page header with the shops (shop-head) and borrows the console control
+   recipes (dark glass, purple glow). */
 
 .builds { padding: 28px 26px 40px; margin-top: 10px; }
 
@@ -51,7 +50,7 @@
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 
-/* type badges — monospace pills, one color per kind */
+/* type badges: monospace pills, one color per kind */
 .bd-badge {
   justify-self: start;
   font: 700 .58rem/1 ui-monospace, "Cascadia Code", Consolas, monospace;
@@ -73,12 +72,8 @@
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .bd-r-when { font-size: .72rem; color: var(--muted, #c6d0f0a6); }
-.bd-r-queued {
-  font: 700 .56rem/1 ui-monospace, "Cascadia Code", Consolas, monospace;
-  letter-spacing: .12em; text-transform: uppercase; color: #ffd489;
-}
 
-/* download control — the dl-trigger recipe */
+/* download control: the dl-trigger recipe */
 .bd-r-get { justify-self: end; }
 .bd-dl {
   display: inline-flex; align-items: center; justify-content: center;
@@ -88,10 +83,9 @@
   color: var(--ink, #dcdbf0e1); cursor: pointer; text-decoration: none;
   transition: color 160ms ease, background 160ms ease, border-color 160ms ease, transform 120ms ease;
 }
-.bd-dl:not(:disabled):hover { color: #fff; background: rgba(33, 188, 165, .14); border-color: var(--brand-600, #21bca5); }
-.bd-dl:not(:disabled):active { transform: translateY(1px); }
+.bd-dl:hover { color: #fff; background: rgba(33, 188, 165, .14); border-color: var(--brand-600, #21bca5); }
+.bd-dl:active { transform: translateY(1px); }
 .bd-dl:focus-visible { outline: 2px solid var(--brand-600, #21bca5); outline-offset: 2px; }
-.bd-dl:disabled { opacity: .45; cursor: not-allowed; }
 
 .bd-empty {
   display: flex; flex-direction: column; align-items: center; gap: 6px;
@@ -101,88 +95,6 @@
 .bd-empty-glyph { color: var(--muted, #c6d0f0a6); opacity: .6; }
 .bd-empty-t { margin: 0; font-weight: 800; font-size: 1.05rem; color: var(--ink, #dcdbf0e1); }
 .bd-empty-s { margin: 0; font-size: .86rem; }
-
-/* ================= publish form ================= */
-
-.bd-share-head { margin: 0 0 12px; padding-top: 18px; border-top: 1px solid rgba(255, 255, 255, .08); }
-.bd-share-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
-.bd-share-title { margin: 0; font-size: 1.25rem; letter-spacing: .01em; }
-.bd-share-sub { margin: 4px 0 0; font-size: .86rem; }
-
-.bd-body { max-width: 680px; margin: 8px auto 0; }
-.bd-form { display: flex; flex-direction: column; gap: 16px; }
-.bd-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-.bd-optional { color: var(--muted, #c6d0f0a6); font-weight: 600; font-size: .78rem; }
-
-/* ---- file drop-zone ---- */
-.bd-drop {
-  display: flex; flex-direction: column; align-items: center; gap: 6px;
-  padding: 26px 18px; border-radius: 14px; cursor: pointer; text-align: center;
-  border: 1.5px dashed rgba(255, 255, 255, .22);
-  background: rgba(255, 255, 255, .025);
-  transition: border-color 160ms ease, background 160ms ease, box-shadow 160ms ease;
-}
-.bd-drop:hover, .bd-drop.is-over {
-  border-color: var(--brand-600, #21bca5);
-  background: rgba(33, 188, 165, .06);
-  box-shadow: 0 0 30px rgba(33, 188, 165, .12) inset;
-}
-.bd-drop:focus-visible { outline: 2px solid var(--brand-600, #21bca5); outline-offset: 3px; }
-.bd-drop-ico { color: var(--brand-600, #21bca5); }
-.bd-drop-t { font-weight: 800; color: var(--ink, #dcdbf0e1); }
-.bd-drop-s { color: var(--muted, #c6d0f0a6); font-size: .82rem; }
-
-/* ---- attached-file chips ---- */
-.bd-file-list { display: flex; flex-direction: column; gap: 8px; }
-.bd-file {
-  display: flex; align-items: center; gap: 10px;
-  padding: 9px 12px; border-radius: 10px;
-  border: 1px solid var(--border, rgba(255, 255, 255, .14));
-  background: rgba(12, 16, 26, .66);
-}
-.bd-file-ico { color: var(--brand-600, #21bca5); flex: none; display: inline-flex; }
-.bd-file-name {
-  flex: 1; min-width: 0; font-weight: 700; font-size: .85rem; color: var(--ink, #dcdbf0e1);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-.bd-file-size {
-  flex: none;
-  font: 600 .72rem/1 ui-monospace, "Cascadia Code", Consolas, monospace;
-  color: var(--muted, #c6d0f0a6);
-}
-.bd-file-x {
-  flex: none; width: 24px; height: 24px;
-  display: inline-flex; align-items: center; justify-content: center;
-  border-radius: 8px; border: 1px solid rgba(255, 255, 255, .2); cursor: pointer;
-  background: rgba(5, 7, 13, .72); color: #fff; font-size: .7rem; line-height: 1;
-  transition: background 160ms ease, border-color 160ms ease;
-}
-.bd-file-x:hover { background: rgba(255, 93, 108, .8); border-color: transparent; }
-.bd-file-x:focus-visible { outline: 2px solid var(--brand-600, #21bca5); outline-offset: 2px; }
-
-/* ---- textarea ---- */
-.bd-form textarea {
-  width: 100%; resize: vertical; min-height: 84px;
-  padding: 12px 14px; border-radius: 12px;
-  font: inherit; color: var(--ink, #dcdbf0e1); line-height: 1.5;
-  background: rgba(12, 16, 26, .66); border: 1px solid var(--border, rgba(255, 255, 255, .14));
-  transition: border-color 160ms ease, box-shadow 160ms ease;
-}
-.bd-form textarea:focus-visible { outline: none; border-color: var(--brand-600, #21bca5); box-shadow: 0 0 0 3px rgba(33, 188, 165, .18); }
-
-/* ---- the two publish paths ---- */
-.bd-paths { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 4px; }
-.bd-path {
-  display: flex; flex-direction: column; align-items: flex-start; gap: 4px;
-  padding: 16px 18px; text-align: left; border-radius: 14px;
-}
-.bd-path-t { font-weight: 800; font-size: .98rem; }
-.bd-path-s { font-weight: 500; font-size: .8rem; opacity: .85; line-height: 1.4; }
-.bd-path:disabled { opacity: .6; cursor: wait; }
-
-/* ---- success ---- */
-.bd-done { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 12px; padding: 18px 0 6px; }
-.bd-done .wr-done-actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
 
 /* ---- responsive ---- */
 @media (max-width: 720px) {
@@ -195,5 +107,4 @@
 }
 @media (max-width: 640px) {
   .builds { padding: 22px 16px 30px; }
-  .bd-fields, .bd-paths { grid-template-columns: 1fr; }
 }

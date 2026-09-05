@@ -80,7 +80,6 @@ function bindLoginModal(modal) {
 
   const phoneBlock = modal.querySelector("#loginPhoneBlock");
   const phoneInput = modal.querySelector("#loginPhone");
-  const smsOptIn   = modal.querySelector("#loginSmsOptIn");
 
   const codeBlock  = modal.querySelector("#loginCodeBlock");
   const codeInput  = modal.querySelector("#loginCode");
@@ -160,7 +159,6 @@ function bindLoginModal(modal) {
       setEnabled(submitBtn, true);
       // login mode: identity inputs are editable
       setEnabled(email, true);
-      setEnabled(smsOptIn, true);
       setEnabled(phoneInput, true);
       // login mode: force visibility state
       show(pwdField, true);
@@ -188,7 +186,6 @@ function bindLoginModal(modal) {
       setEnabled(submitBtn, false);
       // before requesting a code, identity inputs are editable
       setEnabled(email, true);
-      setEnabled(smsOptIn, true);
       setEnabled(phoneInput, true);
     }
 
@@ -207,7 +204,6 @@ function bindLoginModal(modal) {
 
       // lock identity inputs after requesting a code
       setEnabled(email, false);
-      setEnabled(smsOptIn, false);
       setEnabled(phoneInput, false);
 
       // nudge focus to password for next step
@@ -318,11 +314,9 @@ function bindLoginModal(modal) {
     show(meter, !isLogin);
     show(rules, !isLogin);
 
-    // Code entry exists in signup/reset. The phone/SMS block is SIGNUP ONLY:
-    // for reset (and login) the backend delivers codes to the address on the
-    // account, or a phone that was verified on the account beforehand - never
-    // to a number typed into this form. Showing the field on reset promised
-    // an SMS that will not come.
+    // Code entry exists in signup/reset. The mobile-number block is SIGNUP
+    // ONLY: the number is stored with the new account and verified later from
+    // the profile. Codes always go by email, so reset never asks for a phone.
     show(phoneBlock, isSignup);
     show(codeBlock, !isLogin);
 
@@ -331,7 +325,7 @@ function bindLoginModal(modal) {
     if (codeHint) {
       codeHint.textContent = isReset
         ? "We will email a one-time code to the address on your account."
-        : "We will send a one-time code to your email (and optionally SMS).";
+        : "We will email you a one-time code.";
     }
 
     // Buttons swap
@@ -340,7 +334,7 @@ function bindLoginModal(modal) {
 
     // Required rules
     setReq(pwd2, !isLogin);     // confirm required in signup/reset
-    setReq(phoneInput, false);  // optional unless SMS checked
+    setReq(phoneInput, false);  // always optional; verified later in the profile
     setReq(codeInput, false); // require code in signup/reset
 
     // For login, don’t enforce strength rules
@@ -497,7 +491,6 @@ function bindLoginModal(modal) {
     const emailVal  = email.value.trim();
     const pwdVal    = pwd.value;
     const pwd2Val   = pwd2.value;
-    const sms       = !!smsOptIn?.checked;
     const phoneVal  = phoneInput?.value?.trim() || "";
     const requestId = modal.dataset.requestId || "";
 
@@ -526,7 +519,9 @@ function bindLoginModal(modal) {
           confirmPassword: pwd2Val,
           requestId,
           verificationCode: codeVal,
-          smsOptIn: sms,
+          // Email-only signup: the phone is stored on the account and
+          // verified later from the profile, never texted here.
+          smsOptIn: false,
           phone: phoneVal
         });
 
@@ -600,19 +595,6 @@ function bindLoginModal(modal) {
     });
 
 
-    smsOptIn?.addEventListener("change", () => {
-    const needsPhone = !!smsOptIn.checked;
-    setReq(phoneInput, needsPhone);
-
-    if (needsPhone && !phoneInput.value.trim()) {
-      showError2("Phone is required when SMS verification is enabled.");
-      phoneInput.focus();
-    } else {
-      clearError2();
-    }
-  });
-
-
   requestCodeBtn?.addEventListener("click", async () => {
     const mode = currentMode();
     if (mode === "login") return;
@@ -627,12 +609,11 @@ function bindLoginModal(modal) {
       return;
     }
 
-    // SMS is a signup-only delivery: on reset the backend routes the code to
-    // the account's own address (or its pre-verified phone) and ignores any
-    // phone in the request, so never send one.
-    const sms = mode === "signup" && !!smsOptIn?.checked;
+    // Codes go by email only. On signup the typed mobile number rides along
+    // so it is stored on the new account (verified later from the profile);
+    // on reset the backend delivers to the account's own address and ignores
+    // any phone in the request, so never send one.
     const phoneVal = mode === "signup" ? (phoneInput?.value?.trim() || "") : "";
-    if (sms && !phoneVal) { showError2("Phone is required when SMS verification is enabled."); phoneInput.focus(); return; }
 
     clearError2();
 
@@ -646,21 +627,13 @@ function bindLoginModal(modal) {
         const resp = await globalThis.pragRequestCode?.({
           email: emailVal,
           purpose: mode,                    // "signup" | "reset"
-          channel: sms ? "both" : "email",
-          smsOptIn: sms,
+          channel: "email",
+          smsOptIn: false,
           phone: phoneVal
         });
 
         // store requestId for later submit (signup/reset)
         modal.dataset.requestId = resp?.requestId || "";
-
-        // The backend declines to text a number that is already verified on
-        // another account (it would hand this code to that phone's holder).
-        // The code still went by email; say so instead of implying a text.
-        if (resp?.smsSkipped) {
-          const hint = modal.querySelector("#codeHint");
-          if (hint) hint.textContent = "Code sent by email. That phone number is already verified on another account, so it was not texted.";
-        }
 
         // advance state
         codeState = "requested";

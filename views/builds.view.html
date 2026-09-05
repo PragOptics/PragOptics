@@ -1,7 +1,8 @@
 <!-- ============ BUILDS BOARD ============ -->
-<!-- The marketplace surface: rows of user-published builds (templates,
-     plugins, automations, tools) that download and run with the PragOptics
-     software or against a device API. Publish form beneath the board.
+<!-- The marketplace surface: a list of verified builds (templates, plugins,
+     automations, tools) that download and run with the PragOptics software
+     or against a device API. Read-only here: publishing happens from the
+     PragOptics software.
      Deep link: /#mode=builds -->
 <section id="buildsView" class="glass panel builds hidden" aria-labelledby="bdTitle">
 
@@ -10,31 +11,13 @@
     <h1 id="bdTitle" class="shop-title">The builds board.</h1>
     <p class="shop-sub">
       Templates, plugins, automations, and tools made by the people who use the
-      platform. Download a build and run it with the PragOptics software, or
-      point it at a device API. Publish your own: the credit stays yours.
+      platform, verified for the PragOptics software. Download a build and run
+      it with the software, or point it at a device API.
     </p>
   </header>
 
   <div class="bd-board" id="buildsBoard">
     <!-- Populated by src/builds/builds.js (board rows) -->
-  </div>
-
-  <div class="bd-share-head">
-    <div class="bd-share-row">
-      <div>
-        <h2 class="bd-share-title">Publish a build</h2>
-        <p class="bd-share-sub muted">
-          Publishing is for subscribers. Browsing and downloading are for
-          everyone.
-        </p>
-      </div>
-      <button class="cta" id="bdPublishToggle" type="button">Publish a build</button>
-    </div>
-    <p class="bd-share-sub muted" id="bdGateNote" hidden></p>
-  </div>
-
-  <div class="bd-body" id="buildsBody" hidden>
-    <!-- Populated by src/builds/builds.js (publish form) -->
   </div>
 
 </section>

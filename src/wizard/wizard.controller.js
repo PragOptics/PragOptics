@@ -18,8 +18,14 @@ export function initWizardNavigation() {
     if (actionBtn) {
       e.preventDefault();
 
-      if (actionBtn.dataset.wizardAction === 'poll') {
+      const action = actionBtn.dataset.wizardAction;
+
+      if (action === 'poll') {
         window.pollUntilResolved?.();
+      }
+
+      if (action === 'continue-free') {
+        window.continueWithFree?.();
       }
     }
   });

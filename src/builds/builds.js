@@ -1,24 +1,18 @@
 // src/builds/builds.js
-// The builds board — a marketplace surface of user-published builds: templates,
-// plugins, automations, and tools that run with the PragOptics software or
-// against a device API. Rows are downloadable files; builders keep the credit.
+// The builds board: a read-only list of verified builds (templates, plugins,
+// automations, and tools) that run with the PragOptics software or against a
+// device API. Rows are downloadable files; builders keep the credit.
 //
-// Backend seam: BUILDS_API_LIVE gates the real feed + multipart upload. Until
-// the endpoint is deployed, submissions queue their METADATA locally under
-// pragoptics_builds_queue_v2 (files stay on the builder's machine; there is
-// nowhere to put them yet) so the whole flow is testable today and flips live
-// with one flag — same pattern as the warranty registration.
+// Nothing on this page publishes, drafts, or uploads. Publishing happens from
+// the PragOptics software; verified builds land on the board through the
+// backend's moderated feed.
+//
+// Backend seam: BUILDS_API_LIVE gates the live feed. The backend has no builds
+// route yet, so the flag stays off and the board renders the empty state. When
+// the feed ships, its loader is named against the deployed route and hands its
+// rows to renderBoard(), which lists only entries with an https download URL.
 
-const BUILDS_API_LIVE = false; // ← flip when POST /builds (multipart) is deployed
-import { PRAG_API_BASE } from '../runtime/config.js';
-const BUILDS_UPLOAD_URL = `${PRAG_API_BASE}/builds`;
-
-const QUEUE_KEY  = 'pragoptics_builds_queue_v2'; // local metadata queue until live
-                                                 // (v2: board shape — v1 held the
-                                                 //  old photo-wall entries)
-
-const MAX_FILES = 4;
-const MAX_MB_PER_FILE = 50;
+const BUILDS_API_LIVE = false; // flip when the moderated builds feed is deployed
 
 // Grounded in what the software actually distributes today: signed template
 // files (.potemplate.json), project packages (.wbdraft.json / .zip), and the
@@ -35,32 +29,15 @@ const BUILD_TARGETS = [
   { id: 'standalone', label: 'Standalone' },
 ];
 
-const CHECK_ICON = '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12.5l5.5 5.5L20 6.5"/></svg>';
 const FILE_ICON = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V7z"/><path d="M14 3v4h4"/><path d="M9.5 13h5"/><path d="M9.5 16.5h5"/></svg>';
 const DL_ICON = '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v11"/><path d="M7 10l5 5 5-5"/><path d="M5 21h14"/></svg>';
 
-let $body = null;
 let $board = null;
-let files = []; // [{ file }]
 
 function escapeHtml(s) {
   return String(s ?? '').replace(/[&<>"']/g, c => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
   }[c]));
-}
-
-/* Publishing is a subscriber feature; browsing and downloading are open to
-   everyone. The gate here is cosmetic (the real enforcement lands with the
-   /builds endpoint, which checks the tier server-side like every other
-   authed route). */
-function publisherState() {
-  let tokens = null, ping = null;
-  try { tokens = JSON.parse(sessionStorage.getItem('pragoptics_tokens') || 'null'); } catch { tokens = null; }
-  try { ping = JSON.parse(sessionStorage.getItem('pragoptics_ping') || 'null'); } catch { ping = null; }
-  if (!tokens?.access_token) return 'signedout';
-  const tier = String(ping?.user?.tier || 'free').toLowerCase();
-  if (ping?.user?.isAdmin === true) return 'ok';
-  return ['user', 'partner', 'super'].includes(tier) ? 'ok' : 'free';
 }
 
 function typeOf(id) { return BUILD_TYPES.find(t => t.id === id) || null; }
@@ -73,115 +50,36 @@ function fmtSize(bytes) {
   return `${n} B`;
 }
 
-/* ---------- templates ---------- */
-
-function formHtml() {
-  const typeOpts = BUILD_TYPES.map(t => `<option value="${escapeHtml(t.id)}">${escapeHtml(t.label)}: ${escapeHtml(t.hint)}</option>`).join('');
-  const targetOpts = BUILD_TARGETS.map(t => `<option value="${escapeHtml(t.id)}">${escapeHtml(t.label)}</option>`).join('');
-  return `
-    <div class="bd-form" data-bd-step="form">
-      <div class="bd-fields">
-        <div class="form-field">
-          <label for="bdName">Build name</label>
-          <input id="bdName" type="text" maxlength="60" placeholder="e.g. Storefront starter">
-        </div>
-        <div class="form-field">
-          <label for="bdType">What kind of build is it?</label>
-          <div class="wr-select-wrap">
-            <select id="bdType" class="wr-select">
-              <option value="" selected disabled>Select the type…</option>
-              ${typeOpts}
-            </select>
-            <span class="wr-select-caret" aria-hidden="true">▾</span>
-          </div>
-        </div>
-        <div class="form-field">
-          <label for="bdTarget">Works with</label>
-          <div class="wr-select-wrap">
-            <select id="bdTarget" class="wr-select">
-              ${targetOpts}
-            </select>
-            <span class="wr-select-caret" aria-hidden="true">▾</span>
-          </div>
-        </div>
-        <div class="form-field">
-          <label for="bdVersion">Version <span class="bd-optional">optional</span></label>
-          <input id="bdVersion" type="text" maxlength="20" placeholder="0.1.0" autocomplete="off">
-        </div>
-      </div>
-
-      <div class="form-field">
-        <label for="bdDesc">What does it do?</label>
-        <textarea id="bdDesc" rows="3" maxlength="500" placeholder="One or two sentences. This is the line people read on the board."></textarea>
-      </div>
-
-      <div class="form-field">
-        <label for="bdHandle">Builder credit <span class="bd-optional">optional: blank posts as Anonymous</span></label>
-        <input id="bdHandle" type="text" maxlength="40" autocomplete="nickname" placeholder="e.g. LoopTech_Hank">
-      </div>
-
-      <div class="bd-drop" id="bdDrop" role="button" tabindex="0" aria-label="Attach the build files">
-        <span class="bd-drop-ico">${FILE_ICON}</span>
-        <span class="bd-drop-t">Attach the build</span>
-        <span class="bd-drop-s">The main file plus anything it needs. Up to ${MAX_FILES} files, ${MAX_MB_PER_FILE} MB each. Drag them here or click to browse.</span>
-        <input id="bdFiles" type="file" multiple hidden>
-      </div>
-      <div class="bd-file-list" id="bdFileList" hidden></div>
-
-      <p class="wr-error" id="bdError" hidden></p>
-
-      <div class="bd-paths">
-        <button class="cta bd-path" type="button" data-bd-action="publish">
-          <span class="bd-path-t">Publish to the board</span>
-          <span class="bd-path-s">Listed under your account. Credit shows your display name.</span>
-        </button>
-      </div>
-    </div>
-  `;
+/* A download link is only ever an absolute https URL. Anything else (http,
+   javascript:, data:, a relative path, garbage) returns '' and the row is
+   dropped rather than rendered with a link that could not be trusted. */
+function httpsUrl(value) {
+  try {
+    const url = new URL(String(value || ''));
+    return url.protocol === 'https:' ? url.href : '';
+  } catch { return ''; }
 }
 
-function successHtml(queuedLocally) {
-  // Honest split: a local draft stores metadata only (the files stay on the
-  // builder's machine), so it will need a fresh publish once uploads open.
-  const sub = queuedLocally
-    ? `Saved as a draft on this device. Marketplace uploads are still being built; publish it again when they open to put it on the live board.`
-    : `Thanks for publishing. Builds like yours are what the platform is for.`;
-  return `
-    <div class="bd-done" data-bd-step="done">
-      <span class="wr-done-badge">${CHECK_ICON}</span>
-      <span class="wr-thanks-big">${queuedLocally ? `That's a solid build.` : `It's on the board.`}</span>
-      <p class="wr-thanks-sub">${sub}</p>
-      <div class="wr-done-actions">
-        <button class="btn" type="button" data-bd-action="share-another">Publish another</button>
-        <button class="btn" type="button" data-bd-action="back-home">Back to PragOptics</button>
-      </div>
-    </div>
-  `;
+function isListable(b) {
+  return !!(b && typeof b === 'object'
+    && typeof b.name === 'string' && b.name.trim()
+    && httpsUrl(b.downloadUrl));
 }
 
 /* ---------- the board ---------- */
-
-function readQueue() {
-  try {
-    const q = JSON.parse(localStorage.getItem(QUEUE_KEY) || '[]');
-    return Array.isArray(q) ? q.filter(b => b && typeof b === 'object' && b.name) : [];
-  } catch { return []; }
-}
 
 function rowHtml(b) {
   const t = typeOf(b.type);
   const target = targetOf(b.target);
   const who = b.handle || 'Anonymous';
-  const when = b.submittedAt ? new Date(b.submittedAt).toLocaleDateString() : '';
-  const mainFile = b.files?.[0] || null;
-  const size = (b.files || []).reduce((n, f) => n + (Number(f.size) || 0), 0);
+  const when = b.publishedAt ? new Date(b.publishedAt).toLocaleDateString() : '';
+  const fileList = Array.isArray(b.files) ? b.files.filter(f => f && typeof f === 'object') : [];
+  const mainFile = fileList[0] || null;
+  const size = fileList.reduce((n, f) => n + (Number(f.size) || 0), 0);
   const fileMeta = mainFile
-    ? `${escapeHtml(mainFile.name)}${b.files.length > 1 ? ` +${b.files.length - 1}` : ''} · ${escapeHtml(fmtSize(size))}`
+    ? `${escapeHtml(mainFile.name)}${fileList.length > 1 ? ` +${fileList.length - 1}` : ''} · ${escapeHtml(fmtSize(size))}`
     : '';
-  // A local draft has no hosted file — the button says so instead of lying.
-  const get = b.queued
-    ? `<button class="bd-dl" type="button" disabled title="A draft on this device only. Nothing is hosted yet; publish it again once marketplace uploads open.">${DL_ICON}</button>`
-    : `<a class="bd-dl" href="${escapeHtml(b.downloadUrl || '#')}" download title="Download ${escapeHtml(b.name)}">${DL_ICON}</a>`;
+  const href = httpsUrl(b.downloadUrl);
   return `
     <article class="bd-row">
       <div class="bd-r-main">
@@ -189,29 +87,31 @@ function rowHtml(b) {
         ${b.description ? `<span class="bd-r-desc">${escapeHtml(b.description)}</span>` : ''}
         ${fileMeta ? `<span class="bd-r-file">${fileMeta}</span>` : ''}
       </div>
-      <span class="bd-badge bd-badge--${escapeHtml(b.type || 'tool')}">${escapeHtml(t?.label || 'Build')}</span>
+      <span class="bd-badge bd-badge--${escapeHtml(t?.id || 'tool')}">${escapeHtml(t?.label || 'Build')}</span>
       <span class="bd-r-target">${escapeHtml(target?.label || '')}</span>
       <div class="bd-r-who">
         <span class="bd-r-handle">${escapeHtml(who)}</span>
         ${when ? `<span class="bd-r-when">${escapeHtml(when)}</span>` : ''}
-        ${b.queued ? `<span class="bd-r-queued">Draft on this device</span>` : ''}
       </div>
-      <div class="bd-r-get">${get}</div>
+      <div class="bd-r-get">
+        <a class="bd-dl" href="${escapeHtml(href)}" download title="Download ${escapeHtml(b.name)}">${DL_ICON}</a>
+      </div>
     </article>
   `;
 }
 
-function renderBoard() {
+function renderBoard(builds = []) {
   if (!$board) return;
-  // Seam: when BUILDS_API_LIVE flips, this reads the moderated live feed
-  // (endpoint named with the backend) and local queued rows render after it.
-  const builds = readQueue().slice().reverse().map(b => ({ ...b, queued: true }));
-  if (!builds.length) {
+  // Seam: when BUILDS_API_LIVE flips, the moderated live feed's rows come in
+  // here. Until then nothing lists, whatever is passed: the board is the empty
+  // state and there is no other source of rows.
+  const rows = BUILDS_API_LIVE && Array.isArray(builds) ? builds.filter(isListable) : [];
+  if (!rows.length) {
     $board.innerHTML = `
       <div class="bd-empty">
         <span class="bd-empty-glyph" aria-hidden="true">${FILE_ICON}</span>
         <p class="bd-empty-t">Nothing on the board yet.</p>
-        <p class="bd-empty-s muted">The first build published here starts it. Yours is welcome below.</p>
+        <p class="bd-empty-s muted">Verified builds published from the PragOptics software will appear here.</p>
       </div>
     `;
     return;
@@ -220,210 +120,14 @@ function renderBoard() {
     <div class="bd-cols" aria-hidden="true">
       <span>Build</span><span>Type</span><span>Works with</span><span>Builder</span><span>Get</span>
     </div>
-    ${builds.map(rowHtml).join('')}
+    ${rows.map(rowHtml).join('')}
   `;
 }
 
-/* ---------- files ---------- */
-
-function renderFileList() {
-  const host = $body.querySelector('#bdFileList');
-  if (!host) return;
-  host.hidden = files.length === 0;
-  host.innerHTML = files.map((f, i) => `
-    <div class="bd-file">
-      <span class="bd-file-ico" aria-hidden="true">${FILE_ICON}</span>
-      <span class="bd-file-name">${escapeHtml(f.file.name)}</span>
-      <span class="bd-file-size">${escapeHtml(fmtSize(f.file.size))}</span>
-      <button type="button" class="bd-file-x" data-bd-remove="${i}" aria-label="Remove ${escapeHtml(f.file.name)}">✕</button>
-    </div>
-  `).join('');
-}
-
-function addFiles(fileList) {
-  const err = $body.querySelector('#bdError');
-  if (err) err.hidden = true;
-  let dropped = 0;
-  for (const file of fileList) {
-    if (files.length >= MAX_FILES) { dropped++; continue; }
-    if (file.size > MAX_MB_PER_FILE * 1024 * 1024) {
-      if (err) { err.textContent = `"${file.name}" is over ${MAX_MB_PER_FILE} MB. Trim it and try again.`; err.hidden = false; }
-      continue;
-    }
-    files.push({ file });
-  }
-  if (dropped && err && err.hidden) {
-    err.textContent = `A build takes up to ${MAX_FILES} files; ${dropped} ${dropped === 1 ? 'was' : 'were'} not attached.`;
-    err.hidden = false;
-  }
-  renderFileList();
-}
-
-/* ---------- submission ---------- */
-
-async function submitBuild({ anonymous }) {
-  const meta = {
-    name: ($body.querySelector('#bdName')?.value || '').trim(),
-    type: $body.querySelector('#bdType')?.value || null,
-    target: $body.querySelector('#bdTarget')?.value || null,
-    version: ($body.querySelector('#bdVersion')?.value || '').trim() || null,
-    description: ($body.querySelector('#bdDesc')?.value || '').trim(),
-    handle: ($body.querySelector('#bdHandle')?.value || '').trim() || null,
-    files: files.map(f => ({ name: f.file.name, size: f.file.size, type: f.file.type })),
-    anonymous: !!anonymous,
-    submittedAt: new Date().toISOString(),
-    source: 'web-v2'
-  };
-
-  if (BUILDS_API_LIVE) {
-    // Real call — multipart: the build files + a metadata part. The backend
-    // stores the files and writes the build entity (moderated before listing).
-    // Publishing is a subscriber feature, so the session token rides along;
-    // the server re-checks the tier like every other authed route.
-    let token = '';
-    try { token = JSON.parse(sessionStorage.getItem('pragoptics_tokens') || 'null')?.access_token || ''; } catch { token = ''; }
-    const fd = new FormData();
-    files.forEach((f, i) => fd.append(`file${i}`, f.file, f.file.name));
-    fd.append('meta', JSON.stringify(meta));
-    const res = await fetch(BUILDS_UPLOAD_URL, {
-      method: 'POST',
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-      body: fd
-    });
-    if (!res.ok) throw new Error(`Upload failed (${res.status})`);
-    return res.json().catch(() => ({}));
-  }
-
-  // Metadata queue until the endpoint ships (files can't be persisted locally).
-  try {
-    const q = JSON.parse(localStorage.getItem(QUEUE_KEY) || '[]');
-    q.push(meta);
-    localStorage.setItem(QUEUE_KEY, JSON.stringify(q));
-  } catch { /* storage blocked — still complete locally */ }
-  await new Promise(r => setTimeout(r, 600));
-  return { queued: true };
-}
-
-/* ---------- wiring ---------- */
-
-function validate() {
-  const err = $body.querySelector('#bdError');
-  const fail = (msg) => { if (err) { err.textContent = msg; err.hidden = false; } return false; };
-  if (!($body.querySelector('#bdName')?.value || '').trim()) return fail('Give the build a name.');
-  if (!$body.querySelector('#bdType')?.value) return fail('Pick what kind of build it is.');
-  if (!($body.querySelector('#bdDesc')?.value || '').trim()) return fail('Say what it does. That line is the board listing.');
-  if (files.length === 0) return fail('Attach the build file. The build is the point.');
-  if (err) err.hidden = true;
-  return true;
-}
-
-function bindOnce() {
-  if (bindOnce._bound || !$body) return;
-  bindOnce._bound = true;
-
-  $body.addEventListener('click', async (e) => {
-    const drop = e.target.closest('#bdDrop');
-    if (drop) { $body.querySelector('#bdFiles')?.click(); return; }
-
-    const rm = e.target.closest('[data-bd-remove]');
-    if (rm) {
-      files.splice(Number(rm.dataset.bdRemove), 1);
-      renderFileList();
-      return;
-    }
-
-    const path = e.target.closest('[data-bd-action="publish"]');
-    if (path) {
-      if (publisherState() !== 'ok') { gatePublish(); return; }
-      if (!validate()) return;
-      path.disabled = true;
-      let res = null;
-      try {
-        res = await submitBuild({ anonymous: false });
-      } catch (ex) {
-        path.disabled = false;
-        const err = $body.querySelector('#bdError');
-        if (err) { err.textContent = ex?.message || 'Upload failed. Please try again.'; err.hidden = false; }
-        return;
-      }
-      files = [];
-      renderBoard(); // the new draft appears on the board immediately
-      $body.innerHTML = successHtml(!!res?.queued);
-      return;
-    }
-
-    if (e.target.closest('[data-bd-action="share-another"]')) {
-      $body.innerHTML = formHtml();
-      renderFileList();
-      return;
-    }
-    if (e.target.closest('[data-bd-action="back-home"]')) {
-      window.setAppMode?.('landing');
-    }
-  });
-
-  $body.addEventListener('change', (e) => {
-    if (e.target.closest('#bdFiles')) {
-      addFiles(e.target.files || []);
-      e.target.value = ''; // allow re-picking the same file
-    }
-  });
-
-  $body.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && e.target.closest('#bdDrop')) {
-      e.preventDefault();
-      $body.querySelector('#bdFiles')?.click();
-    }
-  });
-
-  // drag & drop
-  $body.addEventListener('dragover', (e) => {
-    const drop = e.target.closest('#bdDrop');
-    if (!drop) return;
-    e.preventDefault();
-    drop.classList.add('is-over');
-  });
-  $body.addEventListener('dragleave', (e) => {
-    e.target.closest('#bdDrop')?.classList.remove('is-over');
-  });
-  $body.addEventListener('drop', (e) => {
-    const drop = e.target.closest('#bdDrop');
-    if (!drop) return;
-    e.preventDefault();
-    drop.classList.remove('is-over');
-    addFiles(e.dataTransfer?.files || []);
-  });
-}
-
-/* The publish gate: subscribers get the form, a signed-out visitor gets
-   sign-in, a free-tier account gets routed to the plans. */
-function gatePublish() {
-  const note = document.getElementById('bdGateNote');
-  const state = publisherState();
-  if (state === 'ok') {
-    const body = document.getElementById('buildsBody');
-    if (body) {
-      body.hidden = !body.hidden;
-      if (note) note.hidden = true;
-    }
-    return;
-  }
-  if (state === 'signedout') {
-    if (note) { note.textContent = 'Sign in with a subscriber account to publish.'; note.hidden = false; }
-    window.openLoginModal?.('login');
-    return;
-  }
-  // Signed in, free tier: the plans are one click away.
-  if (note) { note.textContent = 'Publishing needs a subscription. Pick a plan and come back with your build.'; note.hidden = false; }
-  window.openWizardFromMenu?.() || window.setAppMode?.('wizard');
-}
-
 export function initBuildsView() {
-  $body = document.getElementById('buildsBody');
   $board = document.getElementById('buildsBoard');
-  if (!$body) return;
-  $body.innerHTML = formHtml();
+  // Earlier versions of this page queued publish drafts under this key. The
+  // page no longer publishes, so clear it once; nothing reads it any more.
+  try { localStorage.removeItem('pragoptics_builds_queue_v2'); } catch { /* storage blocked */ }
   renderBoard();
-  bindOnce();
-  document.getElementById('bdPublishToggle')?.addEventListener('click', gatePublish);
 }

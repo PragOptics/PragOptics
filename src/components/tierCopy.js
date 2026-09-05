@@ -24,13 +24,12 @@ export const TIER_COPY = {
   user: {
     name: 'User',
     tag: 'The platform',
-    featured: true,
     features: [
       'Everything in Free',
       'Cloud sync for field data and calibration records',
       'API access with your own keys',
       'Provisioned workspace and storage',
-      'Add-ons to scale storage, flows, API calls, and domains',
+      'Add-ons to scale storage and API calls',
       'Email support'
     ],
     cta: 'Start with User'
@@ -38,8 +37,10 @@ export const TIER_COPY = {
   partner: {
     name: 'Partner',
     tag: 'Build on PragOptics',
+    featured: true,
     features: [
       'Everything in User, with higher included limits',
+      'Five seats included, each with a mailbox on request',
       'Publish your own APIs under the platform',
       'Usage billed through your subscription',
       'Your commerce stays yours',
@@ -52,6 +53,7 @@ export const TIER_COPY = {
     tag: 'The platform at full scale',
     features: [
       'Everything in Partner',
+      'Forty-five seats included',
       'The highest platform limits',
       'First in line for support'
     ],

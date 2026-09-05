@@ -25,6 +25,7 @@ const REQUEST_CODE_URL = `${PRAG_API_BASE}/auth/request-code`;
 const PING_URL = `${PRAG_API_BASE}/ping`;
 const CHANGE_PW_URL = `${PRAG_API_BASE}/auth/change-password`;
 const RESET_2FA_URL = `${PRAG_API_BASE}/auth/2fa/reset`;
+const CLOSE_ACCOUNT_URL = `${PRAG_API_BASE}/auth/account/close`;
 
 const SUB_URL        = `${PRAG_API_BASE}/billing/subscription`;
 const SUB_UPDATE_URL = `${PRAG_API_BASE}/billing/subscription/update`;
@@ -35,6 +36,7 @@ const ORDERS_MINE_URL = `${PRAG_API_BASE}/orders/mine`;
 const ISSUE_URL = `${PRAG_API_BASE}/warranty/codes/issue`;
 const LIST_URL  = `${PRAG_API_BASE}/warranty/codes`;
 const USERS_URL = `${PRAG_API_BASE}/admin/users`;
+const USER_PATCH_URL = `${PRAG_API_BASE}/admin/users/patch`;
 const CATALOG_IMPORT_URL = `${PRAG_API_BASE}/admin/catalog/import`;
 const ADMIN_ORDERS_URL = `${PRAG_API_BASE}/admin/orders`;
 const ADMIN_ORDER_LABEL_URL = `${PRAG_API_BASE}/admin/orders/label`;
@@ -145,7 +147,8 @@ async function apiFetch(url, options = {}) {
 const LIMIT_COPY = {
   'account-burst': (max) => `You can request ${max} codes every 15 minutes.`,
   'number-daily':  (max) => `A number can receive ${max} codes per day.`,
-  'account-daily': (max) => `You can request ${max} codes per day.`
+  'account-daily': (max) => `You can request ${max} codes per day.`,
+  'account-verify-day': () => 'You have verified numbers too often today. Try again tomorrow.'
 };
 
 function formatReset(iso) {
@@ -172,6 +175,9 @@ function friendlyError(ex, fallback, { passwordFlow = false } = {}) {
   // platform ceiling) intentionally do not, and use the generic path.
   if (ex?.status === 429 && ex?.data?.limitScope) return rateLimitMessage(ex.data);
   if (ex?.status === 404) return 'This feature is not available yet.';
+  // 423: the account's phone changes are paused pending review. The server's
+  // sentence is written for the customer, so it is shown as is.
+  if (ex?.status === 423) return ex?.message || fallback;
   // Shared by admin and customer billing actions: a customer refused for a
   // non-admin reason must not be told they are "not an administrator".
   if (ex?.status === 403) return 'This action is not available for your account.';
@@ -339,27 +345,162 @@ async function renderProfile(main) {
       </div>
       <p class="acct-error" id="acct2faError" hidden></p>
     </section>
+    <section class="acct-card acct-card-danger">
+      <h3 class="acct-card-h">Close account</h3>
+      <p class="acct-card-note">Closing is permanent. It signs you out everywhere, removes your sign-in, and ends any subscription now. There is no refund for the rest of a paid period. If you want service until the period ends, cancel the subscription in Billing first and close later. Before you close, export anything you want to keep from the PragOptics™ software.</p>
+      <div class="acct-add-row">
+        <button class="btn btn-sm btn-danger" type="button" data-acct-action="close-account"
+          title="Opens a confirmation step. Nothing changes until you confirm there.">Close my account</button>
+      </div>
+      <p class="acct-error" id="acctCloseError" hidden></p>
+    </section>
     ${platformLaneCardHtml()}
   `;
   await loadAliases();
   await loadPhone();
 }
 
+/* ---------- close account ---------- */
+
+// A code goes to the primary address first (the same request-code flow the
+// alias removal uses), then the confirmation modal collects the rest. The POST
+// happens inside the modal so a wrong password or code keeps it open with the
+// server's own reason; only a success replaces the section.
+async function closeAccount() {
+  showError('acctCloseError', '');
+  let requestId = '';
+  try {
+    const r = await apiFetch(REQUEST_CODE_URL, { method: 'POST', body: JSON.stringify({ email: currentEmail(), purpose: 'close' }) });
+    requestId = r?.requestId || '';
+  } catch (ex) {
+    showError('acctCloseError', friendlyError(ex, 'Could not send the confirmation code.'));
+    return;
+  }
+  const closed = await closeAccountPrompt({ email: currentEmail(), requestId });
+  if (!closed) return;
+  const main = document.getElementById('acctMain');
+  if (main) main.innerHTML = accountClosedHtml();
+  // The session behind this panel is gone; the next entry must rebuild from
+  // whatever signs in next, never from this shell.
+  mounted = false;
+  cache.users = null;
+}
+
+function accountClosedHtml() {
+  return `
+    <div class="acct-closed">
+      <section class="acct-card acct-closed-card">
+        <h2 class="acct-sec-title">Your account is closed.</h2>
+        <p class="acct-card-note">Thank you for using PragOptics™.</p>
+        <button class="cta" type="button" data-acct-action="logout">Done</button>
+      </section>
+    </div>
+  `;
+}
+
+// Resolves true once the server confirms the close, null on cancel. The
+// confirm button stays disabled until every proof is present: the export
+// acknowledgement, the literal word CLOSE, the password, and the emailed code.
+function closeAccountPrompt({ email, requestId }) {
+  return new Promise((resolve) => {
+    let hostEl = document.getElementById('acctCloseAccount');
+    if (!hostEl) { hostEl = document.createElement('div'); hostEl.id = 'acctCloseAccount'; hostEl.className = 'acct-modal-host'; document.body.appendChild(hostEl); }
+    hostEl.innerHTML = `
+      <div class="acct-modal-mask" data-ca-close></div>
+      <div class="acct-modal is-wide" role="dialog" aria-modal="true" aria-label="Close your account">
+        <h3 class="acct-modal-h">Close your account</h3>
+        <p class="acct-modal-note">This is permanent. You are signed out everywhere, your sign-in is removed, and any subscription ends now. There is no refund for the rest of a paid period.</p>
+        <label class="acct-check" for="caExported">
+          <input type="checkbox" id="caExported">
+          <span>I have exported anything I want to keep</span>
+        </label>
+        <label class="acct-label" for="caConfirm">Type CLOSE to confirm</label>
+        <input class="acct-input" id="caConfirm" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="CLOSE">
+        <label class="acct-label" for="caPass">Account password</label>
+        <input class="acct-input" id="caPass" type="password" autocomplete="current-password" placeholder="Your password">
+        <label class="acct-label" for="caCode">Verification code</label>
+        <input class="acct-input" id="caCode" type="text" inputmode="numeric" autocomplete="one-time-code" placeholder="6-digit code" maxlength="6">
+        <p class="acct-modal-note acct-modal-hint">We emailed a code to ${escapeHtml(email)}.</p>
+        <p class="acct-error" id="caError" hidden></p>
+        <div class="acct-modal-actions">
+          <button class="btn btn-ghost" type="button" data-ca-close>Cancel</button>
+          <button class="cta btn-danger-solid" type="button" data-ca-confirm disabled
+            title="Enabled once the box is checked and CLOSE, your password, and the code are filled in">Close my account</button>
+        </div>
+      </div>`;
+    hostEl.hidden = false;
+    const exported = hostEl.querySelector('#caExported');
+    const word = hostEl.querySelector('#caConfirm');
+    const pass = hostEl.querySelector('#caPass');
+    const code = hostEl.querySelector('#caCode');
+    const er = hostEl.querySelector('#caError');
+    const go = hostEl.querySelector('[data-ca-confirm]');
+    const ready = () => exported.checked && word.value === 'CLOSE' && pass.value.length > 0 && /^\d{6}$/.test(code.value.trim());
+    let busy = false;
+    function onInput() { if (!busy) go.disabled = !ready(); }
+    async function onClick(e) {
+      if (e.target.closest('[data-ca-close]')) { if (!busy) close(null); return; }
+      if (!e.target.closest('[data-ca-confirm]') || busy || !ready()) return;
+      busy = true;
+      go.disabled = true;
+      const orig = go.textContent;
+      go.textContent = 'Closing…';
+      er.hidden = true;
+      try {
+        await apiFetch(CLOSE_ACCOUNT_URL, {
+          method: 'POST',
+          body: JSON.stringify({ password: pass.value, code: code.value.trim(), requestId, confirm: 'CLOSE' })
+        });
+        close(true);
+      } catch (ex) {
+        er.textContent = friendlyError(ex, 'Could not close your account.', { passwordFlow: true });
+        er.hidden = false;
+        busy = false;
+        go.textContent = orig;
+        go.disabled = !ready();
+      }
+    }
+    // Same discipline as the other prompts: the host outlives the prompt, so
+    // every listener comes off in close() or the next open runs two of them.
+    const close = (val) => {
+      hostEl.removeEventListener('click', onClick);
+      hostEl.removeEventListener('input', onInput);
+      hostEl.removeEventListener('change', onInput);
+      hostEl.hidden = true; hostEl.innerHTML = ''; resolve(val);
+    };
+    word.focus();
+    hostEl.addEventListener('click', onClick);
+    hostEl.addEventListener('input', onInput);
+    hostEl.addEventListener('change', onInput);
+  });
+}
+
 /* ---------- mobile number ---------- */
 
-function phoneStateHtml({ phone, phoneVerified }) {
-  if (!phone) return `<span class="acct-card-note">No mobile number on this account.</span>`;
+// Three states: verified, unverified, and "verify again" (the server has asked
+// for a fresh confirmation of a number it already knows; until then the number
+// does not count for sign-in codes).
+function phoneStateHtml({ phone, phoneVerified, reverifyDue }) {
+  const reverifyNote = reverifyDue
+    ? `<p class="acct-card-note acct-phone-reverify">For security, the mobile number on this account needs to be verified again. Verify it, or remove it.</p>`
+    : '';
+  if (!phone) {
+    return reverifyDue ? reverifyNote : `<span class="acct-card-note">No mobile number on this account.</span>`;
+  }
+  const tag = reverifyDue
+    ? '<span class="acct-tag is-pending">Verify again</span>'
+    : phoneVerified
+      ? '<span class="acct-tag is-verified">Verified</span>'
+      : '<span class="acct-tag is-pending">Unverified</span>';
   return `
+    ${reverifyNote}
     <div class="acct-alias">
       <div class="acct-alias-main">
         <span class="acct-alias-email">${escapeHtml(phone)}</span>
-        <span class="acct-alias-tags">
-          ${phoneVerified
-            ? '<span class="acct-tag is-verified">Verified</span>'
-            : '<span class="acct-tag is-pending">Unverified</span>'}
-        </span>
+        <span class="acct-alias-tags">${tag}</span>
       </div>
       <div class="acct-alias-actions">
+        ${reverifyDue ? `<button class="btn btn-sm" type="button" data-acct-action="phone-reverify" data-phone="${escapeHtml(phone)}" title="Texts a new code to this number">Verify again</button>` : ''}
         <button class="btn btn-sm btn-ghost" type="button" data-acct-action="phone-remove">Remove</button>
       </div>
     </div>
@@ -371,7 +512,11 @@ async function loadPhone() {
   if (!host) return;
   try {
     const data = await apiFetch(ALIASES_URL);
-    host.innerHTML = phoneStateHtml({ phone: data.phone || '', phoneVerified: data.phoneVerified === true });
+    const reverifyDue = data.phoneReverifyRequired === true;
+    host.innerHTML = phoneStateHtml({ phone: data.phone || '', phoneVerified: data.phoneVerified === true, reverifyDue });
+    // No number left to re-send to: the note explains, the input is where the
+    // next step happens.
+    if (reverifyDue && !data.phone) document.getElementById('acctNewPhone')?.focus();
   } catch {
     host.innerHTML = `<span class="acct-card-note">Could not load the number.</span>`;
   }
@@ -803,6 +948,26 @@ function sameKeySets(a, b) {
 // add-ons from po.addon.<slug>. requestedSubscription is only the last
 // REQUEST; a relinked or migrated account may carry none at all.
 const ADDON_SLUG_TO_KEY = { storage5gb: 'storage', flows10k: 'flows', api50k: 'api', domains: 'domains' };
+// Add-ons no longer sold. A holder keeps one until they remove it (the
+// selector cannot represent it, so it must not arm Apply on load), and the
+// removal is a period-end change like any other add-on removal.
+const RETIRED_ADDON_KEYS = new Set(['domains', 'flows']);
+function isRetiredLookupKey(lk) {
+  const m = String(lk || '').match(/^po\.addon\.([a-z0-9]+)\./);
+  return !!(m && RETIRED_ADDON_KEYS.has(ADDON_SLUG_TO_KEY[m[1]]));
+}
+function withoutRetiredAddons(addons = {}) {
+  const out = {};
+  for (const k of Object.keys(addons)) out[k] = !!addons[k] && !RETIRED_ADDON_KEYS.has(k);
+  return out;
+}
+// Add-ons that should not be billing on this shape: every add-on on a Partner
+// or Super plan (they include their capacity), and a retired add-on on User.
+function strayAddonKeys(shape) {
+  if (!shape?.subType) return [];
+  const on = Object.keys(shape.addons || {}).filter(k => shape.addons[k]);
+  return shape.subType === 'user' ? on.filter(k => RETIRED_ADDON_KEYS.has(k)) : on;
+}
 function shapeOfItems(items = []) {
   const out = { subType: null, cadence: 'monthly', addons: { domains: false, storage: false, flows: false, api: false } };
   for (const it of items) {
@@ -956,8 +1121,9 @@ function subManagerHtml(data) {
   // An add-on riding a Partner or Super plan does not belong there (add-ons
   // scale the User plan; an upgrade removes them). Offer its removal at the
   // period end, unless a scheduled change already covers it.
-  const strayAddons = shape.subType && shape.subType !== 'user'
-    ? Object.keys(shape.addons).filter(k => shape.addons[k]) : [];
+  const strayAddons = strayAddonKeys(shape);
+  // On the User plan a stray add-on is one that is no longer offered.
+  const strayRetired = shape.subType === 'user';
 
   return `
     ${data.paymentActionRequired && openInvoice ? `
@@ -1008,12 +1174,15 @@ function subManagerHtml(data) {
       </section>
     ` : strayAddons.length ? `
       <section class="acct-card acct-card-warn">
-        <h3 class="acct-card-h">Add-on not on this plan</h3>
-        <p class="acct-card-note">${escapeHtml(strayAddons.map(k => ADDON_NAME[k] || k).join(', '))} ${strayAddons.length === 1 ? 'does' : 'do'} not apply to the
-        ${escapeHtml(tierName(shape.subType))} plan, which includes higher limits. Remove ${strayAddons.length === 1 ? 'it' : 'them'} at the end of the
-        paid period and ${strayAddons.length === 1 ? 'it' : 'they'} will not be billed again. No charge, no credit.</p>
+        <h3 class="acct-card-h">${strayRetired ? 'Add-on no longer offered' : 'Add-on not on this plan'}</h3>
+        <p class="acct-card-note">${escapeHtml(strayAddons.map(k => ADDON_NAME[k] || k).join(', '))}: ${strayRetired
+          ? (strayAddons.length === 1
+              ? 'this add-on is no longer offered. It stays until you remove it; removal takes effect at the end of the paid period.'
+              : 'these add-ons are no longer offered. They stay until you remove them; removal takes effect at the end of the paid period.')
+          : `${strayAddons.length === 1 ? 'this does' : 'these do'} not apply to the ${escapeHtml(tierName(shape.subType))} plan, which includes higher limits. Remove ${strayAddons.length === 1 ? 'it' : 'them'} at the end of the paid period and ${strayAddons.length === 1 ? 'it' : 'they'} will not be billed again.`} No charge, no credit.</p>
         <div class="acct-actions-row">
-          <button class="btn" type="button" data-acct-action="sub-drop-addons">Remove at period end</button>
+          <button class="btn" type="button" data-acct-action="sub-drop-addons"
+            title="Schedules the removal for the end of the paid period. Nothing else on the plan changes.">Remove at period end</button>
         </div>
         <p class="acct-error" id="acctPendingError" hidden></p>
       </section>
@@ -1127,12 +1296,13 @@ async function renderSubscription(main) {
   const applyBtn = document.getElementById('acctPlanApply');
   const live = shapeOfItems(subData.subscription.items || []);
   // The keys the selector can represent. A stray add-on on a Partner/Super
-  // plan is handled by its own card above, so it must not arm Apply here.
-  const currentKeys = new Set([...keysOfCurrent(subData)].filter(k => live.subType === 'user' || !k.startsWith('po.addon.')));
+  // plan, and a retired add-on on any plan, is handled by its own card above,
+  // so neither must arm Apply here.
+  const currentKeys = new Set([...keysOfCurrent(subData)].filter(k => !isRetiredLookupKey(k) && (live.subType === 'user' || !k.startsWith('po.addon.'))));
   if (pricingHost) {
     subPricing = mountPricingSelect(pricingHost, {
       catalog: cachedPing()?.productCatalog || [],
-      initial: { subType: live.subType, cadence: live.cadence, addons: live.subType === 'user' ? live.addons : {} },
+      initial: { subType: live.subType, cadence: live.cadence, addons: live.subType === 'user' ? withoutRetiredAddons(live.addons) : {} },
       onChange: (sel) => {
         if (!applyBtn) return;
         const dirty = sel.subType && !sameKeySets(new Set(sel.lookupKeys), currentKeys);
@@ -1200,18 +1370,22 @@ async function keepCurrentPlan(btn) {
   }
 }
 
-// Schedule the removal of add-ons that do not belong on this plan at the end
-// of the paid period. The backend classifies it as "less": no charge, no credit.
+// Schedule the removal of add-ons that do not belong on this plan (or are no
+// longer offered) at the end of the paid period. Every other add-on the plan
+// carries is kept. The backend classifies it as "less": no charge, no credit.
 async function dropStrayAddons(btn) {
   const live = shapeOfItems(subData?.subscription?.items || []);
   if (!live.subType) return;
+  const stray = strayAddonKeys(live);
+  const addons = {};
+  for (const k of Object.keys(live.addons)) addons[k] = !!live.addons[k] && !stray.includes(k);
   armConfirm(btn, `Confirm: remove on ${fmtDate(subData?.subscription?.currentPeriodEnd)}`, async () => {
     btn.disabled = true;
     showError('acctPendingError', '');
     try {
       await apiFetch(SUB_UPDATE_URL, {
         method: 'POST',
-        body: JSON.stringify({ subType: live.subType, cadence: live.cadence, addons: {} })
+        body: JSON.stringify({ subType: live.subType, cadence: live.cadence, addons })
       });
       const m = document.getElementById('acctMain');
       if (m && activeSection === 'subscription') renderSubscription(m);
@@ -1491,8 +1665,23 @@ function tierPill(tier) {
 }
 function statusPill(status) {
   const s = String(status || '').toUpperCase();
-  const ok = s === 'ACTIVE';
-  return `<span class="adm-pill ${ok ? 'is-available' : 'is-claimed'}">${escapeHtml(s || '—')}</span>`;
+  const cls = s === 'ACTIVE' ? 'is-available' : (s === 'SUSPENDED' || s === 'CLOSED') ? 'is-bad' : 'is-claimed';
+  return `<span class="adm-pill ${cls}">${escapeHtml(s || '—')}</span>`;
+}
+
+// The per-row entry to the manage modal. A closed account is finished unless
+// it still carries a billing profile, in which case the close did not get all
+// the way through and can be run again.
+function userManageButtonHtml(u) {
+  const closed = String(u.status || '').toUpperCase() === 'CLOSED';
+  const attrs = `data-adm-action="user-manage" data-user="${escapeHtml(u.userId || '')}" data-email="${escapeHtml(u.email || '')}"`;
+  if (closed && !u.billingProfileId) {
+    return `<button class="btn adm-copy" type="button" ${attrs} disabled title="Closed accounts cannot be changed.">Manage</button>`;
+  }
+  if (closed) {
+    return `<button class="btn adm-copy" type="button" ${attrs} title="This account is closed but still carries a billing profile. Run the close again to finish it.">Finish close</button>`;
+  }
+  return `<button class="btn adm-copy" type="button" ${attrs} title="Role, operator flags, suspension, phone freeze, and closing">Manage</button>`;
 }
 
 function usersTableHtml(users) {
@@ -1501,7 +1690,7 @@ function usersTableHtml(users) {
     <div class="adm-table-scroll">
       <table class="adm-table adm-users-table">
         <thead>
-          <tr><th>Email</th><th>Tier</th><th>Status</th><th>Role</th><th>Flags</th><th>Joined</th></tr>
+          <tr><th>Email</th><th>Tier</th><th>Status</th><th>Role</th><th>Flags</th><th>Joined</th><th></th></tr>
         </thead>
         <tbody>
           ${users.map(u => `
@@ -1513,9 +1702,11 @@ function usersTableHtml(users) {
               <td>
                 ${u.isAdmin ? '<span class="adm-pill adm-flag-admin">admin</span>' : ''}
                 ${u.isDev ? '<span class="adm-pill adm-flag-dev">dev</span>' : ''}
-                ${!u.isAdmin && !u.isDev ? '<span class="adm-muted">—</span>' : ''}
+                ${u.phoneChangesFrozen ? '<span class="adm-pill is-bad" title="Phone changes are paused pending review">phone paused</span>' : ''}
+                ${!u.isAdmin && !u.isDev && !u.phoneChangesFrozen ? '<span class="adm-muted">—</span>' : ''}
               </td>
               <td class="adm-muted">${escapeHtml((u.createdAt || '').slice(0, 10) || '—')}</td>
+              <td class="cell-tight">${userManageButtonHtml(u)}</td>
             </tr>
           `).join('')}
         </tbody>
@@ -1530,7 +1721,9 @@ function applyUserFilters(users) {
   const tier = document.getElementById('admUserTier')?.value || '';
   return users.filter(u => {
     if (q && !String(u.email || '').toLowerCase().includes(q)) return false;
-    if (status && String(u.status || '').toUpperCase() !== status) return false;
+    // FROZEN is a view, not a status: accounts whose phone changes are paused.
+    if (status === 'FROZEN') { if (u.phoneChangesFrozen !== true) return false; }
+    else if (status && String(u.status || '').toUpperCase() !== status) return false;
     if (tier && String(u.tier || '').toLowerCase() !== tier) return false;
     return true;
   });
@@ -1540,6 +1733,192 @@ function renderUserRows() {
   const host = document.getElementById('admUsersBody');
   if (!host || !cache.users) return;
   host.innerHTML = usersTableHtml(applyUserFilters(cache.users));
+  const frozen = cache.users.filter(u => u.phoneChangesFrozen === true).length;
+  const line = document.getElementById('admFrozenCount');
+  if (line) {
+    line.textContent = frozen ? `${frozen} account${frozen === 1 ? ' has' : 's have'} phone changes paused` : '';
+    line.hidden = !frozen;
+  }
+}
+
+/* ---------- manage one account ---------- */
+
+const USER_ROLES = ['viewer', 'member', 'developer', 'admin'];
+
+// One POST per action, every one carrying the row's email as expectEmail so
+// a roster that went stale is refused by the server rather than acted on. On
+// { ok, user } the row is swapped in place and the table repainted; the
+// roster is never re-fetched for a single change.
+async function patchUser(row, patch) {
+  showError('admUsersError', '');
+  showError('umError', '');
+  try {
+    const r = await apiFetch(USER_PATCH_URL, {
+      method: 'POST',
+      body: JSON.stringify({ userId: row.userId, expectEmail: row.email, ...patch })
+    });
+    if (r?.ok && r.user) {
+      const i = (cache.users || []).findIndex(u => u.userId === row.userId);
+      if (i >= 0) cache.users[i] = r.user; else (cache.users ||= []).push(r.user);
+      renderUserRows();
+      return r.user;
+    }
+    throw new Error('The server did not return the updated account.');
+  } catch (ex) {
+    const msg = friendlyError(ex, 'Could not update that account.');
+    showError('admUsersError', msg);
+    showError('umError', msg);
+    return null;
+  }
+}
+
+function userManageHtml(u, { self }) {
+  const status = String(u.status || '').toUpperCase();
+  const closed = status === 'CLOSED';
+  const tier = String(u.tier || 'free').toLowerCase();
+  const email = u.email || '';
+  const lockTitle = 'You cannot change your own role, status, or admin flag.';
+  return `
+    <div class="acct-modal-mask" data-um-close></div>
+    <div class="acct-modal is-wide" role="dialog" aria-modal="true" aria-label="Manage account">
+      <h3 class="acct-modal-h">Manage account</h3>
+      <p class="um-email"><strong>${escapeHtml(email)}</strong></p>
+      <p class="acct-modal-note">${tierPill(tier)} ${statusPill(status)}${u.phoneChangesFrozen ? ' <span class="adm-pill is-bad" title="Phone changes are paused pending review">phone paused</span>' : ''}${u.totpEnabled ? ' <span class="adm-pill is-claimed" title="An authenticator app is enrolled">2fa</span>' : ''}</p>
+      ${closed ? `
+        <p class="acct-modal-note">This account is closed${u.closedAt ? ` (${escapeHtml(fmtDate(u.closedAt))})` : ''}. It still carries a billing profile, so the close did not finish. Running it again ends the subscription and clears what is left; nothing else on a closed account can change.</p>
+      ` : `
+        <div class="um-row">
+          <label class="adm-label" for="umRole">Role</label>
+          <select class="adm-select" id="umRole" ${self ? `disabled title="${lockTitle}"` : ''}>
+            ${USER_ROLES.map(r => `<option value="${r}" ${String(u.role || '') === r ? 'selected' : ''}>${r}</option>`).join('')}
+            ${USER_ROLES.includes(String(u.role || '')) || !u.role ? '' : `<option value="${escapeHtml(u.role)}" selected>${escapeHtml(u.role)}</option>`}
+          </select>
+        </div>
+        <div class="um-row">
+          <span class="adm-label">Operator flags</span>
+          <div class="um-checks">
+            <label class="um-check ${self ? 'is-locked' : ''}" ${self ? `title="${lockTitle}"` : 'title="Admin accounts see the Internal sections and every admin route"'}>
+              <input type="checkbox" id="umAdmin" ${u.isAdmin ? 'checked' : ''} ${self ? 'disabled' : ''}> Admin flag
+            </label>
+            <label class="um-check" title="Dev accounts can route this browser to the dev lane">
+              <input type="checkbox" id="umDev" ${u.isDev ? 'checked' : ''}> Dev flag
+            </label>
+          </div>
+        </div>
+        ${tier !== 'free' ? `<p class="um-note">Paying: on the ${escapeHtml(tierName(tier))} plan; suspension does not pause billing.</p>` : ''}
+        <div class="um-row um-row-actions">
+          <span class="adm-label">Apply</span>
+          <div class="adm-actions-row">
+            <button class="cta adm-copy" type="button" data-um-save title="Saves the role and flags above in one change">Save</button>
+          </div>
+        </div>
+        <div class="um-row">
+          <span class="adm-label">Status</span>
+          <div class="adm-actions-row">
+            ${status === 'SUSPENDED'
+              ? `<button class="btn adm-copy" type="button" data-um-status="ACTIVE" ${self ? `disabled title="${lockTitle}"` : 'title="Restores sign-in. Click twice to confirm."'}>Reactivate</button>`
+              : `<button class="btn adm-copy btn-danger" type="button" data-um-status="SUSPENDED" ${self ? `disabled title="${lockTitle}"` : 'title="Blocks sign-in and revokes every session. Billing continues. Click twice to confirm."'}>Suspend</button>`}
+            ${u.phoneChangesFrozen ? `<button class="btn adm-copy" type="button" data-um-unfreeze title="Lets the account add, verify, and remove mobile numbers again">Unfreeze phone changes</button>` : ''}
+          </div>
+        </div>
+      `}
+      <div class="um-row um-danger">
+        <label class="adm-label" for="umCloseEmail">Close account</label>
+        <div>
+          <p class="acct-modal-note">Permanent. Ends any subscription now, removes the sign-in, and signs the account out everywhere. Type the account's email to enable the button.</p>
+          <input class="adm-input" id="umCloseEmail" type="email" autocomplete="off" spellcheck="false" placeholder="${escapeHtml(email)}" ${self ? `disabled title="${lockTitle}"` : ''}>
+          <div class="adm-actions-row">
+            <button class="btn adm-copy btn-danger" type="button" data-um-close-account disabled
+              title="${self ? lockTitle : 'Enabled once the email above matches this account'}">Close ${escapeHtml(email)}</button>
+          </div>
+        </div>
+      </div>
+      <p class="acct-error" id="umError" hidden></p>
+      <div class="acct-modal-actions">
+        <button class="btn btn-ghost" type="button" data-um-close>Done</button>
+      </div>
+    </div>
+  `;
+}
+
+function openUserManage(userId, email) {
+  let row = (cache.users || []).find(u => u.userId === userId)
+    || (cache.users || []).find(u => String(u.email || '').toLowerCase() === String(email || '').toLowerCase());
+  if (!row) { showError('admUsersError', 'Roster is out of date for this account. Reload and try again.'); return; }
+  let hostEl = document.getElementById('admUserManage');
+  if (!hostEl) { hostEl = document.createElement('div'); hostEl.id = 'admUserManage'; hostEl.className = 'acct-modal-host'; document.body.appendChild(hostEl); }
+  const me = cachedPing()?.user || {};
+  const self = (!!me.userId && me.userId === row.userId)
+    || (!!me.email && String(me.email).toLowerCase() === String(row.email || '').toLowerCase());
+
+  let busy = false;
+  const paint = () => { hostEl.innerHTML = userManageHtml(row, { self }); };
+  paint();
+  hostEl.hidden = false;
+
+  const closeMatches = () => {
+    const typed = (hostEl.querySelector('#umCloseEmail')?.value || '').trim().toLowerCase();
+    return !!typed && typed === String(row.email || '').trim().toLowerCase();
+  };
+  function onInput(e) {
+    if (e.target?.id !== 'umCloseEmail' || self) return;
+    const b = hostEl.querySelector('[data-um-close-account]');
+    if (b) b.disabled = busy || !closeMatches();
+  }
+  async function run(btn, patch, { closeOnSuccess = false } = {}) {
+    if (busy) return;
+    busy = true;
+    const orig = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = 'Working…';
+    const fresh = await patchUser(row, patch);
+    busy = false;
+    if (fresh) {
+      row = fresh;
+      if (closeOnSuccess) return close();
+      paint();
+      return;
+    }
+    btn.disabled = false;
+    btn.textContent = orig;
+  }
+  function onClick(e) {
+    if (e.target.closest('[data-um-close]')) { if (!busy) close(); return; }
+    const save = e.target.closest('[data-um-save]');
+    if (save) {
+      const patch = {};
+      const roleEl = hostEl.querySelector('#umRole');
+      const adminEl = hostEl.querySelector('#umAdmin');
+      const devEl = hostEl.querySelector('#umDev');
+      if (roleEl && !roleEl.disabled && roleEl.value !== String(row.role || '')) patch.role = roleEl.value;
+      if (adminEl && !adminEl.disabled && adminEl.checked !== (row.isAdmin === true)) patch.isAdmin = adminEl.checked;
+      if (devEl && devEl.checked !== (row.isDev === true)) patch.isDev = devEl.checked;
+      if (!Object.keys(patch).length) { showError('umError', 'Nothing to save: the role and flags match the account.'); return; }
+      return void run(save, patch);
+    }
+    const st = e.target.closest('[data-um-status]');
+    if (st && !st.disabled) {
+      const next = st.dataset.umStatus;
+      const verb = next === 'ACTIVE' ? 'reactivate' : 'suspend';
+      return void armConfirm(st, `Confirm: ${verb} ${row.email || ''}`, () => run(st, { status: next }));
+    }
+    const unfreeze = e.target.closest('[data-um-unfreeze]');
+    if (unfreeze) return void run(unfreeze, { phoneChangesFrozen: false });
+    const closeBtn = e.target.closest('[data-um-close-account]');
+    if (closeBtn && !closeBtn.disabled) {
+      if (!closeMatches()) { showError('umError', 'Type the account email exactly to enable the close.'); return; }
+      // Closing an admin needs the admin flag dropped in the same request.
+      const patch = row.isAdmin ? { status: 'CLOSED', isAdmin: false } : { status: 'CLOSED' };
+      return void run(closeBtn, patch, { closeOnSuccess: true });
+    }
+  }
+  const close = () => {
+    hostEl.removeEventListener('click', onClick);
+    hostEl.removeEventListener('input', onInput);
+    hostEl.hidden = true; hostEl.innerHTML = '';
+  };
+  hostEl.addEventListener('click', onClick);
+  hostEl.addEventListener('input', onInput);
 }
 
 async function renderUsers(main) {
@@ -1548,11 +1927,12 @@ async function renderUsers(main) {
       <h2 class="adm-sec-title">Users</h2>
       <div class="adm-toolbar">
         <input class="adm-search" id="admUserSearch" type="search" placeholder="Search email…" aria-label="Search users by email">
-        <select class="adm-select" id="admUserStatus" aria-label="Filter by status">
+        <select class="adm-select" id="admUserStatus" aria-label="Filter by status" title="FROZEN is a view: accounts whose phone changes are paused">
           <option value="">Any status</option>
           <option value="ACTIVE">Active</option>
           <option value="SUSPENDED">Suspended</option>
-          <option value="LOCKED">Locked</option>
+          <option value="CLOSED">Closed</option>
+          <option value="FROZEN">Phone paused</option>
         </select>
         <select class="adm-select" id="admUserTier" aria-label="Filter by tier">
           <option value="">Any tier</option>
@@ -1563,6 +1943,7 @@ async function renderUsers(main) {
         </select>
       </div>
     </header>
+    <p class="adm-note adm-frozen-count" id="admFrozenCount" hidden></p>
     <p class="adm-error" id="admUsersError" hidden></p>
     <div id="admUsersBody"><p class="adm-note">Loading…</p></div>
   `;
@@ -2182,7 +2563,7 @@ function showSection(id) {
   if (id === 'products')     return void renderProducts(main);
   if (id === 'subscription') return void renderSubscription(main);
   if (id === 'orders')       return void renderOrders(main);
-  if (id === 'builds')       return renderSoon(main, 'My Builds', 'Builds you publish to the board will be managed here: your listings and your credit.');
+  if (id === 'builds')       return renderSoon(main, 'My Builds', 'Builds you publish from the PragOptics™ software will be listed here.');
   if (id === 'overview')     return void renderOverview(main);
   if (id === 'users')        return void renderUsers(main);
   if (id === 'shiporders')   return void renderAdminOrders(main);
@@ -2221,7 +2602,13 @@ function bindOnce() {
       if (a === 'pm-save') return void savePmUpdate(act);
       if (a === 'pm-cancel') return void cancelPmUpdate();
       if (a === 'phone-start') return void startPhone();
+      if (a === 'phone-reverify') {
+        const input = document.getElementById('acctNewPhone');
+        if (input) input.value = act.dataset.phone || '';
+        return void startPhone();
+      }
       if (a === 'phone-remove') return void removePhone();
+      if (a === 'close-account') return void closeAccount();
       if (a === 'add-alias') return void addAlias();
       if (a === 'change-password') return void changePassword();
       if (a === 'reset-2fa') return void resetTwoFactor();
@@ -2249,6 +2636,7 @@ function bindOnce() {
       if (admAct.dataset.admAction === 'lane-live') switchLane('live');
       if (admAct.dataset.admAction === 'lane-dev') switchLane('dev');
       if (admAct.dataset.admAction === 'order-label') buyOrderLabel(admAct);
+      if (admAct.dataset.admAction === 'user-manage') openUserManage(admAct.dataset.user, admAct.dataset.email);
       if (admAct.dataset.admAction === 'wh-stripe') runWebhookSync(admAct, STRIPE_WH_SYNC_URL, 'Stripe');
       if (admAct.dataset.admAction === 'wh-shippo') runWebhookSync(admAct, SHIPPO_WH_SYNC_URL, 'Shippo');
       if (admAct.dataset.admAction === 'billing-reconcile-dry') runBillingReconcile(admAct, true);

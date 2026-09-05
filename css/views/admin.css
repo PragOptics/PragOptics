@@ -309,7 +309,7 @@ th.adm-num { text-align: right; }
 
 .adm-pill.is-bad {
   color: #ff5d6c;
-  border-color: rgba(255, 93, 108, .45);
+  border: 1px solid rgba(255, 93, 108, .45);
   background: rgba(255, 93, 108, .08);
 }
 .adm-pill {
@@ -615,4 +615,32 @@ select.adm-select option:checked, select.adm-input option:checked {
   font: 700 .7rem/1.4 ui-monospace, "Cascadia Code", Consolas, monospace;
   letter-spacing: .2em; text-transform: uppercase;
   color: var(--brand-600, #21bca5);
+}
+
+/* ---- Users: frozen count and the manage modal ---- */
+.adm-frozen-count { margin: -6px 0 12px; color: #ff9aa2; font-size: .82rem; }
+.um-email { margin: 0 0 10px; color: var(--ink); font-size: .95rem; word-break: break-all; }
+.um-email strong { font-weight: 700; }
+/* label + control grid, one line per concern */
+.um-row {
+  display: grid;
+  grid-template-columns: 8.5rem minmax(0, 1fr);
+  gap: 8px 14px;
+  align-items: center;
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+}
+.um-row .adm-label { margin-top: 0; }
+.um-row .adm-actions-row { margin-top: 0; }
+.um-row .adm-input { margin-bottom: 8px; }
+.um-row .acct-modal-note { margin-bottom: 8px; }
+.um-checks { display: flex; gap: 16px; flex-wrap: wrap; }
+.um-check { display: inline-flex; align-items: center; gap: 6px; color: var(--ink); font-size: .86rem; cursor: pointer; }
+.um-check input { accent-color: var(--brand-600, #21bca5); margin: 0; }
+.um-check.is-locked { opacity: .55; cursor: not-allowed; }
+.um-note { margin: 4px 0 10px; font-size: .82rem; color: #ffd489; }
+.um-danger { border-top-color: rgba(255, 93, 108, .35); align-items: start; }
+.um-danger .adm-label { padding-top: 2px; }
+@media (max-width: 30rem) {
+  .um-row { grid-template-columns: minmax(0, 1fr); }
 }

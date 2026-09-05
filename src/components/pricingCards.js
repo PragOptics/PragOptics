@@ -34,6 +34,11 @@ import { TIER_COPY, ADDON_COPY, TIER_ORDER } from './tierCopy.js';
 // The state key the backend understands per normalized add-on key.
 const ADDON_STATE_KEY = { domains: 'domains', storage5gb: 'storage', flows10k: 'flows', api50k: 'api' };
 
+// The add-ons actually sold. Domains and flows stay in the catalog, in
+// ADDON_COPY, and in the state shape so accounts that already hold them
+// still render in the account panel; they are just not offered here.
+const OFFERED_ADDONS = new Set(['storage5gb', 'api50k']);
+
 export function mountPricingSelect(host, { catalog = [], initial = {}, onChange } = {}) {
   const model = normalizeCatalog(catalog);
   const roles = Object.keys(model.plans).filter(r => model.plans[r]?.base);
@@ -43,7 +48,7 @@ export function mountPricingSelect(host, { catalog = [], initial = {}, onChange 
   });
 
   const addonsModel = { ...model.globalAddons, ...(model.plans.user?.addons || {}) };
-  const addonKeys = Object.keys(addonsModel);
+  const addonKeys = Object.keys(addonsModel).filter(k => OFFERED_ADDONS.has(k));
 
   const state = {
     subType: roles.includes(initial.subType) ? initial.subType : null,

@@ -81,13 +81,21 @@ export async function submitNativeLogin(e) {
     await finalizeAuth(data, { email });
 
   } catch (err) {
-    setCodeError(err?.message || "Invalid email or password.");
+    // A suspended account is refused with a named code; every other failure
+    // stays generic so a caller cannot probe which part was wrong.
+    if (err?.status === 403 && err?.data?.code === "ACCOUNT_SUSPENDED") {
+      setCodeError("This account is suspended. Contact support@bridgesindust.com.");
+    } else {
+      setCodeError(err?.message || "Invalid email or password.");
+    }
   }
 }
 
 // -------------------------------
 // REQUEST CODE -> /auth/request-code (signup/reset)
-// NOTE: your backend expects smsOptIn + phone when sending SMS. (you proved this)
+// The modal always asks for email delivery (channel "email", smsOptIn false).
+// On signup the optional mobile number rides along so the new account stores
+// it; it is verified later from the profile, never texted here.
 // -------------------------------
 export async function requestNativeCode({ email, purpose, smsOptIn, phone, channel }) {
   const body = {

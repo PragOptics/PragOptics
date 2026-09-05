@@ -156,6 +156,60 @@
       getStoredTokens
     });
 
+    /* ===========================
+       CONTINUE WITH FREE
+       =========================== */
+    // Free is a real destination, not a wizard failure. A signed-in owner
+    // with no billing profile who chose "Continue with Free" lands in the
+    // console on later loads instead of being marched back to step 1. The
+    // choice is keyed per user so a shared browser never inherits another
+    // account's answer, and a storage failure reads as "not chosen": the
+    // wizard is the safe default. Declared ahead of the rehydrate below,
+    // which already resolves a stored ping.
+    let lastPing = null;
+
+    function freeContinueKey(ping) {
+      return 'pragoptics_free_continue_v1:' + (ping?.user?.userId || '');
+    }
+
+    function readFreeContinue(ping) {
+      try { return localStorage.getItem(freeContinueKey(ping)) === '1'; }
+      catch { return false; }
+    }
+
+    function writeFreeContinue(ping) {
+      try { localStorage.setItem(freeContinueKey(ping), '1'); }
+      catch { /* storage blocked: the choice holds for this page only */ }
+    }
+
+    function cachedPing() {
+      try {
+        const p = JSON.parse(sessionStorage.getItem('pragoptics_ping') || 'null');
+        if (p) return p;
+      } catch { /* fall through to the last ping this page resolved */ }
+      return lastPing;
+    }
+
+    // The console branch of applyPostLoginResolution, shared so the Free
+    // path enters the console exactly the way an active subscriber does.
+    function enterConsole() {
+      setAppMode("console");
+      const flow = document.getElementById("platformFlow");
+      if (flow) {
+        flow.style.display = "none";
+      }
+      window.setConsoleAuthenticated?.();
+    }
+
+    function continueWithFree() {
+      const ping = cachedPing();
+      writeFreeContinue(ping);
+      // The wizard menu entry stays: a plan is one click away from the same
+      // menu, and that route forces the wizard open regardless of this choice.
+      setWizardMenuVisible(true);
+      enterConsole();
+    }
+
     // ✅ Rehydrate API console auth state from stored ping/token
     try {
       const storedTokens = getStoredTokens();
@@ -335,11 +389,15 @@ function launchLogin() {
 }
 
 
-function applyPostLoginResolution({ ping }) {
+// force: an explicit "open the wizard" from the menu. It bypasses the
+// Continue-with-Free gate so that route always mounts the wizard.
+function applyPostLoginResolution({ ping, force = false }) {
   if (!isSessionActive()) {
     invalidateSession("expired");
     return;
   }
+
+  if (ping) lastPing = ping;
 
   // Internal-only nav follows the freshly resolved identity.
   refreshAdminNav();
@@ -350,6 +408,22 @@ function applyPostLoginResolution({ ping }) {
 
   // Always start by cleaning secondary UI
   clearBillingLandingOnly();
+
+  // A Free owner who already chose "Continue with Free" goes to the console,
+  // not back to step 1. Only the first-run shape is gated: a billing profile
+  // in any state, a canceled banner, and the finalizing step (5) always win.
+  // The wizard menu entry stays visible (updateWizardMenuFromPing just set it).
+  if (
+    decision.mode === "wizard" &&
+    Number(decision.wizardStep) === 1 &&
+    !decision.banner &&
+    !ping?.billingProfile &&
+    !force &&
+    readFreeContinue(ping)
+  ) {
+    enterConsole();
+    return;
+  }
 
   if (decision.mode === "wizard") {
     ensureWizardStepsPresent();
@@ -412,12 +486,7 @@ function applyPostLoginResolution({ ping }) {
   }
 
   if (decision.mode === "console") {
-    setAppMode("console");
-    const flow = document.getElementById("platformFlow");
-    if (flow) {
-      flow.style.display = "none";
-    }
-    window.setConsoleAuthenticated?.();
+    enterConsole();
     return;
   }
 }
@@ -610,9 +679,10 @@ window.applyPostLoginResolution = applyPostLoginResolution;
       sessionStorage.setItem("pragoptics_ping", JSON.stringify(ping));
 
       if (!ping?.billingProfile) {
-        // Nothing to manage yet: run first-time setup.
+        // Nothing to manage yet: run first-time setup. force: the owner asked
+        // for Billing, so an earlier "Continue with Free" must not swallow it.
         window.__wizardInit = false;
-        applyPostLoginResolution({ ping });
+        applyPostLoginResolution({ ping, force: true });
         return;
       }
     } catch { /* stale ping is still enough to open the panel */ }
@@ -663,8 +733,9 @@ window.applyPostLoginResolution = applyPostLoginResolution;
       return;
     }
 
-    // Otherwise launch the billing wizard (the only front-end wizard)
-    applyPostLoginResolution({ ping });
+    // Otherwise launch the billing wizard (the only front-end wizard). force:
+    // an explicit menu open always mounts it, "Continue with Free" or not.
+    applyPostLoginResolution({ ping, force: true });
   }
 
 
@@ -801,6 +872,7 @@ registerLegacyGlobals({
   // billing menu entry
   openBillingFromMenu,
   openWizardFromMenu,
+  continueWithFree,
 
   // console UX
   toggleViewerMode,
