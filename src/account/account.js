@@ -49,6 +49,7 @@ const SHIPPO_LABELS_URL = `${PRAG_API_BASE}/admin/shipping/labels`;
 const PRINT_QUEUE_URL = `${PRAG_API_BASE}/admin/print-queue`;
 const USAGE_MINE_URL = `${PRAG_API_BASE}/usage/mine`;
 const ADMIN_USAGE_URL = `${PRAG_API_BASE}/admin/usage/overview`;
+const ADMIN_COSTS_URL = `${PRAG_API_BASE}/admin/costs`;
 
 // Catalog snapshots survive lane flips (localStorage is per-origin, and the
 // lane toggle reloads the same origin): snapshot on one lane, import on the
@@ -1589,8 +1590,10 @@ async function renderOverview(main) {
       <pre class="muted adm-pre" id="admReconcileResult" hidden></pre>
     </div>
     <div id="admUsageBlock"></div>
+    <div id="admCostBlock"></div>
   `;
   loadAdminUsage();
+  loadAdminCosts();
   const grid = main.querySelector('#admOverviewGrid');
   try {
     const [users, avail, claimed] = await Promise.all([
@@ -1650,6 +1653,56 @@ async function loadAdminUsage() {
     `;
   } catch (ex) {
     host.innerHTML = '';
+  }
+}
+
+/* ---------- Azure spend (whole subscription, admin only) ---------- */
+async function loadAdminCosts(force) {
+  const host = document.getElementById('admCostBlock');
+  if (!host) return;
+  const money = (n) => '$' + Number(n || 0).toFixed(2);
+  try {
+    const d = await apiFetch(force ? `${ADMIN_COSTS_URL}?refresh=1` : ADMIN_COSTS_URL);
+    if (d && d.ok === false && d.needsSetup) {
+      host.innerHTML = `
+        <div class="adm-card" style="margin-top:12px;">
+          <h3 class="adm-card-h">Azure spend</h3>
+          <p class="adm-note">${escapeHtml(d.message || 'Azure cost is not available yet.')}</p>
+          <div class="adm-actions-row"><button class="btn btn-sm" type="button" data-adm-action="cost-refresh">Refresh</button></div>
+        </div>`;
+      return;
+    }
+    const rows = d.byResourceGroup || [];
+    const asOf = d.asOf ? new Date(d.asOf).toLocaleString() : '';
+    const sub = d.cached ? `as of ${asOf}${d.stale ? ', stale' : ''}` : `as of ${asOf}`;
+    host.innerHTML = `
+      <div class="adm-card" style="margin-top:12px;">
+        <div class="adm-actions-row" style="justify-content:space-between;align-items:center;">
+          <h3 class="adm-card-h">Azure spend this month</h3>
+          <button class="btn btn-sm" type="button" data-adm-action="cost-refresh" title="Re-query Cost Management (cached a few hours)">Refresh</button>
+        </div>
+        <div class="adm-stat-grid" style="margin-top:8px;">
+          ${statCard(money(d.total), `Total, ${escapeHtml(d.month || '')} (${escapeHtml(d.currency || 'USD')})`, escapeHtml(sub))}
+        </div>
+        ${rows.length ? `
+          <div class="adm-table-scroll">
+            <table class="adm-table">
+              <thead><tr><th>Resource group</th><th class="adm-num">Cost</th></tr></thead>
+              <tbody>
+                ${rows.map(r => `<tr><td class="cell-ellip" title="${escapeHtml(r.name)}">${escapeHtml(r.name)}</td><td class="adm-num">${escapeHtml(money(r.cost))}</td></tr>`).join('')}
+              </tbody>
+            </table>
+          </div>
+          <p class="adm-note">Whole subscription, month to date, by resource group. Cached; Refresh re-queries Cost Management.</p>
+        ` : `<p class="adm-note">No cost recorded yet this month.</p>`}
+      </div>`;
+  } catch (ex) {
+    host.innerHTML = `
+      <div class="adm-card" style="margin-top:12px;">
+        <h3 class="adm-card-h">Azure spend</h3>
+        <p class="adm-note">${escapeHtml(friendlyError(ex, 'Could not read Azure cost.'))}</p>
+        <div class="adm-actions-row"><button class="btn btn-sm" type="button" data-adm-action="cost-refresh">Refresh</button></div>
+      </div>`;
   }
 }
 
@@ -2717,6 +2770,7 @@ function bindOnce() {
       if (admAct.dataset.admAction === 'lane-dev') switchLane('dev');
       if (admAct.dataset.admAction === 'order-label') buyOrderLabel(admAct);
       if (admAct.dataset.admAction === 'order-refund') openOrderRefund(admAct);
+      if (admAct.dataset.admAction === 'cost-refresh') loadAdminCosts(true);
       if (admAct.dataset.admAction === 'user-manage') openUserManage(admAct.dataset.user, admAct.dataset.email);
       if (admAct.dataset.admAction === 'wh-stripe') runWebhookSync(admAct, STRIPE_WH_SYNC_URL, 'Stripe');
       if (admAct.dataset.admAction === 'wh-shippo') runWebhookSync(admAct, SHIPPO_WH_SYNC_URL, 'Shippo');
