@@ -833,6 +833,11 @@ function clearAllWizardSurfaces() {
   // Remove banner wherever it ended up
   document.querySelectorAll("#billingCanceledBanner").forEach(el => el.remove());
 
+  // The past-due bar is fixed to the body, outside #platformFlow, so clearing
+  // the flow never reached it: suspending a past-due account left "Your last
+  // payment did not go through" pinned to the signed-out landing page.
+  document.querySelectorAll("#pragConsoleBanner").forEach(el => el.remove());
+
   const flow = document.getElementById("platformFlow");
   if (!flow) return;
 
