@@ -11,7 +11,7 @@
 // forges isAdmin in their own sessionStorage gets sections where every
 // request returns 403.
 
-import { PRAG_API_BASE, LANE } from '../runtime/config.js';
+import { PRAG_API_BASE, LANE, ORDERS_CLAIM_LIVE } from '../runtime/config.js';
 import { switchLane, isPlatformOperator } from '../runtime/lane.js';
 import { tierName, ADDON_NAME } from '../components/tierCopy.js';
 import { mountPricingSelect } from '../components/pricingCards.js';
@@ -32,6 +32,7 @@ const SUB_UPDATE_URL = `${PRAG_API_BASE}/billing/subscription/update`;
 const SUB_CANCEL_URL = `${PRAG_API_BASE}/billing/subscription/cancel`;
 const PM_URL         = `${PRAG_API_BASE}/billing/payment-method`;
 const ORDERS_MINE_URL = `${PRAG_API_BASE}/orders/mine`;
+const ORDERS_CLAIM_URL = `${PRAG_API_BASE}/orders/claim`;
 
 const ISSUE_URL = `${PRAG_API_BASE}/warranty/codes/issue`;
 const LIST_URL  = `${PRAG_API_BASE}/warranty/codes`;
@@ -1488,15 +1489,67 @@ function orderLinesLabel(lines) {
 }
 
 async function renderOrders(main) {
+  const showClaim = (LANE !== 'live') || ORDERS_CLAIM_LIVE;
   main.innerHTML = `
     <header class="acct-sec-head"><h2 class="acct-sec-title">Orders</h2></header>
     <section class="acct-card">
-      <p class="acct-card-note">Orders placed while signed in. Guest orders live on their receipt email.</p>
+      <p class="acct-card-note">Orders linked to this account.${showClaim ? ' A guest order stays on its receipt email until you link it below.' : ' Guest orders stay on their receipt email.'}</p>
       <p class="acct-error" id="acctOrdersError" hidden></p>
       <div id="acctOrdersBody"><p class="acct-loading">Loading…</p></div>
     </section>
+    ${showClaim ? `
+    <section class="acct-card">
+      <h3 class="acct-card-h">Link a guest order</h3>
+      <p class="acct-card-note">Ordered as a guest? Enter the order number from your confirmation email to add it here. The order must have been placed with an email verified on this account.</p>
+      <div class="acct-add-row">
+        <input class="acct-input" type="text" id="acctClaimOrderId" placeholder="Order number" spellcheck="false" autocomplete="off" />
+        <button class="btn" type="button" id="acctClaimBtn">Link order</button>
+      </div>
+      <p class="acct-error" id="acctClaimError" hidden></p>
+      <p class="acct-card-note" id="acctClaimOk" hidden></p>
+    </section>` : ''}
   `;
+
+  await loadMyOrders();
+
+  if (!showClaim) return;
+
+  const btn = document.getElementById('acctClaimBtn');
+  const input = document.getElementById('acctClaimOrderId');
+  // A guest who just chose "create an account to track this order" arrives with
+  // their order number stashed. Prefill it so linking is one click, but never
+  // auto-submit: claiming stays an explicit action.
+  try {
+    const pre = sessionStorage.getItem('pragoptics_claim_order_id');
+    if (pre) { input.value = pre; sessionStorage.removeItem('pragoptics_claim_order_id'); }
+  } catch { /* fine */ }
+  const doClaim = async () => {
+    const orderId = (input.value || '').trim();
+    showError('acctClaimError', '');
+    const okEl = document.getElementById('acctClaimOk');
+    okEl.hidden = true;
+    if (!orderId) { showError('acctClaimError', 'Enter your order number.'); return; }
+    btn.disabled = true;
+    try {
+      await apiFetch(ORDERS_CLAIM_URL, { method: 'POST', body: JSON.stringify({ orderId }) });
+      input.value = '';
+      okEl.textContent = 'Order linked. It now appears in your orders above.';
+      okEl.hidden = false;
+      await loadMyOrders();
+    } catch (ex) {
+      showError('acctClaimError', friendlyError(ex, 'That order could not be linked. Check the number, and that the order email is verified on your account.'));
+    } finally {
+      btn.disabled = false;
+    }
+  };
+  btn.addEventListener('click', doClaim);
+  input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); doClaim(); } });
+}
+
+async function loadMyOrders() {
   const host = document.getElementById('acctOrdersBody');
+  if (!host) return;
+  host.innerHTML = `<p class="acct-loading">Loading…</p>`;
   try {
     const data = await apiFetch(ORDERS_MINE_URL);
     const orders = data.orders || [];

@@ -12,7 +12,7 @@
 
 import { lines, subtotal, removeItem, subscribe } from './cart.js';
 import { formatPrice, ALL_PRODUCTS, SHOP_LIVE } from './products.js';
-import { LANE, PRAG_API_BASE } from '../runtime/config.js';
+import { LANE, PRAG_API_BASE, ORDERS_CLAIM_LIVE } from '../runtime/config.js';
 
 const CHECKOUT_ENABLED = SHOP_LIVE || LANE === 'dev';
 
@@ -403,7 +403,6 @@ async function submitPayment() {
 
 function doneHtml() {
   const orderId = state.order?.orderId || '';
-  const shortId = orderId.slice(0, 8).toUpperCase();
   return `
     <div class="co-confirm">
       <div class="co-check" aria-hidden="true">✓</div>
@@ -411,13 +410,19 @@ function doneHtml() {
       <p>
         ${state.processing
           ? `Your payment is processing. We'll email <strong>${escapeHtml(state.contact.email)}</strong> as soon as it settles.`
-          : `Thanks! A receipt is on its way to <strong>${escapeHtml(state.contact.email)}</strong>.`}
+          : `Thanks! A confirmation is on its way to <strong>${escapeHtml(state.contact.email)}</strong>.`}
       </p>
-      <p class="muted">Order reference: <code>${escapeHtml(shortId)}</code></p>
+      ${orderId
+        ? `<p class="muted">Your order number. Keep it to track or link this order:</p>
+           <p><code style="word-break:break-all;">${escapeHtml(orderId)}</code></p>`
+        : ''}
       ${getAccessToken()
         ? `<p class="muted">This order is saved to your account. Track it under Orders.</p>`
-        : `<p class="muted">Want to track this order and keep its history? Create an account with
-           <strong>${escapeHtml(state.contact.email)}</strong> and it links to you automatically once the address is verified.</p>`}
+        : (((LANE !== 'live') || ORDERS_CLAIM_LIVE)
+            ? `<p class="muted">Want to track this order and keep its history? Create an account with
+               <strong>${escapeHtml(state.contact.email)}</strong>, then link this order with the order number above.</p>`
+            : `<p class="muted">Want to track this order and keep its history? Create an account with
+               <strong>${escapeHtml(state.contact.email)}</strong> and keep your order number above for your records.</p>`)}
       <div class="co-empty-actions">
         ${getAccessToken()
           ? `<button class="ph-btn" type="button" onclick="window.pragOrderToAccount?.()">View in your account</button>`
@@ -431,10 +436,15 @@ function doneHtml() {
 
 // Order-confirmation actions. A guest starts an account through the same
 // agreement -> signup path as everywhere else, with the order's email stashed
-// for the signup form; once that address is verified the backend claims every
-// guest order placed under it. A signed-in buyer's order is already theirs.
+// for the signup form AND the order number stashed so the Orders section can
+// prefill the explicit claim. Guest orders are no longer auto-claimed by email
+// (that leaked order metadata to recycled or mistyped addresses); linking is
+// order-number-gated. A signed-in buyer's order is already theirs.
 window.pragAccountForOrder = () => {
-  try { sessionStorage.setItem('pragoptics_signup_prefill_email', state.contact.email || ''); } catch { /* fine */ }
+  try {
+    sessionStorage.setItem('pragoptics_signup_prefill_email', state.contact.email || '');
+    if (state.order?.orderId) sessionStorage.setItem('pragoptics_claim_order_id', state.order.orderId);
+  } catch { /* fine */ }
   window.setAppMode?.('landing');
   setTimeout(() => { window.openAgreementModal?.(); }, 250);
 };
