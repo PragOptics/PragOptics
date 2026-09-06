@@ -47,9 +47,8 @@ const lane = LANES[LANE] || LANES.live;
 export const PRAG_API_BASE = lane.apiBase;
 export const STRIPE_PUBLISHABLE_KEY = lane.stripePk;
 
-// Explicit guest-order claim (v1/orders/claim). Ships dark on the live lane
-// until that route is deployed to live, so the "Link a guest order" card and
-// the checkout copy that points at it never reference a route that 404s a real
-// customer. The dev lane always exposes it for testing. Flip to true and push
-// once the backend claim route is live on all lanes.
-export const ORDERS_CLAIM_LIVE = false;
+// Explicit guest-order claim (v1/orders/claim): the "Link a guest order" card
+// and the checkout copy that points at it. Proven end to end on dev
+// 2026-09-06 (guest checkout -> confirmation email -> claim by order number).
+// Live once the backend carrying the route (3db9385 or later) is on blue/green.
+export const ORDERS_CLAIM_LIVE = true;
