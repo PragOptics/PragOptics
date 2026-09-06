@@ -103,6 +103,32 @@ function closeHost() {
   if (h) { h.hidden = true; h.querySelector(".tfa-card").innerHTML = ""; }
 }
 
+// Ask for a second-factor code outside the sign-in flow, in the same card the
+// sign-in uses. Resolves with the code, or null if the person cancels. Used by
+// the lane switch: the target lane requires a code from ITS authenticator
+// before it will redeem a handoff, so dev and live stay separate domains.
+export function promptForCode({ title = "Confirm it's you", sub = "Enter the 6-digit code from your authenticator for this lane, or a recovery code." } = {}) {
+  return new Promise((resolve) => {
+    const card = host();
+    card.innerHTML = `
+      <h3>${esc(title)}</h3>
+      <p class="tfa-sub">${esc(sub)}</p>
+      <input class="tfa-code" id="tfaPromptCode" inputmode="numeric" autocomplete="one-time-code" maxlength="12" placeholder="000000" aria-label="Code">
+      <p class="tfa-err" id="tfaPromptErr"></p>
+      <div class="tfa-actions">
+        <button class="tfa-ghost" data-cancel>Cancel</button>
+        <button class="tfa-cta" id="tfaPromptGo" disabled>Continue</button>
+      </div>`;
+    const codeEl = card.querySelector("#tfaPromptCode");
+    const btn = card.querySelector("#tfaPromptGo");
+    codeEl.addEventListener("input", () => { btn.disabled = codeEl.value.trim().length < 6; });
+    codeEl.addEventListener("keydown", (e) => { if (e.key === "Enter" && !btn.disabled) btn.click(); });
+    codeEl.focus();
+    card.querySelector("[data-cancel]").onclick = () => { closeHost(); resolve(null); };
+    btn.onclick = () => { const v = codeEl.value.trim(); closeHost(); resolve(v || null); };
+  });
+}
+
 // ---- enrollment ---------------------------------------------------------
 
 // Ask the API to email a one-time code for two-factor setup. Public route, no

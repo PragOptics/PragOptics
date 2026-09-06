@@ -15,6 +15,7 @@
     import { handleBillingProfile, startPaymentStep, pollUntilResolved } from "../api/billing.js";
     import { setDnaMode } from "../components/dnaController.js";
     import { showStatusModal } from "../components/statusModal.js";
+    import { promptForCode } from "../auth/twoFactorFlow.js";
     import { initHeaderMenu } from '../components/header.menu.js';
     import { initWizardNavigation } from '../wizard/wizard.controller.js';
     import { initConsoleController } from '../components/console.controller.js';
@@ -641,12 +642,22 @@ window.applyPostLoginResolution = applyPostLoginResolution;
     if (__handoff) {
       (async () => {
         try {
+          // The target lane requires a code from ITS authenticator before it
+          // redeems a handoff, so a compromise of one lane can never mint a
+          // session on the other. Ask for it up front: the handoff is single
+          // use and is burned by the redeem call, so a wrong or missing code
+          // costs a fresh switch rather than a retry.
+          const code = await promptForCode({
+            title: "Confirm it's you on this lane",
+            sub: "Enter the 6-digit code from your authenticator for this lane, or a recovery code."
+          });
+          if (!code) throw new Error("switch canceled");
           // The verifier proves this is the browser that started the switch;
           // the target lane refuses the token without it.
           const res = await fetch(`${PRAG_API_BASE}/auth/lane/redeem`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ token: __handoff, verifier: __verifier })
+            body: JSON.stringify({ token: __handoff, verifier: __verifier, code })
           });
           if (!res.ok) throw new Error("handoff rejected");
           const data = await res.json();
