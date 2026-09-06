@@ -84,11 +84,10 @@ a secure context). Local certificates are committed for convenience.
 npm run serve:https
 ```
 
-That script runs `http-server` with `localhost+2.pem`. Note the script's default
-port is **8080**, while the origin currently allowlisted for CORS on the dev
-Function App is **`https://localhost:8443`**. Whichever origin you serve from
-must be present in that lane's CORS list in Azure, or every API call fails
-preflight. Serve on the allowlisted port, or add the one you use.
+That serves on **`https://localhost:8443`** with the committed local
+certificates. 8443 is the origin allowlisted for CORS on the dev Function App,
+so it works as-is. If you change the port, add the new origin to that lane's
+CORS list in Azure or every API call fails preflight.
 
 Point the app at the sandbox before signing in (see below), and test against the
 dev lane only. Never exercise checkout or account changes against live.

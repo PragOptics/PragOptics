@@ -7,7 +7,7 @@
     "doc": "docs"
   },
   "scripts": {
-    "serve:https": "http-server -S -C localhost+2.pem -K localhost+2-key.pem -p 8080"
+    "serve:https": "http-server -S -C localhost+2.pem -K localhost+2-key.pem -p 8443"
   },
   "keywords": [],
   "author": "",
