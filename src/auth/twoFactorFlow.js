@@ -104,13 +104,38 @@ function closeHost() {
 }
 
 // ---- enrollment ---------------------------------------------------------
-async function openEnrollment(enrollmentToken, email) {
+
+// Ask the API to email a one-time code for two-factor setup. Public route, no
+// bearer: the account already exists, and the point is to prove the inbox.
+async function requestEnrollOtp(email) {
+  const res = await fetch(`${PRAG_API_BASE}/auth/request-code`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email: String(email || "").trim().toLowerCase(), purpose: "mfa-enroll", channel: "email" })
+  });
+  let data = null; try { data = await res.json(); } catch {}
+  if (!res.ok) {
+    const err = new Error(data?.error || `Request failed (${res.status})`);
+    err.status = res.status;
+    throw err;
+  }
+  return String(data?.requestId || "");
+}
+
+// emailProofRequired is true when the enrollment token came from a password
+// login on an account that has no authenticator yet. A password alone must not
+// get to choose the second factor, so the API also emails a code and demands
+// it at enroll/confirm. A brand-new signup just proved its inbox, so it skips
+// this step.
+async function openEnrollment(enrollmentToken, email, emailProofRequired = false) {
   const card = host();
   card.innerHTML = `<h3>Set up two-factor</h3><p class="tfa-sub">Loading your setup key…</p>`;
 
   let start;
+  let otpRequestId = "";
   try {
     start = await post2fa("/auth/2fa/enroll/start", enrollmentToken, {});
+    if (emailProofRequired) otpRequestId = await requestEnrollOtp(email);
   } catch (e) {
     card.innerHTML = `<h3>Set up two-factor</h3><p class="tfa-err">${esc(e.message || "Could not start setup.")}</p>
       <div class="tfa-actions"><button class="tfa-ghost" data-close>Close</button></div>`;
@@ -124,7 +149,11 @@ async function openEnrollment(enrollmentToken, email) {
     <div class="tfa-qr">${start.qrSvg || ""}</div>
     <div class="tfa-secret" id="tfaSecret">${esc(start.secret)}</div>
     <p class="tfa-hint">Can't scan? Type this key into your app by hand.</p>
-    <input class="tfa-code" id="tfaCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="000000" aria-label="6-digit code">
+    <input class="tfa-code" id="tfaCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="000000" aria-label="Authenticator 6-digit code">
+    ${emailProofRequired ? `
+    <p class="tfa-hint">We also emailed a code to <b>${esc(email)}</b>. Enter it here to confirm this is your inbox.
+      <button type="button" class="tfa-link" id="tfaOtpResend">Resend</button></p>
+    <input class="tfa-code" id="tfaOtp" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="000000" aria-label="Emailed 6-digit code">` : ""}
     <p class="tfa-err" id="tfaErr"></p>
     <div class="tfa-actions">
       <button class="tfa-ghost" data-cancel>Cancel</button>
@@ -132,20 +161,34 @@ async function openEnrollment(enrollmentToken, email) {
     </div>`;
 
   const codeEl = card.querySelector("#tfaCode");
+  const otpEl = card.querySelector("#tfaOtp");
   const btn = card.querySelector("#tfaVerify");
   const err = card.querySelector("#tfaErr");
-  codeEl.addEventListener("input", () => {
-    codeEl.value = codeEl.value.replace(/\D/g, "");
-    btn.disabled = codeEl.value.length !== 6;
+  const ready = () =>
+    codeEl.value.length === 6 && (!emailProofRequired || (otpEl && otpEl.value.length === 6));
+  const onInput = (el) => () => {
+    el.value = el.value.replace(/\D/g, "");
+    btn.disabled = !ready();
     err.textContent = "";
-  });
+  };
+  codeEl.addEventListener("input", onInput(codeEl));
+  if (otpEl) otpEl.addEventListener("input", onInput(otpEl));
   codeEl.focus();
   card.querySelector("[data-cancel]").onclick = closeHost;
+
+  const resend = card.querySelector("#tfaOtpResend");
+  if (resend) resend.onclick = async () => {
+    resend.disabled = true; err.textContent = "";
+    try { otpRequestId = await requestEnrollOtp(email); resend.textContent = "Sent"; }
+    catch (e) { err.textContent = e.message || "Could not resend the code."; resend.disabled = false; }
+  };
 
   btn.onclick = async () => {
     btn.disabled = true; err.textContent = "";
     try {
-      const done = await post2fa("/auth/2fa/enroll/confirm", enrollmentToken, { code: codeEl.value });
+      const body = { code: codeEl.value };
+      if (emailProofRequired) { body.otpRequestId = otpRequestId; body.otpCode = otpEl.value; }
+      const done = await post2fa("/auth/2fa/enroll/confirm", enrollmentToken, body);
       showRecoveryCodes(done.recoveryCodes || [], done.tokens);
     } catch (e) {
       err.textContent = e.status === 429
@@ -255,7 +298,14 @@ function openChallenge(challengeToken) {
 // it took over the flow (2FA in progress or session finalized).
 export async function finalizeAuth(data, { email } = {}) {
   if (data?.mfaEnrollmentRequired && data?.tokens?.enrollment_token) {
-    await openEnrollment(data.tokens.enrollment_token, email);
+    // The API says emailProofRequired for a password-only login on an account
+    // with no authenticator yet; signup never does. Prefer the account's own
+    // address from the response so the emailed code goes to the right inbox.
+    await openEnrollment(
+      data.tokens.enrollment_token,
+      data.user?.email || email,
+      data.emailProofRequired === true
+    );
     return true;
   }
   if (data?.mfaRequired && data?.tokens?.challenge_token) {
