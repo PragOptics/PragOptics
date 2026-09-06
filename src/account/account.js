@@ -1583,7 +1583,16 @@ async function renderOrders(main) {
       okEl.hidden = false;
       await loadMyOrders();
     } catch (ex) {
-      showError('acctClaimError', friendlyError(ex, 'That order could not be linked. Check the number, and that the order email is verified on your account.'));
+      // This route writes its own customer-facing sentences, including the
+      // deliberately uniform "no unclaimed order with that number under your
+      // account" that a 404 carries. friendlyError maps every 404 to "This
+      // feature is not available yet", which is both wrong and alarming here,
+      // so the server's own wording wins. A dead session still stays silent:
+      // friendlyError returns '' for it and the modal has already spoken.
+      const msg = ex?.sessionInvalidated
+        ? ''
+        : (ex?.data?.error || friendlyError(ex, 'That order could not be linked. Check the number, and that the order email is verified on your account.'));
+      showError('acctClaimError', msg);
     } finally {
       btn.disabled = false;
     }
