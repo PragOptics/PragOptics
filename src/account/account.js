@@ -119,6 +119,34 @@ async function refreshCachedPing() {
   } catch { /* best-effort; knownPrimary still covers this session */ }
 }
 
+// A session that died underneath an open console, named precisely.
+//
+// These are the three refusals auth/getUser.js raises once a token is no longer
+// good: a blocking account status (suspension), and a session epoch that no
+// longer matches (password reset, logout elsewhere, or the epoch bump that
+// suspension itself writes). They are matched by the server's own wording
+// because routes build their own error bodies and do not carry a machine code
+// on every lane; the `code` check below picks it up wherever one is present.
+//
+// Matching NARROWLY is the point. A bare 401 in a step-up flow means "that
+// password is not correct", and a bare 403 means "not for your account" or
+// "admin only". Signing someone out for either of those would be a bug, so
+// only these exact server messages end the session.
+const SUSPENDED_ERROR = 'Account not active';
+const DEAD_SESSION_ERRORS = ['Session expired', 'User not found'];
+
+function sessionKillReason(status, data) {
+  const msg = String(data?.error || '');
+  const code = String(data?.code || '');
+  if (status === 403 && (code === 'ACCOUNT_NOT_ACTIVE' || msg === SUSPENDED_ERROR)) return 'suspended';
+  if (status === 401 && (code === 'SESSION_REVOKED' || DEAD_SESSION_ERRORS.includes(msg))) return 'expired';
+  return null;
+}
+
+// The console fires several requests at once, and all of them fail together
+// when the session dies. Tear down once.
+let sessionKillFired = false;
+
 async function apiFetch(url, options = {}) {
   const token = accessToken();
   const res = await fetch(url, {
@@ -135,6 +163,18 @@ async function apiFetch(url, options = {}) {
     const err = new Error(data?.error || `Request failed (${res.status})`);
     err.status = res.status;
     err.data = data;
+
+    // Suspended or revoked mid-session: end the session once, say why once,
+    // and mark the error so each section stays quiet instead of stacking its
+    // own "not available" tile on a console that is being torn down.
+    const kill = sessionKillReason(res.status, data);
+    if (kill) {
+      err.sessionInvalidated = true;
+      if (!sessionKillFired) {
+        sessionKillFired = true;
+        try { window.invalidateSession?.(kill); } catch { /* teardown is best effort */ }
+      }
+    }
     throw err;
   }
   return data || {};
@@ -174,6 +214,10 @@ function rateLimitMessage(data) {
 }
 
 function friendlyError(ex, fallback, { passwordFlow = false } = {}) {
+  // The session was already torn down centrally and the modal has said why.
+  // Returning nothing makes showError() HIDE the tile, so the user reads one
+  // clear sentence instead of a console full of "not available".
+  if (ex?.sessionInvalidated) return '';
   // Scoped throttles carry their own ceiling and reset; unscoped ones (the
   // platform ceiling) intentionally do not, and use the generic path.
   if (ex?.status === 429 && ex?.data?.limitScope) return rateLimitMessage(ex.data);
@@ -1440,7 +1484,9 @@ async function savePmUpdate(btn) {
     subPmCtx = null;
     setTimeout(() => { const m = document.getElementById('acctMain'); if (m && activeSection === 'subscription') renderSubscription(m); }, 2500);
   } catch (ex) {
-    showError('acctPmError', ex?.message || 'Card setup failed.');
+    // friendlyError so a session that died mid-setup stays quiet here too; the
+    // Stripe.js errors it does not recognise still fall through to ex.message.
+    showError('acctPmError', friendlyError(ex, 'Card setup failed.'));
     btn.disabled = false;
     btn.textContent = orig;
   }

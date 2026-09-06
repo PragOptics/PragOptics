@@ -380,7 +380,19 @@ function setToken(tokens) {
     setAppMode("landing");
 
     // User feedback (once per action)
-    if (reason === "expired") {
+    //
+    // "suspended" is the operator suspending an account that is ALREADY signed
+    // in. The backend refuses every authenticated call the moment the status
+    // flips (auth/getUser.js blocks the status and the patch bumps the session
+    // epoch), but the console used to just fill with per-section "not
+    // available" tiles. Say it once, in the same words sign-in uses, and put
+    // the user back on the landing page signed out.
+    if (reason === "suspended") {
+      showStatusModal({
+        mode: "error",
+        message: "This account is suspended. Contact support@bridgesindust.com."
+      });
+    } else if (reason === "expired") {
       showStatusModal({
         mode: "info",
         message: "Your session has expired. Please sign in again."
@@ -904,6 +916,10 @@ registerLegacyGlobals({
   // auth / api
   startPragOpticsLogin: launchLogin,   // opens the login modal; no redirect
   logout,
+  // Any module holding a token can end the session cleanly: the account console
+  // calls this when the API says the account was suspended or the session was
+  // revoked mid-session.
+  invalidateSession,
   callPragOpticsPing,
   callPragOpticsAuth,
 
