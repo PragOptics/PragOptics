@@ -40,6 +40,7 @@ const USER_PATCH_URL = `${PRAG_API_BASE}/admin/users/patch`;
 const CATALOG_IMPORT_URL = `${PRAG_API_BASE}/admin/catalog/import`;
 const ADMIN_ORDERS_URL = `${PRAG_API_BASE}/admin/orders`;
 const ADMIN_ORDER_LABEL_URL = `${PRAG_API_BASE}/admin/orders/label`;
+const ADMIN_ORDER_REFUND_URL = `${PRAG_API_BASE}/admin/orders/refund`;
 const STRIPE_WH_SYNC_URL = `${PRAG_API_BASE}/admin/stripe/webhook-sync`;
 const SHIPPO_WH_SYNC_URL = `${PRAG_API_BASE}/admin/shippo/webhook-sync`;
 const BILLING_RECONCILE_URL = `${PRAG_API_BASE}/admin/billing/reconcile`;
@@ -1972,14 +1973,34 @@ function admOrderRowHtml(o) {
             : `<code>${escapeHtml(o.trackingNumber)}</code>`)
         : '<span class="adm-muted">—</span>'}</td>
       <td class="cell-tight">
-        ${safeUrl(o.labelUrl)
-          ? `<a class="btn adm-copy" href="${escapeHtml(safeUrl(o.labelUrl))}" target="_blank" rel="noopener" title="Opens the 4x6 label PDF for printing">Print label</a>`
-          : (paid && physical
-              ? `<button class="btn adm-copy" type="button" data-adm-action="order-label" data-order="${escapeHtml(o.orderId)}" title="Buys the shipping label from Shippo with the rate the customer paid for">Buy label</button>`
-              : '<span class="adm-muted">—</span>')}
+        <div class="adm-order-actions">
+          ${safeUrl(o.labelUrl)
+            ? `<a class="btn adm-copy" href="${escapeHtml(safeUrl(o.labelUrl))}" target="_blank" rel="noopener" title="Opens the 4x6 label PDF for printing">Print label</a>`
+            : (paid && physical
+                ? `<button class="btn adm-copy" type="button" data-adm-action="order-label" data-order="${escapeHtml(o.orderId)}" title="Buys the shipping label from Shippo with the rate the customer paid for">Buy label</button>`
+                : '')}
+          ${orderRefundable(o)
+            ? `<button class="btn adm-copy btn-danger" type="button" data-adm-action="order-refund"
+                 data-order="${escapeHtml(o.orderId)}" data-total="${Number(o.totalCents) || 0}"
+                 data-refunded="${Number(o.refundedCents) || 0}" data-goods="${Number(o.goodsCents) || 0}"
+                 title="Refund this order through Stripe (a hardware return)">Refund</button>`
+            : ''}
+          ${(!safeUrl(o.labelUrl) && !(paid && physical) && !orderRefundable(o)) ? '<span class="adm-muted">—</span>' : ''}
+        </div>
       </td>
     </tr>
   `;
+}
+
+/* An order can be refunded when it carries a captured payment (paid or later)
+ * and is not already fully refunded. The backend re-checks and refuses an order
+ * with no PaymentIntent, so this is only about what to show. */
+function orderRefundable(o) {
+  const total = Number(o.totalCents) || 0;
+  const refunded = Number(o.refundedCents) || 0;
+  const s = String(o.status || '').toUpperCase();
+  const paidLike = ['PAID', 'LABEL_PURCHASED', 'SHIPPED', 'DELIVERED', 'PARTIALLY_REFUNDED', 'RETURNED'].includes(s);
+  return paidLike && total > refunded;
 }
 
 async function renderAdminOrders(main) {
@@ -2044,6 +2065,70 @@ async function buyOrderLabel(btn) {
       btn.textContent = orig;
     }
   });
+}
+
+/* ---------- refund an order (a hardware return), from the desk ---------- */
+function openOrderRefund(btn) {
+  const orderId = btn.dataset.order;
+  if (!orderId) return;
+  const totalC = Number(btn.dataset.total) || 0;
+  const refundedC = Number(btn.dataset.refunded) || 0;
+  const goodsC = Number(btn.dataset.goods) || 0;
+  const remainingC = Math.max(0, totalC - refundedC);
+  if (remainingC <= 0) return;
+  // Default to the goods subtotal (the purchase price; return shipping is the
+  // buyer's per the policy), capped at what is still refundable.
+  const defaultC = Math.min(goodsC > 0 ? goodsC : remainingC, remainingC);
+
+  let hostEl = document.getElementById('admOrderRefund');
+  if (!hostEl) { hostEl = document.createElement('div'); hostEl.id = 'admOrderRefund'; hostEl.className = 'acct-modal-host'; document.body.appendChild(hostEl); }
+  hostEl.hidden = false;
+  hostEl.innerHTML = `
+    <div class="acct-modal-mask" data-or-close></div>
+    <div class="acct-modal" role="dialog" aria-modal="true" aria-label="Refund order">
+      <div class="acct-modal-h">Refund order</div>
+      <p class="acct-modal-note">
+        Total ${usdCents(totalC)}${refundedC ? `, already refunded ${usdCents(refundedC)}` : ''}. You can refund up to ${usdCents(remainingC)}.
+        Return shipping is the buyer's; the goods subtotal is ${usdCents(goodsC)}.
+      </p>
+      <label class="acct-label" for="orAmount">Refund amount (USD)</label>
+      <input class="acct-input" id="orAmount" type="number" min="0.01" step="0.01" value="${(defaultC / 100).toFixed(2)}">
+      <label class="acct-label" for="orReason">Reason (optional)</label>
+      <input class="acct-input" id="orReason" type="text" maxlength="200" placeholder="Return, within the 30-day window">
+      <p class="acct-card-note">Stripe keeps its processing fee on a refund; the fee is not returned. This moves money.</p>
+      <p class="acct-error" id="orError" hidden></p>
+      <div class="acct-modal-actions">
+        <button class="btn btn-ghost" type="button" data-or-close>Cancel</button>
+        <button class="btn btn-danger" type="button" data-or-confirm>Refund</button>
+      </div>
+    </div>
+  `;
+  const close = () => { hostEl.hidden = true; hostEl.innerHTML = ''; hostEl.removeEventListener('click', onClick); };
+  const onClick = async (e) => {
+    if (e.target.closest('[data-or-close]')) { close(); return; }
+    if (!e.target.closest('[data-or-confirm]')) return;
+    const dollars = Number(document.getElementById('orAmount')?.value);
+    const cents = Math.round(dollars * 100);
+    const errEl = document.getElementById('orError');
+    const setErr = (m) => { if (errEl) { errEl.textContent = m; errEl.hidden = false; } };
+    if (!Number.isFinite(cents) || cents <= 0) { setErr('Enter a refund amount.'); return; }
+    if (cents > remainingC) { setErr(`The most you can refund is ${usdCents(remainingC)}.`); return; }
+    const reason = document.getElementById('orReason')?.value || '';
+    const confirmBtn = e.target.closest('[data-or-confirm]');
+    confirmBtn.disabled = true; confirmBtn.textContent = 'Refunding…';
+    try {
+      await apiFetch(ADMIN_ORDER_REFUND_URL, { method: 'POST', body: JSON.stringify({ orderId, amountCents: cents, reason }) });
+      close();
+      // The charge.refunded webhook updates refundedCents + status; give it a
+      // moment, then reload the current tab so the desk reflects it.
+      const active = document.querySelector('[data-adm-orders].is-active')?.dataset.admOrders || '';
+      setTimeout(() => loadAdminOrders(active), 1500);
+    } catch (ex) {
+      confirmBtn.disabled = false; confirmBtn.textContent = 'Refund';
+      setErr(friendlyError(ex, 'The refund could not be created.'));
+    }
+  };
+  hostEl.addEventListener('click', onClick);
 }
 
 /* ---------- payments: the Stripe account, read from here ---------- */
@@ -2631,6 +2716,7 @@ function bindOnce() {
       if (admAct.dataset.admAction === 'lane-live') switchLane('live');
       if (admAct.dataset.admAction === 'lane-dev') switchLane('dev');
       if (admAct.dataset.admAction === 'order-label') buyOrderLabel(admAct);
+      if (admAct.dataset.admAction === 'order-refund') openOrderRefund(admAct);
       if (admAct.dataset.admAction === 'user-manage') openUserManage(admAct.dataset.user, admAct.dataset.email);
       if (admAct.dataset.admAction === 'wh-stripe') runWebhookSync(admAct, STRIPE_WH_SYNC_URL, 'Stripe');
       if (admAct.dataset.admAction === 'wh-shippo') runWebhookSync(admAct, SHIPPO_WH_SYNC_URL, 'Shippo');

@@ -644,3 +644,6 @@ select.adm-select option:checked, select.adm-input option:checked {
 @media (max-width: 30rem) {
   .um-row { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* Orders desk: stack the per-order action buttons (label + refund). */
+.adm-order-actions { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
