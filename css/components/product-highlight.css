@@ -209,6 +209,7 @@
 }
 /* Brochure banners: the sheet fills the banner from its top edge, so the
    card reads as the brochure itself (title, product) with the body below. */
+.ph-media--top { aspect-ratio: 4 / 3; }
 .ph-media--top .ph-media-img { object-fit: cover; object-position: center top; }
 /* A photo used as the app tile: cropped to a rounded square, like an icon. */
 .ph-media-badge--tile {

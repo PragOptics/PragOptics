@@ -280,7 +280,9 @@ html[data-theme="light"] .footer-theme-toggle .ft-moon{ display: block; }
 .footer-theme{ background: none; border: 0; padding: 0; font: inherit; cursor: pointer; color: inherit; }
 .footer-theme:hover{ color: var(--brand-600); }
 
+.footer-theme{ display: inline-flex; align-items: center; gap: 6px; }
 .footer-theme-ico{
-  width: 15px; height: 15px; margin-left: 6px; vertical-align: -3px;
-  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--brand-600) 55%, transparent));
+  width: 1.05em; height: 1.05em; flex: none; display: block;
+  color: var(--brand-600);
+  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--brand-600) 45%, transparent));
 }

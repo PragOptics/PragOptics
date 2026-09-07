@@ -273,3 +273,10 @@
   .co-line { grid-template-columns: 1fr auto; gap: 6px; }
   .co-line-price, .co-line-total { grid-column: span 2; text-align: right; }
 }
+
+/* The new warranty card code on a redemption confirmation: the highlight chip. */
+.co-code {
+  display: inline-block; padding: 8px 16px; border-radius: 10px;
+  font: 700 1.25rem/1 ui-monospace, Menlo, Consolas, monospace; letter-spacing: .14em;
+  background: var(--hi-bg); color: var(--hi-fg); border: 1px solid var(--hi-border);
+}

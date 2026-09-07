@@ -28,7 +28,45 @@ const state = {
   rateId: null,
   order: null,                  // { orderId, clientSecret, breakdown }
   busy: false,
-  error: ''
+  error: '',
+  // Warranty case redemption rides THIS checkout (Cameron, 2026-09-07): the
+  // customer identifies the registration on the warranty page, then the
+  // summary, details, live rates and payment are the ones every order uses.
+  // The differences live behind this object: one covered line, the registered
+  // email fixed, /warranty/redeem mints the PaymentIntent instead of
+  // /orders/checkout, free shipping never applies, and the confirmation shows
+  // the new card code once the webhook engages the redemption.
+  redemption: null,             // { code, email, productId, productName, registrationId }
+  redemptionId: '',
+  newCode: '',
+  redemptionArmed: false
+};
+
+// The lines this checkout is for: the cart, or the single covered case of a
+// redemption. Every step reads through here so neither path special-cases.
+function currentLines() {
+  const r = state.redemption;
+  if (r) {
+    return [{
+      product: { name: `${r.productName} case` }, variant: { name: 'warranty replacement' },
+      productId: `${r.productId}-case`, variantId: null, qty: 1,
+      unitCents: 0, lineCents: 0, isRedemption: true
+    }];
+  }
+  return lines();
+}
+
+// Entry from the warranty page once the registration checked out as eligible.
+window.pragStartRedemptionCheckout = (ctx) => {
+  state.redemption = {
+    code: String(ctx.code || ''), email: String(ctx.email || ''),
+    productId: String(ctx.productId || 'omnisource'),
+    productName: String(ctx.productName || 'OmniSource'),
+    registrationId: String(ctx.registrationId || '')
+  };
+  state.redemptionArmed = true;
+  state.contact.email = state.redemption.email;
+  window.setAppMode?.('checkout');
 };
 
 let stripe = null;              // Stripe.js instance, created on first payment step
@@ -79,6 +117,7 @@ function physicalSubtotalCents(ls) {
   return physicalLines(ls).reduce((n, l) => n + (l.lineCents || 0), 0);
 }
 function freeShipEligible(ls) {
+  if (state.redemption) return false;   // the customer pays carriage on a replacement
   return physicalSubtotalCents(ls) >= FREE_SHIPPING_MIN_CENTS;
 }
 
@@ -109,8 +148,8 @@ function consumeOrderedLines() {
 function lineHtml(l) {
   const p = l.product;
   const v = l.variant;
-  const unit = l.unitCents != null ? formatPrice(l.unitCents) : 'Reserve';
-  const total = l.lineCents != null ? formatPrice(l.lineCents) : 'Reserve';
+  const unit = l.isRedemption ? 'Covered' : l.unitCents != null ? formatPrice(l.unitCents) : 'Reserve';
+  const total = l.isRedemption ? 'Covered' : l.lineCents != null ? formatPrice(l.lineCents) : 'Reserve';
   return `
     <div class="co-line">
       <div class="co-line-name">
@@ -125,7 +164,7 @@ function lineHtml(l) {
 }
 
 function summaryHtml(ls) {
-  const sub = subtotal();
+  const sub = state.redemption ? 0 : subtotal();
   const subLabel = sub == null ? 'Pricing at checkout' : formatPrice(sub);
   const hasPreorder = ls.some(l => l.isPreorder);
   const shippingLine = state.order
@@ -136,7 +175,8 @@ function summaryHtml(ls) {
   const totalLabel = state.order ? formatPrice(state.order.breakdown.totalCents) : subLabel;
   return `
     <section class="co-summary">
-      <h2 class="co-h2">Your order</h2>
+      <h2 class="co-h2">${state.redemption ? 'Your replacement' : 'Your order'}</h2>
+      ${state.redemption ? `<p class="muted co-note">Lifetime case warranty on code <strong>${escapeHtml(state.redemption.code)}</strong>. The case is covered; you pay shipping only. A new printed warranty card ships inside it.</p>` : ''}
       <div class="co-lines">${ls.map(lineHtml).join('')}</div>
       ${shippingLine}
       <div class="co-totals">
@@ -182,7 +222,7 @@ function detailsHtml(ls) {
   return `
     <form class="co-form" id="coDetailsForm" novalidate>
       ${stepperHtml(ls)}
-      <h2 class="co-h2">${needsShipping ? 'Contact and shipping' : 'Your details'}</h2>
+      <h2 class="co-h2">${state.redemption ? 'Where should the case ship?' : needsShipping ? 'Contact and shipping' : 'Your details'}</h2>
 
       ${signedIn ? `
         <div class="co-signedin">
@@ -199,7 +239,8 @@ function detailsHtml(ls) {
       <div class="co-field">
         <label for="co-email">Email <span class="req">*</span></label>
         <input id="co-email" name="email" type="email" required autocomplete="email"
-               placeholder="you@company.com" value="${escapeHtml(email)}">
+               placeholder="you@company.com" value="${escapeHtml(email)}" ${state.redemption ? 'readonly aria-describedby="co-email-fixed"' : ''}>
+        ${state.redemption ? '<p class="muted co-note" id="co-email-fixed">The email your warranty is registered under; the new card code goes there too.</p>' : ''}
       </div>
       <div class="co-field">
         <label for="co-name">Name <span class="req">*</span></label>
@@ -244,7 +285,7 @@ function detailsHtml(ls) {
         <button class="ph-btn" type="submit" ${state.busy ? 'disabled' : ''}>
           ${state.busy ? 'Working…' : needsShipping ? 'Get shipping rates' : 'Continue to payment'}
         </button>
-        <button class="ph-btn ph-btn-ghost" type="button" data-co-cancel>Back to shop</button>
+        <button class="ph-btn ph-btn-ghost" type="button" data-co-cancel>${state.redemption ? 'Back to warranty' : 'Back to shop'}</button>
       </div>
       <p class="co-privacy muted">
         We use your details to process this order and keep you updated on it.
@@ -346,11 +387,13 @@ async function mountPaymentElement() {
     return;
   }
   if (!stripe) stripe = window.Stripe(window.STRIPE_PUBLISHABLE_KEY);
+  // The element follows the site theme: light theme, light element, primary purple.
+  const light = document.documentElement.getAttribute('data-theme') === 'light';
   elements = stripe.elements({
     clientSecret: state.order.clientSecret,
     appearance: {
-      theme: 'night',
-      variables: { colorPrimary: '#7dd3fc', borderRadius: '10px' }
+      theme: light ? 'stripe' : 'night',
+      variables: { colorPrimary: light ? '#6d28d9' : '#7dd3fc', borderRadius: '10px' }
     }
   });
   elements.create('payment').mount(holder);
@@ -387,6 +430,13 @@ async function submitPayment() {
   if (paymentIntent && (paymentIntent.status === 'succeeded' || paymentIntent.status === 'processing')) {
     state.step = 'done';
     state.processing = paymentIntent.status === 'processing';
+    if (state.redemption) {
+      // Nothing to take out of the cart; the webhook engages the redemption
+      // and mints the new card code, which the confirmation waits for.
+      render();
+      pollRedemption();
+      return;
+    }
     // Remove exactly what was ordered. clear() would also wipe anything the
     // customer added to the cart after this order was created.
     consumeOrderedLines();
@@ -401,7 +451,47 @@ async function submitPayment() {
    STEP: DONE
    ====================================================== */
 
+// After a redemption settles, the webhook engages it and mints the new card
+// code. Poll a few times; the email carries it regardless.
+async function pollRedemption() {
+  const r = state.redemption; const id = state.redemptionId;
+  if (!r || !id) return;
+  for (let i = 0; i < 8; i++) {
+    await new Promise(res => setTimeout(res, 2000));
+    if (state.step !== 'done' || state.redemptionId !== id) return;
+    try {
+      const token = getAccessToken();
+      const res = await fetch(`${PRAG_API_BASE}/warranty/redemption?id=${encodeURIComponent(id)}&email=${encodeURIComponent(r.email)}`,
+        token ? { headers: { Authorization: `Bearer ${token}` } } : undefined);
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.status === 'ENGAGED' && data.newCode) { state.newCode = data.newCode; render(); return; }
+    } catch { /* keep polling */ }
+  }
+}
+
+function redemptionDoneHtml() {
+  const r = state.redemption;
+  return `
+    <div class="co-confirm">
+      <div class="co-check" aria-hidden="true">✓</div>
+      <h1 class="co-title">${state.processing ? 'Payment processing' : 'Redemption engaged'}</h1>
+      <p>Your replacement <strong>${escapeHtml(r.productName)}</strong> case is on its way, with a new printed warranty card inside.</p>
+      ${state.newCode
+        ? `<p class="muted">Your new warranty card code. Register it when the case arrives; that keeps your lifetime coverage active for the next redemption.</p>
+           <p><code class="co-code">${escapeHtml(state.newCode)}</code></p>
+           <p class="muted">We emailed it to <strong>${escapeHtml(r.email)}</strong> too.</p>`
+        : `<p class="muted">Your new card code is being minted; it arrives by email at <strong>${escapeHtml(r.email)}</strong> and will show here in a moment.</p>`}
+      <p class="muted">One case redemption per year. Your next one unlocks a year from today.</p>
+      <div class="co-empty-actions">
+        <button class="ph-btn" type="button" data-co-nav="warranty">Back to warranty</button>
+        <button class="ph-btn ph-btn-ghost" type="button" data-co-nav="landing">Back to home</button>
+      </div>
+    </div>
+  `;
+}
+
 function doneHtml() {
+  if (state.redemption) return redemptionDoneHtml();
   const orderId = state.order?.orderId || '';
   return `
     <div class="co-confirm">
@@ -458,7 +548,7 @@ window.pragOrderToAccount = () => {
    ====================================================== */
 
 async function fetchRates() {
-  const ls = lines();
+  const ls = currentLines();
   const res = await fetch(`${PRAG_API_BASE}/shipping/rates`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -485,7 +575,7 @@ async function fetchRates() {
 }
 
 async function createOrder() {
-  const ls = lines();
+  const ls = currentLines();
   const needsShipping = physicalLines(ls).length > 0;
   const headers = { 'Content-Type': 'application/json' };
   const token = getAccessToken();
@@ -494,6 +584,26 @@ async function createOrder() {
   // The backend never trusts a rate id: it re-quotes from the order's own
   // address and matches the chosen carrier + service by name.
   const chosen = state.rates.find(r => r.id === state.rateId);
+
+  // A redemption mints its PaymentIntent from the warranty route: the code
+  // and the registered email are the proof of ownership, the server
+  // re-checks the one-per-year clock, and the order carries shipping only.
+  if (state.redemption) {
+    const r = state.redemption;
+    const res = await fetch(`${PRAG_API_BASE}/warranty/redeem`, {
+      method: 'POST', headers,
+      body: JSON.stringify({
+        code: r.code, email: r.email,
+        shipTo: { name: state.contact.name, street1: state.address.street1, street2: state.address.street2, city: state.address.city, state: state.address.state, zip: state.address.zip, country: 'US' },
+        rate: { carrier: chosen?.carrier || '', service: chosen?.service || '' }
+      })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'Could not start the redemption.');
+    state.redemptionId = data.redemptionId || '';
+    state.orderedLines = [];
+    return { orderId: data.orderId, clientSecret: data.clientSecret, breakdown: data.breakdown || { goodsCents: 0, shippingCents: 0, totalCents: 0 }, linked: true };
+  }
 
   const res = await fetch(`${PRAG_API_BASE}/orders/checkout`, {
     method: 'POST',
@@ -638,10 +748,11 @@ function setHeader(kicker, title, sub) {
 
 function render() {
   if (!$host) return;
-  const ls = lines();
+  const ls = currentLines();
 
   if (state.step === 'done') {
-    setHeader('Checkout', 'All set.', 'Your order is in.');
+    if (state.redemption) setHeader('Warranty redemption', 'Engaged.', 'Your replacement case is on its way.');
+    else setHeader('Checkout', 'All set.', 'Your order is in.');
     $host.innerHTML = doneHtml();
     return;
   }
@@ -671,8 +782,13 @@ function render() {
     return;
   }
 
-  setHeader('Checkout', 'Review your order.',
-            state.step === 'payment' ? 'One more step: payment.' : 'Confirm your items and details to place your order.');
+  if (state.redemption) {
+    setHeader('Warranty redemption', 'Your replacement case.',
+              state.step === 'payment' ? 'One more step: shipping payment.' : 'Where it ships and how. The case itself is covered.');
+  } else {
+    setHeader('Checkout', 'Review your order.',
+              state.step === 'payment' ? 'One more step: payment.' : 'Confirm your items and details to place your order.');
+  }
   const right =
     state.step === 'rates' ? ratesHtml(ls) :
     state.step === 'payment' ? paymentHtml(ls) :
@@ -715,6 +831,7 @@ function bindOnce() {
     }
     if (e.target.closest('[data-co-cancel]')) {
       e.preventDefault();
+      if (state.redemption) { state.redemption = null; state.redemptionId = ''; window.setAppMode?.('warranty'); return; }
       const wasNotify = !!readNotifyIntent();
       clearNotifyIntent();
       window.setAppMode?.(wasNotify ? 'software' : 'shop');
@@ -796,7 +913,7 @@ function bindOnce() {
         return;
       }
 
-      const needsShipping = physicalLines(lines()).length > 0;
+      const needsShipping = physicalLines(currentLines()).length > 0;
       state.busy = true; state.error = ''; render();
       try {
         if (needsShipping) {
@@ -854,6 +971,7 @@ export function initCheckoutView() {
   // (our own post-payment line removal fires this subscription).
   subscribe(() => {
     if ($view.classList.contains('hidden')) return;
+    if (state.redemption) return;   // the cart is not what this pass is for
     if (state.step === 'details') { render(); return; }
     if (state.step === 'rates' || state.step === 'payment') {
       if (state.busy) return;
@@ -871,7 +989,11 @@ export function initCheckoutView() {
 /** Hook: called by appRouter when switching to checkout mode. */
 export function onCheckoutEnter() {
   // Fresh pass every entry: any prior PI is stale, but contact/address stick
-  // around so a returning customer never retypes.
+  // around so a returning customer never retypes. A redemption is only in
+  // play when the warranty page just armed it; any other entry is the cart.
+  if (!state.redemptionArmed) { state.redemption = null; state.redemptionId = ''; }
+  state.redemptionArmed = false;
+  state.newCode = '';
   state.step = 'details';
   state.order = null;
   state.rates = [];

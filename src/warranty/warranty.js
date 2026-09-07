@@ -18,7 +18,6 @@ import { HARDWARE, getProduct } from '../shop/products.js';
 import { renderTransfer, cancelTransfer } from './transfer.js';
 import { renderRedeem, cancelRedeem } from './redeem.js';
 import { inlineVideoHtml, bindInlineVideo, hasVideoSource } from '../components/videoOverlay.js';
-import { tierCardsHtml, bindTierCards } from '../components/tierCards.js';
 
 // The printed code alphabet (no I/L/O/U/0/1, so nothing is mistaken while
 // typing off a card). Kept in step with the backend mint alphabet.
@@ -215,10 +214,11 @@ function successHtml(p, withAccount, { linked = false } = {}) {
         <button class="btn" type="button" data-wr-action="register-another">Register another device</button>
         <button class="btn" type="button" data-wr-action="back-home">Back to PragOptics</button>
       </div>
-      ${withAccount ? '' : tierCardsHtml({
-        heading: 'Want more than the warranty?',
-        sub: 'Optional, cancel anytime. Your registration stands either way.'
-      })}
+      ${withAccount ? '' : `
+      <div class="wr-upsell">
+        <p class="wr-done-hint">Want more than the warranty? The PragOptics platform is optional and cancels anytime. Your registration stands either way.</p>
+        <button class="btn" type="button" data-wr-action="see-plans">See plans</button>
+      </div>`}
     </div>
   `;
 }
@@ -389,7 +389,6 @@ function bindOnce() {
       if (mode !== 'register') return;
       const p = getProduct(state.deviceId);
       render(successHtml(p, false, { linked: true }));
-      bindTierCards($body);
       return;
     }
 
@@ -437,8 +436,6 @@ function bindOnce() {
 
       const p = getProduct(state.deviceId);
       render(successHtml(p, wantsAccount));
-      // The no-account path still gets the platform offer, as tier cards.
-      if (!wantsAccount) bindTierCards($body);
 
       if (wantsAccount) {
         // Stash the intent for the account flow: after sign-in/creation the
@@ -469,6 +466,11 @@ function bindOnce() {
       return;
     }
 
+    if (e.target.closest('[data-wr-action="see-plans"]')) {
+      // The plans live in one place: the Get Started flow's pricing cards.
+      (window.openWizardFromMenu?.() || window.setAppMode?.('wizard'));
+      return;
+    }
     if (e.target.closest('[data-wr-action="register-another"]')) {
       state.deviceId = null;
       state.code = '';
