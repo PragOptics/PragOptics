@@ -227,6 +227,9 @@
 /* close-account card and confirm */
 .acct-card-danger { border-color: color-mix(in srgb, var(--danger) 35%, transparent); }
 .acct-modal.is-wide { width: min(520px, 94vw); }
+/* Inside a modal the inputs stand alone (no flex row to stretch them), so an
+   input would otherwise sit at its intrinsic width, about half the card. */
+.acct-modal .acct-input, .acct-modal .acct-select, .acct-modal .acct-textarea { display: block; width: 100%; min-width: 0; box-sizing: border-box; }
 .acct-check {
   display: flex; align-items: flex-start; gap: 8px;
   margin: 12px 0 2px; color: var(--ink); font-size: .88rem; line-height: 1.4; cursor: pointer;
