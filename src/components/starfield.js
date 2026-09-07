@@ -30,9 +30,10 @@ export function initStarfield({ canvasId = "bg-stars", starCount = 160 } = {}) {
   // switch; because the draw loop reads this each frame, a change shows up
   // immediately with no forced redraw.
   const isLight = () => document.documentElement.getAttribute("data-theme") === "light";
-  let starRGB = isLight() ? "27,35,64" : "255,255,255";
+  // Light: deep violet specks (the inverted starfield keeps the nebula's hue).
+  let starRGB = isLight() ? "76,29,149" : "255,255,255";
   addEventListener("pragoptics:themechange", () => {
-    starRGB = isLight() ? "27,35,64" : "255,255,255";
+    starRGB = isLight() ? "76,29,149" : "255,255,255";
   });
 
   function animate() {

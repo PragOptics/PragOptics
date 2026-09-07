@@ -24,6 +24,23 @@
       --console-ind: #ff4545;
       --console-succ: #2ccc69e8;
       --brandsoft-purp: #7e09c37b;
+
+      /* ---- Named roles that were hard-coded literals until 2026-09-07.
+         Dark values equal the literals they replaced, so nothing here
+         changes the dark theme; the light block below re-values them. ---- */
+      --brand-purp-solid:#a200ff;          /* the accent purple, opaque, for color-mix */
+      --purp-bright:#bf7dff;               /* lavender end of title gradients */
+      --brand-hi:#38ffb3;                  /* mint end of active pills and flags */
+      --gold-soft:#ffd489;                 /* soft gold: savings tags, warnings */
+      --danger:#ff5d6c;                    /* refusals, destructive actions */
+      --danger-text:#ff9aa2;               /* error copy */
+      --media-ground:#05070d;              /* the tile behind product media */
+      --surface-2:rgba(0,0,0,.28);         /* card fill on the dark ground */
+      --surface-3:rgba(0,0,0,.2);          /* row / list fill */
+      --surface-deep:rgba(12,16,26,.66);   /* toggle and chip chrome */
+      --shade:#000;                        /* base of every shadow and mask */
+      --panel-deep-a:#0b0f19;              /* product modal and cart drawer chrome */
+      --panel-deep-b:#10091a;
   
       --aura:
         0 4px 18px rgba(255, 255, 255, 0.123),
@@ -81,39 +98,65 @@
    a dark terminal in both themes; those are finalized after the CSS audit
    confirms which tokens are console-only vs general-use.
    ========================================================================= */
+/* =========================================================================
+   LIGHT: the dark theme inverted (Cameron, 2026-09-07). Black ground becomes
+   a white ground with the same nebula tints, the starfield inverts, and the
+   two accents SWAP ROLES: everything teal in the dark theme is purple here,
+   everything purple is teal. Gradients keep their shape; only the tokens
+   change value, so no component rule needs to know which theme is on.
+   Text on a brand fill is white (the fill is purple now). Surfaces that were
+   black washes on black are white washes on white; hairlines and subtle
+   fills are ink-based and invert on their own. The API console stays a dark
+   terminal in both themes (theme-light.css pins it).
+   ========================================================================= */
 :root[data-theme="light"]{
       color-scheme: light;
 
-      --bg-deep:#e9edf7 !important;                                   /* light periwinkle-slate ground */
-      --grad:linear-gradient(130deg,#eef1fb 0%,#e8e6f5 50%,#e6eef6 100%);
-      --menu:#f6f8fee6;                                               /* light, slightly translucent menu */
-      --glass:#ffffff8c;                                             /* light glass surface */
-      --glass-2:#1a21400f;                                          /* faint dark tint for subtle fills */
-      --border:#1b234021;                                           /* dark hairline on light */
-      --ink:#1b2340e6;                                              /* deep indigo-slate ink */
-      --muted:#3a4370b3;                                            /* muted slate ink */
-      --brand:#0f8f7d;                                              /* teal, deepened for light contrast */
-      --brand-600:#0fa891;
-      --brandsoft:#12a08c26;
-      --brand-purp:#6d28d9d9;                                       /* deeper purple for light contrast */
+      --bg-deep:#f6f3fc !important;                                   /* white with the nebula's lavender */
+      --grad:linear-gradient(130deg,#ffffff 0%,#d8f3ec33 50%,#ece2ff8c 100%);   /* white -> teal tint -> purple tint (the dark grad's tints, swapped) */
+      --menu:#ffffffee;
+      --glass:#ffffffa6;                                             /* white glass */
+      --glass-2:#2a1a5a0f;                                           /* faint ink tint for subtle fills */
+      --border:#2a1a5a24;                                            /* ink hairline */
+      --ink:#1b1638e8;                                               /* deep indigo ink */
+      --muted:#4a4470b8;
+
+      /* roles swapped: purple is the primary, teal the accent */
+      --brand:#6d28d9d9;
+      --brand-600:#6d28d9;
+      --brandsoft:#6d28d93a;
+      --brand-hi:#a78bfa;                                            /* lavender end of active pills (was mint) */
+      --brand-cyan:#8b5cf6;
+      --teal-bright:#7c3aed;                                         /* starred labels, bright accents (was mint) */
+      --brand-purp:#0e9c8bd9;                                        /* teal, the accent role */
+      --brand-purp-solid:#0e9c8b;
+      --purp-bright:#0d9488;                                         /* teal end of title gradients (was lavender) */
+      --brandsoft-purp:#0e9c8b7b;
+
+      --accent-gold:#8a6a1a;
+      --gold-soft:#8a6a1a;
+      --brand-warn:#a8730a;
+      --danger:#c2273b;
+      --danger-text:#b4232f;
+      --on-brand:#ffffff;                                            /* white text on the purple fill */
+
+      --media-ground:#ebe6f7;
+      --surface-2:rgba(255,255,255,.72);
+      --surface-3:rgba(255,255,255,.55);
+      --surface-deep:rgba(255,255,255,.86);
+      --shade:rgba(30,20,64,.42);                                    /* shadows and masks, softened on white */
+      --panel-deep-a:#ffffff;
+      --panel-deep-b:#f3eefc;
 
       --aura:
-        0 4px 18px rgba(27, 35, 64, 0.06),
-        0 8px 18px rgba(15, 143, 125, 0.10),
-        1px 8px 18px rgba(109, 40, 217, 0.08);
+        0 4px 18px rgba(27, 16, 58, 0.08),
+        0 8px 18px rgba(109, 40, 217, 0.16),
+        1px 8px 18px rgba(14, 156, 139, 0.12);
 
-      /* Unified card language on light */
-      --card-title:#141a3a;
-      --card-surface: linear-gradient(150deg, rgba(255,255,255,.85), rgba(255,255,255,.62));
-      --card-border: rgba(27,35,64,.12);
-      --card-border-hover: rgba(15,143,125,.5);
-      --card-shadow-rest: 0 10px 30px rgba(30,40,80,.12);
-      --card-shadow-hover: 0 18px 42px rgba(30,40,80,.18);
-
-      --on-brand:#04130f;                                          /* unchanged: dark text on the teal fill */
-      --brand-cyan:#0aa6c4;
-      --teal-bright:#0f9c88;                                        /* deeper teal for ✦ starred labels on light */
-      --accent-gold:#9a7420;                                        /* deeper champagne for contrast on light */
-      --brand-warn:#a8730a;                                         /* deeper amber so warning TEXT reads on light */
-      --brandsoft-purp:#6d28d926;                                   /* soft purple wash on light */
+      --card-title:#161036;
+      --card-surface: linear-gradient(150deg, rgba(255,255,255,.92), rgba(255,255,255,.66));
+      --card-border: rgba(42,26,90,.14);
+      --card-border-hover: rgba(109,40,217,.5);
+      --card-shadow-rest: 0 10px 30px rgba(40,24,90,.10);
+      --card-shadow-hover: 0 18px 42px rgba(40,24,90,.16);
 }

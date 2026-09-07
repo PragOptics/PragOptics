@@ -11,14 +11,14 @@
 .shop-head { position: static; margin-bottom: 20px; }
 .shop-kicker {
   display: inline-block; font-size: .72rem; letter-spacing: .22em; text-transform: uppercase;
-  color: var(--brand-600, #21bca5); font-weight: 800;
+  color: var(--brand-600); font-weight: 800;
 }
 .shop-title {
   margin: .25em 0 .35em; font-weight: 850; font-size: 1.9rem; line-height: 1.15;
-  background: linear-gradient(130deg, #fff 8%, var(--brand-600, #21bca5) 54%, var(--brand-purp, #a200ff) 96%);
+  background: linear-gradient(130deg, var(--card-title) 8%, var(--brand-600) 54%, var(--brand-purp) 96%);
   -webkit-background-clip: text; background-clip: text; color: transparent;
 }
-.shop-sub { margin: 0; color: var(--muted, #c6d0f0a6); max-width: 68ch; line-height: 1.55; }
+.shop-sub { margin: 0; color: var(--muted); max-width: 68ch; line-height: 1.55; }
 
 /* ---- Gallery grid ---- */
 .shop-gallery {
@@ -48,12 +48,12 @@
   display: block; width: 100%; text-align: left;
   color: inherit; font: inherit;
 }
-.pcard-hit:focus-visible { outline: 2px solid var(--brand-600, #21bca5); outline-offset: -2px; border-radius: var(--radius-card); }
+.pcard-hit:focus-visible { outline: 2px solid var(--brand-600); outline-offset: -2px; border-radius: var(--radius-card); }
 
 .pcard-media {
   position: relative; aspect-ratio: 4 / 3;
-  background: #05070d;
-  border-bottom: 1px solid var(--border, rgba(255, 255, 255, .10));
+  background: var(--media-ground);
+  border-bottom: 1px solid var(--border);
   overflow: hidden;
   display: flex; align-items: center; justify-content: center;
 }
@@ -69,8 +69,8 @@
   font: 700 .6rem/1 ui-monospace, "SF Mono", "Cascadia Code", Menlo, monospace;
   letter-spacing: .16em; text-transform: uppercase;
   padding: 5px 9px; border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, .14); color: var(--ink, #dcdbf0e1);
-  background: rgba(5, 7, 13, .55);
+  border: 1px solid color-mix(in srgb, var(--ink) 14%, transparent); color: var(--ink);
+  background: color-mix(in srgb, var(--shade) 55%, transparent);
 }
 
 /* Availability chips (used on hardware pcards) */
@@ -79,41 +79,41 @@
   font: 700 .6rem/1 ui-monospace, "SF Mono", "Cascadia Code", Menlo, monospace;
   letter-spacing: .16em; text-transform: uppercase;
   padding: 5px 9px; border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, .14); color: var(--ink, #dcdbf0e1);
-  background: rgba(5, 7, 13, .55);
+  border: 1px solid color-mix(in srgb, var(--ink) 14%, transparent); color: var(--ink);
+  background: color-mix(in srgb, var(--shade) 55%, transparent);
 }
-.chip-avail { color: #7fe9cf; border-color: rgba(56, 255, 179, .4); }
+.chip-avail { color: var(--teal-bright); border-color: color-mix(in srgb, var(--brand-hi) 40%, transparent); }
 .chip-pre   { color: #ffcc7a; border-color: rgba(255, 178, 61, .42); }
-.chip-soon  { color: var(--muted, #c6d0f0a6); border-color: rgba(255, 255, 255, .18); }
+.chip-soon  { color: var(--muted); border-color: color-mix(in srgb, var(--ink) 18%, transparent); }
 
 .pcard-body { padding: 16px 18px 18px; display: flex; flex-direction: column; gap: 6px; }
 .pcard-name {
   margin: 0; font-size: 1.2rem; font-weight: 850; letter-spacing: -.01em;
   color: var(--card-title);
 }
-.pcard-tag { margin: 0; color: var(--ink, #dcdbf0e1); font-weight: 600; font-size: .95rem; }
-.pcard-sub { margin: 4px 0 0; color: var(--muted, #c6d0f0a6); font-size: .88rem; line-height: 1.5; }
+.pcard-tag { margin: 0; color: var(--ink); font-weight: 600; font-size: .95rem; }
+.pcard-sub { margin: 4px 0 0; color: var(--muted); font-size: .88rem; line-height: 1.5; }
 
 .pcard-foot {
   display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
-  margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border, rgba(255, 255, 255, .08));
+  margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border);
 }
 .pcard-price {
   font-weight: 850; font-size: 1rem;
-  color: var(--brand-600, #21bca5);
+  color: var(--brand-600);
 }
-.pcard-cta { color: var(--brand-600, #21bca5); font-weight: 700; font-size: .88rem; }
-.pcard:hover .pcard-cta { color: #fff; }
+.pcard-cta { color: var(--brand-600); font-weight: 700; font-size: .88rem; }
+.pcard:hover .pcard-cta { color: var(--card-title); }
 
 /* ---- Roadmap teaser ---- */
 .shop-roadmap {
   margin-top: 24px; padding: 16px 18px; border-radius: 14px;
-  border: 1px dashed rgba(255, 255, 255, .18);
-  background: rgba(255, 255, 255, .02);
+  border: 1px dashed color-mix(in srgb, var(--ink) 18%, transparent);
+  background: color-mix(in srgb, var(--ink) 2%, transparent);
 }
 .shop-roadmap h3 {
   margin: 0 0 4px; font-size: 1rem; font-weight: 800;
-  background: linear-gradient(120deg, var(--brand-600, #21bca5), #bf7dff);
+  background: linear-gradient(120deg, var(--brand-600), var(--purp-bright));
   -webkit-background-clip: text; background-clip: text; color: transparent;
 }
 .shop-roadmap p { margin: 0; line-height: 1.5; }

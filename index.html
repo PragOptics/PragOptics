@@ -13,10 +13,12 @@
        and YouTube only. Connections: this origin, the two API hosts, Stripe. -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; form-action 'self'; object-src 'none'; script-src 'self' https://js.stripe.com https://m.stripe.network; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://pragoptics.com https://*.stripe.com https://i.ytimg.com; font-src 'self' data:; media-src 'self' blob: https:; frame-src https://js.stripe.com https://hooks.stripe.com https://m.stripe.network https://www.youtube-nocookie.com; connect-src 'self' https://api.pragoptics.com https://dev.api.pragoptics.com https://api.stripe.com https://r.stripe.com https://q.stripe.com https://m.stripe.network https://m.stripe.com; worker-src 'self' blob:; manifest-src 'self'">
 
-  <!-- The daylight-nebula light theme is PARKED: nothing applies data-theme,
-       so css/theme-light.css and the [data-theme="light"] tokens stay inert.
-       (Re-enable by restoring the pre-paint no-flash script here and the
-       footer toggle; see src/runtime/theme.js.) -->
+  <!-- Theme: dark by default; the footer toggle stores "light" and
+       src/runtime/theme.js stamps data-theme. themeBoot.js re-applies the
+       stored choice before first paint (external + synchronous: the CSP
+       allows no inline script). Palette: css/tokens.css; leftovers:
+       css/theme-light.css. -->
+  <script src="./src/runtime/themeBoot.js"></script>
 
   <title>PragOptics&trade;</title>
   <meta name="description" content="PragOptics is the platform for HART field data, calibration records, and the OmniBus universal HART communicator. Capture, certify, and audit every instrument connection.">
@@ -41,7 +43,7 @@
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"Product","name":"OmniBus","image":"https://pragoptics.com/docs/assets/OmniBusProductFlyer.png","description":"OmniBus is a handheld, vendor-neutral universal HART communicator, calibration recorder, and field audit node. It works any HART instrument across manufacturers over USB HART, on-board two-wire loop, HART-IP, and Wi-Fi, measures 4-20 mA loop current directly on board, and turns every connection into a guided As-Found / As-Left calibration record with auto-generated certificates and an append-only audit trail.","category":"HART field communicator and calibrator","brand":{"@type":"Brand","name":"PragOptics"},"manufacturer":{"@type":"Organization","name":"PragOptics","parentOrganization":{"@type":"Organization","name":"Bridges Industrial"}},"url":"https://pragoptics.com","offers":{"@type":"Offer","url":"https://pragoptics.com/","price":"1500.00","priceCurrency":"USD","availability":"https://schema.org/PreOrder","itemCondition":"https://schema.org/NewCondition","shippingDetails":{"@type":"OfferShippingDetails","shippingRate":{"@type":"MonetaryAmount","value":"0","currency":"USD"},"shippingDestination":{"@type":"DefinedRegion","addressCountry":"US"}},"hasMerchantReturnPolicy":{"@type":"MerchantReturnPolicy","applicableCountry":"US","returnPolicyCategory":"https://schema.org/MerchantReturnFiniteReturnWindow","merchantReturnDays":30,"returnMethod":"https://schema.org/ReturnByMail","returnFees":"https://schema.org/ReturnShippingFees"}}}</script>
 
   <!-- Theme -->
-  <meta name="color-scheme" content="dark">
+  <meta name="color-scheme" content="dark light">
 
   <!-- Icons -->
   <link rel="icon" type="image/x-icon" href="https://pragoptics.com/images/favicon.ico" sizes="48x48">

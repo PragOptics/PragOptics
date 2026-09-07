@@ -1,46 +1,33 @@
 /* =========================================================================
-   /css/theme-light.css — DAYLIGHT NEBULA (optional light theme)
+   /css/theme-light.css: the light theme's leftovers
 
-   Every rule here is scoped to html[data-theme="light"], so this file is
-   INERT on the galactic-dark default: nothing in it applies until a viewer
-   opts into the light theme (footer toggle; src/runtime/theme.js). That is
-   the whole point of keeping it in one file — the dark theme stays byte-for-
-   byte untouched, and the light theme has a single, reviewable source.
-
-   The PALETTE lives in css/tokens.css ([data-theme="light"] re-values every
-   design token). This file is the leftover: component rules that hardcode a
-   dark-surface assumption with a literal color and therefore do not follow
-   the tokens. Sections are grouped by the stylesheet they correct.
-
-   Loaded after every component/view stylesheet (before the responsive
-   overrides) so cascade order and the extra [data-theme] specificity both
-   favour these corrections.
+   The PALETTE is css/tokens.css ([data-theme="light"] re-values every token,
+   with the two accents swapping roles). Component rules use tokens, so they
+   need nothing here. This file holds only what a token cannot express: the
+   ground layers, the starfield fade, and the surfaces that stay dark in both
+   themes. Every rule is scoped to html[data-theme="light"], so the file is
+   inert on the dark default.
    ========================================================================= */
 
-/* ---- Global, cross-cutting -------------------------------------------- */
-
-/* A full-viewport 25% black scrim exists only to deepen the dark ground.
-   On a light ground it just greys everything. */
+/* The 25% black scrim deepens the dark ground; on white it only greys. */
 html[data-theme="light"] .global-darken{ display: none; }
 
-/* The blurred ground gradient is dimmed with brightness(.9) to deepen the
-   dark theme; on light that reads as a grey cast, so restore full brightness. */
-html[data-theme="light"] .bg{ filter: blur(6px) brightness(1) saturate(1.05); }
+/* The blurred ground gradient is dimmed with brightness(.9) for depth on
+   black; on white that is a grey cast. Full brightness, a touch more color. */
+html[data-theme="light"] .bg{ filter: blur(6px) brightness(1) saturate(1.15); }
 
-/* The starfield canvas draws its own pixels (src/components/starfield.js
-   handles the star colour per theme); on light the fade-in also lands much
-   subtler so dark specks stay a texture, not a pattern. */
+/* The starfield is drawn by src/components/starfield.js in the theme's star
+   color (deep violet on white). Its fade lands lower so the specks read as
+   texture, not a pattern. */
 html[data-theme="light"] #bg-stars{ animation: fvStarFadeLight 3.7s ease forwards; }
 @keyframes fvStarFadeLight{
   0%{opacity:0}
-  60%{opacity:.10}
-  100%{opacity:.28}
+  60%{opacity:.16}
+  100%{opacity:.42}
 }
 
-/* Intentionally-dark surfaces stay dark in BOTH themes: the API console and
-   code blocks are terminals. Pin their surface AND text locally so a flipped
-   --ink can never leave them dark-on-dark. (Component sections below may
-   restate these with more specific selectors; same values, harmless.) */
+/* Terminals stay terminals: the API console and code blocks keep a dark
+   surface and light text in both themes. */
 html[data-theme="light"] pre,
 html[data-theme="light"] code,
 html[data-theme="light"] .md-view pre,
@@ -48,3 +35,20 @@ html[data-theme="light"] .md-view code{
   background: #0f1626;
   color: #dfe7ff;
 }
+
+/* The header's glass over a white ground needs a little more body so the
+   DNA reads against the page. */
+html[data-theme="light"] header{ background: rgba(255,255,255,.55); }
+
+/* Selection color follows the primary. */
+html[data-theme="light"] ::selection{ background: rgba(109,40,217,.22); }
+
+/* The page ground is painted explicitly. base.css keeps html/body transparent
+   so the dark theme shows the browser's own dark canvas; on light the canvas
+   must be ours, or an embedded viewer's dark ground bleeds through the
+   translucent nebula tints. */
+html[data-theme="light"]{ background: var(--bg-deep) !important; }
+
+/* The hero tagline is the starred primary label; it needs the full primary
+   on a light ground, not the softened accent. */
+html[data-theme="light"] .hero-tagline{ color: var(--brand-600); opacity: 1; }

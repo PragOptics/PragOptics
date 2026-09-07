@@ -44,11 +44,11 @@
    ownership" lines): visibly links, same idiom as the footer's. */
 .muted a{
   color:var(--brand-600);
-  border-bottom:1px solid rgba(33,188,165,.35);
+  border-bottom:1px solid color-mix(in srgb, var(--brand-600) 35%, transparent);
   padding-bottom:1px;
   transition:color 160ms ease, border-color 160ms ease;
 }
 .muted a:hover{
-  color:#fff;
+  color:var(--card-title);
   border-color:var(--brand-600);
 }

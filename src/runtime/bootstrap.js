@@ -215,15 +215,15 @@
       bar.setAttribute("role", "status");
       bar.style.cssText =
         "position:fixed;left:0;right:0;bottom:0;z-index:1200;display:flex;gap:12px;align-items:center;" +
-        "justify-content:center;flex-wrap:wrap;padding:10px 16px;background:rgba(239,95,107,0.16);" +
-        "border-top:1px solid rgba(239,95,107,0.45);color:#ffd7db;font:600 0.85rem system-ui,sans-serif;";
+        "justify-content:center;flex-wrap:wrap;padding:10px 16px;background:color-mix(in srgb, var(--danger) 16%, transparent);" +
+        "border-top:1px solid color-mix(in srgb, var(--danger) 45%, transparent);color:#ffd7db;font:600 0.85rem system-ui,sans-serif;";
       const msg = document.createElement("span");
       msg.textContent = "Your last payment did not go through. Update your payment method to keep your subscription active.";
       const manage = document.createElement("button");
       manage.type = "button";
       manage.textContent = "Manage billing";
       manage.style.cssText =
-        "cursor:pointer;border:1px solid rgba(239,95,107,0.6);background:rgba(239,95,107,0.2);" +
+        "cursor:pointer;border:1px solid color-mix(in srgb, var(--danger) 60%, transparent);background:color-mix(in srgb, var(--danger) 20%, transparent);" +
         "color:#ffd7db;border-radius:8px;padding:5px 12px;font:inherit;";
       manage.onclick = () => {
         document.getElementById("pragConsoleBanner")?.remove();

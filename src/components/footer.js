@@ -1,6 +1,7 @@
 // /src/components/footer.js
 import { LANE } from '../runtime/config.js';
 import { isPlatformOperator } from '../runtime/lane.js';
+import { getTheme, toggleTheme } from '../runtime/theme.js';
 
 export function initFooter() {
   // Year (tiny + deterministic)
@@ -27,9 +28,18 @@ export function initFooter() {
     });
   }
 
-  // (The daylight-nebula light-theme toggle is parked: src/runtime/theme.js,
-  // the [data-theme="light"] tokens and css/theme-light.css stay in place and
-  // inert, with no control exposed, until that work resumes.)
+  // Theme toggle. The stored choice was applied before first paint by
+  // src/runtime/themeBoot.js; this only flips it and relabels itself.
+  const themeBtn = document.getElementById("themeToggle");
+  if (themeBtn) {
+    const label = () => {
+      const light = getTheme() === "light";
+      themeBtn.textContent = light ? "Dark mode" : "Light mode";
+      themeBtn.setAttribute("aria-pressed", light ? "true" : "false");
+    };
+    label();
+    themeBtn.addEventListener("click", () => { toggleTheme(); label(); });
+  }
 
   // Lane badge — an operator ESCAPE HATCH, not a public element.
   //

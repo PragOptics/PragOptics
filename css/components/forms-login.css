@@ -33,14 +33,14 @@
 }
 
 .form-field input::placeholder{
-  color:rgba(198,208,240,.45);
+  color:color-mix(in srgb, var(--muted) 45%, transparent);
 }
 
 .form-field input:focus{
-  border-color:rgba(33,188,165,.45);
+  border-color:color-mix(in srgb, var(--brand-600) 45%, transparent);
   box-shadow:
-    0 0 0 1px rgba(33,188,165,.25),
-    0 0 16px rgba(131, 33, 188, 0.15);
+    0 0 0 1px color-mix(in srgb, var(--brand-600) 25%, transparent),
+    0 0 16px color-mix(in srgb, var(--brand-purp-solid) 15%, transparent);
 }
 
 .field-hint{
@@ -174,9 +174,9 @@
   background:
     linear-gradient(
       120deg,
-      #ae5df0da,
-      #21bca5,
-      #ae5df0da
+      var(--purp-bright),
+      var(--brand-600),
+      var(--purp-bright)
     );
   background-size: 200% 200%;
   animation: plasmaFlow 3.6s ease-in-out infinite;
@@ -185,12 +185,12 @@
   background:
     radial-gradient(
       circle at 30% 50%,
-      rgba(255,255,255,0.25),
+      color-mix(in srgb, var(--ink) 25%, transparent),
       transparent 55%
     ),
     radial-gradient(
       circle at 70% 50%,
-      rgba(0,0,0,0.35),
+      color-mix(in srgb, var(--shade) 35%, transparent),
       transparent 60%
     );
   mix-blend-mode: overlay;
@@ -208,18 +208,18 @@
   background:
     radial-gradient(
       12px 10px at 96% 50%,
-      rgba(255,255,255,0.45),
-      rgba(255,255,255,0.15) 45%,
+      color-mix(in srgb, var(--ink) 45%, transparent),
+      color-mix(in srgb, var(--ink) 15%, transparent) 45%,
       transparent 60%
     ),
     radial-gradient(
       18px 14px at 92% 42%,
-      rgba(0,0,0,0.35),
+      color-mix(in srgb, var(--shade) 35%, transparent),
       transparent 65%
     ),
     radial-gradient(
       16px 18px at 94% 62%,
-      rgba(0,0,0,0.25),
+      var(--surface-3),
       transparent 70%
     );
 
@@ -259,13 +259,13 @@
 .pw-strength-bar[data-level="weak"],
 .pw-strength-bar[data-level="medium"],
 .pw-strength-bar[data-level="strong"]{
-  background:linear-gradient(to right,#ae5df0da,#21bca5);
+  background:linear-gradient(to right,var(--purp-bright),var(--brand-600));
 }
 
 .pw-strength-bar[data-level="valid"]{
   box-shadow:
-    inset 0 0 10px rgba(33,188,165,0.45),
-    0 0 10px rgba(33,188,165,0.35);
+    inset 0 0 10px color-mix(in srgb, var(--brand-600) 45%, transparent),
+    0 0 10px color-mix(in srgb, var(--brand-600) 35%, transparent);
 }
 
 .pw-strength-bar[data-level="valid"]::after{
@@ -295,22 +295,22 @@
   content:"✦";
   position:absolute;
   left:0;
-  color:rgba(255,255,255,.35);
+  color:color-mix(in srgb, var(--ink) 35%, transparent);
   transition:color 160ms ease;
 }
 
 .pw-rules li.ok{
-  color:#a7fff1;
+  color:var(--teal-bright);
 }
 
 .pw-rules li.ok::before{
   content:"✓";
-  color:#21bca5;
+  color:var(--brand-600);
 }
 
 /* Error emphasis */
 .field-error{
-  color:#da8aff;
+  color:var(--danger-text);
 }
 
 .hint-inline {

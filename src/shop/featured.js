@@ -120,9 +120,9 @@ function softwareCardHtml(s) {
 
 const HW_ART = `
 <svg class="ph-tail-art" viewBox="0 0 240 96" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
-  <g fill="none" stroke="rgba(54,230,202,.55)" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
-    <rect x="54" y="18" width="62" height="60" rx="6" fill="rgba(33,188,165,.05)"/>
-    <rect x="72" y="38" width="22" height="20" rx="3" fill="rgba(33,188,165,.07)"/>
+  <g fill="none" stroke="color-mix(in srgb, var(--teal-bright) 55%, transparent)" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="54" y="18" width="62" height="60" rx="6" fill="color-mix(in srgb, var(--brand-600) 5%, transparent)"/>
+    <rect x="72" y="38" width="22" height="20" rx="3" fill="color-mix(in srgb, var(--brand-600) 7%, transparent)"/>
     <path d="M78 38 V32"/><path d="M88 38 V32"/>
     <path d="M78 58 V64"/><path d="M88 58 V64"/>
     <path d="M54 26 H40"/>
@@ -133,11 +133,11 @@ const HW_ART = `
     <path class="tart-dash" d="M116 48 H174"/>
     <path d="M116 70 H142 L154 78 H174"/>
   </g>
-  <g fill="none" stroke="rgba(54,230,202,.4)" stroke-width="1">
+  <g fill="none" stroke="color-mix(in srgb, var(--teal-bright) 40%, transparent)" stroke-width="1">
     <path d="M72 44 H62"/><path d="M72 52 H62"/>
     <path d="M94 44 H104"/><path d="M94 52 H104"/>
   </g>
-  <g fill="#36e6ca">
+  <g fill="var(--teal-bright)">
     <circle cx="59" cy="26" r="1.7"/>
     <circle cx="59" cy="70" r="1.7"/>
     <circle cx="62" cy="44" r="1.5"/><circle cx="62" cy="52" r="1.5"/>
@@ -146,18 +146,18 @@ const HW_ART = `
     <circle cx="178" cy="18" r="6" opacity=".16"/><circle cx="178" cy="18" r="2.6"/>
     <circle cx="178" cy="78" r="6" opacity=".16"/><circle cx="178" cy="78" r="2.6"/>
   </g>
-  <g fill="#bf7dff">
+  <g fill="var(--purp-bright)">
     <circle cx="178" cy="48" r="7" opacity=".18"/><circle cx="178" cy="48" r="2.8"/>
   </g>
-  <circle cx="178" cy="48" r="12" fill="none" stroke="rgba(191,125,255,.3)" stroke-width="1" stroke-dasharray="2 5"/>
+  <circle cx="178" cy="48" r="12" fill="none" stroke="color-mix(in srgb, var(--purp-bright) 30%, transparent)" stroke-width="1" stroke-dasharray="2 5"/>
 </svg>`;
 
 const SW_ART = `
 <svg class="ph-tail-art" viewBox="0 0 240 96" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
-  <g fill="none" stroke="rgba(54,230,202,.55)" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
-    <rect x="58" y="16" width="54" height="16" rx="4" fill="rgba(33,188,165,.07)"/>
-    <rect x="58" y="40" width="54" height="16" rx="4" fill="rgba(33,188,165,.07)"/>
-    <rect x="58" y="64" width="54" height="16" rx="4" fill="rgba(33,188,165,.07)"/>
+  <g fill="none" stroke="color-mix(in srgb, var(--teal-bright) 55%, transparent)" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="58" y="16" width="54" height="16" rx="4" fill="color-mix(in srgb, var(--brand-600) 7%, transparent)"/>
+    <rect x="58" y="40" width="54" height="16" rx="4" fill="color-mix(in srgb, var(--brand-600) 7%, transparent)"/>
+    <rect x="58" y="64" width="54" height="16" rx="4" fill="color-mix(in srgb, var(--brand-600) 7%, transparent)"/>
     <path d="M58 24 H42"/>
     <path d="M58 48 H42"/>
     <path d="M58 72 H42"/>
@@ -166,12 +166,12 @@ const SW_ART = `
     <path class="tart-dash" d="M112 48 H174"/>
     <path d="M112 72 H140 L154 80 H174"/>
   </g>
-  <g fill="none" stroke="rgba(54,230,202,.4)" stroke-width="1">
+  <g fill="none" stroke="color-mix(in srgb, var(--teal-bright) 40%, transparent)" stroke-width="1">
     <path d="M68 24 H100"/>
     <path d="M68 48 H92"/>
     <path d="M68 72 H96"/>
   </g>
-  <g fill="#36e6ca">
+  <g fill="var(--teal-bright)">
     <circle cx="63" cy="24" r="1.7"/>
     <circle cx="63" cy="48" r="1.7"/>
     <circle cx="63" cy="72" r="1.7"/>
@@ -179,10 +179,10 @@ const SW_ART = `
     <circle cx="178" cy="16" r="6" opacity=".16"/><circle cx="178" cy="16" r="2.6"/>
     <circle cx="178" cy="80" r="6" opacity=".16"/><circle cx="178" cy="80" r="2.6"/>
   </g>
-  <g fill="#bf7dff">
+  <g fill="var(--purp-bright)">
     <circle cx="178" cy="48" r="7" opacity=".18"/><circle cx="178" cy="48" r="2.8"/>
   </g>
-  <circle cx="178" cy="48" r="12" fill="none" stroke="rgba(191,125,255,.3)" stroke-width="1" stroke-dasharray="2 5"/>
+  <circle cx="178" cy="48" r="12" fill="none" stroke="color-mix(in srgb, var(--purp-bright) 30%, transparent)" stroke-width="1" stroke-dasharray="2 5"/>
 </svg>`;
 
 function tailCardHtml({ title, sub, mode, btnLabel, art }) {

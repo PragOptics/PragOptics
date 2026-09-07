@@ -94,7 +94,7 @@
 /* ===== Markdown content ===== */
 .md-view{
   padding:18px 22px;
-  color:#dfe7ff;
+  color:var(--ink);
   font-size:.98rem;
   line-height:1.55;
 }

@@ -45,7 +45,7 @@
 .adm-card {
   border: 1px solid var(--border);
   border-radius: 12px;
-  background: rgba(255, 255, 255, .015);
+  background: color-mix(in srgb, var(--ink) 1.5%, transparent);
   padding: 16px 18px 18px;
 }
 
@@ -66,7 +66,7 @@
 }
 .adm-note code {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  background: rgba(255, 255, 255, .06);
+  background: color-mix(in srgb, var(--ink) 6%, transparent);
   border-radius: 3px;
   padding: .05rem .28rem;
   font-size: .92em;
@@ -97,17 +97,17 @@
   padding: 8px 10px;
   border-radius: 7px;
   border: 1px solid var(--border);
-  background: rgba(0, 0, 0, .28);
+  background: var(--surface-2);
   color: var(--ink);
   font: inherit;
   font-size: .9rem;
   transition: border-color 140ms ease;
 }
-.adm-input:hover { border-color: rgba(255, 255, 255, .18); }
+.adm-input:hover { border-color: color-mix(in srgb, var(--ink) 18%, transparent); }
 .adm-input:focus-visible {
   outline: none;
   border-color: var(--brand-600);
-  box-shadow: 0 0 0 3px rgba(33, 188, 165, .15);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand-600) 15%, transparent);
 }
 #admCount { font-variant-numeric: tabular-nums; }
 
@@ -117,9 +117,9 @@
   margin: 12px 0 0;
   padding: 8px 10px;
   border-radius: 7px;
-  border: 1px solid rgba(239, 95, 107, .35);
-  background: rgba(239, 95, 107, .1);
-  color: #ff9aa2;
+  border: 1px solid color-mix(in srgb, var(--danger) 35%, transparent);
+  background: color-mix(in srgb, var(--danger) 10%, transparent);
+  color: var(--danger-text);
   font-size: .84rem;
 }
 
@@ -154,7 +154,7 @@
   gap: 5px;
 }
 .adm-codes li {
-  background: rgba(0, 0, 0, .3);
+  background: color-mix(in srgb, var(--shade) 30%, transparent);
   border: 1px solid var(--border);
   border-radius: 6px;
   padding: 7px 8px;
@@ -183,7 +183,7 @@
   padding: 2px;
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: rgba(0, 0, 0, .25);
+  background: var(--surface-3);
 }
 
 .adm-tab {
@@ -198,10 +198,10 @@
   cursor: pointer;
   transition: background 140ms ease, color 140ms ease, transform 120ms ease;
 }
-.adm-tab:hover { color: var(--ink); background: rgba(255, 255, 255, .05); }
+.adm-tab:hover { color: var(--ink); background: color-mix(in srgb, var(--ink) 5%, transparent); }
 .adm-tab:active { transform: translateY(1px); }
 .adm-tab.is-active {
-  background: rgba(255, 255, 255, .08);
+  background: color-mix(in srgb, var(--ink) 8%, transparent);
   color: var(--ink);
 }
 .adm-tab:focus-visible { outline: 2px solid var(--brand-600); outline-offset: 1px; }
@@ -218,7 +218,7 @@
   margin-bottom: 14px;
 }
 .adm-stat {
-  background: rgba(0, 0, 0, .28);
+  background: var(--surface-2);
   padding: 10px 12px;
 }
 .adm-stat-n {
@@ -257,23 +257,23 @@
   font: 700 .6rem/1.4 ui-monospace, "Cascadia Code", Consolas, monospace;
   letter-spacing: .16em;
   text-transform: uppercase;
-  color: var(--brand-600, #21bca5);
+  color: var(--brand-600);
   opacity: .85;
   padding: 9px 12px;
-  background: rgba(255, 255, 255, .03);
+  background: color-mix(in srgb, var(--ink) 3%, transparent);
   border-bottom: 1px solid var(--border);
   white-space: nowrap;
 }
 .adm-table tbody td {
   padding: 9px 12px;
-  border-bottom: 1px solid rgba(255, 255, 255, .04);
+  border-bottom: 1px solid color-mix(in srgb, var(--ink) 4%, transparent);
   color: var(--ink);
   vertical-align: middle;
   white-space: nowrap;
 }
 .adm-table tbody tr:last-child td { border-bottom: 0; }
 .adm-table tbody td { transition: background 120ms ease; }
-.adm-table tbody tr:hover td { background: rgba(162, 0, 255, .06); }
+.adm-table tbody tr:hover td { background: color-mix(in srgb, var(--brand-purp-solid) 6%, transparent); }
 /* money and counts: monospace, right-aligned, digits in columns */
 .adm-num {
   font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
@@ -283,8 +283,8 @@
 th.adm-num { text-align: right; }
 /* Money moves in standard colors: green in, red out. Never decorative.
    (Element-qualified: the table's own td color rule outranks a lone class.) */
-.adm-money-pos, .adm-table td.adm-money-pos, .adm-table td .adm-money-pos { color: #38ffb3; }
-.adm-money-neg, .adm-table td.adm-money-neg, .adm-table td .adm-money-neg { color: #ff5d6c; }
+.adm-money-pos, .adm-table td.adm-money-pos, .adm-table td .adm-money-pos { color: var(--brand-hi); }
+.adm-money-neg, .adm-table td.adm-money-neg, .adm-table td .adm-money-neg { color: var(--danger); }
 /* Column content policy for tables that must fit their container at desktop
    width. Prose cells wrap at WORD BOUNDARIES only (never mid-token); short
    data (dates, money, pills) never wraps; long single tokens (emails,
@@ -308,9 +308,9 @@ th.adm-num { text-align: right; }
 .adm-table td:nth-child(5) { color: var(--muted); }
 
 .adm-pill.is-bad {
-  color: #ff5d6c;
-  border: 1px solid rgba(255, 93, 108, .45);
-  background: rgba(255, 93, 108, .08);
+  color: var(--danger);
+  border: 1px solid color-mix(in srgb, var(--danger) 45%, transparent);
+  background: color-mix(in srgb, var(--danger) 8%, transparent);
 }
 .adm-pill {
   display: inline-block;
@@ -328,7 +328,7 @@ th.adm-num { text-align: right; }
 }
 .adm-pill.is-claimed {
   color: var(--muted);
-  background: rgba(255, 255, 255, .05);
+  background: color-mix(in srgb, var(--ink) 5%, transparent);
   border: 1px solid var(--border);
 }
 
@@ -342,7 +342,7 @@ th.adm-num { text-align: right; }
   border: 1px solid var(--border);
   border-radius: 14px;
   overflow: hidden;
-  background: rgba(255, 255, 255, .012);
+  background: color-mix(in srgb, var(--ink) 1.2%, transparent);
 }
 
 /* ---------- sidebar ---------- */
@@ -350,7 +350,7 @@ th.adm-num { text-align: right; }
   display: flex;
   flex-direction: column;
   border-right: 1px solid var(--border);
-  background: rgba(0, 0, 0, .22);
+  background: var(--surface-3);
   padding: 16px 12px;
 }
 .adm-side-brand { padding: 6px 10px 14px; }
@@ -359,7 +359,7 @@ th.adm-num { text-align: right; }
   font-size: .62rem;
   letter-spacing: .16em;
   text-transform: uppercase;
-  color: var(--brand-600, #21bca5);
+  color: var(--brand-600);
   font-weight: 700;
 }
 .adm-side-title {
@@ -392,9 +392,9 @@ th.adm-num { text-align: right; }
   cursor: pointer;
   transition: background 140ms ease, color 140ms ease;
 }
-.adm-nav-item:hover { background: rgba(255, 255, 255, .04); color: var(--ink); }
-.adm-nav-item.is-active { background: rgba(33, 188, 165, .12); color: var(--ink); }
-.adm-nav-item.is-active .adm-nav-ico { color: var(--brand-600, #21bca5); }
+.adm-nav-item:hover { background: color-mix(in srgb, var(--ink) 4%, transparent); color: var(--ink); }
+.adm-nav-item.is-active { background: color-mix(in srgb, var(--brand-600) 12%, transparent); color: var(--ink); }
+.adm-nav-item.is-active .adm-nav-ico { color: var(--brand-600); }
 .adm-nav-ico { display: inline-grid; place-items: center; color: var(--muted); }
 .adm-nav-item:focus-visible { outline: 2px solid var(--brand-600); outline-offset: 1px; }
 
@@ -406,7 +406,7 @@ th.adm-num { text-align: right; }
   font-size: .62rem;
   letter-spacing: .16em;
   text-transform: uppercase;
-  color: var(--accent-gold, #e6c688);
+  color: var(--accent-gold);
   font-weight: 700;
   border-top: 1px solid var(--border);
   padding-top: 12px;
@@ -456,7 +456,7 @@ th.adm-num { text-align: right; }
   padding: 7px 10px;
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: rgba(0, 0, 0, .28);
+  background: var(--surface-2);
   color: var(--ink);
   font: inherit;
   font-size: .86rem;
@@ -470,15 +470,15 @@ th.adm-num { text-align: right; }
 .adm-search:hover, .adm-select:hover, .adm-input:hover {
   border-color: color-mix(in srgb, var(--brand) 55%, var(--border));
   box-shadow:
-    0 0 0 1px rgba(162, 0, 255, .22),
-    0 0 16px rgba(162, 0, 255, .14);
+    0 0 0 1px color-mix(in srgb, var(--brand-purp-solid) 22%, transparent),
+    0 0 16px color-mix(in srgb, var(--brand-purp-solid) 14%, transparent);
 }
 .adm-search:focus-visible, .adm-select:focus-visible, .adm-input:focus-visible {
   outline: none;
   border-color: var(--brand-600);
   box-shadow:
-    0 0 0 1px rgba(162, 0, 255, .45),
-    0 0 14px rgba(162, 0, 255, .3);
+    0 0 0 1px color-mix(in srgb, var(--brand-purp-solid) 45%, transparent),
+    0 0 14px color-mix(in srgb, var(--brand-purp-solid) 30%, transparent);
 }
 .adm-select:active, select.adm-input:active { transform: translateY(1px); }
 
@@ -518,7 +518,7 @@ select.adm-select option:checked, select.adm-input option:checked {
   overflow: hidden;
   border: 1px solid var(--border);
   border-radius: 14px;
-  background: linear-gradient(160deg, rgba(12, 16, 26, .66), rgba(10, 6, 18, .5));
+  background: linear-gradient(160deg, var(--surface-deep), rgba(10, 6, 18, .5));
   padding: 18px 18px 15px;
   transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
   display: flex;
@@ -529,12 +529,12 @@ select.adm-select option:checked, select.adm-input option:checked {
 .adm-stat-card::before {
   content: '';
   position: absolute; top: 0; left: 0; right: 0; height: 2px;
-  background: linear-gradient(90deg, var(--brand-600, #21bca5), rgba(162, 0, 255, .7) 55%, transparent 92%);
+  background: linear-gradient(90deg, var(--brand-600), color-mix(in srgb, var(--brand-purp-solid) 70%, transparent) 55%, transparent 92%);
   opacity: .75;
 }
 .adm-stat-card:hover {
-  border-color: rgba(162, 0, 255, .4);
-  box-shadow: 0 0 0 1px rgba(162, 0, 255, .18), 0 0 18px rgba(162, 0, 255, .12);
+  border-color: color-mix(in srgb, var(--brand-purp-solid) 40%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--brand-purp-solid) 18%, transparent), 0 0 18px color-mix(in srgb, var(--brand-purp-solid) 12%, transparent);
   transform: translateY(-1px);
 }
 /* Numbers stay solid ink: money and counts are read, not decorated. The
@@ -552,10 +552,10 @@ select.adm-select option:checked, select.adm-input option:checked {
 .adm-stat-h { font-size: .72rem; color: var(--muted); margin-top: 2px; }
 /* solid accent variants (mode flags and the like) override the gradient */
 .adm-stat-card.adm-stat-amber .adm-stat-n {
-  background: none; -webkit-text-fill-color: #ffd489; color: #ffd489;
+  background: none; -webkit-text-fill-color: var(--gold-soft); color: var(--gold-soft);
 }
 .adm-stat-card.adm-stat-teal .adm-stat-n {
-  background: none; -webkit-text-fill-color: var(--brand-600, #21bca5); color: var(--brand-600, #21bca5);
+  background: none; -webkit-text-fill-color: var(--brand-600); color: var(--brand-600);
 }
 
 /* ---------- users table extras ---------- */
@@ -566,15 +566,15 @@ select.adm-select option:checked, select.adm-input option:checked {
 .adm-tier {
   text-transform: capitalize;
   border: 1px solid var(--border);
-  background: rgba(255, 255, 255, .05);
+  background: color-mix(in srgb, var(--ink) 5%, transparent);
   color: var(--muted);
 }
-.adm-tier-partner { color: #c9a3ff; background: rgba(162, 0, 255, .12); border-color: rgba(162, 0, 255, .28); }
-.adm-tier-super   { color: #ffcf6a; background: rgba(255, 180, 40, .12); border-color: rgba(255, 180, 40, .3); }
-.adm-tier-user    { color: #7fd8ff; background: rgba(31, 224, 255, .1); border-color: rgba(31, 224, 255, .28); }
+.adm-tier-partner { color: #c9a3ff; background: color-mix(in srgb, var(--brand-purp-solid) 12%, transparent); border-color: color-mix(in srgb, var(--brand-purp-solid) 28%, transparent); }
+.adm-tier-super   { color: var(--gold-soft); background: color-mix(in srgb, var(--gold-soft) 12%, transparent); border-color: color-mix(in srgb, var(--gold-soft) 30%, transparent); }
+.adm-tier-user    { color: var(--brand-cyan); background: color-mix(in srgb, var(--brand-cyan) 10%, transparent); border-color: color-mix(in srgb, var(--brand-cyan) 28%, transparent); }
 
 .adm-flag-admin { color: #2fbf87; background: rgba(47, 191, 135, .12); border: 1px solid rgba(47, 191, 135, .28); margin-right: 4px; }
-.adm-flag-dev   { color: #ff9aa2; background: rgba(239, 95, 107, .12); border: 1px solid rgba(239, 95, 107, .3); }
+.adm-flag-dev   { color: var(--danger-text); background: color-mix(in srgb, var(--danger) 12%, transparent); border: 1px solid color-mix(in srgb, var(--danger) 30%, transparent); }
 
 /* ---------- coming-soon sections ---------- */
 .adm-soon {
@@ -590,8 +590,8 @@ select.adm-select option:checked, select.adm-input option:checked {
   letter-spacing: .12em;
   text-transform: uppercase;
   font-weight: 700;
-  color: var(--brand-600, #21bca5);
-  border: 1px solid rgba(33, 188, 165, .3);
+  color: var(--brand-600);
+  border: 1px solid color-mix(in srgb, var(--brand-600) 30%, transparent);
   border-radius: var(--radius-pill);
   padding: .2rem .7rem;
   margin-bottom: 12px;
@@ -614,11 +614,11 @@ select.adm-select option:checked, select.adm-input option:checked {
   margin: 0 0 10px;
   font: 700 .7rem/1.4 ui-monospace, "Cascadia Code", Consolas, monospace;
   letter-spacing: .2em; text-transform: uppercase;
-  color: var(--brand-600, #21bca5);
+  color: var(--brand-600);
 }
 
 /* ---- Users: frozen count and the manage modal ---- */
-.adm-frozen-count { margin: -6px 0 12px; color: #ff9aa2; font-size: .82rem; }
+.adm-frozen-count { margin: -6px 0 12px; color: var(--danger-text); font-size: .82rem; }
 .um-email { margin: 0 0 10px; color: var(--ink); font-size: .95rem; word-break: break-all; }
 .um-email strong { font-weight: 700; }
 /* label + control grid, one line per concern */
@@ -636,10 +636,10 @@ select.adm-select option:checked, select.adm-input option:checked {
 .um-row .acct-modal-note { margin-bottom: 8px; }
 .um-checks { display: flex; gap: 16px; flex-wrap: wrap; }
 .um-check { display: inline-flex; align-items: center; gap: 6px; color: var(--ink); font-size: .86rem; cursor: pointer; }
-.um-check input { accent-color: var(--brand-600, #21bca5); margin: 0; }
+.um-check input { accent-color: var(--brand-600); margin: 0; }
 .um-check.is-locked { opacity: .55; cursor: not-allowed; }
-.um-note { margin: 4px 0 10px; font-size: .82rem; color: #ffd489; }
-.um-danger { border-top-color: rgba(255, 93, 108, .35); align-items: start; }
+.um-note { margin: 4px 0 10px; font-size: .82rem; color: var(--gold-soft); }
+.um-danger { border-top-color: color-mix(in srgb, var(--danger) 35%, transparent); align-items: start; }
 .um-danger .adm-label { padding-top: 2px; }
 @media (max-width: 30rem) {
   .um-row { grid-template-columns: minmax(0, 1fr); }

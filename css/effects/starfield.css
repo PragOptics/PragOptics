@@ -25,7 +25,7 @@
   position:fixed;
   inset:0;
   z-index:-0.5;
-  background:rgba(0,0,0,0.25);
+  background:var(--surface-3);
   pointer-events:none;
 }
 

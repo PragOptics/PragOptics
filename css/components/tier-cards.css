@@ -14,7 +14,7 @@
   margin: 0 0 4px;
   font-size: 1.25rem;
   font-weight: 900;
-  background: linear-gradient(120deg, var(--brand-600, #21bca5), #bf7dff);
+  background: linear-gradient(120deg, var(--brand-600), var(--purp-bright));
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -39,18 +39,18 @@
   gap: 12px;
   padding: 20px 18px;
   border-radius: 18px;
-  background: rgba(0, 0, 0, .28);
-  border: 1px solid var(--border, rgba(255, 255, 255, .12));
+  background: var(--surface-2);
+  border: 1px solid var(--border);
   transition: border-color 160ms ease, transform 160ms ease, box-shadow 160ms ease;
 }
 .tc-card:hover {
-  border-color: rgba(33, 188, 165, .45);
+  border-color: color-mix(in srgb, var(--brand-600) 45%, transparent);
   transform: translateY(-2px);
 }
 .tc-card.is-featured {
-  border-color: var(--brand-600, #21bca5);
-  background: linear-gradient(160deg, rgba(33, 188, 165, .10), rgba(162, 0, 255, .10));
-  box-shadow: 0 14px 40px rgba(33, 188, 165, .18);
+  border-color: var(--brand-600);
+  background: linear-gradient(160deg, color-mix(in srgb, var(--brand-600) 10%, transparent), color-mix(in srgb, var(--brand-purp-solid) 10%, transparent));
+  box-shadow: 0 14px 40px color-mix(in srgb, var(--brand-600) 18%, transparent);
 }
 
 .tc-flag {
@@ -64,8 +64,8 @@
   font-weight: 800;
   letter-spacing: .06em;
   text-transform: uppercase;
-  color: #04130f;
-  background: linear-gradient(120deg, #38ffb3, var(--brand-600, #21bca5));
+  color: var(--on-brand);
+  background: linear-gradient(120deg, var(--brand-hi), var(--brand-600));
   white-space: nowrap;
 }
 
@@ -76,14 +76,14 @@
   position: static; background: none; border: 0;
   backdrop-filter: none; -webkit-backdrop-filter: none;
 }
-.tc-name { font-size: 1.1rem; font-weight: 900; color: var(--ink, #dcdbf0e1); }
+.tc-name { font-size: 1.1rem; font-weight: 900; color: var(--ink); }
 .tc-tag { font-size: .8rem; }
 
 .tc-price { display: flex; align-items: baseline; gap: 8px; }
 .tc-amount {
   font-size: 1.7rem;
   font-weight: 900;
-  background: linear-gradient(120deg, var(--brand-600, #21bca5), #bf7dff);
+  background: linear-gradient(120deg, var(--brand-600), var(--purp-bright));
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -101,7 +101,7 @@
   flex: 1;
   font-size: .86rem;
   line-height: 1.5;
-  color: var(--ink, #dcdbf0e1);
+  color: var(--ink);
 }
 .tc-features li {
   padding-left: 22px;
@@ -113,7 +113,7 @@
   left: 0;
   top: 0;
   font-weight: 900;
-  color: var(--brand-600, #21bca5);
+  color: var(--brand-600);
 }
 
 .tc-cta { width: 100%; justify-content: center; }

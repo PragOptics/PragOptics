@@ -3,9 +3,9 @@
 /* ===== Catalog Drawer + Cards (Ping Visual) ===== */
 .catalog-drawer{
   margin-top:10px;
-  border:1px solid rgba(255,255,255,.10);
+  border:1px solid color-mix(in srgb, var(--ink) 10%, transparent);
   border-radius:12px;
-  background:rgba(255,255,255,.03);
+  background:color-mix(in srgb, var(--ink) 3%, transparent);
   overflow:hidden;
 }
 
@@ -15,8 +15,8 @@
   justify-content:space-between;
   gap:10px;
   padding:10px 12px;
-  background:rgba(255,255,255,.04);
-  border-bottom:1px solid rgba(255,255,255,.08);
+  background:color-mix(in srgb, var(--ink) 4%, transparent);
+  border-bottom:1px solid color-mix(in srgb, var(--ink) 8%, transparent);
 }
 
 .catalog-grid{
@@ -29,15 +29,15 @@
 }
 
 .catalog-card{
-  border:1px solid rgba(255,255,255,.10);
+  border:1px solid color-mix(in srgb, var(--ink) 10%, transparent);
   border-radius:12px;
-  background:rgba(0,0,0,.18);
+  background:var(--surface-3);
   padding:12px;
 }
 
 .catalog-title{
   font-weight:800;
-  color:rgba(255,255,255,.92);
+  color:color-mix(in srgb, var(--ink) 92%, transparent);
   margin-bottom:6px;
   font-size:.95rem;
 }
@@ -85,7 +85,7 @@
 .cap-item:hover,
 .path-item:hover{
   transform:translateY(-1px);
-  box-shadow:0 0 10px rgba(255,255,255,.18);
+  box-shadow:0 0 10px color-mix(in srgb, var(--ink) 18%, transparent);
 }
 
 .cap-item:hover .cap-title,
@@ -103,7 +103,7 @@
 }
 
 .path-item.highlight{
-  border-color:rgba(33,188,165,.45);
+  border-color:color-mix(in srgb, var(--brand-600) 45%, transparent);
 }
 
 /* ===== Fast path ===== */
@@ -124,7 +124,7 @@
 
 .fast-path-item:hover{
   transform:translateY(-1px);
-  box-shadow:0 0 10px rgba(255,255,255,.18);
+  box-shadow:0 0 10px color-mix(in srgb, var(--ink) 18%, transparent);
   color:transparent;
 }
 

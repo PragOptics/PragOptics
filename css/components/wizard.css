@@ -31,8 +31,8 @@
   display:inline-block;
   padding:2px 8px;
   border-radius:var(--radius-pill);
-  background:#ffffff12;
-  border:1px solid #ffffff22;
+  background:color-mix(in srgb, var(--ink) 7%, transparent);
+  border:1px solid color-mix(in srgb, var(--ink) 13%, transparent);
   font-size:.8rem;
   color:var(--muted);
 }
@@ -58,7 +58,7 @@
   justify-content:space-between;
   gap:12px;
   padding:8px 0;
-  border-bottom:1px solid rgba(255,255,255,.08);
+  border-bottom:1px solid color-mix(in srgb, var(--ink) 8%, transparent);
 }
 
 .kv:last-child{
@@ -83,7 +83,7 @@
 }
 .wizard .login-panel:hover {
   background: var(--grad);
-  box-shadow:0 0 5px rgba(184,255,237,.41);
+  box-shadow:0 0 5px color-mix(in srgb, var(--teal-bright) 41%, transparent);
   transform:translateY(-2px);
 }
 
@@ -94,7 +94,7 @@
 }
 .wizard .login-panel-paymentEl:hover {
   background: var(--grad);
-  box-shadow:0 0 5px rgba(184,255,237,.41);
+  box-shadow:0 0 5px color-mix(in srgb, var(--teal-bright) 41%, transparent);
   transform:translateY(-2px);
 }
 
@@ -103,8 +103,8 @@
   background:
     linear-gradient(
       165deg,
-      rgba(255,255,255,.04) 0%,
-      rgba(0,0,0,.15) 100%
+      color-mix(in srgb, var(--ink) 4%, transparent) 0%,
+      var(--surface-3) 100%
     ),
     var(--grad);
 
@@ -120,8 +120,8 @@
   backdrop-filter: blur(10px) saturate(140%);
 
   box-shadow:
-    inset 0 0 0 1px rgba(255,255,255,.03),
-    0 10px 24px rgba(0,0,0,.35);
+    inset 0 0 0 1px color-mix(in srgb, var(--ink) 3%, transparent),
+    0 10px 24px color-mix(in srgb, var(--shade) 35%, transparent);
 
   transition: transform 160ms ease, box-shadow 160ms ease;
 }
@@ -129,9 +129,9 @@
 .wizard .pricing-card:hover {
   transform: translateY(-2px);
   box-shadow:
-    inset 0 0 0 1px rgba(255,255,255,.06),
-    0 14px 32px rgba(31,180,165,.25),
-    0 0 18px rgba(162,0,255,.18);
+    inset 0 0 0 1px color-mix(in srgb, var(--ink) 6%, transparent),
+    0 14px 32px color-mix(in srgb, var(--brand-600) 25%, transparent),
+    0 0 18px color-mix(in srgb, var(--brand-purp-solid) 18%, transparent);
 }
 
 .wizard .pricing-card > strong {
@@ -156,9 +156,9 @@
   justify-content:center;
   padding:2px 10px;
   border-radius:var(--radius-pill);
-  border:1px solid rgba(255,255,255,.14);
-  background:rgba(255,255,255,.06);
-  box-shadow:0 0 10px rgba(0,0,0,.18);
+  border:1px solid color-mix(in srgb, var(--ink) 14%, transparent);
+  background:color-mix(in srgb, var(--ink) 6%, transparent);
+  box-shadow:0 0 10px var(--surface-3);
   font-size:12px;
   line-height:1;
   opacity:.95;
@@ -181,8 +181,8 @@
 
 .pill-disabled{
   color:var(--muted);
-  border-color:rgba(255,255,255,.12);
-  background:rgba(255,255,255,.03);
+  border-color:color-mix(in srgb, var(--ink) 12%, transparent);
+  background:color-mix(in srgb, var(--ink) 3%, transparent);
   opacity:.6;
 }
 
@@ -279,10 +279,10 @@
 }
 
 .form-field select:focus{
-  border-color:rgba(33,188,165,.45);
+  border-color:color-mix(in srgb, var(--brand-600) 45%, transparent);
   box-shadow:
-    0 0 0 1px rgba(33,188,165,.25),
-    0 0 16px rgba(131,33,188,.15);
+    0 0 0 1px color-mix(in srgb, var(--brand-600) 25%, transparent),
+    0 0 16px color-mix(in srgb, var(--brand-purp-solid) 15%, transparent);
   background:black;
 }
 

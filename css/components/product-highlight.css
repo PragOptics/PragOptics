@@ -9,9 +9,9 @@
 .product-highlight::before {
   content: ""; position: absolute; inset: -12%; z-index: 0; pointer-events: none;
   background:
-    radial-gradient(640px 340px at 84% -4%, rgba(162, 0, 255, .16), transparent 62%),
-    radial-gradient(560px 320px at 4% 108%, rgba(31, 224, 255, .10), transparent 60%),
-    radial-gradient(300px 200px at 55% 50%, rgba(33, 188, 165, .05), transparent 70%);
+    radial-gradient(640px 340px at 84% -4%, color-mix(in srgb, var(--brand-purp-solid) 16%, transparent), transparent 62%),
+    radial-gradient(560px 320px at 4% 108%, color-mix(in srgb, var(--brand-cyan) 10%, transparent), transparent 60%),
+    radial-gradient(300px 200px at 55% 50%, color-mix(in srgb, var(--brand-600) 5%, transparent), transparent 70%);
   animation: ph-nebula 46s ease-in-out infinite alternate;
 }
 .product-highlight > * { position: relative; z-index: 1; }
@@ -23,11 +23,11 @@
 .ph-head { margin-bottom: 18px; }
 .ph-kicker {
   display: inline-block; font-size: .72rem; letter-spacing: .22em; text-transform: uppercase;
-  color: var(--brand-600, #21bca5); font-weight: 800;
+  color: var(--brand-600); font-weight: 800;
 }
 .ph-title {
   margin: .25em 0 0; font-weight: 850; font-size: 1.5rem; line-height: 1.2;
-  background: linear-gradient(130deg, #fff 10%, var(--brand-600, #21bca5) 58%, var(--brand-purp, #a200ff) 96%);
+  background: linear-gradient(130deg, var(--card-title) 10%, var(--brand-600) 58%, var(--brand-purp) 96%);
   -webkit-background-clip: text; background-clip: text; color: transparent;
 }
 
@@ -38,16 +38,16 @@
 .ph-row { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
 .ph-row-label {
   font: 700 .64rem/1 ui-monospace, "SF Mono", "Cascadia Code", Menlo, monospace;
-  letter-spacing: .26em; text-transform: uppercase; color: var(--teal-bright, #36e6ca);
+  letter-spacing: .26em; text-transform: uppercase; color: var(--teal-bright);
 }
 /* a small star that twinkles ahead of each row label */
 .ph-row-label::before {
-  content: "✦"; margin-right: 8px; color: var(--brand-cyan, #1fe0ff);
-  text-shadow: 0 0 10px rgba(31, 224, 255, .8);
+  content: "✦"; margin-right: 8px; color: var(--brand-cyan);
+  text-shadow: 0 0 10px color-mix(in srgb, var(--brand-cyan) 80%, transparent);
   animation: ph-twinkle 3.2s ease-in-out infinite;
   display: inline-block;
 }
-.ph-row:nth-child(2) .ph-row-label::before { animation-delay: 1.6s; color: var(--brand-purp, #bf7dff); text-shadow: 0 0 10px rgba(191, 125, 255, .8); }
+.ph-row:nth-child(2) .ph-row-label::before { animation-delay: 1.6s; color: var(--brand-purp); text-shadow: 0 0 10px color-mix(in srgb, var(--purp-bright) 80%, transparent); }
 @keyframes ph-twinkle {
   0%, 100% { opacity: .45; transform: scale(.85); }
   50%      { opacity: 1;   transform: scale(1.12); }
@@ -64,37 +64,37 @@
 /* Firefox-only fallback — in Chromium, setting scrollbar-color DISABLES the
    ::-webkit-scrollbar styling below, so it must never apply there. */
 @supports not selector(::-webkit-scrollbar) {
-  .ph-scroller { scrollbar-width: auto; scrollbar-color: rgba(255, 255, 255, .25) rgba(255, 255, 255, .05); }
+  .ph-scroller { scrollbar-width: auto; scrollbar-color: color-mix(in srgb, var(--ink) 25%, transparent) color-mix(in srgb, var(--ink) 5%, transparent); }
 }
 /* Oozey glass scrollbar — a gel drip: droopy saggy-bottom radius, glossy wet
    highlight up top, body that pools toward the bottom, sunken track. */
 .ph-scroller::-webkit-scrollbar { height: 14px; }
 .ph-scroller::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, .04);
+  background: color-mix(in srgb, var(--ink) 4%, transparent);
   border-radius: var(--radius-pill);
-  box-shadow: inset 0 2px 4px rgba(0, 0, 0, .45), inset 0 -1px 1px rgba(255, 255, 255, .06);
+  box-shadow: inset 0 2px 4px color-mix(in srgb, var(--shade) 45%, transparent), inset 0 -1px 1px color-mix(in srgb, var(--ink) 6%, transparent);
 }
 .ph-scroller::-webkit-scrollbar-thumb {
   /* tighter top corners, rounder bottom = the sag of a slow drip */
   border-radius: 10px 10px 14px 14px / 7px 7px 22px 22px;
   background:
-    radial-gradient(130% 95% at 30% 0%, rgba(255, 255, 255, .55), rgba(255, 255, 255, .06) 48%),
-    linear-gradient(90deg, rgba(31, 224, 255, .10), rgba(191, 125, 255, .12) 60%, rgba(31, 224, 255, .08)),
-    linear-gradient(180deg, rgba(255, 255, 255, .14), rgba(255, 255, 255, .34) 88%);
-  border: 1px solid rgba(255, 255, 255, .30);
+    radial-gradient(130% 95% at 30% 0%, color-mix(in srgb, var(--ink) 55%, transparent), color-mix(in srgb, var(--ink) 6%, transparent) 48%),
+    linear-gradient(90deg, color-mix(in srgb, var(--brand-cyan) 10%, transparent), color-mix(in srgb, var(--purp-bright) 12%, transparent) 60%, color-mix(in srgb, var(--brand-cyan) 8%, transparent)),
+    linear-gradient(180deg, color-mix(in srgb, var(--ink) 14%, transparent), color-mix(in srgb, var(--ink) 34%, transparent) 88%);
+  border: 1px solid color-mix(in srgb, var(--ink) 30%, transparent);
   background-clip: padding-box;
   box-shadow:
-    inset 0 2px 3px rgba(255, 255, 255, .40),   /* wet rim along the top */
-    inset 0 -4px 7px rgba(255, 255, 255, .22),  /* bottom bulge — the pooled gel */
-    inset 0 0 10px rgba(255, 255, 255, .06);
+    inset 0 2px 3px color-mix(in srgb, var(--ink) 40%, transparent),   /* wet rim along the top */
+    inset 0 -4px 7px color-mix(in srgb, var(--ink) 22%, transparent),  /* bottom bulge — the pooled gel */
+    inset 0 0 10px color-mix(in srgb, var(--ink) 6%, transparent);
 }
 .ph-scroller::-webkit-scrollbar-thumb:hover {
   background:
-    radial-gradient(130% 95% at 30% 0%, rgba(255, 255, 255, .65), rgba(255, 255, 255, .10) 48%),
-    linear-gradient(180deg, rgba(255, 255, 255, .20), rgba(255, 255, 255, .44) 88%);
+    radial-gradient(130% 95% at 30% 0%, color-mix(in srgb, var(--ink) 65%, transparent), color-mix(in srgb, var(--ink) 10%, transparent) 48%),
+    linear-gradient(180deg, color-mix(in srgb, var(--ink) 20%, transparent), color-mix(in srgb, var(--ink) 44%, transparent) 88%);
   background-clip: padding-box;
 }
-.ph-scroller:focus-visible { outline: 2px solid var(--brand-600, #21bca5); outline-offset: 4px; border-radius: 12px; }
+.ph-scroller:focus-visible { outline: 2px solid var(--brand-600); outline-offset: 4px; border-radius: 12px; }
 /* Percentage-based width guarantees the row always overflows (≈2 cards + a
    peek of the next at any desktop size) — overflow is what makes the scrollbar
    exist and gives the auto-drift somewhere to go. */
@@ -105,11 +105,11 @@
    On hover it opens like a portal — violet aura + gradient title. */
 .ph-tail { display: flex; align-items: center; justify-content: center; text-align: center; border-style: dashed; }
 .ph-tail:hover {
-  border-style: solid; border-color: rgba(162, 0, 255, .45);
-  box-shadow: 0 18px 50px rgba(0, 0, 0, .5), 0 0 44px rgba(162, 0, 255, .18);
+  border-style: solid; border-color: color-mix(in srgb, var(--brand-purp-solid) 45%, transparent);
+  box-shadow: 0 18px 50px color-mix(in srgb, var(--shade) 50%, transparent), 0 0 44px color-mix(in srgb, var(--brand-purp-solid) 18%, transparent);
 }
 .ph-tail:hover h3 {
-  background: linear-gradient(120deg, #fff 10%, var(--brand-cyan, #1fe0ff) 55%, var(--brand-purp, #bf7dff) 95%);
+  background: linear-gradient(120deg, var(--card-title) 10%, var(--brand-cyan) 55%, var(--brand-purp) 95%);
   -webkit-background-clip: text; background-clip: text; color: transparent;
 }
 
@@ -132,7 +132,7 @@
 @keyframes tartDash { to { stroke-dashoffset: -110; } }
 .ph-tail:hover .ph-tail-art {
   opacity: 1;
-  filter: drop-shadow(0 0 7px rgba(54, 230, 202, .35)) drop-shadow(0 0 18px rgba(162, 0, 255, .18));
+  filter: drop-shadow(0 0 7px color-mix(in srgb, var(--teal-bright) 35%, transparent)) drop-shadow(0 0 18px color-mix(in srgb, var(--brand-purp-solid) 18%, transparent));
 }
 @media (prefers-reduced-motion: reduce) {
   .ph-tail-art .tart-dash { animation: none; }
@@ -163,7 +163,7 @@
 .ph-card::after {
   content: ""; position: absolute; inset: 0; z-index: 2; pointer-events: none;
   background: linear-gradient(115deg,
-    transparent 40%, rgba(31, 224, 255, .13) 48%, rgba(191, 125, 255, .10) 53%, transparent 62%);
+    transparent 40%, color-mix(in srgb, var(--brand-cyan) 13%, transparent) 48%, color-mix(in srgb, var(--purp-bright) 10%, transparent) 53%, transparent 62%);
   transform: translateX(-120%); opacity: 0;
 }
 .ph-card:hover::after { animation: ph-glint 850ms cubic-bezier(.22,.61,.36,1) forwards; }
@@ -180,14 +180,14 @@
      background blends the letterbox so it never looks like empty space. */
   width: clamp(148px, 34%, 176px); height: 250px; flex: none; align-self: center;
   object-fit: contain; object-position: center;
-  border-radius: 12px; border: 1px solid var(--border, rgba(255, 255, 255, .12)); background: #05070d;
+  border-radius: 12px; border: 1px solid var(--border); background: var(--media-ground);
 }
 /* App-icon cards (software): render the raw icon — no framed tile, no black box.
    The icon carries its own edge; a soft drop-shadow gives it depth on the card. */
 .ph-flyer.ph-icon {
   background: none; border: 0; border-radius: 0; padding: 0;
   object-fit: contain;
-  filter: drop-shadow(0 8px 20px rgba(0, 0, 0, .45));
+  filter: drop-shadow(0 8px 20px color-mix(in srgb, var(--shade) 45%, transparent));
 }
 
 /* Splash + icon media (software spotlight cards) — the software-shop card
@@ -197,7 +197,7 @@
 .ph-media {
   position: relative; flex: none;
   margin: -22px -22px 4px; aspect-ratio: 16 / 9; overflow: hidden;
-  background: #05070d;
+  background: var(--media-ground);
 }
 .ph-media-img { width: 100%; height: 100%; object-fit: cover; display: block; }
 /* Square-ish splashes (own rounded frame, transparent corners) float whole on
@@ -205,13 +205,13 @@
 .ph-media--contain .ph-media-img { object-fit: contain; padding: 8px; box-sizing: border-box; }
 .ph-media-badge {
   position: absolute; left: 14px; bottom: 12px; width: 46px; height: 46px;
-  object-fit: contain; filter: drop-shadow(0 4px 10px rgba(0, 0, 0, .55));
+  object-fit: contain; filter: drop-shadow(0 4px 10px color-mix(in srgb, var(--shade) 55%, transparent));
 }
 .ph-vert .ph-card-body { justify-content: flex-start; gap: 12px; }
 
 .ph-card-body { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 18px; }
 .ph-card-body h3 { margin: 0; font-size: 1.2rem; font-weight: 800; letter-spacing: -.01em; color: var(--card-title); }
-.ph-card-body p { margin: 0; color: var(--muted, #9fb3c8); }
+.ph-card-body p { margin: 0; color: var(--muted); }
 .ph-card-body .ph-btn { align-self: flex-start; }
 
 /* featured landing card: price line + consistent action row */
@@ -241,8 +241,8 @@
   padding: 11px 22px; border-radius: var(--radius-card); border: 0; cursor: pointer;
   position: relative;
   font-weight: 800; font-size: .95rem; line-height: 1.1; text-align: center; text-decoration: none; color: var(--on-brand);
-  background: linear-gradient(120deg, var(--brand-600, #21bca5), var(--brand, #1ca490));
-  box-shadow: 0 10px 26px rgba(28, 164, 144, .30);
+  background: linear-gradient(120deg, var(--brand-600), var(--brand));
+  box-shadow: 0 10px 26px color-mix(in srgb, var(--brand-600) 30%, transparent);
   transition: background 160ms ease, box-shadow 160ms ease, transform 160ms ease, color 160ms ease;
 }
 /* hover-retention strip with hysteresis — grows while hovered so the lift
@@ -251,25 +251,25 @@
   content: ""; position: absolute; left: 0; right: 0; top: 100%; height: 5px;
 }
 .ph-btn:hover::after { height: 11px; }
-.ph-btn:hover { background: linear-gradient(120deg, var(--brand-600, #21bca5), var(--brand-purp, #a200ff)); color: #fff; box-shadow: var(--aura); transform: translateY(-3px); }
+.ph-btn:hover { background: linear-gradient(120deg, var(--brand-600), var(--brand-purp)); color: var(--card-title); box-shadow: var(--aura); transform: translateY(-3px); }
 
 /* Featured-card action row + price line */
 .ph-actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
-.ph-price { margin: 0; font-weight: 800; font-size: .98rem; color: var(--brand-600, #21bca5); }
+.ph-price { margin: 0; font-weight: 800; font-size: .98rem; color: var(--brand-600); }
 .ph-price .muted { font-weight: 600; }
 .ph-btn:active { transform: translateY(1px); }
-.ph-btn:focus-visible { outline: 2px solid var(--brand-600, #21bca5); outline-offset: 3px; }
+.ph-btn:focus-visible { outline: 2px solid var(--brand-600); outline-offset: 3px; }
 
 /* Ghost variant + disabled state (composes with .ph-btn) */
 .ph-btn-ghost {
-  color: var(--ink, #dcdbf0e1) !important;
-  background: rgba(255, 255, 255, .04) !important;
-  border: 1px solid var(--border, rgba(255, 255, 255, .14)) !important;
+  color: var(--ink) !important;
+  background: color-mix(in srgb, var(--ink) 4%, transparent) !important;
+  border: 1px solid var(--border) !important;
   box-shadow: none !important;
 }
 .ph-btn-ghost:hover {
-  color: #fff !important;
-  background: linear-gradient(120deg, rgba(33, 188, 165, .28), rgba(162, 0, 255, .28)) !important;
+  color: var(--card-title) !important;
+  background: linear-gradient(120deg, color-mix(in srgb, var(--brand-600) 28%, transparent), color-mix(in srgb, var(--brand-purp-solid) 28%, transparent)) !important;
   border-color: transparent !important;
 }
 .ph-btn.disabled, .ph-btn[aria-disabled="true"] {
@@ -279,7 +279,7 @@
 /* brochure iframe modal (reuses .legal-mask/.legal-panel/.legal-card from legal-viewer.css) */
 .brochure-card { width: min(1040px, 94vw) !important; }
 .brochure-body { padding: 0 !important; }
-.brochure-frame { width: 100%; height: min(80vh, 940px); border: 0; display: block; background: #05070d; }
+.brochure-frame { width: 100%; height: min(80vh, 940px); border: 0; display: block; background: var(--media-ground); }
 
 /* Tablet: two 190px-flyer row-cards can't share the width (body gets crushed,
    buttons overflow) — go single column of full-width horizontal cards instead. */

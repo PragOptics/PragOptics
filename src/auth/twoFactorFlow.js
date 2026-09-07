@@ -95,9 +95,9 @@ function host() {
         background:var(--grad);color:var(--ink);font-family:ui-monospace,monospace;outline:none;
         transition:border-color 160ms ease,box-shadow 160ms ease;}
       #twoFaHost input.tfa-code::placeholder{color:var(--muted);opacity:.45;}
-      #twoFaHost input.tfa-code:focus{border-color:rgba(33,188,165,.45);
-        box-shadow:0 0 0 1px rgba(33,188,165,.25),0 0 16px rgba(131,33,188,.15);}
-      #twoFaHost .tfa-err{color:#ff9aa2;font-size:13px;min-height:18px;margin:8px 0 0;}
+      #twoFaHost input.tfa-code:focus{border-color:color-mix(in srgb, var(--brand-600) 45%, transparent);
+        box-shadow:0 0 0 1px color-mix(in srgb, var(--brand-600) 25%, transparent),0 0 16px color-mix(in srgb, var(--brand-purp-solid) 15%, transparent);}
+      #twoFaHost .tfa-err{color:var(--danger-text);font-size:13px;min-height:18px;margin:8px 0 0;}
       #twoFaHost .tfa-actions{display:flex;gap:10px;margin-top:18px;}
       #twoFaHost .tfa-actions .tfa-cta{flex:1;}
       #twoFaHost .tfa-link{background:none;border:0;color:var(--brand-600);cursor:pointer;font-size:13px;

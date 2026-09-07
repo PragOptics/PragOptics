@@ -39,7 +39,7 @@
   background:var(--grad);
   border-radius:12px;
   border:1px solid var(--brand);
-  box-shadow:0 0 20px rgba(255,255,255,.5);
+  box-shadow:0 0 20px color-mix(in srgb, var(--ink) 50%, transparent);
   padding:28px;
   text-align:center;
   color:var(--ink);
@@ -105,13 +105,13 @@
   height:10px;
   border-radius:50%;
   background:var(--brand-purp);
-  box-shadow:0 0 0 0 rgba(162,0,255,.6);
+  box-shadow:0 0 0 0 color-mix(in srgb, var(--brand-purp-solid) 60%, transparent);
   animation:authPulse 2.8s ease-in-out infinite;
 }
 
 .auth-indicator.signed-in{
   background:var(--brand-600);
-  box-shadow:0 0 0 0 rgba(33,188,165,.6);
+  box-shadow:0 0 0 0 color-mix(in srgb, var(--brand-600) 60%, transparent);
 }
 
 @keyframes authPulse{
