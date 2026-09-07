@@ -518,7 +518,7 @@ select.adm-select option:checked, select.adm-input option:checked {
   overflow: hidden;
   border: 1px solid var(--border);
   border-radius: 14px;
-  background: linear-gradient(160deg, var(--surface-deep), rgba(10, 6, 18, .5));
+  background: linear-gradient(160deg, var(--surface-deep), var(--surface-2));
   padding: 18px 18px 15px;
   transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
   display: flex;

@@ -158,8 +158,9 @@
 .acct-product-main { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 .acct-product-name { font-weight: 800; color: var(--ink); }
 .acct-product-code {
+  display: inline-block; padding: 2px 9px; border-radius: 7px; align-self: flex-start;
   font-family: ui-monospace, Menlo, monospace; font-size: .82rem; letter-spacing: .08em;
-  color: var(--brand-600);
+  background: var(--hi-bg); color: var(--hi-fg); border: 1px solid var(--hi-border);
 }
 .acct-product-meta { font-size: .78rem; }
 .acct-product-side { display: flex; align-items: center; gap: 10px; flex: none; }

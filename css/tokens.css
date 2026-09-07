@@ -41,6 +41,14 @@
       --shade:#000;                        /* base of every shadow and mask */
       --panel-deep-a:#0b0f19;              /* product modal and cart drawer chrome */
       --panel-deep-b:#10091a;
+
+      /* Highlight and badge treatment (Cameron, 2026-09-07): a transparent
+         wash of the primary, no gradient, ink text. Dark: teal wash, white
+         text. Light: purple wash, black text. Defined once; the tokens it
+         reads flip per theme. Primary .cta buttons stay solid. */
+      --hi-bg: color-mix(in srgb, var(--brand-600) 18%, transparent);
+      --hi-border: color-mix(in srgb, var(--brand-600) 45%, transparent);
+      --hi-fg: var(--ink);
   
       --aura:
         0 4px 18px rgba(255, 255, 255, 0.123),

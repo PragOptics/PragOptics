@@ -83,8 +83,8 @@
 .co-signedin-icon {
   display: inline-flex; align-items: center; justify-content: center;
   width: 22px; height: 22px; border-radius: 50%; flex: none;
-  background: linear-gradient(120deg, var(--brand-hi), var(--brand-600));
-  color: var(--on-brand); font-weight: 900; font-size: .78rem;
+  background: var(--hi-bg); color: var(--hi-fg); border: 1px solid var(--hi-border);
+  font-weight: 900; font-size: .78rem;
 }
 
 .co-checkbox {
@@ -147,8 +147,8 @@
 .co-check {
   width: 64px; height: 64px; border-radius: 50%;
   display: inline-flex; align-items: center; justify-content: center;
-  background: linear-gradient(120deg, var(--brand-hi), var(--brand-600));
-  color: var(--on-brand); font-weight: 900; font-size: 2rem;
+  background: var(--hi-bg); color: var(--hi-fg); border: 1px solid var(--hi-border);
+  font-weight: 900; font-size: 2rem;
   box-shadow: 0 12px 34px color-mix(in srgb, var(--brand-600) 35%, transparent);
 }
 .co-empty-actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
@@ -180,8 +180,8 @@
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--brand-600) 18%, transparent);
 }
 .co-step.is-done .co-step-dot {
-  background: linear-gradient(120deg, var(--brand-hi), var(--brand-600));
-  border-color: transparent; color: var(--on-brand); font-weight: 900;
+  background: var(--hi-bg); color: var(--hi-fg); border: 1px solid var(--hi-border);
+  font-weight: 900;
 }
 
 /* Phone width: nothing in checkout may set the page's minimum width. Grid

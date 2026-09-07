@@ -44,12 +44,16 @@ function primaryBtn(p) {
 // row of one kind of card. The product photo fills the banner; a product that
 // only has a poster-style flyer shows it whole on the media ground instead.
 function cardHtml(p) {
-  const photo = p.image || '';
+  // The marketing brochure is the card's face (Cameron: the product photo is
+  // for the modal). The banner takes the brochure's own aspect so the whole
+  // sheet shows, nothing cropped; a product without one falls back to its
+  // photo.
   const flyer = p.flyer || '';
-  const media = photo
-    ? `<div class="ph-media"><img class="ph-media-img" src="${escapeHtml(photo)}" alt="${escapeHtml(p.name)}" loading="lazy"></div>`
-    : flyer
-      ? `<div class="ph-media ph-media--contain"><img class="ph-media-img" src="${escapeHtml(flyer)}" alt="${escapeHtml(p.name)}" loading="lazy"></div>`
+  const photo = p.image || '';
+  const media = flyer
+    ? `<div class="ph-media" style="aspect-ratio:${escapeHtml(p.flyerAspect || '1 / 1')}"><img class="ph-media-img" src="${escapeHtml(flyer)}" alt="${escapeHtml(p.name)}" loading="lazy"></div>`
+    : photo
+      ? `<div class="ph-media"><img class="ph-media-img" src="${escapeHtml(photo)}" alt="${escapeHtml(p.name)}" loading="lazy"></div>`
       : '';
   return `
     <article class="ph-card ph-brochure${media ? ' ph-vert' : ''}">

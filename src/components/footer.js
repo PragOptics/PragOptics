@@ -34,7 +34,7 @@ export function initFooter() {
   if (themeBtn) {
     const label = () => {
       const light = getTheme() === "light";
-      themeBtn.textContent = light ? "Dark mode" : "Light mode";
+      themeBtn.textContent = light ? "Join the Darkside" : "Show me the Light";
       themeBtn.setAttribute("aria-pressed", light ? "true" : "false");
     };
     label();

@@ -64,8 +64,7 @@
   font-weight: 800;
   letter-spacing: .06em;
   text-transform: uppercase;
-  color: var(--on-brand);
-  background: linear-gradient(120deg, var(--brand-hi), var(--brand-600));
+  background: var(--hi-bg); color: var(--hi-fg); border: 1px solid var(--hi-border);
   white-space: nowrap;
 }
 

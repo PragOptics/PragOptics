@@ -29,9 +29,10 @@ html[data-theme="light"] #bg-stars{ animation: fvStarFadeLight 3.7s ease forward
 /* Terminals stay terminals: the API console and code blocks keep a dark
    surface and light text in both themes. */
 html[data-theme="light"] pre,
-html[data-theme="light"] code,
 html[data-theme="light"] .md-view pre,
-html[data-theme="light"] .md-view code{
+html[data-theme="light"] .md-view code,
+html[data-theme="light"] .legal-content pre,
+html[data-theme="light"] .legal-content code{
   background: #0f1626;
   color: #dfe7ff;
 }

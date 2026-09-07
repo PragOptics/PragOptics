@@ -136,8 +136,9 @@
 /* ---- Actions ---- */
 .pm-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 4px; }
 .pm-add.is-added {
-  background: linear-gradient(120deg, var(--brand-hi), var(--brand-600)) !important;
-  color: var(--on-brand) !important;
+  background: var(--hi-bg) !important;
+  color: var(--hi-fg) !important;
+  border: 1px solid var(--hi-border) !important;
 }
 
 /* ---- Specs ---- */

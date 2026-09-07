@@ -60,8 +60,8 @@
 .cart-account-icon {
   display: inline-flex; align-items: center; justify-content: center;
   width: 22px; height: 22px; border-radius: 50%;
-  background: linear-gradient(120deg, var(--brand-hi), var(--brand-600));
-  color: var(--on-brand); font-weight: 900; font-size: .78rem;
+  background: var(--hi-bg); color: var(--hi-fg); border: 1px solid var(--hi-border);
+  font-weight: 900; font-size: .78rem;
 }
 .cart-account-text { color: var(--ink); font-size: .88rem; line-height: 1.5; }
 .cart-account-text strong { color: var(--brand-600); }
@@ -144,8 +144,7 @@
   transition: background 160ms ease, color 160ms ease, box-shadow 160ms ease, transform 200ms cubic-bezier(.22,.61,.36,1);
 }
 .cart-count.has-items {
-  background: linear-gradient(120deg, var(--brand-600), var(--brand-purp));
-  color: var(--card-title); border-color: transparent;
-  box-shadow: 0 0 12px color-mix(in srgb, var(--brand-600) 45%, transparent);
+  background: var(--hi-bg); color: var(--hi-fg); border: 1px solid var(--hi-border);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--brand-600) 25%, transparent);
   transform: scale(1.06);
 }
