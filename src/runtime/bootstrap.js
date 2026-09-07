@@ -910,6 +910,17 @@ function pollUntilResolvedSubmit() {
 
 
     // Expose only the handlers referenced by inline onclick="..." in index.html
+// Landing-page links that used to carry inline onclick handlers. The site's
+// Content Security Policy allows no inline script, so they carry data-nav.
+document.addEventListener("click", (e) => {
+  const a = e.target.closest("a[data-nav]");
+  if (!a) return;
+  e.preventDefault();
+  const to = a.dataset.nav;
+  if (to === "transfer") { location.hash = "transfer"; window.setAppMode?.("warranty"); return; }
+  window.setAppMode?.(to);
+});
+
 registerLegacyGlobals({
   setToken,
   // menu + navigation

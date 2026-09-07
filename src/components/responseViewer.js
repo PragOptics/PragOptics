@@ -179,7 +179,7 @@ function renderEmptyVisual() {
   // Compact “copy” buttons for endpoints
   const copyBtn = (label, value) => `
     <button class="copy-btn" type="button"
-      onclick="navigator.clipboard.writeText('${esc(value).replace(/'/g, "\\'")}')">
+      data-copy="${esc(value)}">
       Copy ${esc(label)}
     </button>
   `;
@@ -334,9 +334,9 @@ function renderEmptyVisual() {
         <div class="catalog-sub">priceId: <span style="opacity:.9">${esc(priceId)}</span></div>
         <div class="catalog-actions">
           <button class="copy-btn" type="button"
-            onclick="navigator.clipboard.writeText('${esc(x.lookupKey).replace(/'/g, "\\'")}')">Copy lookupKey</button>
+            data-copy="${esc(x.lookupKey)}">Copy lookupKey</button>
           <button class="copy-btn" type="button"
-            onclick="navigator.clipboard.writeText('${esc(priceId).replace(/'/g, "\\'")}')">Copy priceId</button>
+            data-copy="${esc(priceId)}">Copy priceId</button>
         </div>
       </div>
     `;
@@ -353,7 +353,7 @@ function renderEmptyVisual() {
           <strong>Product Catalog</strong>
           <div class="hint">${shown}/${total} active items</div>
         </div>
-        <button class="copy-btn" type="button" onclick="toggleCatalog(false)">Hide</button>
+        <button class="copy-btn" type="button" data-catalog="hide">Hide</button>
       </div>
       <div class="catalog-grid">
         ${html || `<div class="hint">No active items.</div>`}
@@ -457,7 +457,7 @@ function renderEmptyVisual() {
         }
         <div class="hint" style="margin-top:10px; display:flex; justify-content:space-between; align-items:center; gap:10px;">
           <span>Catalog attached: ${hasCatalog ? "✅" : "—"}</span>
-          ${hasCatalog ? `<button class="copy-btn" type="button" onclick="toggleCatalog(true)">View Product Catalog</button>` : ""}
+          ${hasCatalog ? `<button class="copy-btn" type="button" data-catalog="show">View Product Catalog</button>` : ""}
         </div>
         ${hasCatalog ? renderCatalog(ping.productCatalog) : ""}
       </div>
@@ -506,6 +506,18 @@ function labelFromLookupKey(lookupKey="") {
   if (type === "user") return `User: ${pretty[0].toUpperCase()}${pretty.slice(1)}`;
   if (type === "partner") return `Partner: ${pretty[0].toUpperCase()}${pretty.slice(1)}`;
   return `${type}: ${pretty}`;
+}
+
+// The copy and catalog buttons above: one delegated listener instead of inline
+// onclick, which the site's Content Security Policy forbids. Same behavior.
+if (typeof document !== "undefined" && !document.__rvDelegated) {
+  document.__rvDelegated = true;
+  document.addEventListener("click", (e) => {
+    const c = e.target.closest("[data-copy]");
+    if (c) { try { navigator.clipboard?.writeText(c.dataset.copy); } catch { /* clipboard blocked */ } return; }
+    const t = e.target.closest("[data-catalog]");
+    if (t) toggleCatalog(t.dataset.catalog === "show");
+  });
 }
 
     function toggleCatalog(forceOpen) {

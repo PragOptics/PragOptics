@@ -425,10 +425,10 @@ function doneHtml() {
                <strong>${escapeHtml(state.contact.email)}</strong> and keep your order number above for your records.</p>`)}
       <div class="co-empty-actions">
         ${getAccessToken()
-          ? `<button class="ph-btn" type="button" onclick="window.pragOrderToAccount?.()">View in your account</button>`
-          : `<button class="ph-btn" type="button" onclick="window.pragAccountForOrder?.()">Create an account to track this order</button>`}
-        <button class="ph-btn ph-btn-ghost" type="button" onclick="window.setAppMode?.('shop')">Keep shopping</button>
-        <button class="ph-btn ph-btn-ghost" type="button" onclick="window.setAppMode?.('landing')">Back to home</button>
+          ? `<button class="ph-btn" type="button" data-co-nav="order-to-account">View in your account</button>`
+          : `<button class="ph-btn" type="button" data-co-nav="account-for-order">Create an account to track this order</button>`}
+        <button class="ph-btn ph-btn-ghost" type="button" data-co-nav="shop">Keep shopping</button>
+        <button class="ph-btn ph-btn-ghost" type="button" data-co-nav="landing">Back to home</button>
       </div>
     </div>
   `;
@@ -542,7 +542,7 @@ function emptyHtml() {
       <h1 class="co-title">Your cart is empty</h1>
       <p class="muted">Add a product to your cart and come back to check out.</p>
       <div class="co-empty-actions">
-        <button class="ph-btn" type="button" onclick="window.setAppMode?.('shop')">Open the Hardware Shop</button>
+        <button class="ph-btn" type="button" data-co-nav="shop">Open the Hardware Shop</button>
       </div>
     </div>
   `;
@@ -594,8 +594,8 @@ function notifyConfirmationHtml(email) {
       <h1 class="co-title">You're on the list</h1>
       <p>Thanks! We'll email <strong>${escapeHtml(email)}</strong> the moment it ships.</p>
       <div class="co-empty-actions">
-        <button class="ph-btn" type="button" onclick="window.setAppMode?.('shop')">Keep shopping</button>
-        <button class="ph-btn ph-btn-ghost" type="button" onclick="window.setAppMode?.('landing')">Back to home</button>
+        <button class="ph-btn" type="button" data-co-nav="shop">Keep shopping</button>
+        <button class="ph-btn ph-btn-ghost" type="button" data-co-nav="landing">Back to home</button>
       </div>
     </div>
   `;
@@ -703,6 +703,16 @@ function bindOnce() {
   bindOnce._bound = true;
 
   document.addEventListener('click', (e) => {
+    // Confirmation and empty-state navigation (no inline onclick: CSP).
+    const nav = e.target.closest('[data-co-nav]');
+    if (nav) {
+      e.preventDefault();
+      const to = nav.dataset.coNav;
+      if (to === 'order-to-account') return void window.pragOrderToAccount?.();
+      if (to === 'account-for-order') return void window.pragAccountForOrder?.();
+      window.setAppMode?.(to);
+      return;
+    }
     if (e.target.closest('[data-co-cancel]')) {
       e.preventDefault();
       const wasNotify = !!readNotifyIntent();
