@@ -429,7 +429,8 @@ function openChallenge(challengeToken, methods = {}) {
         <button class="cta tfa-cta" id="tfaVerify" disabled>Verify</button>
       </div>
       ${hasTotp ? `<button class="tfa-link" id="tfaToggle">${recoveryMode ? "Use your authenticator instead" : "Use a recovery code"}</button>` : ""}
-      ${canPasskey ? `<button class="tfa-link" id="tfaBackToPasskey">Use your passkey instead</button>` : ""}`;
+      ${canPasskey ? `<button class="tfa-link" id="tfaBackToPasskey">Use your passkey instead</button>` : ""}
+      <p class="tfa-hint" style="margin:16px 0 0;">Lost your second step and your recovery codes? Email <a class="tfa-link" style="margin:0" href="mailto:support@bridgesindust.com">support@bridgesindust.com</a> from the address on your account.</p>`;
 
     const codeEl = card.querySelector("#tfaCode");
     const btn = card.querySelector("#tfaVerify");

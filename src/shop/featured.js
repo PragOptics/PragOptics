@@ -39,11 +39,21 @@ function primaryBtn(p) {
   return `<button class="cta" type="button" data-action="notify" data-product-id="${escapeHtml(p.id)}">Notify me</button>`;
 }
 
+// Hardware card: the SAME format as the software cards below (full-bleed media
+// banner wrapped into the card top, body under it), so the gallery reads as one
+// row of one kind of card. The product photo fills the banner; a product that
+// only has a poster-style flyer shows it whole on the media ground instead.
 function cardHtml(p) {
-  const img = p.flyer || p.image || '';
+  const photo = p.image || '';
+  const flyer = p.flyer || '';
+  const media = photo
+    ? `<div class="ph-media"><img class="ph-media-img" src="${escapeHtml(photo)}" alt="${escapeHtml(p.name)}" loading="lazy"></div>`
+    : flyer
+      ? `<div class="ph-media ph-media--contain"><img class="ph-media-img" src="${escapeHtml(flyer)}" alt="${escapeHtml(p.name)}" loading="lazy"></div>`
+      : '';
   return `
-    <article class="ph-card ph-brochure">
-      ${img ? `<img class="ph-flyer" src="${escapeHtml(img)}" alt="${escapeHtml(p.name)}" loading="lazy">` : ''}
+    <article class="ph-card ph-brochure${media ? ' ph-vert' : ''}">
+      ${media}
       <div class="ph-card-body">
         <h3>${escapeHtml(p.name)}</h3>
         <p class="ph-price">${priceLine(p)}</p>

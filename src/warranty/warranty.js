@@ -17,7 +17,7 @@
 import { HARDWARE, getProduct } from '../shop/products.js';
 import { renderTransfer, cancelTransfer } from './transfer.js';
 import { renderRedeem, cancelRedeem } from './redeem.js';
-import { framedVideoHtml, bindFramedVideo, hasVideoSource } from '../components/videoOverlay.js';
+import { inlineVideoHtml, bindInlineVideo, hasVideoSource } from '../components/videoOverlay.js';
 import { tierCardsHtml, bindTierCards } from '../components/tierCards.js';
 
 // The printed code alphabet (no I/L/O/U/0/1, so nothing is mistaken while
@@ -114,7 +114,7 @@ function codeStepHtml(p) {
         voltage-set by hand. It is yours to open, probe, and repair for as long as you run it.
         Register it and the printed case is covered for life.</p>
       </div>
-      ${hasVideo ? framedVideoHtml(p.video) : ''}
+      ${hasVideo ? inlineVideoHtml(p.video, { label: 'Watch the How-To' }) : ''}
       <label class="wr-label wr-label-center" for="wrCode">Warranty code, on the card in your case</label>
       <div class="wr-code-row">
         <input id="wrCode" class="wr-code-input" type="text" inputmode="text" autocomplete="off"
@@ -306,8 +306,9 @@ function showCodeStep(p) {
   render(deviceStepHtml() + codeStepHtml(p));
   const sel = $body.querySelector('#wrDevice');
   if (sel) sel.value = p.id;
-  // The How-To plays right on the page, half volume, titled in its frame.
-  if (hasVideoSource(p.video)) bindFramedVideo($body, p.video);
+  // The How-To shows its poster; the player loads only when it is asked for,
+  // so the page never carries a live YouTube frame it is not playing.
+  if (hasVideoSource(p.video)) bindInlineVideo($body, p.video);
   const input = $body.querySelector('#wrCode');
   input?.focus();
 }

@@ -2114,6 +2114,10 @@ function userManageHtml(u, { self }) {
               : `<button class="btn adm-copy btn-danger" type="button" data-um-status="SUSPENDED" ${self ? `disabled title="${lockTitle}"` : 'title="Blocks sign-in and revokes every session. Billing continues. Click twice to confirm."'}>Suspend</button>`}
             ${u.phoneChangesFrozen ? `<button class="btn adm-copy" type="button" data-um-unfreeze title="Lets the account add, verify, and remove mobile numbers again">Unfreeze phone changes</button>` : ''}
           </div>
+          <div class="acct-add-row" style="margin-top:10px;">
+            <input class="acct-input" id="umResetReason" type="text" maxlength="200" placeholder="Reason: ticket number or note (required)" ${self || closed ? 'disabled' : ''} aria-label="Reason for the second-factor reset">
+            <button class="btn adm-copy btn-danger" type="button" data-um-2fa-reset ${self || closed ? 'disabled' : ''} title="Support recovery only: clears the authenticator and every passkey, signs the account out everywhere, and emails the customer. Verify the person first (SUPPORT-RECOVERY). Click twice to confirm.">Reset second factor</button>
+          </div>
         </div>
       `}
       <div class="um-row um-danger">
@@ -2198,6 +2202,12 @@ function openUserManage(userId, email) {
     }
     const unfreeze = e.target.closest('[data-um-unfreeze]');
     if (unfreeze) return void run(unfreeze, { phoneChangesFrozen: false });
+    const tfa = e.target.closest('[data-um-2fa-reset]');
+    if (tfa && !tfa.disabled) {
+      const reason = (hostEl.querySelector('#umResetReason')?.value || '').trim();
+      if (reason.length < 8) { showError('umError', 'Enter the reason first: the support ticket or a note, at least 8 characters.'); return; }
+      return void armConfirm(tfa, `Confirm: reset the second factor of ${row.email || ''}`, () => run(tfa, { secondFactorReset: true, reason }));
+    }
     const closeBtn = e.target.closest('[data-um-close-account]');
     if (closeBtn && !closeBtn.disabled) {
       if (!closeMatches()) { showError('umError', 'Type the account email exactly to enable the close.'); return; }

@@ -36,7 +36,7 @@ function playerHtml(video, { autoplay = false } = {}) {
     // cc_load_policy=0 + the captions-off nudge in tuneYtPlayer: the How-To
     // videos carry burned-in captions, so the player's own track is noise.
     const params = `rel=0&modestbranding=1&playsinline=1&enablejsapi=1&cc_load_policy=0&iv_load_policy=3${autoplay ? '&autoplay=1' : ''}`;
-    return `<iframe class="vo-frame" data-vo-yt
+    return `<iframe class="vo-frame" data-vo-yt loading="lazy"
               src="https://www.youtube-nocookie.com/embed/${esc(video.youtube)}?${params}"
               title="${esc(video.title || 'Video')}"
               allow="accelerometer; autoplay; encrypted-media; picture-in-picture"
