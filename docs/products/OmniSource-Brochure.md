@@ -126,6 +126,54 @@ sub,.fine{ color:var(--muted); font-size:.78rem; }
 .cover-note{ max-width:560px; margin:10px auto 0; color:var(--muted); font-size:.74rem; line-height:1.5; font-style:italic; }
 .pb{ page-break-after:always; }
 @media print{ body{ padding:0 14px; } a{ color:var(--cyan); } }
+
+/* Light theme (Codex viewer with data-theme="light"): the site's inverse palette.
+   Code blocks stay dark in both themes. The PDF export is unaffected (it carries no theme attribute). */
+html[data-theme="light"]{
+  --bg:#ffffff; --panel:#f6f3fc; --glass:rgba(255,255,255,0.78);
+  --ink:#1b1638; --muted:#4a4470; --line:rgba(30,20,64,0.12);
+  --cyan:#6d28d9; --teal:#0f766e; --purple:#0e9c8b; --violet:#0e9c8b;
+  --green:#15803d; --amber:#8a6a1a; --red:#c2273b;
+}
+html[data-theme="light"]{ background:#ffffff; }
+html[data-theme="light"] body{
+  background:
+    radial-gradient(1200px 720px at 82% -8%, rgba(14,156,139,0.12), transparent 60%),
+    radial-gradient(1000px 620px at -12% 8%, rgba(109,40,217,0.10), transparent 55%),
+    linear-gradient(180deg,#ffffff 0%, #f6f3fc 55%, #ffffff 100%);
+}
+html[data-theme="light"] a:hover{ color:var(--purple); }
+html[data-theme="light"] h2{ text-shadow:none; }
+html[data-theme="light"] strong{ color:#0f0a2a; }
+html[data-theme="light"] code{ background:rgba(109,40,217,0.10); }
+html[data-theme="light"] pre code{ background:none; }
+html[data-theme="light"] th{ background:linear-gradient(180deg,rgba(109,40,217,0.14),rgba(14,156,139,0.09)); color:#0f0a2a; }
+html[data-theme="light"] td{ border-bottom-color:rgba(30,20,64,0.08); }
+html[data-theme="light"] tbody tr:nth-child(even) td{ background:rgba(30,20,64,0.025); }
+html[data-theme="light"] .hero{
+  background:
+    radial-gradient(620px 260px at 86% 0%, rgba(14,156,139,0.18), transparent 62%),
+    linear-gradient(135deg, rgba(109,40,217,0.08), rgba(14,156,139,0.08));
+  border-color:rgba(109,40,217,0.28);
+  box-shadow:0 24px 70px rgba(30,20,64,0.12); }
+html[data-theme="light"] .hero h1{ background:linear-gradient(100deg,#0f0a2a, var(--cyan) 58%, var(--purple)); -webkit-background-clip:text; background-clip:text; }
+html[data-theme="light"] .hero .tag{ color:#0f0a2a; }
+html[data-theme="light"] .banner{ color:var(--ink);
+  background:linear-gradient(120deg, rgba(109,40,217,0.08), rgba(14,156,139,0.08));
+  border-top-color:rgba(109,40,217,0.26); border-right-color:rgba(109,40,217,0.26); border-bottom-color:rgba(109,40,217,0.26);
+  box-shadow:0 12px 34px rgba(30,20,64,0.10); }
+html[data-theme="light"] .banner.green{ background:linear-gradient(120deg,rgba(21,128,61,0.08),rgba(15,118,110,0.08)); }
+html[data-theme="light"] .banner.amber{ background:linear-gradient(120deg,rgba(138,106,26,0.10),rgba(14,156,139,0.08)); }
+html[data-theme="light"] .banner .big{ color:#0f0a2a; }
+html[data-theme="light"] .banner .punch, html[data-theme="light"] .banner.amber .punch{ color:#8a6a1a; text-shadow:none; }
+html[data-theme="light"] .flow-card{ box-shadow:0 10px 26px rgba(30,20,64,0.10); }
+html[data-theme="light"] .flow-card .t{ color:#0f0a2a; }
+html[data-theme="light"] .guard.do{ background:linear-gradient(180deg, rgba(21,128,61,0.08), rgba(21,128,61,0.02)); border-color:rgba(21,128,61,0.30); box-shadow:0 14px 34px rgba(30,20,64,0.10); }
+html[data-theme="light"] .guard.do .guard-head{ text-shadow:none; }
+html[data-theme="light"] .guard.do .guard-badge{ background:rgba(21,128,61,0.12); box-shadow:none; }
+html[data-theme="light"] .guard.dont{ background:linear-gradient(180deg, rgba(194,39,59,0.08), rgba(194,39,59,0.02)); border-color:rgba(194,39,59,0.30); box-shadow:0 14px 34px rgba(30,20,64,0.10); }
+html[data-theme="light"] .guard.dont .guard-head{ text-shadow:none; }
+html[data-theme="light"] .guard.dont .guard-badge{ background:rgba(194,39,59,0.12); box-shadow:none; }
 </style>
 
 <div class="cover">

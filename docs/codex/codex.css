@@ -14,7 +14,7 @@ body.codex{
 
 .codex-nav{
   border-right: 1px solid var(--border);
-  background: color-mix(in srgb, var(--shade) 40%, transparent);
+  background: color-mix(in srgb, var(--surface-deep) 72%, transparent);
   -webkit-backdrop-filter: blur(14px) saturate(160%);
   backdrop-filter: blur(14px) saturate(160%);
   padding: 14px 12px;

@@ -56,7 +56,12 @@ const md = markdownit({
    its isolated frame, so richly-styled docs (e.g. the OmniBus brochure) render as
    authored. */
 const BASE_CSS = `
-:root{--bg:#0a0f16;--ink:#e6edf3;--mut:#9fb0c3;--line:#222c39;--cyan:#1fe0ff;--purple:#bf7dff;--code:#0f1620;}
+:root{--bg:#0a0f16;--ink:#e6edf3;--mut:#9fb0c3;--line:#222c39;--cyan:#1fe0ff;--purple:#bf7dff;
+  --code:#0f1620;--th-bg:#121a25;--zebra:rgba(255,255,255,.02);--quote-bg:rgba(191,125,255,.07);
+  --pre-bg:#0f1620;--pre-line:#222c39;--pre-ink:#e6edf3;}
+/* Light theme: the site's inverse palette (accents swap roles). Code blocks stay dark in both. */
+html[data-theme="light"]{--bg:#ffffff;--ink:#1b1638;--mut:#4a4470;--line:#e2dcf2;--cyan:#6d28d9;--purple:#0e9c8b;
+  --code:#ede8f7;--th-bg:#efe9f8;--zebra:rgba(30,20,64,.03);--quote-bg:rgba(109,40,217,.07);}
 *{box-sizing:border-box;}
 html,body{margin:0;background:var(--bg);}
 body{color:var(--ink);font:16px/1.65 -apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
@@ -71,17 +76,17 @@ p{margin:.7em 0;}
 ul,ol{padding-left:1.6em;} li{margin:.25em 0;}
 dl{margin:1em 0;} dt{font-weight:700;color:var(--cyan);margin-top:.85em;} dd{margin:.2em 0 0;color:var(--mut);}
 blockquote{margin:1em 0;padding:.4em 1em;border-left:4px solid var(--purple);
-  background:rgba(191,125,255,.07);color:var(--mut);border-radius:0 8px 8px 0;}
+  background:var(--quote-bg);color:var(--mut);border-radius:0 8px 8px 0;}
 code{background:var(--code);padding:.15em .4em;border-radius:6px;font-size:.9em;
   font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;}
-pre{background:var(--code);border:1px solid var(--line);border-radius:10px;padding:14px 16px;overflow:auto;}
+pre{background:var(--pre-bg);border:1px solid var(--pre-line);color:var(--pre-ink);border-radius:10px;padding:14px 16px;overflow:auto;}
 pre code{background:none;padding:0;font-size:.86em;}
 table{border-collapse:collapse;width:100%;margin:1em 0;}
 .markdown-body table{table-layout:auto;}
 @media (max-width:600px){ .markdown-body table{display:block;overflow-x:auto;-webkit-overflow-scrolling:touch;} }
 th,td{border:1px solid var(--line);padding:7px 12px;text-align:left;}
-th{background:#121a25;font-weight:700;}
-tbody tr:nth-child(2n) td{background:rgba(255,255,255,.02);}
+th{background:var(--th-bg);font-weight:700;}
+tbody tr:nth-child(2n) td{background:var(--zebra);}
 img{max-width:100%;height:auto;}
 hr{border:0;border-top:1px solid var(--line);margin:1.8em 0;}
 `;
@@ -138,8 +143,12 @@ function docDirOf(p) {
   try { return p.slice(0, p.lastIndexOf("/") + 1); } catch (_) { return ""; }
 }
 
+function isLight() {
+  return document.documentElement.getAttribute("data-theme") === "light";
+}
+
 function frameSrcdoc(bodyHtml, baseHref) {
-  return '<!doctype html><html><head><meta charset="utf-8">' +
+  return '<!doctype html><html' + (isLight() ? ' data-theme="light"' : '') + '><head><meta charset="utf-8">' +
     '<meta name="viewport" content="width=device-width,initial-scale=1">' +
     (baseHref ? '<base href="' + baseHref + '">' : "") +
     '<link rel="stylesheet" href="' + VENDOR + 'github-dark.min.css">' +
@@ -148,6 +157,27 @@ function frameSrcdoc(bodyHtml, baseHref) {
 }
 
 let _frame = null;
+
+/* The frame is a same-origin srcdoc document, so its root can be re-stamped in
+   place when the theme changes: from this shell (pragoptics:themechange) or from
+   the main site in another tab (the storage event on the shared theme key). */
+function syncFrameTheme() {
+  try {
+    const el = _frame && _frame.contentDocument && _frame.contentDocument.documentElement;
+    if (!el) return;
+    if (isLight()) el.setAttribute("data-theme", "light");
+    else el.removeAttribute("data-theme");
+  } catch (_) { /* frame not ready */ }
+}
+window.addEventListener("pragoptics:themechange", syncFrameTheme);
+window.addEventListener("storage", (ev) => {
+  if (!ev || ev.key !== "pragoptics_theme") return;
+  const root = document.documentElement;
+  if (ev.newValue === "light") root.setAttribute("data-theme", "light");
+  else root.removeAttribute("data-theme");
+  syncFrameTheme();
+});
+
 window.addEventListener("message", (ev) => {
   const d = ev && ev.data;
   if (d && d.__codexHeight && _frame) _frame.style.height = (d.__codexHeight + 8) + "px";
