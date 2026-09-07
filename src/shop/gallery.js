@@ -38,11 +38,13 @@ function cardHtml(p) {
               data-action="open-product"
               data-product-id="${escapeHtml(p.id)}"
               aria-label="Open details for ${escapeHtml(p.name)}">
-        <div class="pcard-media">
-          <img class="pcard-img${p.flyer ? ' pcard-img--cover' : ''}"
+        <div class="pcard-media${p.flyer ? ' pcard-media--stage' : ''}">
+          ${p.flyer ? `<img class="pcard-ambient" src="${escapeHtml(p.flyer)}" alt="" aria-hidden="true" loading="lazy">` : ''}
+          <img class="pcard-img"
                src="${escapeHtml(p.flyer || p.image)}"
                alt="${escapeHtml(p.name)}"
                loading="lazy">
+          ${p.flyer && p.image && p.image !== p.flyer ? `<img class="pcard-tile" src="${escapeHtml(p.image)}" alt="" loading="lazy">` : ''}
           ${p.badge ? `<span class="pcard-badge">${escapeHtml(p.badge)}</span>` : ''}
           ${availabilityChip(p.availability)}
         </div>
