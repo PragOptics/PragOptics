@@ -101,10 +101,12 @@
 .acct-tag.is-pending { color: #ffcf6a; background: rgba(255,180,40,.12); border: 1px solid rgba(255,180,40,.3); }
 
 .acct-add-row { display: flex; gap: 8px; }
-.acct-input { flex: 1 1 auto; min-width: 0; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border); background: rgba(0,0,0,.28); color: var(--ink); font: inherit; font-size: .9rem; color-scheme: dark; transition: border-color 160ms ease, box-shadow 160ms ease; }
-.acct-input::placeholder { color: var(--muted); opacity: .75; }
-.acct-input:hover { border-color: color-mix(in srgb, var(--brand) 55%, var(--border)); box-shadow: 0 0 0 1px rgba(162,0,255,.22), 0 0 16px rgba(162,0,255,.14); }
-.acct-input:focus-visible { outline: none; border-color: var(--brand-600); box-shadow: 0 0 0 1px rgba(162,0,255,.45), 0 0 14px rgba(162,0,255,.3); }
+/* Inputs share the login form's field look (forms-login.css): --grad fill,
+   hairline border, the teal focus ring. */
+.acct-input { flex: 1 1 auto; min-width: 0; padding: 9px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--grad); color: var(--ink); font: inherit; font-size: .9rem; outline: none; transition: border-color 160ms ease, box-shadow 160ms ease; }
+.acct-input::placeholder { color: var(--muted); opacity: .6; }
+.acct-input:hover { border-color: color-mix(in srgb, var(--brand) 55%, var(--border)); }
+.acct-input:focus-visible { outline: none; border-color: rgba(33,188,165,.45); box-shadow: 0 0 0 1px rgba(33,188,165,.25), 0 0 16px rgba(131,33,188,.15); }
 .acct-label { display: block; font-size: .68rem; letter-spacing: .09em; text-transform: uppercase; color: var(--muted); font-weight: 600; margin: 12px 0 4px; }
 
 .btn-sm { padding: 6px 12px; font-size: .8rem; }
@@ -125,11 +127,14 @@
 
 /* step-up modal */
 .acct-modal-host[hidden] { display: none; }
-.acct-modal-host { position: fixed; inset: 0; z-index: 1100; display: grid; place-items: center; padding: 16px; }
-.acct-modal-mask { position: absolute; inset: 0; background: rgba(4,7,14,.72); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
-.acct-modal { position: relative; width: min(420px, 94vw); background: var(--menu, #0b1120); border: 1px solid var(--border); border-radius: 14px; padding: 20px 22px 18px; box-shadow: 0 24px 70px rgba(0,0,0,.6); }
-.account .acct-modal-h { margin: 0 0 6px; font-size: 1.05rem; font-weight: 700; color: var(--ink); }
-.acct-modal-h { margin: 0 0 6px; font-size: 1.05rem; font-weight: 700; color: var(--ink); }
+/* Step-up and confirmation modals: the site's modal surface (modals.css), not a
+   flat panel. --grad mask that blurs the page, --glass card with the glass blur
+   and --aura, gradient title. Tokens only so the light theme flips it. */
+.acct-modal-host { position: fixed; inset: 0; z-index: 10002; display: grid; place-items: center; padding: 16px; }
+.acct-modal-mask { position: absolute; inset: 0; background: var(--grad); -webkit-backdrop-filter: blur(6px) saturate(120%); backdrop-filter: blur(6px) saturate(120%); }
+.acct-modal { position: relative; width: min(420px, 94vw); background: var(--glass); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px 22px 18px; box-shadow: var(--aura); -webkit-backdrop-filter: blur(14px) saturate(160%); backdrop-filter: blur(14px) saturate(160%); }
+.account .acct-modal-h,
+.acct-modal-h { margin: 0 0 6px; font-size: 1.15rem; font-weight: 800; background: linear-gradient(130deg, var(--ink) 10%, var(--brand-600) 60%, var(--brand-purp) 95%); -webkit-background-clip: text; background-clip: text; color: transparent; }
 .acct-modal-note { margin: 0 0 8px; color: var(--muted); font-size: .84rem; line-height: 1.5; }
 .acct-modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 16px; }
 

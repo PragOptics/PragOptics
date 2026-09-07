@@ -89,7 +89,7 @@ function credentialToJSON(cred) {
 function friendlyWebAuthnError(e) {
   const n = e?.name || "";
   if (n === "NotAllowedError") return "The passkey prompt was cancelled or timed out. Try again.";
-  if (n === "InvalidStateError") return "This passkey is already registered here.";
+  if (n === "InvalidStateError") return "This device already holds a passkey for this account. Sign in and use it.";
   if (n === "SecurityError") return "Passkeys need a secure page on the site's own domain.";
   if (n === "NotSupportedError") return "This device or browser does not support passkeys.";
   return e?.message || "The passkey step did not complete.";

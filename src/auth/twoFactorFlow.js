@@ -11,6 +11,7 @@
 // after the backend returns an access token from one of the 2FA endpoints.
 
 import { PRAG_API_BASE } from "../runtime/config.js";
+import { fetchWithDna } from "../api/fetchWithDna.js";
 import { passkeySupported, registerPasskey, authenticatePasskey } from "./passkey.js";
 
 // ---- shared session finalizer (mirrors native.js / login.modal.js) ------
@@ -18,7 +19,7 @@ async function finalizeSession(tokens) {
   if (typeof globalThis.setToken === "function") globalThis.setToken(tokens);
   else sessionStorage.setItem("pragoptics_tokens", JSON.stringify(tokens));
 
-  const pingRes = await fetch(`${PRAG_API_BASE}/ping`, {
+  const pingRes = await fetchWithDna(`${PRAG_API_BASE}/ping`, {
     headers: { Authorization: `Bearer ${tokens.access_token}` }
   });
   if (!pingRes.ok) throw new Error(`Ping failed: HTTP ${pingRes.status}`);
@@ -34,8 +35,10 @@ async function finalizeSession(tokens) {
   if (typeof globalThis.applyPostLoginResolution === "function") return globalThis.applyPostLoginResolution({ ping });
 }
 
+// Every call here runs under the DNA processing veil, like the rest of the
+// site's API traffic (src/api/fetchWithDna.js).
 async function post2fa(path, token, body) {
-  const res = await fetch(`${PRAG_API_BASE}${path}`, {
+  const res = await fetchWithDna(`${PRAG_API_BASE}${path}`, {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
     body: JSON.stringify(body || {})
@@ -60,38 +63,53 @@ function host() {
   if (!h) {
     h = document.createElement("div");
     h.id = "twoFaHost";
+    // Same surface language as the site's own modals (css/components/modals.css,
+    // forms-login.css): a --grad mask that blurs what is behind it, a --glass
+    // card with the 14px glass blur and the --aura shadow, gradient title,
+    // --grad inputs, and the site's .cta / .btn buttons. Tokens only, so the
+    // light theme flips it too. Above the login modal (10000/10001) so a
+    // sign-in never shows through the second step.
     h.innerHTML = `<style>
-      #twoFaHost .tfa-mask{position:fixed;inset:0;background:rgba(4,8,18,.72);z-index:1000;}
-      #twoFaHost .tfa-modal{position:fixed;inset:0;z-index:1001;display:grid;place-items:center;padding:20px;}
-      #twoFaHost .tfa-card{width:min(440px,94vw);max-height:92vh;overflow:auto;background:#0d1424;
-        border:1px solid #1e2c48;border-radius:16px;padding:26px;color:#e8eefc;
-        box-shadow:0 24px 60px rgba(0,0,0,.5);font-size:14px;line-height:1.55;}
-      #twoFaHost h3{margin:0 0 6px;font-size:20px;color:#fff;}
-      #twoFaHost .tfa-sub{color:#9fb0d0;margin:0 0 18px;}
-      #twoFaHost .tfa-qr{background:#fff;border-radius:12px;padding:12px;width:190px;height:190px;margin:0 auto 14px;}
+      #twoFaHost .tfa-mask{position:fixed;inset:0;background:var(--grad);z-index:10002;
+        -webkit-backdrop-filter:blur(6px) saturate(120%);backdrop-filter:blur(6px) saturate(120%);}
+      #twoFaHost .tfa-modal{position:fixed;inset:0;z-index:10003;display:grid;place-items:center;padding:20px;}
+      #twoFaHost .tfa-card{width:min(440px,94vw);max-height:92vh;overflow:auto;background:var(--glass);
+        border:1px solid var(--border);border-radius:var(--radius);padding:22px 24px;color:var(--ink);
+        box-shadow:var(--aura);font-size:14px;line-height:1.55;
+        -webkit-backdrop-filter:blur(14px) saturate(160%);backdrop-filter:blur(14px) saturate(160%);}
+      #twoFaHost h3{margin:0 0 6px;font-size:1.25rem;font-weight:800;
+        background:linear-gradient(130deg,var(--ink) 10%,var(--brand-600) 60%,var(--brand-purp) 95%);
+        -webkit-background-clip:text;background-clip:text;color:transparent;}
+      #twoFaHost .tfa-sub{color:var(--muted);margin:0 0 18px;}
+      #twoFaHost .tfa-sub b{color:var(--ink);font-weight:600;}
+      /* The QR itself stays on white: scanner apps need the contrast. Only the tile is themed. */
+      #twoFaHost .tfa-qr{background:#fff;border:1px solid var(--border);border-radius:var(--radius-sm);
+        padding:12px;width:190px;height:190px;margin:0 auto 14px;box-sizing:content-box;}
       #twoFaHost .tfa-qr svg{width:100%;height:100%;display:block;}
       #twoFaHost .tfa-secret{font-family:ui-monospace,Menlo,Consolas,monospace;letter-spacing:2px;
-        background:#0a1120;border:1px solid #1e2c48;border-radius:8px;padding:10px 12px;color:#8fe6dc;
-        word-break:break-all;text-align:center;margin:0 0 6px;}
-      #twoFaHost .tfa-hint{font-size:12px;color:#7f92b4;margin:0 0 16px;text-align:center;}
+        background:var(--grad);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 12px;
+        color:var(--brand-600);word-break:break-all;text-align:center;margin:0 0 6px;}
+      #twoFaHost .tfa-hint{font-size:12px;color:var(--muted);margin:0 0 16px;text-align:center;}
       #twoFaHost input.tfa-code{width:100%;box-sizing:border-box;font-size:20px;letter-spacing:6px;
-        text-align:center;padding:12px;border-radius:10px;border:1px solid #26365a;background:#0a1120;
-        color:#fff;font-family:ui-monospace,monospace;}
-      #twoFaHost .tfa-err{color:#ff9a9a;font-size:13px;min-height:18px;margin:8px 0 0;}
+        text-align:center;padding:12px;border-radius:var(--radius-sm);border:1px solid var(--border);
+        background:var(--grad);color:var(--ink);font-family:ui-monospace,monospace;outline:none;
+        transition:border-color 160ms ease,box-shadow 160ms ease;}
+      #twoFaHost input.tfa-code::placeholder{color:var(--muted);opacity:.45;}
+      #twoFaHost input.tfa-code:focus{border-color:rgba(33,188,165,.45);
+        box-shadow:0 0 0 1px rgba(33,188,165,.25),0 0 16px rgba(131,33,188,.15);}
+      #twoFaHost .tfa-err{color:#ff9aa2;font-size:13px;min-height:18px;margin:8px 0 0;}
       #twoFaHost .tfa-actions{display:flex;gap:10px;margin-top:18px;}
-      #twoFaHost button.tfa-cta{flex:1;padding:12px;border-radius:10px;border:0;cursor:pointer;
-        background:linear-gradient(135deg,#2f9e8a,#8fe6dc);color:#04121a;font-weight:700;font-size:14px;}
-      #twoFaHost button.tfa-cta:disabled{opacity:.5;cursor:not-allowed;}
-      #twoFaHost button.tfa-ghost{padding:12px 16px;border-radius:10px;border:1px solid #26365a;
-        background:transparent;color:#9fb0d0;cursor:pointer;font-size:14px;}
-      #twoFaHost .tfa-link{background:none;border:0;color:#8fe6dc;cursor:pointer;font-size:13px;
-        padding:0;margin-top:12px;text-decoration:underline;}
+      #twoFaHost .tfa-actions .tfa-cta{flex:1;}
+      #twoFaHost .tfa-link{background:none;border:0;color:var(--brand-600);cursor:pointer;font-size:13px;
+        padding:0;margin-top:12px;text-decoration:underline;text-underline-offset:3px;}
+      #twoFaHost .tfa-link:hover{color:var(--brand-purp);}
       #twoFaHost .tfa-codes{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:14px 0;}
-      #twoFaHost .tfa-codes code{background:#0a1120;border:1px solid #1e2c48;border-radius:6px;
-        padding:8px;text-align:center;font-family:ui-monospace,monospace;color:#e8eefc;letter-spacing:1px;}
-      #twoFaHost .tfa-ack{display:flex;gap:8px;align-items:flex-start;margin:14px 0 0;color:#cfd8ee;font-size:13px;}
-      #twoFaHost .tfa-warn{background:#1a1206;border:1px solid #4a3410;color:#ffcf8f;border-radius:8px;
-        padding:10px 12px;font-size:12px;margin:0 0 14px;}
+      #twoFaHost .tfa-codes code{background:var(--grad);border:1px solid var(--border);border-radius:8px;
+        padding:8px;text-align:center;font-family:ui-monospace,monospace;color:var(--ink);letter-spacing:1px;}
+      #twoFaHost .tfa-ack{display:flex;gap:8px;align-items:flex-start;margin:14px 0 0;color:var(--muted);font-size:13px;}
+      #twoFaHost .tfa-ack input{accent-color:var(--brand-600);margin-top:3px;}
+      #twoFaHost .tfa-warn{background:rgba(255,204,0,.07);border:1px solid var(--brand-warn);color:var(--brand-warn);
+        border-radius:var(--radius-sm);padding:10px 12px;font-size:12px;margin:0 0 14px;}
     </style><div class="tfa-mask"></div><div class="tfa-modal"><div class="tfa-card" role="dialog" aria-modal="true"></div></div>`;
     document.body.appendChild(h);
   }
@@ -117,8 +135,8 @@ export function promptForCode({ title = "Confirm it's you", sub = "Enter the 6-d
       <input class="tfa-code" id="tfaPromptCode" inputmode="numeric" autocomplete="one-time-code" maxlength="12" placeholder="000000" aria-label="Code">
       <p class="tfa-err" id="tfaPromptErr"></p>
       <div class="tfa-actions">
-        <button class="tfa-ghost" data-cancel>Cancel</button>
-        <button class="tfa-cta" id="tfaPromptGo" disabled>Continue</button>
+        <button class="btn tfa-ghost" data-cancel>Cancel</button>
+        <button class="cta tfa-cta" id="tfaPromptGo" disabled>Continue</button>
       </div>`;
     const codeEl = card.querySelector("#tfaPromptCode");
     const btn = card.querySelector("#tfaPromptGo");
@@ -135,7 +153,7 @@ export function promptForCode({ title = "Confirm it's you", sub = "Enter the 6-d
 // Ask the API to email a one-time code for two-factor setup. Public route, no
 // bearer: the account already exists, and the point is to prove the inbox.
 async function requestEnrollOtp(email) {
-  const res = await fetch(`${PRAG_API_BASE}/auth/request-code`, {
+  const res = await fetchWithDna(`${PRAG_API_BASE}/auth/request-code`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email: String(email || "").trim().toLowerCase(), purpose: "mfa-enroll", channel: "email" })
@@ -166,10 +184,10 @@ async function openEnrollment(enrollmentToken, email, emailProofRequired = false
     <h3>Choose your second step</h3>
     <p class="tfa-sub">Every sign-in needs one more step after your password. Pick the one you'll find easiest. You can add the other later from your account.</p>
     <div class="tfa-actions" style="flex-direction:column;gap:10px;">
-      <button class="tfa-cta" id="tfaPickPasskey">Passkey: fingerprint, face, or PIN on this device</button>
-      <button class="tfa-ghost" id="tfaPickTotp" style="text-align:center;">Authenticator app: a 6-digit code</button>
+      <button class="cta tfa-cta" id="tfaPickPasskey">Passkey: fingerprint, face, or PIN on this device</button>
+      <button class="btn tfa-ghost" id="tfaPickTotp" style="text-align:center;">Authenticator app: a 6-digit code</button>
     </div>
-    <div class="tfa-actions"><button class="tfa-ghost" data-cancel>Cancel</button></div>`;
+    <div class="tfa-actions"><button class="btn tfa-ghost" data-cancel>Cancel</button></div>`;
   card.querySelector("[data-cancel]").onclick = closeHost;
   card.querySelector("#tfaPickTotp").onclick = () => enrollAuthenticator(enrollmentToken, email, emailProofRequired);
   card.querySelector("#tfaPickPasskey").onclick = () => enrollPasskeyFirst(enrollmentToken, email, emailProofRequired);
@@ -187,7 +205,7 @@ async function enrollPasskeyFirst(enrollmentToken, email, emailProofRequired) {
     try { otpRequestId = await requestEnrollOtp(email); }
     catch (e) {
       card.innerHTML = `<h3>Set up your passkey</h3><p class="tfa-err">${esc(e.message || "Could not send the code.")}</p>
-        <div class="tfa-actions"><button class="tfa-ghost" data-close>Close</button></div>`;
+        <div class="tfa-actions"><button class="btn tfa-ghost" data-close>Close</button></div>`;
       card.querySelector("[data-close]").onclick = closeHost;
       return;
     }
@@ -202,8 +220,8 @@ async function enrollPasskeyFirst(enrollmentToken, email, emailProofRequired) {
     <p class="tfa-hint"><button type="button" class="tfa-link" id="tfaOtpResend">Resend the code</button></p>` : ""}
     <p class="tfa-err" id="tfaErr"></p>
     <div class="tfa-actions">
-      <button class="tfa-ghost" data-back>Back</button>
-      <button class="tfa-cta" id="tfaGo" ${emailProofRequired ? "disabled" : ""}>Create passkey</button>
+      <button class="btn tfa-ghost" data-back>Back</button>
+      <button class="cta tfa-cta" id="tfaGo" ${emailProofRequired ? "disabled" : ""}>Create passkey</button>
     </div>`;
   const otpEl = card.querySelector("#tfaOtp");
   const btn = card.querySelector("#tfaGo");
@@ -249,7 +267,7 @@ async function enrollAuthenticator(enrollmentToken, email, emailProofRequired = 
     if (emailProofRequired) otpRequestId = await requestEnrollOtp(email);
   } catch (e) {
     card.innerHTML = `<h3>Set up two-factor</h3><p class="tfa-err">${esc(e.message || "Could not start setup.")}</p>
-      <div class="tfa-actions"><button class="tfa-ghost" data-close>Close</button></div>`;
+      <div class="tfa-actions"><button class="btn tfa-ghost" data-close>Close</button></div>`;
     card.querySelector("[data-close]").onclick = closeHost;
     return;
   }
@@ -267,8 +285,8 @@ async function enrollAuthenticator(enrollmentToken, email, emailProofRequired = 
     <input class="tfa-code" id="tfaOtp" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="000000" aria-label="Emailed 6-digit code">` : ""}
     <p class="tfa-err" id="tfaErr"></p>
     <div class="tfa-actions">
-      <button class="tfa-ghost" data-cancel>Cancel</button>
-      <button class="tfa-cta" id="tfaVerify" disabled>Verify &amp; continue</button>
+      <button class="btn tfa-ghost" data-cancel>Cancel</button>
+      <button class="cta tfa-cta" id="tfaVerify" disabled>Verify &amp; continue</button>
     </div>`;
 
   const codeEl = card.querySelector("#tfaCode");
@@ -317,12 +335,12 @@ function showRecoveryCodes(codes, tokens) {
     <p class="tfa-sub">If you lose your authenticator, one of these gets you back in. Each works once. Store them somewhere safe. They are shown only now.</p>
     <div class="tfa-codes">${codes.map((c) => `<code>${esc(c)}</code>`).join("")}</div>
     <div class="tfa-actions">
-      <button class="tfa-ghost" id="tfaCopy">Copy</button>
-      <button class="tfa-ghost" id="tfaDownload">Download</button>
+      <button class="btn tfa-ghost" id="tfaCopy">Copy</button>
+      <button class="btn tfa-ghost" id="tfaDownload">Download</button>
     </div>
     <label class="tfa-ack"><input type="checkbox" id="tfaAck"> I have saved these recovery codes somewhere safe.</label>
     <div class="tfa-actions">
-      <button class="tfa-cta" id="tfaFinish" disabled>Finish</button>
+      <button class="cta tfa-cta" id="tfaFinish" disabled>Finish</button>
     </div>`;
 
   const text = codes.join("\n");
@@ -372,8 +390,8 @@ function openChallenge(challengeToken, methods = {}) {
         <p class="tfa-sub">Confirm it's you with your passkey. Your device will ask for your fingerprint, face, or PIN.</p>
         <p class="tfa-err" id="tfaErr"></p>
         <div class="tfa-actions">
-          <button class="tfa-ghost" data-cancel>Cancel</button>
-          <button class="tfa-cta" id="tfaPasskey">Use passkey</button>
+          <button class="btn tfa-ghost" data-cancel>Cancel</button>
+          <button class="cta tfa-cta" id="tfaPasskey">Use passkey</button>
         </div>
         <button class="tfa-link" id="tfaToggle">${hasTotp ? "Use your authenticator code instead" : "Use a recovery code instead"}</button>`;
       const btn = card.querySelector("#tfaPasskey");
@@ -407,8 +425,8 @@ function openChallenge(challengeToken, methods = {}) {
         : 'inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="000000"'} aria-label="verification code">
       <p class="tfa-err" id="tfaErr"></p>
       <div class="tfa-actions">
-        <button class="tfa-ghost" data-cancel>Cancel</button>
-        <button class="tfa-cta" id="tfaVerify" disabled>Verify</button>
+        <button class="btn tfa-ghost" data-cancel>Cancel</button>
+        <button class="cta tfa-cta" id="tfaVerify" disabled>Verify</button>
       </div>
       ${hasTotp ? `<button class="tfa-link" id="tfaToggle">${recoveryMode ? "Use your authenticator instead" : "Use a recovery code"}</button>` : ""}
       ${canPasskey ? `<button class="tfa-link" id="tfaBackToPasskey">Use your passkey instead</button>` : ""}`;
