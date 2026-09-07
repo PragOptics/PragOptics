@@ -2465,6 +2465,12 @@ async function runWebhookSync(btn, url, label) {
     }
     if (Array.isArray(res.created) && res.created.length) text += `. Registered: ${res.created.join(', ')}`;
     if (Array.isArray(res.missingBefore) && res.missingBefore.length) text += `. Added events: ${res.missingBefore.join(', ')}`;
+    // Shippo sync now converges: stale-token, inactive and duplicate webhooks
+    // at our address are deleted. Show what went so a rotation is visible.
+    if (Array.isArray(res.removed) && res.removed.length) {
+      text += `. Removed ${res.removed.length} stale: ${res.removed.map(r => `${r.event} (${r.reason})`).join(', ')}`;
+    }
+    if (Array.isArray(res.existing) && res.existing.length && !(res.created || []).length) text += `. Already correct: ${res.existing.join(', ')}`;
     if (out) { out.textContent = text; out.hidden = false; }
   } catch (ex) {
     if (out) { out.textContent = `${label}: ${friendlyError(ex, 'sync failed')}`; out.hidden = false; }
