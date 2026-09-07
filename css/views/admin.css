@@ -424,6 +424,27 @@ th.adm-num { text-align: right; }
 .adm-side-who { color: var(--ink); font-size: .8rem; font-weight: 600; word-break: break-all; }
 .adm-side-role { color: var(--muted); font-size: .68rem; letter-spacing: .08em; text-transform: uppercase; }
 
+/* Report Anomaly: a small glass card that sits with the sign-out foot at the
+   bottom of the rail, above its divider. The image is a white line drawing on
+   transparency, so the light theme inverts it to ink. */
+.adm-side-report {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  background: var(--glass);
+  -webkit-backdrop-filter: blur(10px) saturate(140%);
+  backdrop-filter: blur(10px) saturate(140%);
+  box-shadow: var(--aura);
+}
+.adm-side-report + .adm-side-foot { margin-top: 0; }
+.adm-side-report-img { width: 56px; height: 42px; object-fit: contain; flex: none; opacity: .92; }
+html[data-theme="light"] .adm-side-report-img { filter: invert(1); opacity: .85; }
+.adm-side-report-btn { flex: 1 1 auto; white-space: nowrap; }
+
 /* ---------- main ---------- */
 .adm-main { padding: 22px 24px 26px; min-width: 0; }
 /* The global `header { position: fixed }` rule is for the SITE nav. These are
@@ -602,7 +623,7 @@ select.adm-select option:checked, select.adm-input option:checked {
 @media (max-width: 46rem) {
   .adm-shell { grid-template-columns: minmax(0, 1fr); }
   .adm-side { flex-direction: row; align-items: center; border-right: 0; border-bottom: 1px solid var(--border); padding: 10px; gap: 4px; overflow-x: auto; }
-  .adm-side-brand, .adm-side-foot { display: none; }
+  .adm-side-brand, .adm-side-foot, .adm-side-report { display: none; }
   .adm-nav { flex-direction: row; }
   .adm-nav-item span:not(.adm-nav-ico) { display: none; }
   .adm-nav-item { padding: 9px 12px; }
@@ -647,3 +668,32 @@ select.adm-select option:checked, select.adm-input option:checked {
 
 /* Orders desk: stack the per-order action buttons (label + refund). */
 .adm-order-actions { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+
+
+/* ---- Notifications desk ---- */
+.nt-table td { vertical-align: top; }
+.nt-detail { font-size: .78rem; line-height: 1.4; max-width: 26rem; margin-top: 2px; }
+.nt-group { font-size: .68rem; letter-spacing: .08em; text-transform: uppercase; margin-top: 4px; }
+.nt-auds { display: flex; flex-wrap: wrap; gap: 6px 12px; }
+.nt-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
+.nt-chip { display: inline-flex; align-items: center; gap: 6px; }
+.nt-chip button { border: 0; background: transparent; color: inherit; cursor: pointer; font: inherit; font-size: .9rem; padding: 0 2px; line-height: 1; }
+.nt-chip button:hover { color: var(--danger); }
+.nt-add { max-width: 16rem; }
+.nt-result { font-size: .84rem; }
+.nt-notice-named { margin: 10px 0; }
+.nt-message { width: 100%; min-width: 0; box-sizing: border-box; resize: vertical; margin-top: 8px; font: inherit; line-height: 1.5; }
+#ntSubject { width: 100%; min-width: 0; box-sizing: border-box; margin-top: 10px; }
+
+/* ---- Reports desk ---- */
+.rp-card { margin-bottom: 12px; }
+.rp-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin-bottom: 8px; }
+.rp-head code { font-weight: 700; letter-spacing: .06em; }
+.rp-summary { font-weight: 600; color: var(--ink); margin: 0 0 6px; }
+.rp-details-text { white-space: pre-wrap; }
+.rp-details { margin-top: 8px; }
+.rp-details summary { cursor: pointer; color: var(--muted); font-size: .84rem; }
+.rp-diag { margin: 8px 0 0; font-size: .8rem; color: var(--ink); border-collapse: collapse; }
+.rp-diag td { padding: 2px 12px 2px 0; vertical-align: top; }
+.rp-note { margin-top: 10px; }
+.rp-note textarea { width: 100%; min-width: 0; box-sizing: border-box; resize: vertical; font: inherit; line-height: 1.5; }

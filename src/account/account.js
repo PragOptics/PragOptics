@@ -16,6 +16,11 @@ import { registerPasskey, passkeySupported } from '../auth/passkey.js';
 import { switchLane, isPlatformOperator } from '../runtime/lane.js';
 import { tierName, ADDON_NAME } from '../components/tierCopy.js';
 import { mountPricingSelect } from '../components/pricingCards.js';
+import { openReportAnomaly, installErrorCapture } from './report.js';
+
+// Report Anomaly attaches the last few console errors to a report, so the
+// collector starts with the panel module, not with the first click.
+installErrorCapture();
 
 const ALIASES_URL = `${PRAG_API_BASE}/auth/aliases`;
 const PHONE_START_URL = `${PRAG_API_BASE}/auth/phone/start`;
@@ -54,6 +59,12 @@ const PRINT_QUEUE_URL = `${PRAG_API_BASE}/admin/print-queue`;
 const USAGE_MINE_URL = `${PRAG_API_BASE}/usage/mine`;
 const ADMIN_USAGE_URL = `${PRAG_API_BASE}/admin/usage/overview`;
 const ADMIN_COSTS_URL = `${PRAG_API_BASE}/admin/costs`;
+const NOTIFY_PREFS_URL = `${PRAG_API_BASE}/account/notifications`;
+const ADMIN_NOTIFY_URL = `${PRAG_API_BASE}/admin/notifications`;
+const ADMIN_NOTIFY_TEST_URL = `${PRAG_API_BASE}/admin/notifications/test`;
+const ADMIN_NOTIFY_SEND_URL = `${PRAG_API_BASE}/admin/notifications/send`;
+const ADMIN_ANOMALIES_URL = `${PRAG_API_BASE}/admin/anomalies`;
+const ADMIN_ANOMALY_PATCH_URL = `${PRAG_API_BASE}/admin/anomalies/patch`;
 
 // Catalog snapshots survive lane flips (localStorage is per-origin, and the
 // lane toggle reloads the same origin): snapshot on one lane, import on the
@@ -260,7 +271,9 @@ const ICONS = {
   users:        '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
   warranty:     '<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M7 11h5"/><path d="M7 15h8"/><path d="M16 3l4 4"/><path d="M8 3L4 7"/>',
   inventory:    '<path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="M3.27 6.96L12 12.01l8.73-5.05"/><path d="M12 22.08V12"/>',
-  catalog:      '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>'
+  catalog:      '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>',
+  notify:       '<path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/>',
+  reports:      '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M12 7v4"/><path d="M12 14h.01"/>'
 };
 
 const ACCOUNT_SECTIONS = [
@@ -274,6 +287,8 @@ const ACCOUNT_SECTIONS = [
 const INTERNAL_SECTIONS = [
   { id: 'overview',   label: 'Overview' },
   { id: 'users',      label: 'Users' },
+  { id: 'notify',     label: 'Notifications' },
+  { id: 'reports',    label: 'Reports' },
   { id: 'shiporders', label: 'Orders' },
   { id: 'payments',   label: 'Payments' },
   { id: 'warranty',   label: 'Warranty' },
@@ -318,6 +333,11 @@ function shellHtml() {
             ${navItemsHtml(INTERNAL_SECTIONS)}
           ` : ''}
         </ul>
+        <div class="adm-side-report">
+          <img class="adm-side-report-img" src="/images/anomaly.png" alt="" width="56" height="42">
+          <button class="btn btn-sm adm-side-report-btn" type="button" data-acct-action="report-anomaly"
+            title="Tell us about a bug or anything that looked wrong. Page details come along so we can find it.">Report Anomaly</button>
+        </div>
         <div class="adm-side-foot">
           <button class="btn acct-signout" type="button" data-acct-action="logout">Sign out</button>
         </div>
@@ -380,6 +400,15 @@ async function renderProfile(main) {
       <p class="acct-error" id="acctPhoneError" hidden></p>
     </section>
     <section class="acct-card">
+      <h3 class="acct-card-h">Notifications</h3>
+      <p class="acct-card-note">Order, warranty, and security email always comes to your primary address: it is your record. Add text messages per category once your mobile number is verified, and choose whether to hear news from us.</p>
+      <div id="acctNotifyPrefs"><span class="acct-loading">Loading…</span></div>
+      <div class="acct-add-row">
+        <button class="cta btn-sm" type="button" data-acct-action="notify-save">Save</button>
+      </div>
+      <p class="acct-error" id="acctNotifyError" hidden></p>
+    </section>
+    <section class="acct-card">
       <h3 class="acct-card-h">Password</h3>
       <p class="acct-card-note">Change your password without signing out. Doing so signs out every other device.</p>
       <div class="acct-add-row">
@@ -411,6 +440,7 @@ async function renderProfile(main) {
   await loadAliases();
   await loadPhone();
   await loadPasskeys();
+  await loadNotifyPrefs();
 }
 
 /* ---------- close account ---------- */
@@ -596,6 +626,95 @@ async function removePhone() {
     await apiFetch(PHONE_REMOVE_URL, { method: 'POST', body: JSON.stringify({}) });
     await loadPhone();
   } catch (ex) { showError('acctPhoneError', friendlyError(ex, 'Could not remove that number.')); }
+}
+
+/* ---------- notifications (the customer's own preferences) ---------- */
+
+// Order, warranty, and security email is the record and always goes out. What a
+// customer adds here is text-message delivery per category, once a mobile is
+// verified (the card above), and whether to hear news at all (off unless on).
+let notifyPrefs = null;   // last GET /account/notifications payload
+
+function notifyPrefsHtml(d) {
+  const cats = Array.isArray(d.categories) ? d.categories : [];
+  const smsOff = !d.phoneVerified || !d.smsAvailable;
+  const why = !d.smsAvailable
+    ? 'Text messages are not switched on for this platform yet.'
+    : !d.phoneVerified ? 'Verify a mobile number above to turn on texts.' : '';
+  return `
+    <ul class="acct-notify-list">
+      ${cats.map(c => {
+        const p = d.prefs?.[c.key] || {};
+        const sms = c.channels.includes('sms');
+        const em = c.channels.includes('email');
+        return `
+          <li class="acct-notify-row">
+            <div class="acct-notify-main">
+              <span class="acct-notify-name">${escapeHtml(c.label)}</span>
+              <span class="acct-notify-detail muted">${escapeHtml(c.detail)}</span>
+            </div>
+            <div class="acct-notify-ctl">
+              ${sms ? `<label class="um-check ${smsOff ? 'is-locked' : ''}" ${why ? `title="${escapeHtml(why)}"` : ''}>
+                <input type="checkbox" data-np="${escapeHtml(c.key)}|sms" ${p.sms ? 'checked' : ''} ${smsOff ? 'disabled' : ''}> Text me</label>` : ''}
+              ${em ? `<label class="um-check"><input type="checkbox" data-np="${escapeHtml(c.key)}|email" ${p.email ? 'checked' : ''}> Email me</label>` : ''}
+            </div>
+          </li>`;
+      }).join('')}
+    </ul>
+    ${why ? `<p class="acct-card-note acct-notify-why">${escapeHtml(why)}</p>` : ''}
+  `;
+}
+
+async function loadNotifyPrefs() {
+  const host = document.getElementById('acctNotifyPrefs');
+  if (!host) return;
+  try {
+    notifyPrefs = await apiFetch(NOTIFY_PREFS_URL);
+    host.innerHTML = notifyPrefsHtml(notifyPrefs);
+  } catch (ex) {
+    // The route arrives with the backend deploy; until then the card says so
+    // instead of erroring.
+    host.innerHTML = `<span class="acct-card-note">${ex?.status === 404
+      ? 'Notification settings are not available on this lane yet.'
+      : escapeHtml(friendlyError(ex, 'Could not load notification settings.'))}</span>`;
+    const save = document.querySelector('[data-acct-action="notify-save"]');
+    if (save && ex?.status === 404) save.disabled = true;
+  }
+}
+
+async function saveNotifyPrefs(btn) {
+  const host = document.getElementById('acctNotifyPrefs');
+  if (!host) return;
+  const prefs = {};
+  host.querySelectorAll('[data-np]').forEach(el => {
+    const [key, ch] = String(el.dataset.np || '').split('|');
+    if (!key || !ch) return;
+    (prefs[key] ||= {})[ch] = el.checked === true;
+  });
+  showError('acctNotifyError', '');
+  const orig = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Saving…';
+  try {
+    const data = await apiFetch(NOTIFY_PREFS_URL, { method: 'POST', body: JSON.stringify({ prefs }) });
+    notifyPrefs = data;
+    host.innerHTML = notifyPrefsHtml(data);
+    btn.textContent = 'Saved';
+    if (data.needsPhone) showError('acctNotifyError', 'Saved. Texts stayed off: verify a mobile number first, then turn them on.');
+    setTimeout(() => { btn.textContent = orig; }, 1400);
+  } catch (ex) {
+    btn.textContent = orig;
+    showError('acctNotifyError', friendlyError(ex, 'Could not save notification settings.'));
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+/* ---------- report anomaly ---------- */
+
+// The modal lives in src/account/report.js; it needs the token and the address
+// for the receipt line, and the same error voice as the rest of the panel.
+function reportAnomaly() {
+  return openReportAnomaly({ token: accessToken(), email: currentEmail(), friendlyError });
 }
 
 /* ---------- platform lane (operators only) ---------- */
@@ -1036,7 +1155,12 @@ function productItemHtml(it) {
   const name = PRODUCT_NAMES[it.productId] || it.productId || 'Device';
   const e = it.eligibility || {};
   let statusHtml, action;
-  if (e.pendingRedemptionId) {
+  if (e.resumable && e.pendingRedemptionId) {
+    // The owner's own unfinished start (a closed tab at payment). Picking it
+    // up lands on the same checkout; the server resumes or re-quotes.
+    statusHtml = '<span class="acct-tag is-pending">Redemption started</span>';
+    action = `<button class="btn btn-sm" type="button" data-acct-action="redeem-product" data-code="${escapeHtml(it.code || '')}" title="Continue the redemption you started. Same address and shipping resumes it; anything else re-quotes.">Resume redemption</button>`;
+  } else if (e.pendingRedemptionId) {
     statusHtml = '<span class="acct-tag is-pending">Redemption in progress</span>';
     action = '';
   } else if (e.eligible) {
@@ -1703,7 +1827,9 @@ function orderStatusPill(status) {
   const s = String(status || '').toUpperCase();
   const good = ['PAID', 'LABEL_PURCHASED', 'SHIPPED', 'DELIVERED'].includes(s);
   const bad = ['REFUNDED', 'PARTIALLY_REFUNDED', 'PAYMENT_FAILED', 'RETURNED'].includes(s);
-  return `<span class="acct-tag ${bad ? 'is-bad' : good ? 'is-verified' : 'is-pending'}">${escapeHtml(s.replaceAll('_', ' ').toLowerCase() || 'pending')}</span>`;
+  // An abandoned or superseded start was never money expected: no warning color.
+  const quiet = ['ABANDONED', 'CANCELED', 'SUPERSEDED'].includes(s);
+  return `<span class="acct-tag ${bad ? 'is-bad' : good ? 'is-verified' : quiet ? '' : 'is-pending'}">${escapeHtml(s.replaceAll('_', ' ').toLowerCase() || 'pending')}</span>`;
 }
 
 function orderLinesLabel(lines) {
@@ -2300,6 +2426,349 @@ async function renderUsers(main) {
     document.getElementById('admUsersBody').innerHTML = '';
     showError('admUsersError', friendlyError(ex, 'Could not load users.'));
   }
+}
+
+/* ---------- internal notifications: who hears about what, by role ---------- */
+
+// The routing lives on the server (PlatformSettings, read live on every send).
+// This desk edits it: for each platform event, the roles on the Users table,
+// the operator flag, and named accounts that receive it, by email and by text.
+// A notice is the same audience model turned into an outbound message.
+let ntState = null;                    // { events, members, audiences, staffRoles, smsConfigured, routes, updatedAt }
+let ntNotice = { roles: [], userIds: [] };
+
+const NT_AUDIENCE_LABEL = {
+  operators: 'Operators (admin flag)', owner: 'Owner', admin: 'Admin', developer: 'Developer', member: 'Member', viewer: 'Viewer'
+};
+
+function ntMember(userId) {
+  return (ntState?.members || []).find(m => m.userId === userId) || null;
+}
+
+function ntChipsHtml(userIds, removeAttr) {
+  if (!userIds.length) return '';
+  return `<div class="nt-chips">${userIds.map(id => {
+    const m = ntMember(id);
+    const label = m ? m.email : id;
+    const sms = m && m.phoneVerified === true ? ' · text ok' : m && m.phoneVerified === false ? ' · no verified mobile' : '';
+    return `<span class="adm-pill is-claimed nt-chip" title="${escapeHtml((m?.role || '') + sms)}">${escapeHtml(label)}<button type="button" ${removeAttr}="${escapeHtml(id)}" aria-label="Remove ${escapeHtml(label)}">×</button></span>`;
+  }).join('')}</div>`;
+}
+
+function ntAddSelectHtml(attr, key, exclude) {
+  const opts = (ntState?.members || []).filter(m => !exclude.includes(m.userId));
+  return `
+    <select class="adm-select nt-add" ${attr}="${escapeHtml(key)}" aria-label="Add an account">
+      <option value="">Add an account…</option>
+      ${opts.map(m => `<option value="${escapeHtml(m.userId)}">${escapeHtml(m.email)}${m.isAdmin ? ' (operator)' : m.role ? ` (${escapeHtml(m.role)})` : ''}</option>`).join('')}
+    </select>`;
+}
+
+function ntAudienceChecks(attrName, key, selected) {
+  return `<div class="nt-auds">${(ntState?.audiences || []).map(a => `
+    <label class="um-check" title="${a === 'operators' ? 'Every account carrying the admin flag' : (ntState?.staffRoles || []).includes(a) ? 'A team role on the Users table' : 'A customer role on the Users table'}">
+      <input type="checkbox" ${attrName}="${escapeHtml(key)}|${a}" ${selected.includes(a) ? 'checked' : ''}> ${escapeHtml(NT_AUDIENCE_LABEL[a] || a)}
+    </label>`).join('')}</div>`;
+}
+
+function ntRowHtml(ev) {
+  const r = ntState.routes[ev.key] || { roles: ['operators'], userIds: [], email: true, sms: false };
+  const smsTitle = ntState.smsConfigured ? 'Also text the recipients whose mobile number is verified' : 'Text messages are not switched on for this platform';
+  return `
+    <tr data-nt-row="${escapeHtml(ev.key)}">
+      <td>
+        <strong>${escapeHtml(ev.label)}</strong>
+        <div class="adm-muted nt-detail">${escapeHtml(ev.detail)}</div>
+        <div class="adm-muted nt-group">${escapeHtml(ev.group)}${ev.configured ? '' : ' · default'}</div>
+      </td>
+      <td>${ntAudienceChecks('data-nt-role', ev.key, r.roles || [])}</td>
+      <td>
+        ${ntChipsHtml(r.userIds || [], 'data-nt-remove')}
+        ${ntAddSelectHtml('data-nt-add', ev.key, r.userIds || [])}
+      </td>
+      <td>
+        <label class="um-check"><input type="checkbox" data-nt-ch="${escapeHtml(ev.key)}|email" ${r.email !== false ? 'checked' : ''}> Email</label>
+        <label class="um-check ${ntState.smsConfigured ? '' : 'is-locked'}" title="${smsTitle}">
+          <input type="checkbox" data-nt-ch="${escapeHtml(ev.key)}|sms" ${r.sms ? 'checked' : ''} ${ntState.smsConfigured ? '' : 'disabled'}> Text</label>
+      </td>
+      <td class="cell-tight">
+        <button class="btn adm-copy" type="button" data-nt-test="${escapeHtml(ev.key)}" title="Sends a test through the SAVED routing for this event">Test</button>
+      </td>
+    </tr>`;
+}
+
+function ntBodyHtml() {
+  const saved = ntState.updatedAt ? `Last saved ${fmtDate(ntState.updatedAt)}` : 'Nothing saved yet: every event goes to the operators by email.';
+  return `
+    <div class="adm-card">
+      <h3 class="adm-card-h">Who hears about what</h3>
+      <p class="adm-note">Each row is one platform event. Pick the roles from your Users table, the operator flag, or name accounts,
+        and choose email, text, or both. Texts reach only accounts with a verified mobile number. An event with nothing
+        chosen falls back to the operators by email, so nothing is ever unrouted. The Test button uses what is saved, not
+        what is on screen.</p>
+      <div class="adm-table-scroll">
+        <table class="adm-table adm-table--wrap nt-table">
+          <thead><tr><th>Event</th><th>Roles</th><th>Named accounts</th><th>Channels</th><th></th></tr></thead>
+          <tbody>${ntState.events.map(ntRowHtml).join('')}</tbody>
+        </table>
+      </div>
+      <div class="adm-actions-row">
+        <button class="cta adm-copy" type="button" data-adm-action="nt-save" title="Saves every row above in one change">Save routing</button>
+        <span class="muted nt-result" id="ntSaved">${escapeHtml(saved)}</span>
+      </div>
+      <p class="muted nt-result" id="ntTestResult" hidden></p>
+    </div>
+    <div class="adm-card">
+      <h3 class="adm-card-h">Send a notice</h3>
+      <p class="adm-note">A message from you to an audience, by role or by account. Team roles (owner, admin, developer) and the
+        operators receive it as written. Customer roles (viewer, member) receive it only if their account has news turned on;
+        a named account always does.</p>
+      ${ntAudienceChecks('data-nt-notice-role', 'notice', ntNotice.roles)}
+      <div class="nt-notice-named">
+        ${ntChipsHtml(ntNotice.userIds, 'data-nt-notice-remove')}
+        ${ntAddSelectHtml('data-nt-notice-add', 'notice', ntNotice.userIds)}
+      </div>
+      <input class="adm-input" id="ntSubject" type="text" maxlength="120" placeholder="Subject" autocomplete="off">
+      <textarea class="adm-input nt-message" id="ntMessage" rows="5" maxlength="4000" placeholder="The message. Plain text; paragraphs are kept."></textarea>
+      <label class="um-check ${ntState.smsConfigured ? '' : 'is-locked'}" title="${ntState.smsConfigured ? 'Also text the recipients whose mobile number is verified' : 'Text messages are not switched on for this platform'}">
+        <input type="checkbox" id="ntSms" ${ntState.smsConfigured ? '' : 'disabled'}> Also send as a text
+      </label>
+      <div class="adm-actions-row">
+        <button class="cta adm-copy" type="button" data-adm-action="nt-send" title="Click twice: the second click sends">Send notice</button>
+        <span class="muted nt-result" id="ntSendResult"></span>
+      </div>
+    </div>
+  `;
+}
+
+function paintNotify() {
+  const body = document.getElementById('ntBody');
+  if (body && ntState) body.innerHTML = ntBodyHtml();
+}
+
+async function renderNotify(main) {
+  main.innerHTML = `
+    <header class="adm-sec-head"><h2 class="adm-sec-title">Notifications</h2></header>
+    <p class="adm-error" id="ntError" hidden></p>
+    <div id="ntBody"><p class="adm-note">Loading…</p></div>
+  `;
+  try {
+    const data = await apiFetch(ADMIN_NOTIFY_URL);
+    ntState = { ...data, routes: Object.fromEntries((data.events || []).map(e => [e.key, { ...e.route }])) };
+    paintNotify();
+  } catch (ex) {
+    document.getElementById('ntBody').innerHTML = `<p class="adm-empty">${ex?.status === 404
+      ? 'The notification routes are not on this lane yet. Deploy the backend that carries them, then reload.'
+      : escapeHtml(friendlyError(ex, 'Could not load notification routing.'))}</p>`;
+  }
+}
+
+// Screen -> state, for one event's checkbox or the notice's.
+function ntToggle(el) {
+  const [key, val] = String(el.dataset.ntRole || el.dataset.ntCh || el.dataset.ntNoticeRole || '').split('|');
+  if (!key || !val) return;
+  if (el.dataset.ntNoticeRole !== undefined) {
+    ntNotice.roles = el.checked ? [...new Set([...ntNotice.roles, val])] : ntNotice.roles.filter(r => r !== val);
+    return;
+  }
+  const r = ntState.routes[key] || (ntState.routes[key] = { roles: [], userIds: [], email: true, sms: false });
+  if (el.dataset.ntRole !== undefined) {
+    r.roles = el.checked ? [...new Set([...(r.roles || []), val])] : (r.roles || []).filter(x => x !== val);
+  } else {
+    r[val] = el.checked;
+  }
+}
+
+function ntAddMember(sel) {
+  const id = sel.value;
+  if (!id) return;
+  if (sel.dataset.ntNoticeAdd !== undefined) {
+    ntNotice.userIds = [...new Set([...ntNotice.userIds, id])];
+  } else {
+    const key = sel.dataset.ntAdd;
+    const r = ntState.routes[key] || (ntState.routes[key] = { roles: [], userIds: [], email: true, sms: false });
+    r.userIds = [...new Set([...(r.userIds || []), id])];
+  }
+  paintNotify();
+}
+
+function ntRemoveMember(btn) {
+  if (btn.dataset.ntNoticeRemove !== undefined) {
+    ntNotice.userIds = ntNotice.userIds.filter(u => u !== btn.dataset.ntNoticeRemove);
+  } else {
+    const row = btn.closest('[data-nt-row]');
+    const key = row?.dataset.ntRow;
+    const r = key && ntState.routes[key];
+    if (r) r.userIds = (r.userIds || []).filter(u => u !== btn.dataset.ntRemove);
+  }
+  paintNotify();
+}
+
+async function ntSave(btn) {
+  showError('ntError', '');
+  const orig = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Saving…';
+  try {
+    const data = await apiFetch(ADMIN_NOTIFY_URL, { method: 'POST', body: JSON.stringify({ routes: ntState.routes }) });
+    ntState = { ...data, routes: Object.fromEntries((data.events || []).map(e => [e.key, { ...e.route }])) };
+    paintNotify();
+    const saved = document.getElementById('ntSaved');
+    if (saved) saved.textContent = `Saved ${fmtDate(new Date().toISOString())}. Every send from now on uses this routing.`;
+  } catch (ex) {
+    showError('ntError', friendlyError(ex, 'Could not save the routing.'));
+  } finally {
+    btn.disabled = false; btn.textContent = orig;
+  }
+}
+
+async function ntTest(btn) {
+  const event = btn.dataset.ntTest;
+  const out = document.getElementById('ntTestResult');
+  const orig = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Sending…';
+  try {
+    const res = await apiFetch(ADMIN_NOTIFY_TEST_URL, { method: 'POST', body: JSON.stringify({ event }) });
+    const label = ntState.events.find(e => e.key === event)?.label || event;
+    if (out) {
+      out.hidden = false;
+      out.textContent = res.sent
+        ? `Test for "${label}" sent: ${res.mailed || 0} email${res.mailed === 1 ? '' : 's'}, ${res.texted || 0} text${res.texted === 1 ? '' : 's'}.`
+        : `Test for "${label}" was not sent (${res.reason || 'no recipient'}). Check the saved routing and that the accounts are active.`;
+    }
+  } catch (ex) {
+    if (out) { out.hidden = false; out.textContent = friendlyError(ex, 'The test could not be sent.'); }
+  } finally {
+    btn.disabled = false; btn.textContent = orig;
+  }
+}
+
+async function ntSend(btn) {
+  const subject = (document.getElementById('ntSubject')?.value || '').trim();
+  const message = (document.getElementById('ntMessage')?.value || '').trim();
+  const sms = document.getElementById('ntSms')?.checked === true;
+  const out = document.getElementById('ntSendResult');
+  showError('ntError', '');
+  if (!ntNotice.roles.length && !ntNotice.userIds.length) { showError('ntError', 'Pick at least one role or account for the notice.'); return; }
+  if (subject.length < 3) { showError('ntError', 'Give the notice a subject (at least 3 characters).'); return; }
+  if (message.length < 10) { showError('ntError', 'Write the message first (at least 10 characters).'); return; }
+  const send = async () => {
+    const orig = btn.textContent;
+    btn.disabled = true; btn.textContent = 'Sending…';
+    try {
+      const res = await apiFetch(ADMIN_NOTIFY_SEND_URL, { method: 'POST', body: JSON.stringify({ roles: ntNotice.roles, userIds: ntNotice.userIds, subject, message, sms }) });
+      if (out) out.textContent = res.sent
+        ? `Sent to ${res.recipients || 0} account${res.recipients === 1 ? '' : 's'}: ${res.mailed || 0} email${res.mailed === 1 ? '' : 's'}, ${res.texted || 0} text${res.texted === 1 ? '' : 's'}${res.skipped ? `; ${res.skipped} customer${res.skipped === 1 ? '' : 's'} skipped (news off)` : ''}.`
+        : `Nobody to send to${res.skipped ? `: ${res.skipped} matched but have news turned off` : ''}.`;
+      const s = document.getElementById('ntSubject'); if (s && res.sent) s.value = '';
+      const m = document.getElementById('ntMessage'); if (m && res.sent) m.value = '';
+    } catch (ex) {
+      showError('ntError', friendlyError(ex, 'The notice could not be sent.'));
+    } finally {
+      btn.disabled = false; btn.textContent = orig;
+    }
+  };
+  const who = [...ntNotice.roles.map(r => NT_AUDIENCE_LABEL[r] || r), ...ntNotice.userIds.map(id => ntMember(id)?.email || id)].join(', ');
+  armConfirm(btn, `Confirm: send to ${who}`, send);
+}
+
+/* ---------- internal reports: anomaly reports from customers ---------- */
+
+let rpStatus = 'OPEN';
+
+function rpStatusPill(status) {
+  const open = String(status).toUpperCase() === 'OPEN';
+  return `<span class="acct-tag ${open ? 'is-pending' : 'is-verified'}">${open ? 'open' : 'closed'}</span>`;
+}
+
+function rpDiagHtml(c) {
+  if (!c || typeof c !== 'object') return '';
+  const rows = [
+    ['Page', c.route || c.url || ''], ['Theme', c.theme || ''], ['Viewport', c.viewport || ''],
+    ['Browser', c.ua || ''], ['Lane', c.lane || ''], ['Locale', [c.lang, c.tz].filter(Boolean).join(' · ')], ['Reported at', c.at ? fmtDate(c.at) : '']
+  ].filter(([, v]) => v);
+  const errs = Array.isArray(c.errors) ? c.errors : [];
+  return `
+    <table class="rp-diag">${rows.map(([k, v]) => `<tr><td class="adm-muted">${escapeHtml(k)}</td><td>${escapeHtml(v)}</td></tr>`).join('')}</table>
+    ${errs.length ? `<div class="adm-muted" style="margin-top:6px">Recent console errors</div><pre class="adm-pre">${escapeHtml(errs.join('\n'))}</pre>` : '<div class="adm-muted" style="margin-top:6px">No console errors were captured on that page.</div>'}
+  `;
+}
+
+function rpCardHtml(r) {
+  const open = String(r.status).toUpperCase() === 'OPEN';
+  return `
+    <div class="adm-card rp-card" data-rp-id="${escapeHtml(r.id)}">
+      <div class="rp-head">
+        <code>${escapeHtml(r.ref)}</code>
+        ${rpStatusPill(r.status)}
+        <span class="adm-pill is-claimed">${escapeHtml(r.categoryLabel || r.category)}</span>
+        <span class="adm-muted">${escapeHtml(fmtDate(r.createdAt))}</span>
+        <span class="adm-muted cell-ellip" title="${escapeHtml(r.email || '')}">from ${escapeHtml(r.email || r.userId || 'unknown')}</span>
+      </div>
+      <p class="rp-summary">${escapeHtml(r.summary)}</p>
+      ${r.details ? `<pre class="adm-pre rp-details-text">${escapeHtml(r.details)}</pre>` : '<p class="adm-muted">No further details were given.</p>'}
+      <details class="rp-details"><summary>Page details</summary>${rpDiagHtml(r.context)}</details>
+      ${open ? `
+        <div class="rp-note">
+          <textarea class="adm-input" id="rpNote-${escapeHtml(r.id)}" rows="2" maxlength="2000" placeholder="Note to the reporter (optional). Sent by email when you close."></textarea>
+          <div class="adm-actions-row">
+            <button class="btn adm-copy" type="button" data-rp-close-report="${escapeHtml(r.id)}" title="Marks the report closed. If the note has text, the reporter receives it by email. Click twice to confirm.">Close report</button>
+          </div>
+        </div>` : `
+        ${r.note ? `<div class="rp-note"><div class="adm-muted">Note to the reporter</div><pre class="adm-pre">${escapeHtml(r.note)}</pre></div>` : ''}
+        <div class="adm-muted" style="margin-top:8px">Closed ${escapeHtml(fmtDate(r.closedAt))}${r.closedBy ? ` by ${escapeHtml(r.closedBy)}` : ''}</div>
+        <div class="adm-actions-row"><button class="btn adm-copy" type="button" data-rp-reopen="${escapeHtml(r.id)}">Reopen</button></div>`}
+    </div>`;
+}
+
+async function renderReports(main) {
+  main.innerHTML = `
+    <header class="adm-sec-head">
+      <h2 class="adm-sec-title">Reports</h2>
+      <div class="adm-toolbar" role="tablist" aria-label="Report status">
+        ${['OPEN', 'CLOSED', 'ALL'].map(s => `<button class="adm-tab ${s === rpStatus ? 'is-active' : ''}" type="button" role="tab" data-adm-reports="${s}" aria-selected="${s === rpStatus}">${s === 'ALL' ? 'All' : s === 'OPEN' ? 'Open' : 'Closed'}</button>`).join('')}
+      </div>
+    </header>
+    <p class="adm-note">Anomaly reports customers file from their account. Each carries the page details they agreed to send.
+      Close with a note and the reporter gets the note by email with their reference.</p>
+    <p class="adm-error" id="rpError" hidden></p>
+    <div id="rpBody"><p class="adm-note">Loading…</p></div>
+  `;
+  await loadReports();
+}
+
+async function loadReports() {
+  const body = document.getElementById('rpBody');
+  if (!body) return;
+  showError('rpError', '');
+  try {
+    const data = await apiFetch(`${ADMIN_ANOMALIES_URL}?status=${encodeURIComponent(rpStatus)}&limit=200`);
+    const reports = Array.isArray(data.reports) ? data.reports : [];
+    body.innerHTML = reports.length
+      ? reports.map(rpCardHtml).join('') + (data.truncated ? '<p class="adm-note">Showing the newest 200.</p>' : '')
+      : `<p class="adm-empty">${rpStatus === 'OPEN' ? 'No open reports.' : 'No reports in this view.'}</p>`;
+  } catch (ex) {
+    body.innerHTML = `<p class="adm-empty">${ex?.status === 404
+      ? 'The reports desk is not on this lane yet. Deploy the backend that carries it, then reload.'
+      : escapeHtml(friendlyError(ex, 'Could not load reports.'))}</p>`;
+  }
+}
+
+async function rpPatch(btn, id, patch) {
+  const orig = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Working…';
+  try {
+    await apiFetch(ADMIN_ANOMALY_PATCH_URL, { method: 'POST', body: JSON.stringify({ id, ...patch }) });
+    await loadReports();
+  } catch (ex) {
+    showError('rpError', friendlyError(ex, 'Could not update the report.'));
+    btn.disabled = false; btn.textContent = orig;
+  }
+}
+
+function rpCloseReport(btn) {
+  const id = btn.dataset.rpCloseReport;
+  const note = (document.getElementById(`rpNote-${id}`)?.value || '').trim();
+  armConfirm(btn, note ? 'Confirm: close and email the note' : 'Confirm: close without a note', () => rpPatch(btn, id, { status: 'CLOSED', note }));
 }
 
 /* ---------- internal orders: the fulfillment desk ---------- */
@@ -2999,6 +3468,8 @@ function showSection(id) {
   if (id === 'builds')       return renderSoon(main, 'My Builds', 'Builds you publish from the PragOptics™ software will be listed here.');
   if (id === 'overview')     return void renderOverview(main);
   if (id === 'users')        return void renderUsers(main);
+  if (id === 'notify')       return void renderNotify(main);
+  if (id === 'reports')      return void renderReports(main);
   if (id === 'shiporders')   return void renderAdminOrders(main);
   if (id === 'payments')     return void renderPayments(main);
   if (id === 'warranty')     return void renderWarranty(main);
@@ -3041,6 +3512,8 @@ function bindOnce() {
         return void startPhone();
       }
       if (a === 'phone-remove') return void removePhone();
+      if (a === 'report-anomaly') return void reportAnomaly();
+      if (a === 'notify-save') return void saveNotifyPrefs(act);
       if (a === 'close-account') return void closeAccount();
       if (a === 'add-alias') return void addAlias();
       if (a === 'change-password') return void changePassword();
@@ -3078,6 +3551,32 @@ function bindOnce() {
       if (admAct.dataset.admAction === 'wh-shippo') runWebhookSync(admAct, SHIPPO_WH_SYNC_URL, 'Shippo');
       if (admAct.dataset.admAction === 'billing-reconcile-dry') runBillingReconcile(admAct, true);
       if (admAct.dataset.admAction === 'billing-reconcile') runBillingReconcile(admAct, false);
+      if (admAct.dataset.admAction === 'nt-save') ntSave(admAct);
+      if (admAct.dataset.admAction === 'nt-send') ntSend(admAct);
+      return;
+    }
+
+    // Notifications desk: test one event's routing, remove a named account.
+    const ntTestBtn = e.target.closest('[data-nt-test]');
+    if (ntTestBtn) { e.preventDefault(); ntTest(ntTestBtn); return; }
+    const ntRemoveBtn = e.target.closest('[data-nt-remove], [data-nt-notice-remove]');
+    if (ntRemoveBtn) { e.preventDefault(); ntRemoveMember(ntRemoveBtn); return; }
+
+    // Reports desk: close with a note, reopen, switch status view.
+    const rpCloseBtn = e.target.closest('[data-rp-close-report]');
+    if (rpCloseBtn) { e.preventDefault(); rpCloseReport(rpCloseBtn); return; }
+    const rpReopenBtn = e.target.closest('[data-rp-reopen]');
+    if (rpReopenBtn) { e.preventDefault(); rpPatch(rpReopenBtn, rpReopenBtn.dataset.rpReopen, { status: 'OPEN' }); return; }
+    const rpTab = e.target.closest('[data-adm-reports]');
+    if (rpTab) {
+      e.preventDefault();
+      rpStatus = rpTab.dataset.admReports || 'OPEN';
+      document.querySelectorAll('[data-adm-reports]').forEach(t => {
+        const on = t === rpTab;
+        t.classList.toggle('is-active', on);
+        t.setAttribute('aria-selected', on ? 'true' : 'false');
+      });
+      loadReports();
       return;
     }
 
@@ -3111,6 +3610,10 @@ function bindOnce() {
   });
   document.addEventListener('change', (e) => {
     if (e.target.id === 'admUserStatus' || e.target.id === 'admUserTier') renderUserRows();
+    // Notifications desk: checkboxes write straight into the routing state;
+    // the account selects add a named account.
+    if (e.target.matches('[data-nt-role], [data-nt-ch], [data-nt-notice-role]')) ntToggle(e.target);
+    if (e.target.matches('[data-nt-add], [data-nt-notice-add]')) ntAddMember(e.target);
   });
 }
 

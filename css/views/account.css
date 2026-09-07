@@ -240,3 +240,29 @@
 
 /* mobile number: the verify-again note sits inside the state list */
 .acct-phone-reverify { margin: 0; color: var(--gold-soft); }
+
+/* ---- Report Anomaly modal ---- */
+.acct-select { appearance: auto; }
+.acct-textarea { resize: vertical; min-height: 96px; font: inherit; line-height: 1.5; }
+.acct-report-head { display: flex; align-items: center; gap: 14px; margin-bottom: 10px; }
+.acct-report-head .acct-modal-h { margin-bottom: 4px; }
+.acct-report-head .acct-modal-note { margin-bottom: 0; }
+.acct-report-img { width: 64px; height: 48px; object-fit: contain; flex: none; opacity: .92; }
+html[data-theme="light"] .acct-report-img { filter: invert(1); opacity: .85; }
+.acct-report-diag { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 4px; font-size: .84rem; align-items: center; }
+.acct-report-diag .muted { font-size: .78rem; }
+.acct-report-ref { margin: 6px 0 14px; }
+.acct-report-ref .acct-product-code { font-size: 1.15rem; letter-spacing: .12em; padding: .35rem .8rem; }
+
+/* ---- Notifications card (profile) ---- */
+.acct-notify-list { list-style: none; margin: 0 0 12px; padding: 0; display: grid; gap: 8px; }
+.acct-notify-row {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 14px;
+  padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px;
+  background: color-mix(in srgb, var(--ink) 1.5%, transparent);
+}
+.acct-notify-main { display: grid; gap: 2px; min-width: 0; flex: 1 1 14rem; }
+.acct-notify-name { font-weight: 600; color: var(--ink); }
+.acct-notify-detail { font-size: .8rem; line-height: 1.4; }
+.acct-notify-ctl { display: flex; gap: 14px; flex-wrap: wrap; }
+.acct-notify-why { margin: 0 0 10px; }
