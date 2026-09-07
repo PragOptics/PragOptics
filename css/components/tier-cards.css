@@ -21,16 +21,20 @@
 }
 .tc-sub { margin: 0; font-size: .88rem; }
 
-/* The tiers lay out like every other card row on the site: a responsive grid
-   that wraps to the width it has (two across in the warranty body, one on a
-   phone). No scroll box, no scrollbar, nothing framed in. */
+/* The tiers are a scrolling gallery, like the pricing cards and the landing
+   rows: snap, room above for the flag, a thin quiet scrollbar, no frame. */
 .tc-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(215px, 1fr));
-  gap: 14px;
-  align-items: stretch;
-  padding: 12px 0 4px;
+  display: flex; gap: 14px; align-items: stretch;
+  overflow-x: auto; overflow-y: hidden;
+  scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch;
+  padding: 16px 2px 14px;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--ink) 22%, transparent) transparent;
 }
+.tc-grid > .tc-card { flex: 0 0 clamp(236px, 30%, 340px); scroll-snap-align: start; }
+.tc-grid > .tc-card:first-child { margin-left: auto; }
+.tc-grid > .tc-card:last-child { margin-right: auto; }
+@media (max-width: 640px) { .tc-grid > .tc-card { flex-basis: 82%; } }
 
 .tc-card {
   position: relative;

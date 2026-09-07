@@ -27,6 +27,7 @@
   background: var(--hi-bg); color: var(--hi-fg); border: 1px solid var(--hi-border);
 }
 .pc-save {
+  white-space: nowrap;
   margin-left: 6px; padding: 2px 8px; border-radius: var(--radius-pill);
   font-size: .66rem; font-weight: 800; letter-spacing: .04em;
   color: var(--gold-soft); border: 1px solid color-mix(in srgb, var(--gold-soft) 40%, transparent);
@@ -36,10 +37,20 @@
 
 /* ---- tier cards ---- */
 .pc-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
-  gap: 14px; align-items: stretch;
+  display: flex; gap: 14px; align-items: stretch;
+  overflow-x: auto; overflow-y: hidden;
+  scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch;
+  padding: 16px 2px 14px;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--ink) 22%, transparent) transparent;
 }
+.pc-grid > .pc-card { flex: 0 0 clamp(236px, 30%, 340px); scroll-snap-align: start; }
+.pc-grid > .pc-card:first-child { margin-left: auto; }
+.pc-grid > .pc-card:last-child { margin-right: auto; }
+.pc-grid::-webkit-scrollbar { height: 8px; }
+.pc-grid::-webkit-scrollbar-track { background: color-mix(in srgb, var(--ink) 4%, transparent); border-radius: 8px; }
+.pc-grid::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--ink) 22%, transparent); border-radius: 8px; }
+.pc-grid::-webkit-scrollbar-thumb:hover { background: color-mix(in srgb, var(--brand-600) 45%, transparent); }
 .pc-card {
   position: relative; display: flex; flex-direction: column; gap: 12px;
   padding: 22px 18px 18px; border-radius: 18px;
@@ -152,6 +163,9 @@
 }
 
 @media (max-width: 640px) {
-  .pc-grid, .pc-addon-grid { grid-template-columns: 1fr; }
+  .pc-grid > .pc-card { flex-basis: 82%; }
+  .pc-addon-grid { grid-template-columns: 1fr; }
+  .pc-toggle-btn { padding: 8px 12px; font-size: .8rem; }
+  .pc-save { margin-left: 4px; padding: 2px 6px; }
   .pc-total { flex-direction: column; align-items: flex-start; gap: 4px; }
 }

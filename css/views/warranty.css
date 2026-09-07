@@ -4,12 +4,12 @@
    Centerpiece: the code field with the glass arrow "enter" button — the action
    twin of the schematic download tile (.dl-trigger in product-modal.css). */
 
-.warranty { padding: 28px 26px 40px; margin-top: 10px; }
+.warranty { padding: 28px 26px 40px; margin-top: 10px; width: 100%; max-width: 880px; margin-left: auto; margin-right: auto; box-sizing: border-box; }
 
 /* width:100% + min-width:0: the body is a flex item of the panel, so without
    these its automatic minimum is the min-content of its widest descendant (the
    tier-card gallery, 910px) and the page overflows sideways on a phone. */
-.wr-body { max-width: 640px; width: 100%; min-width: 0; margin: 8px auto 0; display: flex; flex-direction: column; gap: 26px; }
+.wr-body { max-width: 720px; width: 100%; min-width: 0; margin: 8px auto 0; display: flex; flex-direction: column; gap: 26px; }
 
 .wr-step { display: flex; flex-direction: column; gap: 10px; }
 
