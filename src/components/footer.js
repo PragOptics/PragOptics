@@ -45,7 +45,7 @@ export function initFooter() {
     </svg>`;
     const label = () => {
       const light = getTheme() === "light";
-      themeBtn.innerHTML = light ? "Join the Darkside" + MOON : "Show me the Light" + SUN;
+      themeBtn.innerHTML = light ? "Enter Darkness" + MOON : "Show me the Light" + SUN;
       themeBtn.setAttribute("aria-pressed", light ? "true" : "false");
     };
     label();
