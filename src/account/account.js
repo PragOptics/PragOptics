@@ -1754,8 +1754,8 @@ async function loadAdminUsage() {
               </tbody>
             </table>
           </div>
-          <p class="adm-note">Accounts pressing base allowances are the add-on demand signal. Base
-          numbers are placeholders until the real allowances are set.</p>
+          <p class="adm-note">Accounts pressing base allowances are the add-on demand signal. Allowances
+          are enforced: a customer is refused at 1.1x the base until capacity is added or the month resets; operators are never capped.</p>
         </div>
       ` : ''}
     `;
