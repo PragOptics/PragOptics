@@ -32,9 +32,24 @@ export function initFooter() {
   // src/runtime/themeBoot.js; this only flips it and relabels itself.
   const themeBtn = document.getElementById("themeToggle");
   if (themeBtn) {
+    // A sun on the dark theme (the offer), a moon on the light one. Both
+    // brand-gradient marks: a disc with a broken corona and a faint halo; a
+    // crescent with two sparks. Inline SVG, no script, so the CSP is content.
+    const SUN = `<svg class="footer-theme-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <defs><linearGradient id="fvSunG" x1="0" y1="0" x2="1" y2="1"><stop offset="0" style="stop-color:var(--brand-600)"/><stop offset="1" style="stop-color:var(--brand-purp-solid)"/></linearGradient></defs>
+      <circle cx="12" cy="12" r="4.6" fill="url(#fvSunG)"/>
+      <circle cx="12" cy="12" r="8.2" fill="none" stroke="url(#fvSunG)" stroke-width="1.3" stroke-linecap="round" stroke-dasharray="7.5 5.4" transform="rotate(-22 12 12)"/>
+      <circle cx="12" cy="12" r="11" fill="none" stroke="currentColor" stroke-opacity=".32" stroke-width=".8" stroke-linecap="round" stroke-dasharray="1.6 5.3"/>
+    </svg>`;
+    const MOON = `<svg class="footer-theme-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <defs><linearGradient id="fvMoonG" x1="0" y1="0" x2="1" y2="1"><stop offset="0" style="stop-color:var(--brand-600)"/><stop offset="1" style="stop-color:var(--brand-purp-solid)"/></linearGradient></defs>
+      <path d="M14.6 2.6a9.4 9.4 0 1 0 6.8 15.9 7.6 7.6 0 0 1-6.8-15.9z" fill="url(#fvMoonG)"/>
+      <path d="M5.2 4.4l.7 1.7 1.7.7-1.7.7-.7 1.7-.7-1.7-1.7-.7 1.7-.7z" fill="currentColor" opacity=".85"/>
+      <path d="M9.6 1.6l.4 1 1 .4-1 .4-.4 1-.4-1-1-.4 1-.4z" fill="currentColor" opacity=".6"/>
+    </svg>`;
     const label = () => {
       const light = getTheme() === "light";
-      themeBtn.textContent = light ? "Join the Darkside" : "Show me the Light";
+      themeBtn.innerHTML = light ? "Join the Darkside" + MOON : "Show me the Light" + SUN;
       themeBtn.setAttribute("aria-pressed", light ? "true" : "false");
     };
     label();

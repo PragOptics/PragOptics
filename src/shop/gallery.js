@@ -39,8 +39,8 @@ function cardHtml(p) {
               data-product-id="${escapeHtml(p.id)}"
               aria-label="Open details for ${escapeHtml(p.name)}">
         <div class="pcard-media">
-          <img class="pcard-img"
-               src="${escapeHtml(p.image)}"
+          <img class="pcard-img${p.flyer ? ' pcard-img--cover' : ''}"
+               src="${escapeHtml(p.flyer || p.image)}"
                alt="${escapeHtml(p.name)}"
                loading="lazy">
           ${p.badge ? `<span class="pcard-badge">${escapeHtml(p.badge)}</span>` : ''}

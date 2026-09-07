@@ -207,6 +207,9 @@
   position: absolute; left: 14px; bottom: 12px; width: 46px; height: 46px;
   object-fit: contain; filter: drop-shadow(0 4px 10px color-mix(in srgb, var(--shade) 55%, transparent));
 }
+/* Brochure banners: the sheet fills the banner from its top edge, so the
+   card reads as the brochure itself (title, product) with the body below. */
+.ph-media--top .ph-media-img { object-fit: cover; object-position: center top; }
 /* A photo used as the app tile: cropped to a rounded square, like an icon. */
 .ph-media-badge--tile {
   object-fit: cover; border-radius: 11px;

@@ -32,7 +32,7 @@
   color: var(--gold-soft); border: 1px solid color-mix(in srgb, var(--gold-soft) 40%, transparent);
   background: rgba(10, 8, 2, .5);
 }
-.pc-toggle-btn.is-active .pc-save { color: var(--on-brand); border-color: rgba(4, 19, 15, .35); background: color-mix(in srgb, var(--ink) 25%, transparent); }
+.pc-toggle-btn.is-active .pc-save { color: var(--hi-fg); border-color: color-mix(in srgb, var(--gold-soft) 45%, transparent); background: color-mix(in srgb, var(--gold-soft) 22%, transparent); }
 
 /* ---- tier cards ---- */
 .pc-grid {
@@ -62,8 +62,8 @@
   position: absolute; top: -11px; left: 50%; transform: translateX(-50%);
   padding: 3px 12px; border-radius: var(--radius-pill);
   font-size: .68rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase;
-  background: var(--hi-bg); color: var(--hi-fg); border: 1px solid var(--hi-border);
-  white-space: nowrap;
+  background: color-mix(in srgb, var(--brand-600) 18%, var(--bg-deep)); color: var(--hi-fg); border: 1px solid var(--hi-border);
+  white-space: nowrap; z-index: 3;
 }
 .pc-card-head { display: flex; flex-direction: column; gap: 2px; }
 .pc-name { font-size: 1.12rem; font-weight: 900; color: var(--ink); }

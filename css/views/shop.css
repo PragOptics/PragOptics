@@ -62,6 +62,8 @@
   transition: transform 320ms cubic-bezier(.22,.61,.36,1);
 }
 .pcard:hover .pcard-img { transform: scale(1.04); }
+/* The brochure is the card's face: it fills the media box from its top edge. */
+.pcard-img--cover { object-fit: cover; object-position: center top; }
 
 /* Status pills — same monospace treatment as software .sw-access (radius 8px) */
 .pcard-badge {
@@ -69,18 +71,20 @@
   font: 700 .6rem/1 ui-monospace, "SF Mono", "Cascadia Code", Menlo, monospace;
   letter-spacing: .16em; text-transform: uppercase;
   padding: 5px 9px; border-radius: 8px;
-  border: 1px solid color-mix(in srgb, var(--ink) 14%, transparent); color: var(--ink);
-  background: color-mix(in srgb, var(--shade) 55%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ink) 18%, transparent); color: var(--ink);
+  background: color-mix(in srgb, var(--panel-deep-a) 86%, transparent);
 }
 
-/* Availability chips (used on hardware pcards) */
+/* Availability chips (used on hardware pcards). They sit over imagery, so the
+   backing is the theme's panel chrome (near-black in dark, white in light)
+   and the text is ink: readable on a dark brochure in both themes. */
 .chip {
   position: absolute; top: 12px; right: 12px; z-index: 2;
   font: 700 .6rem/1 ui-monospace, "SF Mono", "Cascadia Code", Menlo, monospace;
   letter-spacing: .16em; text-transform: uppercase;
   padding: 5px 9px; border-radius: 8px;
-  border: 1px solid color-mix(in srgb, var(--ink) 14%, transparent); color: var(--ink);
-  background: color-mix(in srgb, var(--shade) 55%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ink) 18%, transparent); color: var(--ink);
+  background: color-mix(in srgb, var(--panel-deep-a) 86%, transparent);
 }
 .chip-avail { color: var(--teal-bright); border-color: color-mix(in srgb, var(--brand-hi) 40%, transparent); }
 .chip-pre   { color: #ffcc7a; border-color: rgba(255, 178, 61, .42); }

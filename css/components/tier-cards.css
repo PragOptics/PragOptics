@@ -64,8 +64,8 @@
   font-weight: 800;
   letter-spacing: .06em;
   text-transform: uppercase;
-  background: var(--hi-bg); color: var(--hi-fg); border: 1px solid var(--hi-border);
-  white-space: nowrap;
+  background: color-mix(in srgb, var(--brand-600) 18%, var(--bg-deep)); color: var(--hi-fg); border: 1px solid var(--hi-border);
+  white-space: nowrap; z-index: 3;
 }
 
 /* In-flow <header> element: needs the reset or the global

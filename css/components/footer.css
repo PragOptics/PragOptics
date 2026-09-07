@@ -279,3 +279,8 @@ html[data-theme="light"] .footer-theme-toggle .ft-moon{ display: block; }
 /* The theme toggle is a button that reads exactly like the links beside it. */
 .footer-theme{ background: none; border: 0; padding: 0; font: inherit; cursor: pointer; color: inherit; }
 .footer-theme:hover{ color: var(--brand-600); }
+
+.footer-theme-ico{
+  width: 15px; height: 15px; margin-left: 6px; vertical-align: -3px;
+  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--brand-600) 55%, transparent));
+}

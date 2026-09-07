@@ -44,15 +44,15 @@ function primaryBtn(p) {
 // row of one kind of card. The product photo fills the banner; a product that
 // only has a poster-style flyer shows it whole on the media ground instead.
 function cardHtml(p) {
-  // Same composition as the software cards: a 16:9 banner with the marketing
-  // brochure shown whole on the media ground (a brochure is square or
-  // portrait, so it is contained, never cropped) and the product photo badged
-  // over the corner as its app tile. Every featured card then shares one
-  // banner height. A product with only a brochure gets no tile.
+  // Same composition as the software cards: a 16:9 banner filled by the
+  // marketing brochure (its top half; the card should read as the brochure
+  // itself, one complete thing, so cropping the sheet is fine) and the
+  // product photo badged over the corner as its app tile. Every featured card
+  // shares one banner height. A product with only a brochure gets no tile.
   const flyer = p.flyer || p.image || '';
   const tile = p.image && p.image !== flyer ? p.image : '';
   const media = flyer
-    ? `<div class="ph-media ph-media--contain">
+    ? `<div class="ph-media ph-media--top">
          <img class="ph-media-img" src="${escapeHtml(flyer)}" alt="${escapeHtml(p.name)}" loading="lazy">
          ${tile ? `<img class="ph-media-badge ph-media-badge--tile" src="${escapeHtml(tile)}" alt="" loading="lazy">` : ''}
        </div>`

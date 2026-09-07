@@ -1306,6 +1306,13 @@ function subManagerHtml(data) {
   const strayAddons = strayAddonKeys(shape);
   // On the User plan a stray add-on is one that is no longer offered.
   const strayRetired = shape.subType === 'user';
+  // A scheduled change that only drops add-ons (same plan, same cadence) is
+  // the stray-add-on removal; its undo is "keep the add-on", not "keep my
+  // plan". After that undo the add-on is a CHOICE the customer made, so the
+  // notice reads calm instead of alarming (remembered per browser).
+  const pendingIsAddonDrop = isAddonDrop(shape, pending);
+  const keptAddons = keptAddonKeys().filter(k => strayAddons.includes(k));
+  const strayKept = strayAddons.length > 0 && keptAddons.length === strayAddons.length;
 
   return `
     ${data.paymentActionRequired && openInvoice ? `
@@ -1348,9 +1355,21 @@ function subManagerHtml(data) {
       <section class="acct-card acct-card-warn">
         <h3 class="acct-card-h">Scheduled change</h3>
         <p class="acct-card-note">On ${escapeHtml(fmtDate(pending.effectiveAt))}: ${escapeHtml(pending.summary || 'your plan changes')}.
-        Your current plan runs until then. No charge, no credit.</p>
+        Your current plan runs until then. No charge, no credit.${pendingIsAddonDrop
+          ? ' Keeping the add-on cancels this removal; it stays on the plan and keeps billing until you remove it.' : ''}</p>
         <div class="acct-actions-row">
-          <button class="btn" type="button" data-acct-action="sub-keep">Keep my current plan</button>
+          <button class="btn" type="button" data-acct-action="sub-keep">${pendingIsAddonDrop ? 'Keep the add-on' : 'Keep my current plan'}</button>
+        </div>
+        <p class="acct-error" id="acctPendingError" hidden></p>
+      </section>
+    ` : strayAddons.length && strayKept ? `
+      <section class="acct-card">
+        <h3 class="acct-card-h">Add-on kept</h3>
+        <p class="acct-card-note">You chose to keep ${escapeHtml(strayAddons.map(k => ADDON_NAME[k] || k).join(', '))} on the ${escapeHtml(tierName(shape.subType))} plan.
+        ${strayRetired ? 'It is no longer offered to new subscribers but stays yours' : 'It does not raise this plan\'s limits'} and keeps billing as before. Remove it at the end of a paid period whenever you like.</p>
+        <div class="acct-actions-row">
+          <button class="btn" type="button" data-acct-action="sub-drop-addons"
+            title="Schedules the removal for the end of the paid period. Nothing else on the plan changes.">Remove at period end</button>
         </div>
         <p class="acct-error" id="acctPendingError" hidden></p>
       </section>
@@ -1539,11 +1558,30 @@ async function applyPlanChange(btn) {
 }
 
 // Drop a scheduled period-end change; the live plan is untouched.
+// The stray-add-on "kept" memory: per browser, per account. Set when the
+// customer undoes a scheduled add-on removal; cleared when they schedule one.
+function keptAddonKey() { return `pragoptics_addon_kept_v1:${cachedPing()?.user?.userId || ''}`; }
+function keptAddonKeys() { try { return JSON.parse(localStorage.getItem(keptAddonKey()) || '[]'); } catch { return []; } }
+function rememberKeptAddons(keys) { try { localStorage.setItem(keptAddonKey(), JSON.stringify(keys)); } catch { /* storage blocked */ } }
+function forgetKeptAddons() { try { localStorage.removeItem(keptAddonKey()); } catch { /* storage blocked */ } }
+// True when the scheduled change keeps the plan and cadence and only drops
+// add-ons (the shape the stray-add-on removal writes).
+function isAddonDrop(cur, pending) {
+  const ps = pending?.shape;
+  if (!ps || ps.subType !== cur.subType || ps.cadence !== cur.cadence) return false;
+  const curOn = Object.keys(cur.addons || {}).filter(k => cur.addons[k]);
+  const pendOn = Object.keys(ps.addons || {}).filter(k => ps.addons[k]);
+  return curOn.some(k => !pendOn.includes(k)) && !pendOn.some(k => !curOn.includes(k));
+}
+
 async function keepCurrentPlan(btn) {
   btn.disabled = true;
   showError('acctPendingError', '');
+  const live = shapeOfItems(subData?.subscription?.items || []);
+  const wasAddonDrop = isAddonDrop(live, subData?.pendingChange);
   try {
     await apiFetch(SUB_UPDATE_URL, { method: 'POST', body: JSON.stringify({ cancelPending: true }) });
+    if (wasAddonDrop) rememberKeptAddons(strayAddonKeys(live));
     const m = document.getElementById('acctMain');
     if (m && activeSection === 'subscription') renderSubscription(m);
   } catch (ex) {
@@ -1558,6 +1596,7 @@ async function keepCurrentPlan(btn) {
 async function dropStrayAddons(btn) {
   const live = shapeOfItems(subData?.subscription?.items || []);
   if (!live.subType) return;
+  forgetKeptAddons();
   const stray = strayAddonKeys(live);
   const addons = {};
   for (const k of Object.keys(live.addons)) addons[k] = !!live.addons[k] && !stray.includes(k);

@@ -4,7 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>PragOptics™ Codex</title>
-  <meta name="color-scheme" content="dark" />
+  <meta name="color-scheme" content="dark light" />
+  <!-- Same theme boot as the site: the stored choice lands before first paint. -->
+  <script src="/src/runtime/themeBoot.js"></script>
 
   <!-- Icons -->
   <link rel="icon" type="image/x-icon" href="https://pragoptics.com/images/favicon.ico" sizes="48x48">
@@ -21,6 +23,8 @@
 
   <!-- Codex runtime styles -->
   <link rel="stylesheet" href="codex/codex.css">
+  <!-- Light theme leftovers (inert on dark), after the Codex styles so they win. -->
+  <link rel="stylesheet" href="/css/theme-light.css">
 </head>
 
 <body class="codex">
