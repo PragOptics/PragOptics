@@ -280,6 +280,7 @@ body.is-processing::after {
   left: 0;
   right: 0;
   bottom: 0;
+  z-index: 12000;      /* above every modal and drawer (10000-11001): the veil covers the login panel and the 2FA card too, not just the page under them; pointer-events stays none so it never blocks a click */
   background: rgba(0, 0, 0, 0.06);
   backdrop-filter: blur(2.5px) saturate(0.9);
   -webkit-backdrop-filter: blur(2.5px) saturate(0.9);
