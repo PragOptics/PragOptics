@@ -439,7 +439,7 @@ th.adm-num { text-align: right; }
 }
 .adm-side-report + .adm-side-foot { margin-top: 0; }
 .adm-side-report-img {
-  width: 44px; height: 72px; flex: none;
+  width: 34px; height: 52px; flex: none;
   background-color: var(--brand-600);
   -webkit-mask: url("/images/anomaly.png") 52% center / auto 100% no-repeat;
   mask: url("/images/anomaly.png") 52% center / auto 100% no-repeat;

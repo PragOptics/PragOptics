@@ -248,7 +248,7 @@
 .acct-report-head .acct-modal-h { margin-bottom: 4px; }
 .acct-report-head .acct-modal-note { margin-bottom: 0; }
 .acct-report-img {
-  width: 56px; height: 88px; flex: none;
+  width: 44px; height: 68px; flex: none;
   background-color: var(--brand-600);
   -webkit-mask: url("/images/anomaly.png") 52% center / auto 100% no-repeat;
   mask: url("/images/anomaly.png") 52% center / auto 100% no-repeat;
