@@ -425,14 +425,17 @@ th.adm-num { text-align: right; }
 .adm-side-role { color: var(--muted); font-size: .68rem; letter-spacing: .08em; text-transform: uppercase; }
 
 /* Report Anomaly: a small glass card that sits with the sign-out foot at the
-   bottom of the rail, above its divider. The image is a white line drawing on
-   transparency, so the light theme inverts it to ink. */
+   bottom of the rail, above its divider. The alien is painted through a mask
+   in the primary color (teal on dark, purple on light), and the button wears
+   the same highlight wash the badges and active tabs use: one color, no
+   gradient, no pill. Everything stays inside the 220px rail. */
 .adm-side-report {
   margin-top: auto;
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 10px 12px;
+  padding: 10px;
+  min-width: 0;
   border: 1px solid var(--card-border);
   border-radius: 12px;
   background: var(--glass);
@@ -441,9 +444,34 @@ th.adm-num { text-align: right; }
   box-shadow: var(--aura);
 }
 .adm-side-report + .adm-side-foot { margin-top: 0; }
-.adm-side-report-img { width: 56px; height: 42px; object-fit: contain; flex: none; opacity: .92; }
-html[data-theme="light"] .adm-side-report-img { filter: invert(1); opacity: .85; }
-.adm-side-report-btn { flex: 1 1 auto; white-space: nowrap; }
+.adm-side-report-img {
+  width: 40px; height: 32px; flex: none;
+  background-color: var(--brand-600);
+  -webkit-mask: url("/images/anomaly.png") center / contain no-repeat;
+  mask: url("/images/anomaly.png") center / contain no-repeat;
+}
+.adm-side .adm-side-report-btn.btn {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 40px;
+  padding: 8px 6px;
+  border-radius: 10px;
+  border: 1px solid var(--hi-border);
+  background: var(--hi-bg);
+  color: var(--hi-fg);
+  font-size: .82rem;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: normal;
+  text-align: center;
+  box-shadow: none;
+}
+.adm-side .adm-side-report-btn.btn::after { display: none; }
+.adm-side .adm-side-report-btn.btn:hover {
+  background: color-mix(in srgb, var(--brand-600) 26%, transparent);
+  border-color: color-mix(in srgb, var(--brand-600) 60%, transparent);
+  transform: none;
+}
 
 /* ---------- main ---------- */
 .adm-main { padding: 22px 24px 26px; min-width: 0; }

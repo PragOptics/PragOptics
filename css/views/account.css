@@ -247,8 +247,12 @@
 .acct-report-head { display: flex; align-items: center; gap: 14px; margin-bottom: 10px; }
 .acct-report-head .acct-modal-h { margin-bottom: 4px; }
 .acct-report-head .acct-modal-note { margin-bottom: 0; }
-.acct-report-img { width: 64px; height: 48px; object-fit: contain; flex: none; opacity: .92; }
-html[data-theme="light"] .acct-report-img { filter: invert(1); opacity: .85; }
+.acct-report-img {
+  width: 64px; height: 48px; flex: none;
+  background-color: var(--brand-600);
+  -webkit-mask: url("/images/anomaly.png") center / contain no-repeat;
+  mask: url("/images/anomaly.png") center / contain no-repeat;
+}
 .acct-report-diag { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 4px; font-size: .84rem; align-items: center; }
 .acct-report-diag .muted { font-size: .78rem; }
 .acct-report-ref { margin: 6px 0 14px; }

@@ -334,7 +334,7 @@ function shellHtml() {
           ` : ''}
         </ul>
         <div class="adm-side-report">
-          <img class="adm-side-report-img" src="/images/anomaly.png" alt="" width="56" height="42">
+          <span class="adm-side-report-img" aria-hidden="true"></span>
           <button class="btn btn-sm adm-side-report-btn" type="button" data-acct-action="report-anomaly"
             title="Tell us about a bug or anything that looked wrong. Page details come along so we can find it.">Report Anomaly</button>
         </div>

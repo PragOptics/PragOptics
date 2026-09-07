@@ -90,7 +90,7 @@ function formHtml(diag) {
     <div class="acct-modal-mask" data-rp-close></div>
     <div class="acct-modal is-wide acct-report" role="dialog" aria-modal="true" aria-label="Report an anomaly">
       <div class="acct-report-head">
-        <img class="acct-report-img" src="/images/anomaly.png" alt="" width="72" height="54">
+        <span class="acct-report-img" aria-hidden="true"></span>
         <div>
           <h3 class="acct-modal-h">Report an anomaly</h3>
           <p class="acct-modal-note">Something broke, looked wrong, or did not do what it said. Tell us what you saw. A person reads every report.</p>
