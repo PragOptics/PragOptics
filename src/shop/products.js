@@ -20,7 +20,6 @@ export const HARDWARE = [
     subtitle: 'Energize any 4-20mA / HART transmitter off a USB port.',
     image: '/docs/assets/products/omnisource/product.png',
     flyer: '/docs/assets/OmniSourceProductFlyer.png',
-    flyerAspect: '1 / 1',       // the brochure's own shape; the landing card banner takes it
     gallery: [
       { src: '/docs/assets/products/omnisource/product.png', alt: 'OmniSource unit', kind: 'photo' },
       { src: '/docs/assets/products/omnisource/case.png', alt: 'OmniSource packed in its branded hard-shell case', kind: 'photo' },
@@ -165,7 +164,6 @@ export const HARDWARE = [
     subtitle: 'Vendor-neutral HART communicator, calibration recorder, and audit node in one rugged handheld.',
     image: '/docs/assets/OmniBusProductFlyer.png',
     flyer: '/docs/assets/OmniBusProductFlyer.png',
-    flyerAspect: '1023 / 1537',
     gallery: [
       { src: '/docs/assets/OmniBusProductFlyer.png', alt: 'OmniBus product flyer', kind: 'flyer' }
     ],

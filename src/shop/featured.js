@@ -44,17 +44,19 @@ function primaryBtn(p) {
 // row of one kind of card. The product photo fills the banner; a product that
 // only has a poster-style flyer shows it whole on the media ground instead.
 function cardHtml(p) {
-  // The marketing brochure is the card's face (Cameron: the product photo is
-  // for the modal). The banner takes the brochure's own aspect so the whole
-  // sheet shows, nothing cropped; a product without one falls back to its
-  // photo.
-  const flyer = p.flyer || '';
-  const photo = p.image || '';
+  // Same composition as the software cards: a 16:9 banner with the marketing
+  // brochure shown whole on the media ground (a brochure is square or
+  // portrait, so it is contained, never cropped) and the product photo badged
+  // over the corner as its app tile. Every featured card then shares one
+  // banner height. A product with only a brochure gets no tile.
+  const flyer = p.flyer || p.image || '';
+  const tile = p.image && p.image !== flyer ? p.image : '';
   const media = flyer
-    ? `<div class="ph-media" style="aspect-ratio:${escapeHtml(p.flyerAspect || '1 / 1')}"><img class="ph-media-img" src="${escapeHtml(flyer)}" alt="${escapeHtml(p.name)}" loading="lazy"></div>`
-    : photo
-      ? `<div class="ph-media"><img class="ph-media-img" src="${escapeHtml(photo)}" alt="${escapeHtml(p.name)}" loading="lazy"></div>`
-      : '';
+    ? `<div class="ph-media ph-media--contain">
+         <img class="ph-media-img" src="${escapeHtml(flyer)}" alt="${escapeHtml(p.name)}" loading="lazy">
+         ${tile ? `<img class="ph-media-badge ph-media-badge--tile" src="${escapeHtml(tile)}" alt="" loading="lazy">` : ''}
+       </div>`
+    : '';
   return `
     <article class="ph-card ph-brochure${media ? ' ph-vert' : ''}">
       ${media}
