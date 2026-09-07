@@ -11,6 +11,7 @@
 // after the backend returns an access token from one of the 2FA endpoints.
 
 import { PRAG_API_BASE } from "../runtime/config.js";
+import { passkeySupported, registerPasskey, authenticatePasskey } from "./passkey.js";
 
 // ---- shared session finalizer (mirrors native.js / login.modal.js) ------
 async function finalizeSession(tokens) {
@@ -153,7 +154,91 @@ async function requestEnrollOtp(email) {
 // get to choose the second factor, so the API also emails a code and demands
 // it at enroll/confirm. A brand-new signup just proved its inbox, so it skips
 // this step.
+//
+// The customer CHOOSES the second factor: a passkey (fingerprint, face, or PIN
+// on a device they own) or an authenticator app. Either one completes sign-in;
+// they are never asked for both. On a browser without passkey support the
+// authenticator flow opens directly.
 async function openEnrollment(enrollmentToken, email, emailProofRequired = false) {
+  if (!passkeySupported()) return enrollAuthenticator(enrollmentToken, email, emailProofRequired);
+  const card = host();
+  card.innerHTML = `
+    <h3>Choose your second step</h3>
+    <p class="tfa-sub">Every sign-in needs one more step after your password. Pick the one you'll find easiest. You can add the other later from your account.</p>
+    <div class="tfa-actions" style="flex-direction:column;gap:10px;">
+      <button class="tfa-cta" id="tfaPickPasskey">Passkey: fingerprint, face, or PIN on this device</button>
+      <button class="tfa-ghost" id="tfaPickTotp" style="text-align:center;">Authenticator app: a 6-digit code</button>
+    </div>
+    <div class="tfa-actions"><button class="tfa-ghost" data-cancel>Cancel</button></div>`;
+  card.querySelector("[data-cancel]").onclick = closeHost;
+  card.querySelector("#tfaPickTotp").onclick = () => enrollAuthenticator(enrollmentToken, email, emailProofRequired);
+  card.querySelector("#tfaPickPasskey").onclick = () => enrollPasskeyFirst(enrollmentToken, email, emailProofRequired);
+}
+
+// Passkey as the FIRST second factor. When the API requires inbox proof, the
+// emailed code is collected first and sent with the registration; the API
+// checks the passkey attestation before it consumes the code, so a failed
+// prompt never burns a good code. Recovery codes come back once, here.
+async function enrollPasskeyFirst(enrollmentToken, email, emailProofRequired) {
+  const card = host();
+  let otpRequestId = "";
+  if (emailProofRequired) {
+    card.innerHTML = `<h3>Set up your passkey</h3><p class="tfa-sub">Sending you a code…</p>`;
+    try { otpRequestId = await requestEnrollOtp(email); }
+    catch (e) {
+      card.innerHTML = `<h3>Set up your passkey</h3><p class="tfa-err">${esc(e.message || "Could not send the code.")}</p>
+        <div class="tfa-actions"><button class="tfa-ghost" data-close>Close</button></div>`;
+      card.querySelector("[data-close]").onclick = closeHost;
+      return;
+    }
+  }
+  card.innerHTML = `
+    <h3>Set up your passkey</h3>
+    <p class="tfa-sub">${emailProofRequired
+      ? `We emailed a code to <b>${esc(email)}</b> to confirm this is your inbox. Enter it, then your device will ask for your fingerprint, face, or PIN.`
+      : "Your device will ask for your fingerprint, face, or PIN."}</p>
+    ${emailProofRequired ? `
+    <input class="tfa-code" id="tfaOtp" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="000000" aria-label="Emailed 6-digit code">
+    <p class="tfa-hint"><button type="button" class="tfa-link" id="tfaOtpResend">Resend the code</button></p>` : ""}
+    <p class="tfa-err" id="tfaErr"></p>
+    <div class="tfa-actions">
+      <button class="tfa-ghost" data-back>Back</button>
+      <button class="tfa-cta" id="tfaGo" ${emailProofRequired ? "disabled" : ""}>Create passkey</button>
+    </div>`;
+  const otpEl = card.querySelector("#tfaOtp");
+  const btn = card.querySelector("#tfaGo");
+  const err = card.querySelector("#tfaErr");
+  if (otpEl) {
+    otpEl.addEventListener("input", () => { otpEl.value = otpEl.value.replace(/\D/g, ""); btn.disabled = otpEl.value.length !== 6; err.textContent = ""; });
+    otpEl.focus();
+  }
+  card.querySelector("[data-back]").onclick = () => openEnrollment(enrollmentToken, email, emailProofRequired);
+  const resend = card.querySelector("#tfaOtpResend");
+  if (resend) resend.onclick = async () => {
+    resend.disabled = true; err.textContent = "";
+    try { otpRequestId = await requestEnrollOtp(email); resend.textContent = "Sent"; }
+    catch (e) { err.textContent = e.message || "Could not resend the code."; resend.disabled = false; }
+  };
+  btn.onclick = async () => {
+    btn.disabled = true; err.textContent = "";
+    try {
+      const extra = emailProofRequired ? { otpRequestId, otpCode: otpEl.value } : {};
+      const done = await registerPasskey({ post: post2fa, token: enrollmentToken, name: "This device", extra });
+      // Recovery codes come back only when this is the account's FIRST second
+      // factor. A re-key on an account that already holds one goes straight in.
+      if (Array.isArray(done.recoveryCodes) && done.recoveryCodes.length) showRecoveryCodes(done.recoveryCodes, done.tokens);
+      else await finalizeSession(done.tokens);
+    } catch (e) {
+      err.textContent = e.status === 429
+        ? "Too many attempts. Wait a few minutes and try again."
+        : (e.message || "The passkey step did not complete.");
+      btn.disabled = false;
+    }
+  };
+}
+
+// Authenticator app as the second factor (the original flow).
+async function enrollAuthenticator(enrollmentToken, email, emailProofRequired = false) {
   const card = host();
   card.innerHTML = `<h3>Set up two-factor</h3><p class="tfa-sub">Loading your setup key…</p>`;
 
@@ -267,11 +352,51 @@ function showRecoveryCodes(codes, tokens) {
 }
 
 // ---- challenge (sign-in) ------------------------------------------------
-function openChallenge(challengeToken) {
+// The second step of sign-in. `methods` says which second factors the account
+// holds ({ totp, passkey }); either satisfies the step, never both. A passkey
+// is offered first when present and the browser supports it; the code field
+// (authenticator, or a recovery code) is always reachable, so a lost passkey
+// recovers the same way a lost authenticator does.
+function openChallenge(challengeToken, methods = {}) {
   const card = host();
-  let recoveryMode = false;
+  const canPasskey = methods.passkey === true && passkeySupported();
+  const hasTotp = methods.totp === true;
+  // "code" = authenticator (or recovery), "passkey" = the prompt.
+  let mode = canPasskey ? "passkey" : "code";
+  let recoveryMode = !hasTotp; // a passkey-only account's code is a recovery code
 
   function render() {
+    if (mode === "passkey") {
+      card.innerHTML = `
+        <h3>Two-factor</h3>
+        <p class="tfa-sub">Confirm it's you with your passkey. Your device will ask for your fingerprint, face, or PIN.</p>
+        <p class="tfa-err" id="tfaErr"></p>
+        <div class="tfa-actions">
+          <button class="tfa-ghost" data-cancel>Cancel</button>
+          <button class="tfa-cta" id="tfaPasskey">Use passkey</button>
+        </div>
+        <button class="tfa-link" id="tfaToggle">${hasTotp ? "Use your authenticator code instead" : "Use a recovery code instead"}</button>`;
+      const btn = card.querySelector("#tfaPasskey");
+      const err = card.querySelector("#tfaErr");
+      card.querySelector("[data-cancel]").onclick = closeHost;
+      card.querySelector("#tfaToggle").onclick = () => { mode = "code"; render(); };
+      const go = async () => {
+        btn.disabled = true; err.textContent = "";
+        try {
+          const done = await authenticatePasskey({ post: post2fa, token: challengeToken });
+          await finalizeSession(done.tokens);
+        } catch (e) {
+          err.textContent = e.status === 429
+            ? "Too many attempts. Wait a few minutes and try again."
+            : (e.message || "That passkey could not be verified.");
+          btn.disabled = false;
+        }
+      };
+      btn.onclick = go;
+      go(); // open the prompt straight away; the button is the retry
+      return;
+    }
+
     card.innerHTML = `
       <h3>Two-factor</h3>
       <p class="tfa-sub">${recoveryMode
@@ -285,7 +410,8 @@ function openChallenge(challengeToken) {
         <button class="tfa-ghost" data-cancel>Cancel</button>
         <button class="tfa-cta" id="tfaVerify" disabled>Verify</button>
       </div>
-      <button class="tfa-link" id="tfaToggle">${recoveryMode ? "Use your authenticator instead" : "Use a recovery code"}</button>`;
+      ${hasTotp ? `<button class="tfa-link" id="tfaToggle">${recoveryMode ? "Use your authenticator instead" : "Use a recovery code"}</button>` : ""}
+      ${canPasskey ? `<button class="tfa-link" id="tfaBackToPasskey">Use your passkey instead</button>` : ""}`;
 
     const codeEl = card.querySelector("#tfaCode");
     const btn = card.querySelector("#tfaVerify");
@@ -302,7 +428,10 @@ function openChallenge(challengeToken) {
     });
     codeEl.focus();
     card.querySelector("[data-cancel]").onclick = closeHost;
-    card.querySelector("#tfaToggle").onclick = () => { recoveryMode = !recoveryMode; render(); };
+    const toggle = card.querySelector("#tfaToggle");
+    if (toggle) toggle.onclick = () => { recoveryMode = !recoveryMode; render(); };
+    const back = card.querySelector("#tfaBackToPasskey");
+    if (back) back.onclick = () => { mode = "passkey"; render(); };
     btn.onclick = async () => {
       btn.disabled = true; err.textContent = "";
       try {
@@ -335,7 +464,9 @@ export async function finalizeAuth(data, { email } = {}) {
     return true;
   }
   if (data?.mfaRequired && data?.tokens?.challenge_token) {
-    openChallenge(data.tokens.challenge_token);
+    // methods says which second factors the account holds ({ totp, passkey });
+    // an older API answer without it means authenticator only.
+    openChallenge(data.tokens.challenge_token, data.methods || { totp: true, passkey: false });
     return true;
   }
   if (data?.tokens?.access_token) {

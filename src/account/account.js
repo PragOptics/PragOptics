@@ -12,6 +12,7 @@
 // request returns 403.
 
 import { PRAG_API_BASE, LANE, ORDERS_CLAIM_LIVE } from '../runtime/config.js';
+import { registerPasskey, passkeySupported } from '../auth/passkey.js';
 import { switchLane, isPlatformOperator } from '../runtime/lane.js';
 import { tierName, ADDON_NAME } from '../components/tierCopy.js';
 import { mountPricingSelect } from '../components/pricingCards.js';
@@ -25,6 +26,8 @@ const REQUEST_CODE_URL = `${PRAG_API_BASE}/auth/request-code`;
 const PING_URL = `${PRAG_API_BASE}/ping`;
 const CHANGE_PW_URL = `${PRAG_API_BASE}/auth/change-password`;
 const RESET_2FA_URL = `${PRAG_API_BASE}/auth/2fa/reset`;
+const PASSKEY_LIST_URL = `${PRAG_API_BASE}/auth/passkey/list`;
+const PASSKEY_REMOVE_URL = `${PRAG_API_BASE}/auth/passkey/remove`;
 const CLOSE_ACCOUNT_URL = `${PRAG_API_BASE}/auth/account/close`;
 
 const SUB_URL        = `${PRAG_API_BASE}/billing/subscription`;
@@ -386,9 +389,11 @@ async function renderProfile(main) {
     </section>
     <section class="acct-card">
       <h3 class="acct-card-h">Two-factor authentication</h3>
-      <p class="acct-card-note">Your account is protected by an authenticator app. Reset it if you switch phones or lose your authenticator. You will set up a new one right away.</p>
+      <p class="acct-card-note">Sign-in always needs a second step. Use an authenticator app, a passkey (fingerprint, face, or PIN on a device you own), or both. Either one completes the step; you are never asked for both. Your recovery codes work whichever you use.</p>
+      <div class="acct-alias-list" id="acctPasskeyList"><span class="acct-loading">Loading…</span></div>
       <div class="acct-add-row">
-        <button class="cta btn-sm" type="button" data-acct-action="reset-2fa">Reset authenticator</button>
+        <button class="cta btn-sm" type="button" data-acct-action="add-passkey" title="Registers a passkey on this device. You confirm with your current password.">Add passkey</button>
+        <button class="btn btn-sm" type="button" data-acct-action="reset-2fa" title="Clears the current authenticator and sets up a new one right away. Use it when you switch phones.">Reset authenticator</button>
       </div>
       <p class="acct-error" id="acct2faError" hidden></p>
     </section>
@@ -405,6 +410,7 @@ async function renderProfile(main) {
   `;
   await loadAliases();
   await loadPhone();
+  await loadPasskeys();
 }
 
 /* ---------- close account ---------- */
@@ -805,6 +811,137 @@ function resetTwoFactorPrompt() {
     const close = (val) => { hostEl.removeEventListener('click', onClick); hostEl.hidden = true; hostEl.innerHTML = ''; resolve(val); };
     hostEl.addEventListener('click', onClick);
   });
+}
+
+/* ---------- passkeys (the other second factor) ---------- */
+
+// The Security card's list: which second factors this account holds. Either
+// kind completes sign-in; the copy never implies both are needed.
+async function loadPasskeys() {
+  const host = document.getElementById('acctPasskeyList');
+  if (!host) return;
+  try {
+    const data = await apiFetch(PASSKEY_LIST_URL);
+    const list = data.passkeys || [];
+    const totp = data.totpEnabled === true;
+    const rows = [];
+    rows.push(`<li class="acct-alias"><div class="acct-alias-main"><span class="acct-alias-email">Authenticator app</span>
+      <span class="acct-tag">${totp ? 'on' : 'not set up'}</span></div></li>`);
+    for (const p of list) {
+      rows.push(`<li class="acct-alias">
+        <div class="acct-alias-main">
+          <span class="acct-alias-email">${escapeHtml(p.name || 'Passkey')}</span>
+          <span class="acct-tag">passkey${p.backedUp ? ', synced' : ''}</span>
+          <span class="muted">added ${escapeHtml(fmtDate(p.createdAt))}${p.lastUsedAt ? `, last used ${escapeHtml(fmtDate(p.lastUsedAt))}` : ''}</span>
+        </div>
+        <div class="acct-alias-actions">
+          <button class="btn btn-sm" type="button" data-acct-action="remove-passkey" data-cred="${escapeHtml(p.credentialId)}"
+            title="Removes this passkey. You confirm with your password. Your last second factor cannot be removed.">Remove</button>
+        </div>
+      </li>`);
+    }
+    if (!list.length) rows.push(`<li class="acct-alias"><span class="muted">No passkeys yet. Add one to sign in with your fingerprint, face, or PIN.</span></li>`);
+    host.innerHTML = `<ul class="acct-alias-list">${rows.join('')}</ul>`;
+  } catch (ex) {
+    host.innerHTML = '';
+    showError('acct2faError', friendlyError(ex, 'Could not load your second-factor settings.'));
+  }
+}
+
+// Password step-up for adding or removing a passkey. Resolves { password, name }
+// or null on cancel. Same modal idiom as the authenticator reset.
+function passkeyPrompt({ title, note, withName }) {
+  return new Promise((resolve) => {
+    let hostEl = document.getElementById('acctPasskeyPrompt');
+    if (!hostEl) { hostEl = document.createElement('div'); hostEl.id = 'acctPasskeyPrompt'; hostEl.className = 'acct-modal-host'; document.body.appendChild(hostEl); }
+    hostEl.innerHTML = `
+      <div class="acct-modal-mask" data-pk-close></div>
+      <div class="acct-modal" role="dialog" aria-modal="true" aria-label="${escapeHtml(title)}">
+        <h3 class="acct-modal-h">${escapeHtml(title)}</h3>
+        <p class="acct-modal-note">${escapeHtml(note)}</p>
+        ${withName ? `<label class="acct-label" for="pkName">Name this passkey</label>
+        <input class="acct-input" id="pkName" type="text" maxlength="60" placeholder="e.g. Cameron's laptop" autocomplete="off">` : ''}
+        <label class="acct-label" for="pkPass">Account password</label>
+        <input class="acct-input" id="pkPass" type="password" autocomplete="current-password" placeholder="Your password">
+        <p class="acct-error" id="pkError" hidden></p>
+        <div class="acct-modal-actions">
+          <button class="btn btn-ghost" type="button" data-pk-close>Cancel</button>
+          <button class="cta" type="button" data-pk-confirm>Continue</button>
+        </div>
+      </div>`;
+    hostEl.hidden = false;
+    const pass = hostEl.querySelector('#pkPass');
+    const nameEl = hostEl.querySelector('#pkName');
+    const er = hostEl.querySelector('#pkError');
+    (nameEl || pass).focus();
+    function onClick(e) {
+      if (e.target.closest('[data-pk-close]')) return close(null);
+      if (e.target.closest('[data-pk-confirm]')) {
+        if (!pass.value) { er.textContent = 'Enter your password.'; er.hidden = false; return; }
+        close({ password: pass.value, name: (nameEl?.value || '').trim() || 'Passkey' });
+      }
+    }
+    const close = (val) => { hostEl.removeEventListener('click', onClick); hostEl.hidden = true; hostEl.innerHTML = ''; resolve(val); };
+    hostEl.addEventListener('click', onClick);
+  });
+}
+
+// One-time display of recovery codes, for an account whose FIRST second
+// factor was a passkey (an authenticator enrollment shows its own).
+function showRecoveryCodesModal(codes) {
+  return new Promise((resolve) => {
+    let hostEl = document.getElementById('acctPasskeyPrompt');
+    if (!hostEl) { hostEl = document.createElement('div'); hostEl.id = 'acctPasskeyPrompt'; hostEl.className = 'acct-modal-host'; document.body.appendChild(hostEl); }
+    hostEl.innerHTML = `
+      <div class="acct-modal-mask"></div>
+      <div class="acct-modal" role="dialog" aria-modal="true" aria-label="Save your recovery codes">
+        <h3 class="acct-modal-h">Save your recovery codes</h3>
+        <p class="acct-modal-note">If you lose this passkey, one of these gets you back in. Each works once. They are shown only now.</p>
+        <div class="acct-alias-list" style="font-family:ui-monospace,monospace;letter-spacing:1px;display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+          ${codes.map(c => `<code>${escapeHtml(c)}</code>`).join('')}
+        </div>
+        <div class="acct-modal-actions">
+          <button class="btn btn-ghost" type="button" data-rc-copy>Copy</button>
+          <button class="cta" type="button" data-rc-done>I have saved these</button>
+        </div>
+      </div>`;
+    hostEl.hidden = false;
+    function onClick(e) {
+      if (e.target.closest('[data-rc-copy]')) { navigator.clipboard?.writeText(codes.join('\n')).catch(() => {}); e.target.textContent = 'Copied'; return; }
+      if (e.target.closest('[data-rc-done]')) { hostEl.removeEventListener('click', onClick); hostEl.hidden = true; hostEl.innerHTML = ''; resolve(); }
+    }
+    hostEl.addEventListener('click', onClick);
+  });
+}
+
+// apiFetch already carries the session bearer, so the token argument the
+// passkey module passes is ignored here.
+const passkeyPost = (path, _token, body) => apiFetch(`${PRAG_API_BASE}${path}`, { method: 'POST', body: JSON.stringify(body || {}) });
+
+async function addPasskey() {
+  showError('acct2faError', '');
+  if (!passkeySupported()) { showError('acct2faError', 'This device or browser does not support passkeys.'); return; }
+  const su = await passkeyPrompt({ title: 'Add a passkey', note: 'Confirm it’s you with your password, then your device will ask for your fingerprint, face, or PIN.', withName: true });
+  if (!su) return;
+  try {
+    const done = await registerPasskey({ post: passkeyPost, token: '', name: su.name, extra: { currentPassword: su.password } });
+    if (Array.isArray(done.recoveryCodes) && done.recoveryCodes.length) await showRecoveryCodesModal(done.recoveryCodes);
+    await loadPasskeys();
+  } catch (ex) {
+    showError('acct2faError', ex?.data?.error || friendlyError(ex, 'Could not add that passkey.', { passwordFlow: true }));
+  }
+}
+
+async function removePasskey(credentialId) {
+  showError('acct2faError', '');
+  const su = await passkeyPrompt({ title: 'Remove this passkey', note: 'Confirm it’s you with your password. Your last second factor cannot be removed.', withName: false });
+  if (!su) return;
+  try {
+    await apiFetch(PASSKEY_REMOVE_URL, { method: 'POST', body: JSON.stringify({ credentialId, currentPassword: su.password }) });
+    await loadPasskeys();
+  } catch (ex) {
+    showError('acct2faError', ex?.data?.error || friendlyError(ex, 'Could not remove that passkey.', { passwordFlow: true }));
+  }
 }
 
 async function changePassword() {
@@ -2859,6 +2996,8 @@ function bindOnce() {
       if (a === 'add-alias') return void addAlias();
       if (a === 'change-password') return void changePassword();
       if (a === 'reset-2fa') return void resetTwoFactor();
+      if (a === 'add-passkey') return void addPasskey();
+      if (a === 'remove-passkey') return void removePasskey(String(act.dataset.cred || ''));
       if (a === 'make-primary') return void makePrimary(act.dataset.alias);
       if (a === 'remove-alias') return void removeAlias(act.dataset.alias);
       if (a === 'verify-alias') return void verifyAlias(act.dataset.alias, act.dataset.claim);
