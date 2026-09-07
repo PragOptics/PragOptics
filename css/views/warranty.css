@@ -132,11 +132,11 @@
 /* ---- mode tabs: Register / Transfer ---- */
 .wr-tabs {
   display: inline-flex; gap: 4px; margin: 4px 0 18px; padding: 4px;
-  border: 1px solid var(--border); border-radius: var(--radius-pill);
+  border: 1px solid var(--border); border-radius: var(--radius-btn);
   background: var(--surface-deep);
 }
 .wr-tab {
-  padding: 9px 22px; border: 0; border-radius: var(--radius-pill); cursor: pointer;
+  padding: 9px 22px; border: 0; border-radius: var(--radius-btn-sm); cursor: pointer;
   font: 700 .9rem/1 inherit; letter-spacing: .02em;
   color: var(--muted); background: transparent;
   transition: color 160ms ease, background 160ms ease;
@@ -166,7 +166,7 @@
 }
 .tr-item:hover { border-color: color-mix(in srgb, var(--brand-600) 45%, transparent); }
 .tr-item:has(input:checked) { border-color: var(--brand-600); background: color-mix(in srgb, var(--brand-600) 8%, transparent); }
-.tr-item input[type="checkbox"] { width: 17px; height: 17px; accent-color: var(--brand-600); flex: none; }
+.tr-item input[type="checkbox"] { flex: none; }
 .tr-item-body { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 .tr-item-name { font-weight: 800; font-size: .95rem; color: var(--ink); }
 .tr-item-meta { font-size: .8rem; color: var(--muted); }
@@ -187,7 +187,7 @@
   align-items: center;
   gap: 9px;
   padding: 9px 18px;
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius-btn);
 }
 .wr-watch-ico {
   display: inline-grid;

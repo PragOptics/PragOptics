@@ -30,3 +30,46 @@ a{
 .hidden{
   display:none !important;
 }
+
+/* ====== FORM CONTROLS ======
+   One look for every checkbox and every select on the site, in both themes.
+   Checkboxes: a rounded square on the deep surface, the primary when checked,
+   with a drawn check mark; disabled fades. Selects: the native arrow is
+   replaced by the twin-gradient chevron the console and admin selects draw, in
+   the muted ink, so the closed control matches the inputs beside it; the open
+   list follows the root color-scheme (dark on dark, light on light). */
+input[type="checkbox"] {
+  appearance: none; -webkit-appearance: none;
+  width: 18px; height: 18px; margin: 0; flex: none;
+  display: inline-grid; place-items: center; vertical-align: middle;
+  border-radius: 5px;
+  border: 1px solid color-mix(in srgb, var(--ink) 30%, transparent);
+  background: var(--surface-deep);
+  cursor: pointer;
+  transition: background 140ms ease, border-color 140ms ease, box-shadow 140ms ease;
+}
+input[type="checkbox"]::before {
+  content: ""; width: 10px; height: 10px;
+  background: var(--on-brand);
+  clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
+  transform: scale(0); transition: transform 120ms ease;
+}
+input[type="checkbox"]:hover { border-color: color-mix(in srgb, var(--brand-600) 60%, transparent); }
+input[type="checkbox"]:checked { background: var(--brand-600); border-color: var(--brand-600); }
+input[type="checkbox"]:checked::before { transform: scale(1); }
+input[type="checkbox"]:focus-visible { outline: 2px solid var(--brand-600); outline-offset: 2px; }
+input[type="checkbox"]:disabled { opacity: .45; cursor: not-allowed; }
+
+select.acct-select, select.acct-input, .acct-modal select {
+  -webkit-appearance: none; -moz-appearance: none; appearance: none;
+  cursor: pointer;
+  padding-right: 36px;
+  background-color: var(--surface-deep);
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--muted) 50%),
+    linear-gradient(-45deg, transparent 50%, var(--muted) 50%);
+  background-repeat: no-repeat;
+  background-position: calc(100% - 18px) 55%, calc(100% - 12px) 55%;
+  background-size: 6px 6px;
+}
+select option { background: var(--panel-deep-a); color: var(--ink); }

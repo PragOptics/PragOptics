@@ -103,13 +103,13 @@
 .acct-add-row { display: flex; gap: 8px; }
 /* Inputs share the login form's field look (forms-login.css): --grad fill,
    hairline border, the teal focus ring. */
-.acct-input { flex: 1 1 auto; min-width: 0; padding: 9px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--grad); color: var(--ink); font: inherit; font-size: .9rem; outline: none; transition: border-color 160ms ease, box-shadow 160ms ease; }
+.acct-input { flex: 1 1 auto; min-width: 0; padding: 9px 12px; border-radius: var(--radius-ctl); border: 1px solid var(--border); background: var(--grad); color: var(--ink); font: inherit; font-size: .9rem; outline: none; transition: border-color 160ms ease, box-shadow 160ms ease; }
 .acct-input::placeholder { color: var(--muted); opacity: .6; }
 .acct-input:hover { border-color: color-mix(in srgb, var(--brand) 55%, var(--border)); }
 .acct-input:focus-visible { outline: none; border-color: color-mix(in srgb, var(--brand-600) 45%, transparent); box-shadow: 0 0 0 1px color-mix(in srgb, var(--brand-600) 25%, transparent), 0 0 16px color-mix(in srgb, var(--brand-purp-solid) 15%, transparent); }
 .acct-label { display: block; font-size: .68rem; letter-spacing: .09em; text-transform: uppercase; color: var(--muted); font-weight: 600; margin: 12px 0 4px; }
 
-.btn-sm { padding: 6px 12px; font-size: .8rem; }
+.btn-sm { padding: 7px 12px; font-size: .8rem; min-height: 32px; border-radius: var(--radius-btn-sm); white-space: nowrap; }
 .btn-ghost { background: transparent; border: 1px solid var(--border); color: var(--ink); }
 .btn-ghost:hover { border-color: var(--brand-600); }
 
@@ -132,7 +132,7 @@
    and --aura, gradient title. Tokens only so the light theme flips it. */
 .acct-modal-host { position: fixed; inset: 0; z-index: 10002; display: grid; place-items: center; padding: 16px; }
 .acct-modal-mask { position: absolute; inset: 0; background: var(--grad); -webkit-backdrop-filter: blur(6px) saturate(120%); backdrop-filter: blur(6px) saturate(120%); }
-.acct-modal { position: relative; width: min(420px, 94vw); background: var(--glass); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px 22px 18px; box-shadow: var(--aura); -webkit-backdrop-filter: blur(14px) saturate(160%); backdrop-filter: blur(14px) saturate(160%); }
+.acct-modal { position: relative; width: min(420px, 94vw); max-height: 92vh; overflow-y: auto; background: var(--glass); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px 22px 18px; box-shadow: var(--aura); -webkit-backdrop-filter: blur(14px) saturate(160%); backdrop-filter: blur(14px) saturate(160%); }
 .account .acct-modal-h,
 .acct-modal-h { margin: 0 0 6px; font-size: 1.15rem; font-weight: 800; background: linear-gradient(130deg, var(--ink) 10%, var(--brand-600) 60%, var(--brand-purp) 95%); -webkit-background-clip: text; background-clip: text; color: transparent; }
 .acct-modal-note { margin: 0 0 8px; color: var(--muted); font-size: .84rem; line-height: 1.5; }
@@ -226,10 +226,12 @@
 
 /* close-account card and confirm */
 .acct-card-danger { border-color: color-mix(in srgb, var(--danger) 35%, transparent); }
-.acct-modal.is-wide { width: min(520px, 94vw); }
+.acct-modal.is-wide { width: min(560px, 94vw); }
 /* Inside a modal the inputs stand alone (no flex row to stretch them), so an
    input would otherwise sit at its intrinsic width, about half the card. */
-.acct-modal .acct-input, .acct-modal .acct-select, .acct-modal .acct-textarea { display: block; width: 100%; min-width: 0; box-sizing: border-box; }
+.acct-modal .acct-input, .acct-modal .acct-select, .acct-modal .acct-textarea,
+.acct-modal .adm-input, .acct-modal .adm-select { display: block; width: 100%; min-width: 0; box-sizing: border-box; }
+select.acct-input { background-color: var(--surface-deep); }
 .acct-check {
   display: flex; align-items: flex-start; gap: 8px;
   margin: 12px 0 2px; color: var(--ink); font-size: .88rem; line-height: 1.4; cursor: pointer;

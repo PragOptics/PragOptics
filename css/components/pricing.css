@@ -9,13 +9,13 @@
 .pc-toggle {
   align-self: center;
   display: inline-flex; gap: 4px; padding: 4px;
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius-btn);
   border: 1px solid var(--border);
   background: var(--surface-deep);
 }
 .pc-toggle-btn {
   border: 0; cursor: pointer; padding: 8px 18px;
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius-btn-sm);
   background: transparent; color: var(--muted);
   font: 700 .88rem/1 inherit;
   transition: background 160ms ease, color 160ms ease;

@@ -15,7 +15,7 @@
   color:var(--on-brand);
   font-weight:800;
   border:none;
-  border-radius:var(--radius-sm);
+  border-radius:var(--radius-btn);
   padding:10px 16px;
   cursor:pointer;
   text-decoration:none;
@@ -45,7 +45,7 @@
   background:var(--glass-2);
   color:var(--ink);
   border:1px solid var(--border);
-  border-radius:var(--radius-sm);
+  border-radius:var(--radius-btn);
   padding:10px 16px;
   cursor:pointer;
   font-weight: 600;

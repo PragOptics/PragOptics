@@ -1922,7 +1922,7 @@ async function loadMyOrders() {
             ${orders.map(o => `
               <tr>
                 <td class="adm-muted cell-tight">${escapeHtml(fmtDate(o.createdAt))}</td>
-                <td>${escapeHtml(orderLinesLabel(o.lines))}</td>
+                <td class="cell-ellip" title="${escapeHtml(orderLinesLabel(o.lines))}">${escapeHtml(orderLinesLabel(o.lines))}</td>
                 <td class="adm-num cell-tight">${escapeHtml(usdCents(o.totalCents))}</td>
                 <td class="cell-tight">${orderStatusPill(o.status)}</td>
                 <td class="cell-ellip" title="${escapeHtml(o.trackingNumber || '')}">${o.trackingNumber
@@ -2237,65 +2237,82 @@ function userManageHtml(u, { self }) {
   const tier = String(u.tier || 'free').toLowerCase();
   const email = u.email || '';
   const lockTitle = 'You cannot change your own role, status, or admin flag.';
+  const lock = self ? `disabled title="${lockTitle}"` : '';
   return `
     <div class="acct-modal-mask" data-um-close></div>
-    <div class="acct-modal is-wide" role="dialog" aria-modal="true" aria-label="Manage account">
-      <h3 class="acct-modal-h">Manage account</h3>
-      <p class="um-email"><strong>${escapeHtml(email)}</strong></p>
-      <p class="acct-modal-note">${tierPill(tier)} ${statusPill(status)}${u.phoneChangesFrozen ? ' <span class="adm-pill is-bad" title="Phone changes are paused pending review">phone paused</span>' : ''}${u.totpEnabled ? ' <span class="adm-pill is-claimed" title="An authenticator app is enrolled">2fa</span>' : ''}</p>
+    <div class="acct-modal is-wide um" role="dialog" aria-modal="true" aria-label="Manage account">
+      <header class="um-head">
+        <div class="um-head-main">
+          <h3 class="acct-modal-h">Manage account</h3>
+          <p class="um-email"><strong>${escapeHtml(email)}</strong></p>
+        </div>
+        <div class="um-pills">
+          ${tierPill(tier)} ${statusPill(status)}
+          ${u.isAdmin ? '<span class="adm-pill adm-flag-admin">admin</span>' : ''}
+          ${u.isDev ? '<span class="adm-pill adm-flag-dev">dev</span>' : ''}
+          ${u.phoneChangesFrozen ? '<span class="adm-pill is-bad" title="Phone changes are paused pending review">phone paused</span>' : ''}
+        </div>
+      </header>
       ${closed ? `
-        <p class="acct-modal-note">This account is closed${u.closedAt ? ` (${escapeHtml(fmtDate(u.closedAt))})` : ''}. It still carries a billing profile, so the close did not finish. Running it again ends the subscription and clears what is left; nothing else on a closed account can change.</p>
+        <section class="um-sec">
+          <p class="acct-modal-note">This account is closed${u.closedAt ? ` (${escapeHtml(fmtDate(u.closedAt))})` : ''}. It still carries a billing profile, so the close did not finish. Running it again ends the subscription and clears the profile.</p>
+        </section>
       ` : `
-        <div class="um-row">
-          <label class="adm-label" for="umRole">Role</label>
-          <select class="adm-select" id="umRole" ${self ? `disabled title="${lockTitle}"` : ''}>
-            ${USER_ROLES.map(r => `<option value="${r}" ${String(u.role || '') === r ? 'selected' : ''}>${r}</option>`).join('')}
-            ${USER_ROLES.includes(String(u.role || '')) || !u.role ? '' : `<option value="${escapeHtml(u.role)}" selected>${escapeHtml(u.role)}</option>`}
-          </select>
-        </div>
-        <div class="um-row">
-          <span class="adm-label">Operator flags</span>
-          <div class="um-checks">
-            <label class="um-check ${self ? 'is-locked' : ''}" ${self ? `title="${lockTitle}"` : 'title="Admin accounts see the Internal sections and every admin route"'}>
-              <input type="checkbox" id="umAdmin" ${u.isAdmin ? 'checked' : ''} ${self ? 'disabled' : ''}> Admin flag
+        <section class="um-sec">
+          <div class="um-sec-h">Role and access</div>
+          <div class="um-grid2">
+            <label class="um-field">
+              <span class="adm-label">Role</span>
+              <select class="adm-select" id="umRole" ${lock}>
+                ${USER_ROLES.map(r => `<option value="${r}" ${String(u.role || '') === r ? 'selected' : ''}>${r}</option>`).join('')}
+                ${USER_ROLES.includes(String(u.role || '')) || !u.role ? '' : `<option value="${escapeHtml(u.role)}" selected>${escapeHtml(u.role)}</option>`}
+              </select>
             </label>
-            <label class="um-check" title="Dev accounts can route this browser to the dev lane">
-              <input type="checkbox" id="umDev" ${u.isDev ? 'checked' : ''}> Dev flag
-            </label>
+            <div class="um-field">
+              <span class="adm-label">Operator flags</span>
+              <div class="um-checks">
+                <label class="um-check ${self ? 'is-locked' : ''}" title="${self ? lockTitle : 'Admin accounts see the Internal sections and every admin route'}">
+                  <input type="checkbox" id="umAdmin" ${u.isAdmin ? 'checked' : ''} ${self ? 'disabled' : ''}> Admin
+                </label>
+                <label class="um-check" title="Dev accounts can route this browser to the dev lane">
+                  <input type="checkbox" id="umDev" ${u.isDev ? 'checked' : ''}> Dev
+                </label>
+              </div>
+            </div>
           </div>
-        </div>
-        ${tier !== 'free' ? `<p class="um-note">Paying: on the ${escapeHtml(tierName(tier))} plan; suspension does not pause billing.</p>` : ''}
-        <div class="um-row um-row-actions">
-          <span class="adm-label">Apply</span>
-          <div class="adm-actions-row">
-            <button class="cta adm-copy" type="button" data-um-save title="Saves the role and flags above in one change">Save</button>
+          ${tier !== 'free' ? `<p class="um-note">Paying: on the ${escapeHtml(tierName(tier))} plan. Suspension does not pause billing.</p>` : ''}
+          <div class="um-actions">
+            <button class="cta btn-sm" type="button" data-um-save title="Saves the role and flags above in one change">Save changes</button>
           </div>
-        </div>
-        <div class="um-row">
-          <span class="adm-label">Status</span>
-          <div class="adm-actions-row">
+        </section>
+        <section class="um-sec">
+          <div class="um-sec-h">Account status</div>
+          <p class="acct-modal-note">Suspending blocks sign-in and revokes every session. Billing continues. Reactivating restores sign-in.</p>
+          <div class="um-actions">
             ${status === 'SUSPENDED'
-              ? `<button class="btn adm-copy" type="button" data-um-status="ACTIVE" ${self ? `disabled title="${lockTitle}"` : 'title="Restores sign-in. Click twice to confirm."'}>Reactivate</button>`
-              : `<button class="btn adm-copy btn-danger" type="button" data-um-status="SUSPENDED" ${self ? `disabled title="${lockTitle}"` : 'title="Blocks sign-in and revokes every session. Billing continues. Click twice to confirm."'}>Suspend</button>`}
-            ${u.phoneChangesFrozen ? `<button class="btn adm-copy" type="button" data-um-unfreeze title="Lets the account add, verify, and remove mobile numbers again">Unfreeze phone changes</button>` : ''}
+              ? `<button class="btn btn-sm" type="button" data-um-status="ACTIVE" ${lock || 'title="Click twice to confirm."'}>Reactivate</button>`
+              : `<button class="btn btn-sm btn-danger" type="button" data-um-status="SUSPENDED" ${lock || 'title="Click twice to confirm."'}>Suspend</button>`}
+            ${u.phoneChangesFrozen ? `<button class="btn btn-sm" type="button" data-um-unfreeze title="Lets the account add, verify, and remove mobile numbers again">Unfreeze phone changes</button>` : ''}
           </div>
-          <div class="acct-add-row" style="margin-top:10px;">
-            <input class="acct-input" id="umResetReason" type="text" maxlength="200" placeholder="Reason: ticket number or note (required)" ${self || closed ? 'disabled' : ''} aria-label="Reason for the second-factor reset">
-            <button class="btn adm-copy btn-danger" type="button" data-um-2fa-reset ${self || closed ? 'disabled' : ''} title="Support recovery only: clears the authenticator and every passkey, signs the account out everywhere, and emails the customer. Verify the person first (SUPPORT-RECOVERY). Click twice to confirm.">Reset second factor</button>
+        </section>
+        <section class="um-sec">
+          <div class="um-sec-h">Support recovery</div>
+          <p class="acct-modal-note">Clears the authenticator and every passkey and signs the account out everywhere. The customer enrolls a new second factor on their next sign-in. The password is untouched. A reason is required.</p>
+          <input class="adm-input" id="umResetReason" type="text" maxlength="200" placeholder="Ticket number or short note" ${self ? 'disabled' : ''} aria-label="Reason for the second factor reset">
+          <div class="um-actions">
+            <button class="btn btn-sm btn-danger" type="button" data-um-2fa-reset ${self ? `disabled title="${lockTitle}"` : 'title="Click twice to confirm."'}>Reset second factor</button>
           </div>
-        </div>
+        </section>
       `}
-      <div class="um-row um-danger">
-        <label class="adm-label" for="umCloseEmail">Close account</label>
-        <div>
-          <p class="acct-modal-note">Permanent. Ends any subscription now, removes the sign-in, and signs the account out everywhere. Type the account's email to enable the button.</p>
-          <input class="adm-input" id="umCloseEmail" type="email" autocomplete="off" spellcheck="false" placeholder="${escapeHtml(email)}" ${self ? `disabled title="${lockTitle}"` : ''}>
-          <div class="adm-actions-row">
-            <button class="btn adm-copy btn-danger" type="button" data-um-close-account disabled
-              title="${self ? lockTitle : 'Enabled once the email above matches this account'}">Close ${escapeHtml(email)}</button>
-          </div>
+      <section class="um-sec um-sec--danger">
+        <div class="um-sec-h">Close account</div>
+        <p class="acct-modal-note">Permanent. Ends any subscription now, removes the sign-in, and signs the account out everywhere. Type the account email to enable the button.</p>
+        <input class="adm-input" id="umCloseEmail" type="email" autocomplete="off" spellcheck="false" placeholder="${escapeHtml(email)}" ${lock} aria-label="Type the account email to confirm">
+        <div class="um-actions">
+          <button class="btn btn-sm btn-danger" type="button" data-um-close-account disabled
+            title="${self ? lockTitle : 'Enabled once the email above matches this account'}">Close account</button>
         </div>
-      </div>
+      </section>
       <p class="acct-error" id="umError" hidden></p>
       <div class="acct-modal-actions">
         <button class="btn btn-ghost" type="button" data-um-close>Done</button>
@@ -2437,42 +2454,26 @@ async function renderUsers(main) {
 let ntState = null;                    // { events, members, audiences, staffRoles, smsConfigured, routes, updatedAt }
 let ntNotice = { roles: [], userIds: [] };
 
-const NT_AUDIENCE_LABEL = {
-  operators: 'Operators (admin flag)', owner: 'Owner', admin: 'Admin', developer: 'Developer', member: 'Member', viewer: 'Viewer'
-};
+const NT_AUDIENCE_LABEL = { owner: 'Owner', admin: 'Admin', developer: 'Developer', member: 'Member', viewer: 'Viewer' };
+// Audiences the desk shows. "operators" was the admin flag as its own audience;
+// the server now folds it into Admin, and an older server still reporting it
+// is simply not offered a second checkbox for the same people.
+function ntAudiences() { return (ntState?.audiences || []).filter(a => a !== 'operators'); }
 
 function ntMember(userId) {
   return (ntState?.members || []).find(m => m.userId === userId) || null;
 }
 
-function ntChipsHtml(userIds, removeAttr) {
-  if (!userIds.length) return '';
-  return `<div class="nt-chips">${userIds.map(id => {
-    const m = ntMember(id);
-    const label = m ? m.email : id;
-    const sms = m && m.phoneVerified === true ? ' · text ok' : m && m.phoneVerified === false ? ' · no verified mobile' : '';
-    return `<span class="adm-pill is-claimed nt-chip" title="${escapeHtml((m?.role || '') + sms)}">${escapeHtml(label)}<button type="button" ${removeAttr}="${escapeHtml(id)}" aria-label="Remove ${escapeHtml(label)}">×</button></span>`;
-  }).join('')}</div>`;
-}
-
-function ntAddSelectHtml(attr, key, exclude) {
-  const opts = (ntState?.members || []).filter(m => !exclude.includes(m.userId));
-  return `
-    <select class="adm-select nt-add" ${attr}="${escapeHtml(key)}" aria-label="Add an account">
-      <option value="">Add an account…</option>
-      ${opts.map(m => `<option value="${escapeHtml(m.userId)}">${escapeHtml(m.email)}${m.isAdmin ? ' (operator)' : m.role ? ` (${escapeHtml(m.role)})` : ''}</option>`).join('')}
-    </select>`;
-}
-
 function ntAudienceChecks(attrName, key, selected) {
-  return `<div class="nt-auds">${(ntState?.audiences || []).map(a => `
-    <label class="um-check" title="${a === 'operators' ? 'Every account carrying the admin flag' : (ntState?.staffRoles || []).includes(a) ? 'A team role on the Users table' : 'A customer role on the Users table'}">
-      <input type="checkbox" ${attrName}="${escapeHtml(key)}|${a}" ${selected.includes(a) ? 'checked' : ''}> ${escapeHtml(NT_AUDIENCE_LABEL[a] || a)}
+  const on = new Set(selected.map(r => (r === 'operators' ? 'admin' : r)));
+  return `<div class="nt-auds">${ntAudiences().map(a => `
+    <label class="um-check" title="${a === 'admin' ? 'The admin role, and every account carrying the admin flag' : (ntState?.staffRoles || []).includes(a) ? 'A team role on the Users table' : 'A customer role on the Users table'}">
+      <input type="checkbox" ${attrName}="${escapeHtml(key)}|${a}" ${on.has(a) ? 'checked' : ''}> ${escapeHtml(NT_AUDIENCE_LABEL[a] || a)}
     </label>`).join('')}</div>`;
 }
 
 function ntRowHtml(ev) {
-  const r = ntState.routes[ev.key] || { roles: ['operators'], userIds: [], email: true, sms: false };
+  const r = ntState.routes[ev.key] || { roles: ['admin'], userIds: [], email: true, sms: false };
   const smsTitle = ntState.smsConfigured ? 'Also text the recipients whose mobile number is verified' : 'Text messages are not switched on for this platform';
   return `
     <tr data-nt-row="${escapeHtml(ev.key)}">
@@ -2482,10 +2483,6 @@ function ntRowHtml(ev) {
         <div class="adm-muted nt-group">${escapeHtml(ev.group)}${ev.configured ? '' : ' · default'}</div>
       </td>
       <td>${ntAudienceChecks('data-nt-role', ev.key, r.roles || [])}</td>
-      <td>
-        ${ntChipsHtml(r.userIds || [], 'data-nt-remove')}
-        ${ntAddSelectHtml('data-nt-add', ev.key, r.userIds || [])}
-      </td>
       <td>
         <label class="um-check"><input type="checkbox" data-nt-ch="${escapeHtml(ev.key)}|email" ${r.email !== false ? 'checked' : ''}> Email</label>
         <label class="um-check ${ntState.smsConfigured ? '' : 'is-locked'}" title="${smsTitle}">
@@ -2498,17 +2495,17 @@ function ntRowHtml(ev) {
 }
 
 function ntBodyHtml() {
-  const saved = ntState.updatedAt ? `Last saved ${fmtDate(ntState.updatedAt)}` : 'Nothing saved yet: every event goes to the operators by email.';
+  const saved = ntState.updatedAt ? `Last saved ${fmtDate(ntState.updatedAt)}` : 'Nothing saved yet: every event goes to Admin by email.';
   return `
     <div class="adm-card">
       <h3 class="adm-card-h">Who hears about what</h3>
-      <p class="adm-note">Each row is one platform event. Pick the roles from your Users table, the operator flag, or name accounts,
-        and choose email, text, or both. Texts reach only accounts with a verified mobile number. An event with nothing
-        chosen falls back to the operators by email, so nothing is ever unrouted. The Test button uses what is saved, not
-        what is on screen.</p>
+      <p class="adm-note">Each row is one platform event. Pick the roles from your Users table and choose email, text, or both.
+        Admin covers the admin role and every account carrying the admin flag. Texts reach only accounts with a verified
+        mobile number. An event with nothing chosen falls back to Admin by email, so nothing is ever unrouted. The Test
+        button uses what is saved, not what is on screen.</p>
       <div class="adm-table-scroll">
         <table class="adm-table adm-table--wrap nt-table">
-          <thead><tr><th>Event</th><th>Roles</th><th>Named accounts</th><th>Channels</th><th></th></tr></thead>
+          <thead><tr><th>Event</th><th>Roles</th><th>Channels</th><th></th></tr></thead>
           <tbody>${ntState.events.map(ntRowHtml).join('')}</tbody>
         </table>
       </div>
@@ -2520,14 +2517,9 @@ function ntBodyHtml() {
     </div>
     <div class="adm-card">
       <h3 class="adm-card-h">Send a notice</h3>
-      <p class="adm-note">A message from you to an audience, by role or by account. Team roles (owner, admin, developer) and the
-        operators receive it as written. Customer roles (viewer, member) receive it only if their account has news turned on;
-        a named account always does.</p>
+      <p class="adm-note">A message from you to an audience, by role. Team roles (owner, admin, developer) receive it as written.
+        Customer roles (viewer, member) receive it only if their account has news turned on.</p>
       ${ntAudienceChecks('data-nt-notice-role', 'notice', ntNotice.roles)}
-      <div class="nt-notice-named">
-        ${ntChipsHtml(ntNotice.userIds, 'data-nt-notice-remove')}
-        ${ntAddSelectHtml('data-nt-notice-add', 'notice', ntNotice.userIds)}
-      </div>
       <input class="adm-input" id="ntSubject" type="text" maxlength="120" placeholder="Subject" autocomplete="off">
       <textarea class="adm-input nt-message" id="ntMessage" rows="5" maxlength="4000" placeholder="The message. Plain text; paragraphs are kept."></textarea>
       <label class="um-check ${ntState.smsConfigured ? '' : 'is-locked'}" title="${ntState.smsConfigured ? 'Also text the recipients whose mobile number is verified' : 'Text messages are not switched on for this platform'}">
@@ -2579,31 +2571,6 @@ function ntToggle(el) {
   }
 }
 
-function ntAddMember(sel) {
-  const id = sel.value;
-  if (!id) return;
-  if (sel.dataset.ntNoticeAdd !== undefined) {
-    ntNotice.userIds = [...new Set([...ntNotice.userIds, id])];
-  } else {
-    const key = sel.dataset.ntAdd;
-    const r = ntState.routes[key] || (ntState.routes[key] = { roles: [], userIds: [], email: true, sms: false });
-    r.userIds = [...new Set([...(r.userIds || []), id])];
-  }
-  paintNotify();
-}
-
-function ntRemoveMember(btn) {
-  if (btn.dataset.ntNoticeRemove !== undefined) {
-    ntNotice.userIds = ntNotice.userIds.filter(u => u !== btn.dataset.ntNoticeRemove);
-  } else {
-    const row = btn.closest('[data-nt-row]');
-    const key = row?.dataset.ntRow;
-    const r = key && ntState.routes[key];
-    if (r) r.userIds = (r.userIds || []).filter(u => u !== btn.dataset.ntRemove);
-  }
-  paintNotify();
-}
-
 async function ntSave(btn) {
   showError('ntError', '');
   const orig = btn.textContent;
@@ -2648,7 +2615,7 @@ async function ntSend(btn) {
   const sms = document.getElementById('ntSms')?.checked === true;
   const out = document.getElementById('ntSendResult');
   showError('ntError', '');
-  if (!ntNotice.roles.length && !ntNotice.userIds.length) { showError('ntError', 'Pick at least one role or account for the notice.'); return; }
+  if (!ntNotice.roles.length) { showError('ntError', 'Pick at least one role for the notice.'); return; }
   if (subject.length < 3) { showError('ntError', 'Give the notice a subject (at least 3 characters).'); return; }
   if (message.length < 10) { showError('ntError', 'Write the message first (at least 10 characters).'); return; }
   const send = async () => {
@@ -2667,7 +2634,7 @@ async function ntSend(btn) {
       btn.disabled = false; btn.textContent = orig;
     }
   };
-  const who = [...ntNotice.roles.map(r => NT_AUDIENCE_LABEL[r] || r), ...ntNotice.userIds.map(id => ntMember(id)?.email || id)].join(', ');
+  const who = ntNotice.roles.map(r => NT_AUDIENCE_LABEL[r] || r).join(', ');
   armConfirm(btn, `Confirm: send to ${who}`, send);
 }
 
@@ -2780,7 +2747,7 @@ function admOrderRowHtml(o) {
     <tr>
       <td class="adm-muted cell-tight">${escapeHtml(fmtDate(o.createdAt))}</td>
       <td class="adm-cell-email cell-ellip" title="${escapeHtml(o.email || '')}">${escapeHtml(o.email || '')}</td>
-      <td>${escapeHtml(orderLinesLabel(o.lines))}</td>
+      <td class="cell-ellip" title="${escapeHtml(orderLinesLabel(o.lines))}">${escapeHtml(orderLinesLabel(o.lines))}</td>
       <td class="adm-num cell-tight">${escapeHtml(usdCents(o.totalCents))}</td>
       <td class="cell-tight">${orderStatusPill(o.status)}${o.refundedCents ? `<div class="adm-muted adm-money-neg">-${escapeHtml(usdCents(o.refundedCents))}</div>` : ''}${o.labelError ? `<div class="adm-muted" title="${escapeHtml(o.labelError)}">label error</div>` : ''}</td>
       <td class="cell-ellip" title="${escapeHtml(o.trackingNumber || '')}">${o.trackingNumber
@@ -2791,15 +2758,15 @@ function admOrderRowHtml(o) {
       <td class="cell-tight">
         <div class="adm-order-actions">
           ${safeUrl(o.labelUrl)
-            ? `<a class="btn adm-copy" href="${escapeHtml(safeUrl(o.labelUrl))}" target="_blank" rel="noopener" title="Opens the 4x6 label PDF for printing">Print label</a>`
+            ? `<a class="btn adm-copy" href="${escapeHtml(safeUrl(o.labelUrl))}" target="_blank" rel="noopener" title="Opens the 4x6 label PDF for printing"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9V3h12v6"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 14h12v7H6z"/></svg>Print</a>`
             : (paid && physical
-                ? `<button class="btn adm-copy" type="button" data-adm-action="order-label" data-order="${escapeHtml(o.orderId)}" title="Buys the shipping label from Shippo with the rate the customer paid for">Buy label</button>`
+                ? `<button class="btn adm-copy" type="button" data-adm-action="order-label" data-order="${escapeHtml(o.orderId)}" title="Buys the shipping label from Shippo with the rate the customer paid for"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"/><circle cx="7.5" cy="7.5" r="1.5"/></svg>Buy label</button>`
                 : '')}
           ${orderRefundable(o)
             ? `<button class="btn adm-copy btn-danger" type="button" data-adm-action="order-refund"
                  data-order="${escapeHtml(o.orderId)}" data-total="${Number(o.totalCents) || 0}"
                  data-refunded="${Number(o.refundedCents) || 0}" data-goods="${Number(o.goodsCents) || 0}"
-                 title="Refund this order through Stripe (a hardware return)">Refund</button>`
+                 title="Refund this order through Stripe (a hardware return)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>Refund</button>`
             : ''}
           ${(!safeUrl(o.labelUrl) && !(paid && physical) && !orderRefundable(o)) ? '<span class="adm-muted">—</span>' : ''}
         </div>
@@ -3559,8 +3526,6 @@ function bindOnce() {
     // Notifications desk: test one event's routing, remove a named account.
     const ntTestBtn = e.target.closest('[data-nt-test]');
     if (ntTestBtn) { e.preventDefault(); ntTest(ntTestBtn); return; }
-    const ntRemoveBtn = e.target.closest('[data-nt-remove], [data-nt-notice-remove]');
-    if (ntRemoveBtn) { e.preventDefault(); ntRemoveMember(ntRemoveBtn); return; }
 
     // Reports desk: close with a note, reopen, switch status view.
     const rpCloseBtn = e.target.closest('[data-rp-close-report]');
@@ -3613,7 +3578,6 @@ function bindOnce() {
     // Notifications desk: checkboxes write straight into the routing state;
     // the account selects add a named account.
     if (e.target.matches('[data-nt-role], [data-nt-ch], [data-nt-notice-role]')) ntToggle(e.target);
-    if (e.target.matches('[data-nt-add], [data-nt-notice-add]')) ntAddMember(e.target);
   });
 }
 

@@ -56,7 +56,12 @@
         1px 8px 18px rgba(162, 0, 255, 0.132);
 
       --radius:16px;
-      --radius-sm:12px;
+      --radius-sm:10px;
+      /* Buttons are rectangles with rounded corners: never a pill, never sharp.
+         Controls (inputs, selects, checkboxes) sit one step tighter. */
+      --radius-btn:10px;
+      --radius-btn-sm:8px;
+      --radius-ctl:8px;
       /* Pill shape for chips/badges/tags. 24px fully rounds anything up to
          48px tall (radius clamps at half-height). Use this token for every
          pill; magic-number radii are banned. Dots use 50%. */

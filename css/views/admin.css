@@ -95,7 +95,7 @@
 .adm-input {
   width: 100%;
   padding: 8px 10px;
-  border-radius: 7px;
+  border-radius: var(--radius-ctl);
   border: 1px solid var(--border);
   background: var(--surface-2);
   color: var(--ink);
@@ -143,7 +143,7 @@
 }
 /* Copy-all sits inside the compact result head; the default .btn padding
    dwarfs it, so scale to the .btn-sm / console copy-button size. */
-.adm-copy { padding: 6px 12px; font-size: .8rem; }
+.adm-copy { padding: 6px 12px; font-size: .8rem; min-height: 32px; border-radius: var(--radius-btn-sm); white-space: nowrap; }
 
 .adm-codes {
   list-style: none;
@@ -498,12 +498,11 @@ th.adm-num { text-align: right; }
 .adm-search, .adm-select, .adm-input {
   padding: 7px 10px;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius-ctl);
   background: var(--surface-2);
   color: var(--ink);
   font: inherit;
   font-size: .86rem;
-  color-scheme: dark;
   transition: border-color 160ms ease, box-shadow 160ms ease, transform 120ms ease;
 }
 .adm-search { min-width: 200px; }
@@ -679,7 +678,7 @@ select.adm-select option:checked, select.adm-input option:checked {
 .um-row .acct-modal-note { margin-bottom: 8px; }
 .um-checks { display: flex; gap: 16px; flex-wrap: wrap; }
 .um-check { display: inline-flex; align-items: center; gap: 6px; color: var(--ink); font-size: .86rem; cursor: pointer; }
-.um-check input { accent-color: var(--brand-600); margin: 0; }
+.um-check input { margin: 0; }
 .um-check.is-locked { opacity: .55; cursor: not-allowed; }
 .um-note { margin: 4px 0 10px; font-size: .82rem; color: var(--gold-soft); }
 .um-danger { border-top-color: color-mix(in srgb, var(--danger) 35%, transparent); align-items: start; }
@@ -689,7 +688,9 @@ select.adm-select option:checked, select.adm-input option:checked {
 }
 
 /* Orders desk: stack the per-order action buttons (label + refund). */
-.adm-order-actions { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.adm-order-actions { display: flex; gap: 6px; flex-wrap: nowrap; align-items: center; }
+.adm-order-actions .btn { white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; }
+.adm-order-actions .btn svg { width: 14px; height: 14px; flex: none; }
 
 
 /* ---- Notifications desk ---- */
@@ -719,3 +720,22 @@ select.adm-select option:checked, select.adm-input option:checked {
 .rp-diag td { padding: 2px 12px 2px 0; vertical-align: top; }
 .rp-note { margin-top: 10px; }
 .rp-note textarea { width: 100%; min-width: 0; box-sizing: border-box; resize: vertical; font: inherit; line-height: 1.5; }
+
+/* ---- Manage account modal: sections, not a label column ---- */
+/* <header> in the modal: the site-wide header { position: fixed } rule must not
+   take it, the same reset the section headers carry. */
+.um-head { position: static; background: none; border: 0; z-index: auto; -webkit-backdrop-filter: none; backdrop-filter: none; padding: 0; width: auto; display: flex; align-items: flex-start; justify-content: space-between; gap: 12px 16px; flex-wrap: wrap; margin-bottom: 4px; }
+.um-head .acct-modal-h { margin-bottom: 2px; }
+.um-head .um-email { margin: 0; }
+.um-pills { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; padding-top: 4px; }
+.um-sec { padding: 14px 0 12px; border-top: 1px solid var(--border); }
+.um-sec--danger { border-top-color: color-mix(in srgb, var(--danger) 35%, transparent); }
+.um-sec-h { font-size: .68rem; letter-spacing: .09em; text-transform: uppercase; color: var(--brand-600); font-weight: 700; margin: 0 0 8px; }
+.um-sec .acct-modal-note { margin: 0 0 10px; }
+.um-grid2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px 16px; align-items: end; }
+.um-field { display: grid; gap: 6px; min-width: 0; }
+.um-field .adm-label { margin-top: 0; }
+.um-field .um-checks { min-height: 36px; align-items: center; }
+.um-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.um .adm-input { margin: 0; }
+@media (max-width: 30rem) { .um-grid2 { grid-template-columns: minmax(0, 1fr); } }
