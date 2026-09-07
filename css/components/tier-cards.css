@@ -3,7 +3,11 @@
    price when known, one clear action. Shown on warranty success screens and
    reusable anywhere the offer belongs. */
 
-.tc-wrap { margin-top: 26px; text-align: left; }
+/* Fill the container, never shrink-to-fit the gallery: inside a centered flex
+   column (the warranty done and engaged steps) a shrink-wrapped section takes
+   the full row width, the gallery never becomes narrower than its cards, its
+   scroll never engages, and the whole page overflows sideways on a phone. */
+.tc-wrap { margin-top: 26px; text-align: left; width: 100%; max-width: 100%; min-width: 0; align-self: stretch; box-sizing: border-box; }
 
 .tc-head { text-align: center; margin-bottom: 16px; }
 .tc-h {
