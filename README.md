@@ -136,14 +136,26 @@ client does and what it may assume.
 API answers `login-password` with a short-lived 2FA-scoped token, and the client
 exchanges it:
 
-- enrolled account → an MFA challenge, exchanged at `/v1/auth/2fa/verify` with
-  an authenticator code or a recovery code
-- not yet enrolled → an enrollment token, which forces authenticator setup
-  before any session exists
+- enrolled account → an MFA challenge. The response says which second factors
+  the account holds (`methods: { totp, passkey }`). Either one completes the
+  step, never both: a passkey through `/v1/auth/passkey/auth/options` and
+  `/auth/verify` (a WebAuthn assertion, user verification required), or an
+  authenticator code or recovery code through `/v1/auth/2fa/verify`. When the
+  account has a passkey and the browser supports it, the prompt opens first;
+  the code field stays one link away, so a lost passkey recovers exactly like
+  a lost authenticator.
+- not yet enrolled → an enrollment token and a chooser: passkey (fingerprint,
+  face, or PIN on a device the customer owns) or authenticator app. A password
+  alone never picks the factor: for a pre-existing account the API also emails
+  a code and demands it at confirm. Recovery codes are minted at the first
+  enrollment of either kind and shown once.
 
 There is no un-enrolled session to hand out, so every account, operators
 included, is carried onto 2FA at its next sign-in. `src/auth/twoFactorFlow.js`
-drives both branches.
+drives both branches; `src/auth/passkey.js` is the WebAuthn half, raw
+`navigator.credentials` with no third-party script in the auth path. The
+account panel's Two-factor card adds or removes passkeys behind a password
+step-up and refuses to remove the last remaining factor.
 
 **Tokens** live in `sessionStorage` only, and carry no privileges. Role, tier,
 status, `isAdmin`, and `isDev` are re-read server-side on every request, so the
@@ -162,7 +174,8 @@ an ordinary "not for your account" refusal, must never sign anyone out.
 
 **Password reset recovers the password, not the second factor.** It is
 OTP-gated, revokes existing sessions, and mints none. Losing the authenticator
-still requires a recovery code.
+or the passkey still requires a recovery code, or the other factor if one is
+enrolled.
 
 **Guests** can check out, register a warranty, and get shipping rates without an
 account. A guest order is linked to an account later only by an explicit claim
