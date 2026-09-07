@@ -44,15 +44,17 @@ function primaryBtn(p) {
 // row of one kind of card. The product photo fills the banner; a product that
 // only has a poster-style flyer shows it whole on the media ground instead.
 function cardHtml(p) {
-  // Same composition as the software cards: a 16:9 banner filled by the
-  // marketing brochure (its top half; the card should read as the brochure
-  // itself, one complete thing, so cropping the sheet is fine) and the
-  // product photo badged over the corner as its app tile. Every featured card
-  // shares one banner height. A product with only a brochure gets no tile.
+  // The banner is a stage, not a crop. Brochures come in every shape (the
+  // OmniSource sheet is square, the OmniBus sheet is portrait), so the whole
+  // sheet is shown, fitted inside a 4:3 stage, over an ambient blur of itself
+  // that fills the stage with the brochure's own colors. Every card keeps one
+  // banner height and nothing is cut off. The product photo sits over the
+  // corner as the app tile; a product with only a brochure gets no tile.
   const flyer = p.flyer || p.image || '';
   const tile = p.image && p.image !== flyer ? p.image : '';
   const media = flyer
-    ? `<div class="ph-media ph-media--top">
+    ? `<div class="ph-media ph-media--top ph-media--stage">
+         <img class="ph-media-ambient" src="${escapeHtml(flyer)}" alt="" aria-hidden="true" loading="lazy">
          <img class="ph-media-img" src="${escapeHtml(flyer)}" alt="${escapeHtml(p.name)}" loading="lazy">
          ${tile ? `<img class="ph-media-badge ph-media-badge--tile" src="${escapeHtml(tile)}" alt="" loading="lazy">` : ''}
        </div>`
