@@ -6,6 +6,20 @@
 // billing profile is created.
 
 import { mountPricingSelect } from "../components/pricingCards.js";
+import { beginHyperHelix } from "../components/dna_swirl.speed.controller.js";
+
+// The finalizing step (step5) shows its motion through the header helix and
+// the processing veil, the same signal every API call gives, instead of a
+// strand animation of its own. Started when the step becomes active, ended
+// when any other step takes over or the wizard is left (bootstrap calls
+// endFinalizeVeil on every mode change).
+let finalizeVeilEnd = null;
+export function endFinalizeVeil() {
+  if (finalizeVeilEnd) { const end = finalizeVeilEnd; finalizeVeilEnd = null; end(); }
+}
+function startFinalizeVeil() {
+  if (!finalizeVeilEnd) finalizeVeilEnd = beginHyperHelix({ rampUpMs: 300, mul: 6, rampDownMs: 700 });
+}
 
 let pricing = null; // the mounted selector; null until initPostLoginWizard
 
@@ -35,6 +49,7 @@ export function setStep(id){
   document.querySelectorAll(".wizard .step")
     .forEach(s => s.classList.remove("is-active"));
   document.getElementById(id)?.classList.add("is-active");
+  if (id === "step5") startFinalizeVeil(); else endFinalizeVeil();
 }
 
 export function buildRequestedSubscription({ subType, cadence, addons }) {

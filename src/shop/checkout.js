@@ -14,6 +14,7 @@ import { lines, subtotal, removeItem, subscribe } from './cart.js';
 import { formatPrice, ALL_PRODUCTS, SHOP_LIVE } from './products.js';
 import { LANE, PRAG_API_BASE, ORDERS_CLAIM_LIVE } from '../runtime/config.js';
 import { tierCardsHtml, bindTierCards, loadPublicPrices } from '../components/tierCards.js';
+import { stripeAppearance } from '../api/stripeAppearance.js';
 
 const CHECKOUT_ENABLED = SHOP_LIVE || LANE === 'dev';
 
@@ -388,15 +389,8 @@ async function mountPaymentElement() {
     return;
   }
   if (!stripe) stripe = window.Stripe(window.STRIPE_PUBLISHABLE_KEY);
-  // The element follows the site theme: light theme, light element, primary purple.
-  const light = document.documentElement.getAttribute('data-theme') === 'light';
-  elements = stripe.elements({
-    clientSecret: state.order.clientSecret,
-    appearance: {
-      theme: light ? 'stripe' : 'night',
-      variables: { colorPrimary: light ? '#6d28d9' : '#7dd3fc', borderRadius: '10px' }
-    }
-  });
+  // The element follows the site theme (one appearance for every Element).
+  elements = stripe.elements({ clientSecret: state.order.clientSecret, appearance: stripeAppearance() });
   elements.create('payment').mount(holder);
 }
 

@@ -170,22 +170,10 @@
           <h3>Step 4: Finalizing</h3>
           <p class="hint">We’re confirming your subscription with Stripe. This usually takes a few seconds.</p>
 
+          <!-- The finalizing motion is the header helix in hyper mode plus the
+               processing veil (wizard/index.js starts it with this step); this
+               panel carries only the words. -->
           <div class="login-panel dna-container" data-dna="idle">
-            <div class="dna-track" aria-hidden="true">
-              <span class="dna-strand strand-a"></span>
-              <span class="dna-strand strand-b"></span>
-
-              <!-- “beads” traveling along the helix -->
-              <div class="dna-nodes">
-                <span class="dna-node a n1"></span>
-                <span class="dna-node a n2"></span>
-                <span class="dna-node a n3"></span>
-                <span class="dna-node b n1"></span>
-                <span class="dna-node b n2"></span>
-                <span class="dna-node b n3"></span>
-              </div>
-            </div>
-
             <div class="dna-text">
               <div id="finalizeMsg" class="hint dna-label">Finalizing subscription…</div>
               <div id="finalizeSub" class="hint dna-sub">Do not refresh. Safe to leave open.</div>

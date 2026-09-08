@@ -2,6 +2,7 @@
 
 import { fetchJson } from "../api/client.js";
 import { getPricingSelection } from "../wizard/index.js";
+import { stripeAppearance } from "./stripeAppearance.js";
 
 export async function handleBillingProfile({
   e,
@@ -131,10 +132,8 @@ export async function startPaymentStep({
   if (!key) throw new Error("Stripe publishable key not configured.");
 
   const stripe = Stripe(key);
-  const elements = stripe.elements({
-    clientSecret,
-    appearance: { theme: "night" }
-  });
+  // The element follows the site theme (light element on the light theme).
+  const elements = stripe.elements({ clientSecret, appearance: stripeAppearance() });
 
   document.getElementById("payment-element").innerHTML = "";
   const paymentEl = elements.create("payment");

@@ -11,7 +11,7 @@
     import { initDropdownMenu } from '../components/dropdown.js';
     import { toggleViewerMode, setOutput } from '../components/responseViewer.js';
     import { setAppMode, ensureWizardVisibleAndBranded } from '../runtime/appRouter.js';
-    import { formatPhone, gotoStep1, gotoStep2, gotoStep3, gotoStep4, gotoStep5, syncWizardAuthIndicator, initPostLoginWizard, buildRequestedSubscription } from "../wizard/index.js";
+    import { formatPhone, gotoStep1, gotoStep2, gotoStep3, gotoStep4, gotoStep5, syncWizardAuthIndicator, initPostLoginWizard, buildRequestedSubscription, endFinalizeVeil } from "../wizard/index.js";
     import { handleBillingProfile, startPaymentStep, pollUntilResolved } from "../api/billing.js";
     import { setDnaMode } from "../components/dnaController.js";
     import { showStatusModal } from "../components/statusModal.js";
@@ -111,6 +111,7 @@
     window.closeCart         = closeCart;
     window.addToCart         = (pid, variant) => cartAddItem(pid, variant || null, 1);
     window.onEnterMode       = (mode) => {
+      if (mode !== 'wizard') endFinalizeVeil();
       if (mode === 'checkout') onCheckoutEnter();
       if (mode === 'warranty') onWarrantyEnter();
       if (mode === 'admin') onAdminEnter();
