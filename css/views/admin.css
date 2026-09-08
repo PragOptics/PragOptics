@@ -783,3 +783,5 @@ select.adm-select option:checked, select.adm-input option:checked {
 .adm-details summary { cursor: pointer; }
 .adm-details ul { margin: 6px 0 0; padding-left: 18px; }
 .adm-details li { margin: 3px 0; }
+
+.adm-raw { margin: 10px 0 0; padding: 10px 12px; border: 1px solid var(--border); border-radius: 9px; background: var(--surface-deep); font: .78rem/1.5 ui-monospace, "Cascadia Code", Consolas, monospace; color: var(--ink); white-space: pre; overflow-x: auto; user-select: all; }

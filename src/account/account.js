@@ -3618,10 +3618,12 @@ function renderCatalog(main) {
         on a product tagged <code>po_sku</code>). Run it after changing products or prices in Stripe. Nothing pulls at page load.</p>
       <div class="adm-actions-row">
         <button class="cta" type="button" data-adm-action="catalog-sync" title="Reads Stripe now and updates the catalog table on this lane">Sync from Stripe</button>
+        <button class="btn" type="button" data-adm-action="catalog-copy" title="Copies the raw inventory as plain text: every keyed price, the goods rows, and the keyless prices from the last sync">Copy list</button>
         <span class="muted nt-result" id="admCatalogSyncResult"></span>
       </div>
       <p class="adm-error" id="admCatalogSyncError" hidden></p>
       <div id="admCatalogSyncDiag"></div>
+      <pre class="adm-raw" id="admCatalogRaw" hidden></pre>
     </div>
 
     <div class="adm-card">
@@ -3690,6 +3692,50 @@ async function loadCatalogGoods() {
   }
 }
 
+// The last sync's answer, kept so Copy list can include the keyless prices.
+let lastCatalogSync = null;
+
+// The raw inventory as plain text, for sharing: what this lane's catalog
+// offers, what the sync bound as goods, and what Stripe holds that carries no
+// key. Copies to the clipboard; when the browser refuses, the text is shown so
+// it can be selected by hand.
+async function copyCatalogList(btn) {
+  const ping = cachedPing();
+  const rows = (ping?.productCatalog || []).filter(r => String(r.active) !== 'false')
+    .map(r => `${r.lookupKey}  ${usdCents(r.amount)}  ${r.interval || 'one-time'}`).sort();
+  let goods = [];
+  try { goods = (await apiFetch(ADMIN_CATALOG_GOODS_URL)).goods || []; } catch { goods = []; }
+  const d = lastCatalogSync?.diagnostics || null;
+  const lines = [];
+  lines.push(`PragOptics catalog, lane ${LANE}, build ${ping?.deployment?.build || '?'}, ${new Date().toISOString()}`);
+  lines.push('');
+  lines.push(`PLANS AND ADD-ONS OFFERED (${rows.length})`);
+  rows.forEach(r => lines.push('  ' + r));
+  if (lastCatalogSync) {
+    const hidden = Math.max(0, Number(lastCatalogSync.upserted || 0) - rows.length);
+    lines.push(`  keyed in Stripe: ${lastCatalogSync.upserted || 0}${hidden ? `, of which ${hidden} retired add-on price${hidden === 1 ? '' : 's'} hidden on purpose` : ''}`);
+  }
+  lines.push('');
+  lines.push(`GOODS (${goods.length})`);
+  goods.forEach(g => lines.push(`  ${g.lookupKey}  ${g.name}  ${g.amount == null ? '' : usdCents(g.amount)}  tax ${g.taxCode || '(default)'}  ships ${g.physical ? 'yes' : 'no'}  cost ${g.costCents == null ? '(unset)' : usdCents(g.costCents)}  ${g.active ? 'active' : 'retired'}`));
+  lines.push('');
+  if (d) {
+    const k = Array.isArray(d.keylessPrices) ? d.keylessPrices : [];
+    lines.push(`KEYLESS PRICES IN STRIPE, IGNORED (${d.pricesWithoutLookupKey || 0})`);
+    k.forEach(p => lines.push(`  ${p.id}  ${p.product || ''}${p.nickname ? ' (' + p.nickname + ')' : ''}  ${p.amount == null ? '' : usdCents(p.amount)}  ${p.interval || ''}`));
+    if ((d.pricesWithoutLookupKey || 0) > k.length) lines.push(`  (${(d.pricesWithoutLookupKey || 0) - k.length} more not listed)`);
+  } else {
+    lines.push('KEYLESS PRICES IN STRIPE: run Sync from Stripe first to include them');
+  }
+  const text = lines.join('\n');
+  const out = document.getElementById('admCatalogSyncResult');
+  const raw = document.getElementById('admCatalogRaw');
+  let copied = false;
+  try { await navigator.clipboard.writeText(text); copied = true; } catch { copied = false; }
+  if (raw) { raw.textContent = text; raw.hidden = copied; }
+  if (out) out.textContent = copied ? `Copied ${lines.length} lines.` : 'The browser refused the clipboard; the list is shown below to select and copy.';
+}
+
 // One click, one read of Stripe, and a plain account of what came across. When
 // a product the owner tagged for the shop has no goods price, the desk names it.
 async function catalogSync(btn) {
@@ -3700,6 +3746,7 @@ async function catalogSync(btn) {
   btn.disabled = true; btn.textContent = 'Syncing…';
   try {
     const r = await apiFetch(CATALOG_SYNC_URL, { method: 'POST', body: '{}' });
+    lastCatalogSync = r;
     const d = r.diagnostics || {};
     if (out) out.textContent = `Plans: ${r.upserted || 0} updated, ${r.retired || 0} retired. Goods: ${r.goodsUpserted || 0} updated, ${r.goodsRetired || 0} retired.`;
     const notes = [];
@@ -3868,6 +3915,7 @@ function bindOnce() {
       if (admAct.dataset.admAction === 'copy') copyCodes(admAct);
       if (admAct.dataset.admAction === 'catalog-snapshot') catalogSnapshot();
       if (admAct.dataset.admAction === 'catalog-sync') catalogSync(admAct);
+      if (admAct.dataset.admAction === 'catalog-copy') copyCatalogList(admAct);
       if (admAct.dataset.admAction === 'catalog-import') catalogImport(admAct);
       if (admAct.dataset.admAction === 'lane-live') switchLane('live');
       if (admAct.dataset.admAction === 'lane-dev') switchLane('dev');
