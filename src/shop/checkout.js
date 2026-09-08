@@ -15,6 +15,7 @@ import { formatPrice, ALL_PRODUCTS, SHOP_LIVE } from './products.js';
 import { LANE, PRAG_API_BASE, ORDERS_CLAIM_LIVE } from '../runtime/config.js';
 import { tierCardsHtml, bindTierCards, loadPublicPrices } from '../components/tierCards.js';
 import { stripeAppearance } from '../api/stripeAppearance.js';
+import { ensureStripeJs } from '../runtime/stripeLoader.js';
 
 const CHECKOUT_ENABLED = SHOP_LIVE || LANE === 'dev';
 
@@ -383,6 +384,8 @@ function paymentHtml(ls) {
 async function mountPaymentElement() {
   const holder = document.getElementById('coPaymentEl');
   if (!holder || !state.order?.clientSecret) return;
+  // Stripe.js arrives here, on demand: a visitor who never pays never loads it.
+  try { await ensureStripeJs(); } catch { /* handled below */ }
   if (typeof window.Stripe !== 'function') {
     // Step back rather than re-rendering the payment step: render() on the
     // payment step calls this function, so erroring in place would recurse.

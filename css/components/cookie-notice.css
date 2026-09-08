@@ -1,0 +1,40 @@
+/* /css/components/cookie-notice.css
+   The storage notice: one glass card pinned to the bottom of the viewport,
+   above the page and below every modal and drawer. It informs and is
+   acknowledged once; it never blocks the page. */
+
+.cn-host {
+  position: fixed;
+  left: 0; right: 0;
+  bottom: max(14px, env(safe-area-inset-bottom));
+  z-index: 900;                    /* under the cart drawer (980+) and every modal (10000+) */
+  display: flex; justify-content: center;
+  padding: 0 14px;
+  pointer-events: none;
+  opacity: 0; transform: translateY(12px);
+  transition: opacity 200ms ease, transform 220ms ease;
+}
+.cn-host.is-in { opacity: 1; transform: none; }
+.cn-host[hidden] { display: none; }
+
+.cn-card {
+  pointer-events: auto;
+  width: 100%; max-width: 760px;
+  display: flex; align-items: center; gap: 18px;
+  padding: 14px 16px 14px 18px;
+  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--brand-600) 30%, var(--border));
+  box-shadow: var(--aura);
+}
+.cn-body { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 4px; }
+.cn-kicker {
+  font-size: .64rem; letter-spacing: .2em; text-transform: uppercase; font-weight: 800;
+  color: var(--brand-600);
+}
+.cn-text { margin: 0; font-size: .84rem; line-height: 1.5; color: var(--ink); }
+.cn-actions { display: flex; gap: 8px; flex-shrink: 0; }
+
+@media (max-width: 640px) {
+  .cn-card { flex-direction: column; align-items: stretch; gap: 12px; }
+  .cn-actions { justify-content: flex-end; }
+}

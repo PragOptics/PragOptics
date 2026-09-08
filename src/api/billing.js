@@ -3,6 +3,7 @@
 import { fetchJson } from "../api/client.js";
 import { getPricingSelection } from "../wizard/index.js";
 import { stripeAppearance } from "./stripeAppearance.js";
+import { ensureStripeJs } from "../runtime/stripeLoader.js";
 
 export async function handleBillingProfile({
   e,
@@ -131,7 +132,8 @@ export async function startPaymentStep({
   const key = window.STRIPE_PUBLISHABLE_KEY || "";
   if (!key) throw new Error("Stripe publishable key not configured.");
 
-  const stripe = Stripe(key);
+  await ensureStripeJs();
+  const stripe = window.Stripe(key);
   // The element follows the site theme (light element on the light theme).
   const elements = stripe.elements({ clientSecret, appearance: stripeAppearance() });
 

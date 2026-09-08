@@ -50,10 +50,10 @@
   <link rel="icon" type="image/png" href="https://pragoptics.com/images/favicon.png" sizes="192x192">
   <link rel="apple-touch-icon" href="https://pragoptics.com/images/apple-touch-icon.png">
 
-  <!-- Stripe (publishable key injected below) -->
+  <!-- Stripe publishable key. Stripe.js itself loads on demand at a payment
+       step (src/runtime/stripeLoader.js), never on the landing, so Stripe's
+       cookies are set only for a visitor who is paying. -->
   <script type="module" src="./src/runtime/stripeKey.js"></script>
-
-  <script src="https://js.stripe.com/v3"></script>
 
 <!-- ===== CSS: Tokens & Base ===== -->
 <link rel="stylesheet" href="./css/tokens.css">
@@ -70,6 +70,7 @@
 <link rel="stylesheet" href="./css/components/pill-badges.css">
 
 <link rel ="stylesheet" href="./css/components/footer.css">
+<link rel="stylesheet" href="./css/components/cookie-notice.css">
 
 <link rel="stylesheet" href="./css/components/forms.css">
 <link rel="stylesheet" href="./css/components/forms-login.css">

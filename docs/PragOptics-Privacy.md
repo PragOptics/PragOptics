@@ -171,7 +171,31 @@ Material changes will be communicated through reasonable notice. Continued use o
 
 ---
 
-## 11. Contact
+## 11. Cookies and Device Storage
+
+PragOptics sets no cookies of its own and runs no analytics, advertising, or tracking. The site keeps a small amount of data in your browser's own storage so that it works. Nothing in this list is used to identify or follow you across other sites.
+
+| What | Where | Why | How long |
+|------|-------|-----|----------|
+| Sign-in session | Session storage | Keeps you signed in while the tab is open | Until the tab closes or you sign out |
+| Cart | Local storage | Remembers what you added to the cart | Until you empty it |
+| Theme choice | Local storage | Keeps the light or dark theme you picked | Until you change it |
+| Agreement acknowledgement | Local storage | Records that you accepted the Subscriber Agreement before creating an account | Until cleared |
+| Step hand-offs | Session and local storage | Carries an order number to link, a prefilled email, a warranty code, or the page to return to between two steps of one flow | Cleared when the step completes |
+| Plan prices | Session storage | Caches the public plan prices shown on the landing | Ten minutes |
+| Storage notice | Local storage | Remembers that you have seen this notice | Until cleared |
+| Operator tools | Local storage | Lane choice, catalog snapshots, and queued items for platform operators and developers only | Until cleared |
+
+Two third parties may set cookies, each only on your own action:
+
+- **Stripe** processes payments. Stripe's script loads only when you reach a payment step, where it sets its own fraud-prevention cookies. See Stripe's privacy policy at stripe.com/privacy.
+- **YouTube** hosts the How-To videos. A video loads from youtube-nocookie.com only when you press play.
+
+You can clear everything above at any time through your browser's site data settings. The **Cookies** link in the footer reopens the notice.
+
+---
+
+## 12. Contact
 
 For privacy-related inquiries or requests, contact:
 

@@ -15,6 +15,7 @@ import { PRAG_API_BASE, LANE, ORDERS_CLAIM_LIVE } from '../runtime/config.js';
 import { registerPasskey, passkeySupported } from '../auth/passkey.js';
 import { switchLane, isPlatformOperator } from '../runtime/lane.js';
 import { stripeAppearance } from '../api/stripeAppearance.js';
+import { ensureStripeJs } from '../runtime/stripeLoader.js';
 import { tierName, ADDON_NAME } from '../components/tierCopy.js';
 import { mountPricingSelect } from '../components/pricingCards.js';
 import { openReportAnomaly, installErrorCapture } from './report.js';
@@ -1754,6 +1755,7 @@ async function startPmUpdate(btn) {
   const actions = document.getElementById('acctPmActions');
   try {
     const res = await apiFetch(PM_URL, { method: 'POST', body: '{}' });
+    await ensureStripeJs().catch(() => null);
     const stripe = window.Stripe?.(window.STRIPE_PUBLISHABLE_KEY);
     if (!stripe) throw new Error('Stripe is not available.');
     const elements = stripe.elements({ clientSecret: res.clientSecret, appearance: stripeAppearance() });
