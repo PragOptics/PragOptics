@@ -150,10 +150,9 @@ export const HARDWARE = [
       { k: 'Case',          v: 'Printable, STL included' },
       { k: 'Scope',         v: 'Sources loop power only' }
     ],
-    variants: [
-      { id: 'kit', name: 'Assembled kit', priceCents: 2500,
-        note: 'PragOptics carry case + OmniSource stick w/ finger-loop lanyard + test-lead harness w/ hook grabbers. Voltage-set to 25 V, ready to clip on. Printed case warranted for life; register within 30 days.' }
-    ],
+    // One configuration for sale: the assembled unit (priceCents above). An
+    // unassembled kit is a SEPARATE product with its own sku, price, card and
+    // warranty terms when it is offered; it is not a variant of this one.
     license: 'Source-available, not open source. The full design is free to build from: exact parts, schematic, and case STL, as many as you like. Build one for yourself or your employer, but not for resale, and firmware stays proprietary. Published under CC BY-NC-SA 4.0; the full licence travels with every download. Buy one built for convenience, or build your own: both are first-class.'
   },
   {
