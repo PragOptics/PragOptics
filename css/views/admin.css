@@ -779,3 +779,7 @@ select.adm-select option:checked, select.adm-input option:checked {
 
 .adm-diag { margin: 8px 0 0; padding-left: 18px; }
 .adm-diag li { margin: 4px 0; line-height: 1.5; }
+
+.adm-details summary { cursor: pointer; }
+.adm-details ul { margin: 6px 0 0; padding-left: 18px; }
+.adm-details li { margin: 3px 0; }

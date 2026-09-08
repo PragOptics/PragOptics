@@ -50,6 +50,7 @@ const USERS_URL = `${PRAG_API_BASE}/admin/users`;
 const USER_PATCH_URL = `${PRAG_API_BASE}/admin/users/patch`;
 const CATALOG_IMPORT_URL = `${PRAG_API_BASE}/admin/catalog/import`;
 const CATALOG_SYNC_URL = `${PRAG_API_BASE}/catalog/sync`;
+const ADMIN_CATALOG_GOODS_URL = `${PRAG_API_BASE}/admin/catalog/goods`;
 const ADMIN_ORDERS_URL = `${PRAG_API_BASE}/admin/orders`;
 const ADMIN_ORDER_LABEL_URL = `${PRAG_API_BASE}/admin/orders/label`;
 const ADMIN_ORDER_REFUND_URL = `${PRAG_API_BASE}/admin/orders/refund`;
@@ -3624,6 +3625,13 @@ function renderCatalog(main) {
     </div>
 
     <div class="adm-card">
+      <h3 class="adm-card-h">Physical goods</h3>
+      <p class="adm-note">The products the shop sells, as the last sync bound them to Stripe. Checkout charges these prices and
+        Stripe Tax uses these tax codes; the unit cost feeds the Orders desk. The plan table above is the subscription side.</p>
+      <div id="admCatalogGoods"><p class="adm-note">Loading…</p></div>
+    </div>
+
+    <div class="adm-card">
       <h3 class="adm-card-h">Stored snapshot</h3>
       ${snap ? `
         <p class="muted"><strong>${snap.items.length}</strong> rows from the
@@ -3645,6 +3653,41 @@ function renderCatalog(main) {
       <p class="muted" id="admCatalogResult" hidden></p>
     </div>
   `;
+  loadCatalogGoods();
+}
+
+// The goods rows the sync wrote, from the catalog table itself (they never
+// ride the ping). An older lane answers 404 and the card says so.
+async function loadCatalogGoods() {
+  const host = document.getElementById('admCatalogGoods');
+  if (!host) return;
+  try {
+    const data = await apiFetch(ADMIN_CATALOG_GOODS_URL);
+    const rows = data.goods || [];
+    if (!rows.length) { host.innerHTML = '<p class="adm-empty">No goods rows yet. Give the Stripe product its lookup key, then Sync from Stripe.</p>'; return; }
+    host.innerHTML = `
+      <div class="adm-table-scroll">
+        <table class="adm-table">
+          <thead><tr><th>Product</th><th>SKU</th><th>Configuration</th><th class="adm-num">Price</th><th>Tax code</th><th>Ships</th><th class="adm-num">Unit cost</th><th>Lookup key</th><th>Status</th></tr></thead>
+          <tbody>${rows.map(g => `
+            <tr>
+              <td>${escapeHtml(g.name || g.sku)}</td>
+              <td><code>${escapeHtml(g.sku)}</code></td>
+              <td>${escapeHtml(g.variant)}${g.nickname ? `<div class="adm-muted">${escapeHtml(g.nickname)}</div>` : ''}</td>
+              <td class="adm-num cell-tight">${g.amount == null ? '—' : escapeHtml(usdCents(g.amount))}</td>
+              <td><code>${escapeHtml(g.taxCode || '')}</code>${g.taxCode ? '' : '<div class="adm-muted">general goods by default</div>'}</td>
+              <td>${g.physical ? 'yes' : 'no'}</td>
+              <td class="adm-num cell-tight">${g.costCents == null ? '<span class="adm-muted" title="Set po_cost_cents on the Stripe product and sync">—</span>' : escapeHtml(usdCents(g.costCents))}</td>
+              <td><code>${escapeHtml(g.lookupKey)}</code></td>
+              <td>${g.active ? '<span class="acct-tag is-verified">active</span>' : `<span class="acct-tag" title="${escapeHtml(g.retiredAt)}">retired</span>`}</td>
+            </tr>`).join('')}</tbody>
+        </table>
+      </div>`;
+  } catch (ex) {
+    host.innerHTML = `<p class="adm-empty">${ex?.status === 404
+      ? 'This lane does not carry the goods list yet. Deploy the backend that has it.'
+      : escapeHtml(friendlyError(ex, 'Could not load the goods rows.'))}</p>`;
+  }
 }
 
 // One click, one read of Stripe, and a plain account of what came across. When
@@ -3664,7 +3707,12 @@ async function catalogSync(btn) {
     for (const p of d.skuProductsWithoutGoodsPrice || []) {
       notes.push(`<strong>${escapeHtml(p.name || p.id)}</strong> is tagged <code>po_sku=${escapeHtml(p.sku)}</code> but none of its active one-time prices carries the lookup key <code>po.goods.${escapeHtml(p.sku)}.default</code>. Set the lookup key on the price, then sync again.`);
     }
-    if (d.pricesWithoutLookupKey) notes.push(`${d.pricesWithoutLookupKey} active price${d.pricesWithoutLookupKey === 1 ? '' : 's'} in this Stripe account carr${d.pricesWithoutLookupKey === 1 ? 'ies' : 'y'} no lookup key at all and ${d.pricesWithoutLookupKey === 1 ? 'is' : 'are'} ignored.`);
+    if (d.pricesWithoutLookupKey) {
+      const list = Array.isArray(d.keylessPrices) ? d.keylessPrices : [];
+      const items = list.map(p => `<li><strong>${escapeHtml(p.product || p.id)}</strong>${p.nickname ? ` (${escapeHtml(p.nickname)})` : ''}: ${p.amount != null ? escapeHtml(usdCents(p.amount)) + ' ' : ''}${escapeHtml(p.interval || '')} <code>${escapeHtml(p.id)}</code></li>`).join('');
+      notes.push(`<details class="adm-details"><summary>${d.pricesWithoutLookupKey} active price${d.pricesWithoutLookupKey === 1 ? '' : 's'} in this Stripe account carr${d.pricesWithoutLookupKey === 1 ? 'ies' : 'y'} no lookup key. The sync leaves them alone and nothing on the site offers them. Open to see which.</summary>${items ? `<ul>${items}</ul>` : ''}</details>`);
+    }
+    loadCatalogGoods();
     if (!(r.goodsUpserted || 0) && !(d.skuProductsWithoutGoodsPrice || []).length && !(d.goodsKeysSeen || []).length) notes.push('No goods came across and no product is tagged <code>po_sku</code> in the Stripe account this lane uses. If you created the product in a different sandbox, this lane cannot see it.');
     if (diagEl) diagEl.innerHTML = notes.length ? `<ul class="adm-note adm-diag">${notes.map(n => `<li>${n}</li>`).join('')}</ul>` : '';
   } catch (ex) {
