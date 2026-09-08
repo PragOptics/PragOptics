@@ -13,6 +13,7 @@
 import { lines, subtotal, removeItem, subscribe } from './cart.js';
 import { formatPrice, ALL_PRODUCTS, SHOP_LIVE } from './products.js';
 import { LANE, PRAG_API_BASE, ORDERS_CLAIM_LIVE } from '../runtime/config.js';
+import { tierCardsHtml, bindTierCards, loadPublicPrices } from '../components/tierCards.js';
 
 const CHECKOUT_ENABLED = SHOP_LIVE || LANE === 'dev';
 
@@ -487,8 +488,15 @@ function redemptionDoneHtml() {
         <button class="ph-btn ph-btn-ghost" type="button" data-co-nav="landing">Back to home</button>
       </div>
     </div>
+    <div class="co-plans">
+      ${tierCardsHtml({ heading: 'Add the platform', sub: 'Optional and cancels anytime. Your warranty never depends on it. Free is one of the plans.' })}
+    </div>
   `;
 }
+
+// The gallery under the redemption confirmation prices itself from the public
+// route for a visitor; one request, then one repaint when the numbers land.
+let plansPriced = false;
 
 function doneHtml() {
   if (state.redemption) return redemptionDoneHtml();
@@ -754,6 +762,13 @@ function render() {
     if (state.redemption) setHeader('Warranty redemption', 'Engaged.', 'Your replacement case is on its way.');
     else setHeader('Checkout', 'All set.', 'Your order is in.');
     $host.innerHTML = doneHtml();
+    if (state.redemption) {
+      bindTierCards($host);
+      if (!plansPriced) {
+        plansPriced = true;
+        loadPublicPrices().then(rows => { if (rows.length && state.step === 'done' && state.redemption) render(); });
+      }
+    }
     return;
   }
 

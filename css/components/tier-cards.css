@@ -31,7 +31,10 @@
   scrollbar-width: thin;
   scrollbar-color: color-mix(in srgb, var(--ink) 22%, transparent) transparent;
 }
-.tc-grid > .tc-card { flex: 0 0 clamp(236px, 30%, 340px); scroll-snap-align: start; }
+/* Four cards (Free + three tiers) fill the row when the panel allows, one
+   quarter each less the gaps; narrower, they keep a readable minimum and
+   the row scrolls with a peek of the next. */
+.tc-grid > .tc-card { flex: 0 0 clamp(236px, calc(25% - 10.5px), 340px); scroll-snap-align: start; }
 .tc-grid > .tc-card:first-child { margin-left: auto; }
 .tc-grid > .tc-card:last-child { margin-right: auto; }
 @media (max-width: 640px) { .tc-grid > .tc-card { flex-basis: 82%; } }
@@ -121,3 +124,7 @@
 
 .tc-cta { width: 100%; justify-content: center; }
 .tc-cta[disabled] { opacity: .55; cursor: default; }
+
+/* On the landing the section carries its own head; the gallery sits flush. */
+.landing-plans .tc-wrap { margin-top: 0; }
+.landing-plans .lp-sub { margin: 8px 0 0; max-width: 62ch; font-size: .92rem; }

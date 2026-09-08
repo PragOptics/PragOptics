@@ -90,7 +90,7 @@
 .wr-go:focus-visible { outline: 2px solid var(--brand-600); outline-offset: 2px; }
 .wr-go-ico { display: block; }
 
-.wr-error { margin: 2px 0 0; color: #ff8b97; font-size: .88rem; }
+.wr-error { margin: 2px 0 0; color: var(--danger-text); font-size: .88rem; }
 
 /* ---- contact step ---- */
 .wr-step-contact { gap: 14px; }
@@ -293,3 +293,17 @@
 /* One quiet offer after a registration: a sentence and a button, nothing framed in. */
 .wr-upsell { margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--border); display: flex; flex-direction: column; align-items: center; gap: 10px; }
 .wr-upsell .wr-done-hint { max-width: 46ch; }
+
+/* ---- the account invite on the guest success screen ---- */
+.wr-invite {
+  margin-top: 16px; width: 100%; box-sizing: border-box;
+  padding: 24px 22px 20px; border-radius: 16px; text-align: center;
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  background: linear-gradient(140deg, color-mix(in srgb, var(--brand-600) 10%, transparent), color-mix(in srgb, var(--brand-purp-solid) 8%, transparent));
+  border: 1px solid color-mix(in srgb, var(--brand-600) 30%, transparent);
+}
+.wr-invite-kicker { font-size: .68rem; letter-spacing: .2em; text-transform: uppercase; font-weight: 800; color: var(--brand-600); }
+.wr-invite-h { margin: 0; font-size: 1.3rem; font-weight: 900; color: var(--card-title); }
+.wr-invite .wr-done-hint { max-width: 58ch; }
+.wr-invite .wr-done-actions { margin-top: 8px; }
+.wr-done-secondary { margin-top: 14px; }

@@ -63,6 +63,8 @@ const NOTIFY_PREFS_URL = `${PRAG_API_BASE}/account/notifications`;
 const ADMIN_NOTIFY_URL = `${PRAG_API_BASE}/admin/notifications`;
 const ADMIN_NOTIFY_TEST_URL = `${PRAG_API_BASE}/admin/notifications/test`;
 const ADMIN_NOTIFY_SEND_URL = `${PRAG_API_BASE}/admin/notifications/send`;
+const ADMIN_ROLES_URL = `${PRAG_API_BASE}/admin/roles`;
+const ADMIN_ROLES_REMOVE_URL = `${PRAG_API_BASE}/admin/roles/remove`;
 const ADMIN_ANOMALIES_URL = `${PRAG_API_BASE}/admin/anomalies`;
 const ADMIN_ANOMALY_PATCH_URL = `${PRAG_API_BASE}/admin/anomalies/patch`;
 
@@ -2157,7 +2159,7 @@ function usersTableHtml(users) {
               <td class="adm-cell-email cell-ellip" title="${escapeHtml(u.email || '')}">${escapeHtml(u.email || '—')}</td>
               <td>${tierPill(u.tier)}</td>
               <td>${statusPill(u.status)}</td>
-              <td class="adm-muted">${escapeHtml(u.role || '—')}</td>
+              <td class="adm-muted">${escapeHtml(u.role ? roleLabel(u.role) : '—')}</td>
               <td>
                 ${u.isAdmin ? '<span class="adm-pill adm-flag-admin">admin</span>' : ''}
                 ${u.isDev ? '<span class="adm-pill adm-flag-dev">dev</span>' : ''}
@@ -2203,6 +2205,14 @@ function renderUserRows() {
 /* ---------- manage one account ---------- */
 
 const USER_ROLES = ['viewer', 'member', 'developer', 'admin'];
+// The owner's custom team roles (a notification audience and nothing more), as
+// the server reports them with the roster and with the Notifications desk.
+function customRoles() { return Array.isArray(cache.customRoles) ? cache.customRoles : []; }
+function roleLabel(key) {
+  const k = String(key || '');
+  const c = customRoles().find(r => r.key === k);
+  return c ? c.label : (k ? k.charAt(0).toUpperCase() + k.slice(1) : '');
+}
 
 // One POST per action, every one carrying the row's email as expectEmail so
 // a roster that went stale is refused by the server rather than acted on. On
@@ -2265,7 +2275,8 @@ function userManageHtml(u, { self }) {
               <span class="adm-label">Role</span>
               <select class="adm-select" id="umRole" ${lock}>
                 ${USER_ROLES.map(r => `<option value="${r}" ${String(u.role || '') === r ? 'selected' : ''}>${r}</option>`).join('')}
-                ${USER_ROLES.includes(String(u.role || '')) || !u.role ? '' : `<option value="${escapeHtml(u.role)}" selected>${escapeHtml(u.role)}</option>`}
+                ${customRoles().map(r => `<option value="${escapeHtml(r.key)}" ${String(u.role || '') === r.key ? 'selected' : ''}>${escapeHtml(r.label)} (team)</option>`).join('')}
+                ${USER_ROLES.includes(String(u.role || '')) || customRoles().some(r => r.key === String(u.role || '')) || !u.role ? '' : `<option value="${escapeHtml(u.role)}" selected>${escapeHtml(u.role)}</option>`}
               </select>
             </label>
             <div class="um-field">
@@ -2437,6 +2448,7 @@ async function renderUsers(main) {
     if (!cache.users) {
       const data = await apiFetch(`${USERS_URL}?limit=1000`);
       cache.users = data.users || [];
+      if (Array.isArray(data.roles?.custom)) cache.customRoles = data.roles.custom;
     }
     renderUserRows();
   } catch (ex) {
@@ -2454,21 +2466,37 @@ async function renderUsers(main) {
 let ntState = null;                    // { events, members, audiences, staffRoles, smsConfigured, routes, updatedAt }
 let ntNotice = { roles: [], userIds: [] };
 
-const NT_AUDIENCE_LABEL = { owner: 'Owner', admin: 'Admin', developer: 'Developer', member: 'Member', viewer: 'Viewer' };
-// Audiences the desk shows. "operators" was the admin flag as its own audience;
-// the server now folds it into Admin, and an older server still reporting it
-// is simply not offered a second checkbox for the same people.
-function ntAudiences() { return (ntState?.audiences || []).filter(a => a !== 'operators'); }
+const NT_AUDIENCE_LABEL = { admin: 'Admin', developer: 'Developer', member: 'Member', viewer: 'Viewer' };
+// Legacy audience names an older server may still report; the router folds
+// them into Admin, so they are never offered as a second checkbox.
+const NT_HIDDEN = new Set(['operators', 'owner']);
+const NT_CUSTOMER = new Set(['member', 'viewer']);
+function ntLabel(a) { return NT_AUDIENCE_LABEL[a] || (ntState?.customRoles || []).find(r => r.key === a)?.label || roleLabel(a); }
+function ntIsCustom(a) { return (ntState?.customRoles || []).some(r => r.key === a); }
+// Routing audiences: the team (Admin, Developer, the roles you add). Customer
+// roles are never routed platform events, whatever an older server lists.
+function ntAudiences() {
+  return (ntState?.audiences || []).filter(a => !NT_HIDDEN.has(a) && !NT_CUSTOMER.has(a));
+}
+// Notice audiences: the team plus the customer roles (news-gated on the server).
+function ntNoticeAudiences() {
+  const list = Array.isArray(ntState?.noticeAudiences) ? ntState.noticeAudiences : [...ntAudiences(), 'member', 'viewer'];
+  return list.filter(a => !NT_HIDDEN.has(a));
+}
 
 function ntMember(userId) {
   return (ntState?.members || []).find(m => m.userId === userId) || null;
 }
 
-function ntAudienceChecks(attrName, key, selected) {
-  const on = new Set(selected.map(r => (r === 'operators' ? 'admin' : r)));
-  return `<div class="nt-auds">${ntAudiences().map(a => `
-    <label class="um-check" title="${a === 'admin' ? 'The admin role, and every account carrying the admin flag' : (ntState?.staffRoles || []).includes(a) ? 'A team role on the Users table' : 'A customer role on the Users table'}">
-      <input type="checkbox" ${attrName}="${escapeHtml(key)}|${a}" ${on.has(a) ? 'checked' : ''}> ${escapeHtml(NT_AUDIENCE_LABEL[a] || a)}
+function ntAudienceChecks(attrName, key, selected, list = ntAudiences()) {
+  const on = new Set(selected.map(r => (NT_HIDDEN.has(r) ? 'admin' : r)));
+  const title = (a) => a === 'admin' ? 'The admin role, and every account carrying the admin flag'
+    : ntIsCustom(a) ? 'A team role you added. Assign it from Users, Manage account'
+    : a === 'developer' ? 'The developer role on the Users table'
+    : 'A customer role: receives a notice only with news turned on';
+  return `<div class="nt-auds">${list.map(a => `
+    <label class="um-check" title="${title(a)}">
+      <input type="checkbox" ${attrName}="${escapeHtml(key)}|${escapeHtml(a)}" ${on.has(a) ? 'checked' : ''}> ${escapeHtml(ntLabel(a))}
     </label>`).join('')}</div>`;
 }
 
@@ -2494,15 +2522,38 @@ function ntRowHtml(ev) {
     </tr>`;
 }
 
+function ntRolesCardHtml() {
+  if (!Array.isArray(ntState.customRoles)) return '';
+  return `
+    <div class="adm-card">
+      <h3 class="adm-card-h">Team roles</h3>
+      <p class="adm-note">Admin and Developer are built in. Add your own, such as Shipping, then give it to an account from
+        Users, Manage account. Every role here is an audience in the routing below. A role is a notification audience and
+        nothing more; access still comes from the admin flag.</p>
+      <div class="nt-chips">
+        <span class="adm-pill nt-role">Admin</span>
+        <span class="adm-pill nt-role">Developer</span>
+        ${ntState.customRoles.map(r => `<span class="adm-pill nt-role nt-chip">${escapeHtml(r.label)}<button type="button" data-nt-role-remove="${escapeHtml(r.key)}" title="Remove this role. Allowed once no account carries it. Click twice to confirm." aria-label="Remove ${escapeHtml(r.label)}">×</button></span>`).join('')}
+      </div>
+      <div class="adm-actions-row nt-role-add">
+        <input class="adm-input nt-add" id="ntRoleLabel" type="text" maxlength="32" placeholder="New role, e.g. Shipping" autocomplete="off" aria-label="New team role">
+        <button class="btn adm-copy" type="button" data-adm-action="nt-role-add">Add role</button>
+        <span class="muted nt-result" id="ntRoleResult"></span>
+      </div>
+    </div>`;
+}
+
 function ntBodyHtml() {
   const saved = ntState.updatedAt ? `Last saved ${fmtDate(ntState.updatedAt)}` : 'Nothing saved yet: every event goes to Admin by email.';
   return `
+    ${ntRolesCardHtml()}
     <div class="adm-card">
       <h3 class="adm-card-h">Who hears about what</h3>
-      <p class="adm-note">Each row is one platform event. Pick the roles from your Users table and choose email, text, or both.
-        Admin covers the admin role and every account carrying the admin flag. Texts reach only accounts with a verified
-        mobile number. An event with nothing chosen falls back to Admin by email, so nothing is ever unrouted. The Test
-        button uses what is saved, not what is on screen.</p>
+      <p class="adm-note">Each row is one platform event. Pick the team roles that hear about it and choose email, text, or both.
+        Admin covers the admin role and every account carrying the admin flag; the roles you add above appear here too.
+        Customers are never routed team events. Texts reach only accounts with a verified mobile number. An event with
+        nothing chosen falls back to Admin by email, so nothing is ever unrouted. The Test button uses what is saved, not
+        what is on screen.</p>
       <div class="adm-table-scroll">
         <table class="adm-table adm-table--wrap nt-table">
           <thead><tr><th>Event</th><th>Roles</th><th>Channels</th><th></th></tr></thead>
@@ -2517,9 +2568,10 @@ function ntBodyHtml() {
     </div>
     <div class="adm-card">
       <h3 class="adm-card-h">Send a notice</h3>
-      <p class="adm-note">A message from you to an audience, by role. Team roles (owner, admin, developer) receive it as written.
-        Customer roles (viewer, member) receive it only if their account has news turned on.</p>
-      ${ntAudienceChecks('data-nt-notice-role', 'notice', ntNotice.roles)}
+      <p class="adm-note">A message from you to an audience, by role. Separate from the routing above. Team roles (Admin,
+        Developer, and the roles you add) receive it as written. Customer roles (Member, Viewer) receive it only if their
+        account has news turned on.</p>
+      ${ntAudienceChecks('data-nt-notice-role', 'notice', ntNotice.roles, ntNoticeAudiences())}
       <input class="adm-input" id="ntSubject" type="text" maxlength="120" placeholder="Subject" autocomplete="off">
       <textarea class="adm-input nt-message" id="ntMessage" rows="5" maxlength="4000" placeholder="The message. Plain text; paragraphs are kept."></textarea>
       <label class="um-check ${ntState.smsConfigured ? '' : 'is-locked'}" title="${ntState.smsConfigured ? 'Also text the recipients whose mobile number is verified' : 'Text messages are not switched on for this platform'}">
@@ -2535,7 +2587,75 @@ function ntBodyHtml() {
 
 function paintNotify() {
   const body = document.getElementById('ntBody');
-  if (body && ntState) body.innerHTML = ntBodyHtml();
+  if (!body || !ntState) return;
+  // A repaint (a role added, the routing saved) must not eat a notice being typed.
+  const keep = {
+    s: document.getElementById('ntSubject')?.value || '',
+    m: document.getElementById('ntMessage')?.value || '',
+    sms: document.getElementById('ntSms')?.checked === true
+  };
+  body.innerHTML = ntBodyHtml();
+  const s = document.getElementById('ntSubject'); if (s && keep.s) s.value = keep.s;
+  const m = document.getElementById('ntMessage'); if (m && keep.m) m.value = keep.m;
+  const c = document.getElementById('ntSms'); if (c && !c.disabled) c.checked = keep.sms;
+}
+
+async function refreshNotify() {
+  const data = await apiFetch(ADMIN_NOTIFY_URL);
+  ntState = { ...data, routes: Object.fromEntries((data.events || []).map(e => [e.key, { ...e.route }])) };
+  if (Array.isArray(data.customRoles)) cache.customRoles = data.customRoles;
+  ntNotice.roles = ntNotice.roles.filter(r => ntNoticeAudiences().includes(r));
+  paintNotify();
+}
+
+// The roles routes answer with the role list; the desk takes the new list and
+// repaints without touching unsaved routing edits.
+function ntApplyRoles(res) {
+  const custom = Array.isArray(res?.custom) ? res.custom : [];
+  cache.customRoles = custom;
+  const keys = custom.map(r => r.key);
+  ntState.customRoles = custom;
+  ntState.audiences = ['admin', 'developer', ...keys];
+  ntState.noticeAudiences = ['admin', 'developer', ...keys, 'member', 'viewer'];
+  for (const k of Object.keys(ntState.routes)) {
+    ntState.routes[k].roles = (ntState.routes[k].roles || []).filter(r => ntState.audiences.includes(r) || NT_HIDDEN.has(r));
+  }
+  ntNotice.roles = ntNotice.roles.filter(r => ntState.noticeAudiences.includes(r));
+  paintNotify();
+}
+
+async function ntRoleAdd(btn) {
+  const label = (document.getElementById('ntRoleLabel')?.value || '').trim();
+  showError('ntError', '');
+  if (label.length < 2) { showError('ntError', 'Name the role first: at least 2 characters.'); return; }
+  const orig = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Adding…';
+  try {
+    const res = await apiFetch(ADMIN_ROLES_URL, { method: 'POST', body: JSON.stringify({ label }) });
+    ntApplyRoles(res);
+    const out = document.getElementById('ntRoleResult');
+    if (out) out.textContent = `Added ${label}. Give it to an account from Users.`;
+  } catch (ex) {
+    showError('ntError', friendlyError(ex, 'Could not add the role.'));
+  } finally {
+    btn.disabled = false; btn.textContent = orig;
+  }
+}
+
+function ntRoleRemove(btn) {
+  const key = btn.dataset.ntRoleRemove;
+  const label = ntLabel(key);
+  armConfirm(btn, 'remove?', async () => {
+    showError('ntError', '');
+    try {
+      const res = await apiFetch(ADMIN_ROLES_REMOVE_URL, { method: 'POST', body: JSON.stringify({ key }) });
+      ntApplyRoles(res);
+      const out = document.getElementById('ntRoleResult');
+      if (out) out.textContent = `Removed ${label}.`;
+    } catch (ex) {
+      showError('ntError', friendlyError(ex, 'Could not remove the role.'));
+    }
+  });
 }
 
 async function renderNotify(main) {
@@ -2545,9 +2665,7 @@ async function renderNotify(main) {
     <div id="ntBody"><p class="adm-note">Loading…</p></div>
   `;
   try {
-    const data = await apiFetch(ADMIN_NOTIFY_URL);
-    ntState = { ...data, routes: Object.fromEntries((data.events || []).map(e => [e.key, { ...e.route }])) };
-    paintNotify();
+    await refreshNotify();
   } catch (ex) {
     document.getElementById('ntBody').innerHTML = `<p class="adm-empty">${ex?.status === 404
       ? 'The notification routes are not on this lane yet. Deploy the backend that carries them, then reload.'
@@ -2578,6 +2696,7 @@ async function ntSave(btn) {
   try {
     const data = await apiFetch(ADMIN_NOTIFY_URL, { method: 'POST', body: JSON.stringify({ routes: ntState.routes }) });
     ntState = { ...data, routes: Object.fromEntries((data.events || []).map(e => [e.key, { ...e.route }])) };
+    if (Array.isArray(data.customRoles)) cache.customRoles = data.customRoles;
     paintNotify();
     const saved = document.getElementById('ntSaved');
     if (saved) saved.textContent = `Saved ${fmtDate(new Date().toISOString())}. Every send from now on uses this routing.`;
@@ -2634,7 +2753,7 @@ async function ntSend(btn) {
       btn.disabled = false; btn.textContent = orig;
     }
   };
-  const who = ntNotice.roles.map(r => NT_AUDIENCE_LABEL[r] || r).join(', ');
+  const who = ntNotice.roles.map(ntLabel).join(', ');
   armConfirm(btn, `Confirm: send to ${who}`, send);
 }
 
@@ -3520,12 +3639,15 @@ function bindOnce() {
       if (admAct.dataset.admAction === 'billing-reconcile') runBillingReconcile(admAct, false);
       if (admAct.dataset.admAction === 'nt-save') ntSave(admAct);
       if (admAct.dataset.admAction === 'nt-send') ntSend(admAct);
+      if (admAct.dataset.admAction === 'nt-role-add') ntRoleAdd(admAct);
       return;
     }
 
     // Notifications desk: test one event's routing, remove a named account.
     const ntTestBtn = e.target.closest('[data-nt-test]');
     if (ntTestBtn) { e.preventDefault(); ntTest(ntTestBtn); return; }
+    const ntRoleRm = e.target.closest('[data-nt-role-remove]');
+    if (ntRoleRm) { e.preventDefault(); ntRoleRemove(ntRoleRm); return; }
 
     // Reports desk: close with a note, reopen, switch status view.
     const rpCloseBtn = e.target.closest('[data-rp-close-report]');

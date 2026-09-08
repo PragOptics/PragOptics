@@ -29,6 +29,7 @@
     import { initBrochureViewer } from '../components/brochureViewer.js';
     import { renderHardwareGallery } from '../shop/gallery.js';
     import { renderFeaturedProducts } from '../shop/featured.js';
+    import { mountTierCards } from '../components/tierCards.js';
     import { renderSoftwareGallery } from '../shop/software.js';
     import { openProductModal, closeProductModal, initProductModal } from '../shop/product-modal.js';
     import { openCart, closeCart, initCartDrawer } from '../shop/cart-drawer.js';
@@ -94,6 +95,8 @@
     // without needing to import the modules.
     renderHardwareGallery('shopGallery');
     renderFeaturedProducts('featuredProducts');
+    // The plans section on the landing: Free plus the priced tiers, public prices.
+    mountTierCards('landingPlanCards', { heading: '', sub: '' });
     renderSoftwareGallery('softwareGallery');
     initProductModal();
     initCartDrawer();
@@ -456,6 +459,20 @@ function applyPostLoginResolution({ ping, force = false }) {
 
   const decision = updateWizardMenuFromPing(ping);
   const token = getStoredTokens()?.access_token;
+
+  // A sign-in that started on the warranty page goes back there (warranty.js
+  // sets the flag right before opening the modal) instead of landing in the
+  // console or the wizard. One shot; the menu keeps its wizard entry.
+  if (!force) {
+    let back = "";
+    try { back = sessionStorage.getItem("pragoptics_return_to") || ""; sessionStorage.removeItem("pragoptics_return_to"); } catch { back = ""; }
+    if (back === "warranty") {
+      clearBillingLandingOnly();
+      setAppMode("warranty");
+      window.dispatchEvent(new CustomEvent("pragoptics:warranty-resume"));
+      return;
+    }
+  }
 
   // Always start by cleaning secondary UI
   clearBillingLandingOnly();

@@ -739,3 +739,9 @@ select.adm-select option:checked, select.adm-input option:checked {
 .um-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
 .um .adm-input { margin: 0; }
 @media (max-width: 30rem) { .um-grid2 { grid-template-columns: minmax(0, 1fr); } }
+
+/* Team roles card on the Notifications desk */
+.nt-chips .adm-pill { font-size: .74rem; padding: 5px 11px; text-transform: none; letter-spacing: 0; }
+.nt-chip button { margin-left: 6px; font-size: .9rem; }
+.nt-role-add { align-items: center; }
+.nt-role-add .nt-add { margin: 0; }

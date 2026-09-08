@@ -31,7 +31,7 @@
   margin-left: 6px; padding: 2px 8px; border-radius: var(--radius-pill);
   font-size: .66rem; font-weight: 800; letter-spacing: .04em;
   color: var(--gold-soft); border: 1px solid color-mix(in srgb, var(--gold-soft) 40%, transparent);
-  background: rgba(10, 8, 2, .5);
+  background: color-mix(in srgb, var(--gold-soft) 14%, var(--surface-deep));
 }
 .pc-toggle-btn.is-active .pc-save { color: var(--hi-fg); border-color: color-mix(in srgb, var(--gold-soft) 45%, transparent); background: color-mix(in srgb, var(--gold-soft) 22%, transparent); }
 

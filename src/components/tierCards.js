@@ -1,20 +1,27 @@
 // src/components/tierCards.js
 //
-// The subscription offer as a horizontal card gallery: every tier the live
-// catalog carries (plus Free), what each includes, its real price, one clear
-// action. Shown on the warranty success screens (register + redeem) to hand a
-// happy customer the platform, and reusable anywhere else the offer belongs.
+// The subscription offer as a horizontal card gallery: Free plus every tier
+// the live catalog carries, what each includes, its real price, one clear
+// action. Shown on the landing (the plans section), on the redemption success
+// screen, and reusable anywhere else the offer belongs.
 //
-// Paid tiers are DERIVED FROM THE CATALOG on the signed-in ping - a tier the
-// catalog prices is a tier the gallery shows, so Super appears the moment its
-// prices exist and nothing here goes stale. Signed-out visitors see the cards
-// with feature lists; the price line invites them in. Selecting a paid tier
-// stashes the preference and routes into the account + wizard path.
+// Paid tiers are DERIVED FROM THE CATALOG: the signed-in ping carries it, and
+// a visitor who is not signed in gets the same rows from the public prices
+// route (GET v1/catalog/prices, active plan prices only). A tier the catalog
+// prices is a tier the gallery shows, so Super appears the moment its prices
+// exist and nothing here goes stale. Selecting a tier routes into the account
+// path: a visitor through the agreement and signup, a signed-in owner into
+// the billing wizard, a subscriber into Billing.
 
 // Display copy (Free baseline, each paid tier, canonical order) is the shared
 // tierCopy.js, the same copy the plan selector renders. Prices always come
 // from the catalog.
 import { FREE_TIER, TIER_COPY, TIER_ORDER } from './tierCopy.js';
+import { PRAG_API_BASE } from '../runtime/config.js';
+
+const PRICES_KEY = 'pragoptics_prices_v1';
+const PRICES_TTL_MS = 10 * 60 * 1000;
+let pricesInFlight = null;
 
 function esc(s) {
   return String(s ?? '').replace(/[&<>"']/g, c => ({
@@ -33,12 +40,45 @@ function cachedPing() {
   catch { return null; }
 }
 
+function cachedPublicRows() {
+  try {
+    const c = JSON.parse(sessionStorage.getItem(PRICES_KEY) || 'null');
+    if (c && Array.isArray(c.rows) && Date.now() - Number(c.at || 0) < PRICES_TTL_MS) return c.rows;
+  } catch { /* storage blocked: fetch again */ }
+  return null;
+}
+
+/** Public plan prices for a visitor who is not signed in. One request per ten
+ *  minutes per tab; a lane without the route caches an empty list so the cards
+ *  fall back to their invitation instead of retrying. Never rejects. */
+export function loadPublicPrices() {
+  const hit = cachedPublicRows();
+  if (hit) return Promise.resolve(hit);
+  if (pricesInFlight) return pricesInFlight;
+  pricesInFlight = fetch(`${PRAG_API_BASE}/catalog/prices`, { headers: { Accept: 'application/json' } })
+    .then(r => (r.ok ? r.json() : { productCatalog: [] }))
+    .then(d => (Array.isArray(d?.productCatalog) ? d.productCatalog : []))
+    .catch(() => [])
+    .then(rows => {
+      try { sessionStorage.setItem(PRICES_KEY, JSON.stringify({ at: Date.now(), rows })); } catch { /* fine */ }
+      pricesInFlight = null;
+      return rows;
+    });
+  return pricesInFlight;
+}
+
+/** The catalog rows to price from: the signed-in ping first, else the public cache. */
+function catalogRows() {
+  const fromPing = cachedPing()?.productCatalog;
+  if (Array.isArray(fromPing) && fromPing.length) return fromPing;
+  return cachedPublicRows() || [];
+}
+
 /** Paid tiers present in the catalog, in canonical order, with live monthly
  *  prices. The lookup key itself names the tier (po.<tier>.<plan>.monthly). */
 function catalogTiers() {
-  const rows = cachedPing()?.productCatalog || [];
   const byTier = {};
-  for (const r of rows) {
+  for (const r of catalogRows()) {
     if (String(r.active) === 'false') continue;   // retired in Stripe: never advertised
     const m = String(r.lookupKey || '').match(/^po\.([a-z0-9]+)\.(?!.*addon)[a-z0-9]+\.monthly$/);
     if (!m || m[1] === 'addon') continue;
@@ -51,13 +91,20 @@ function catalogTiers() {
   return ids.map(id => ({ id, price: byTier[id] }));
 }
 
-function cardHtml({ id, name, tag, features, featured, cta, price, cadence, currentTier }) {
+function cardHtml({ id, name, tag, features, featured, cta, price, cadence, currentTier, signedIn }) {
   const isCurrent = currentTier === id;
-  const ctaHtml = isCurrent
-    ? `<button class="ph-btn ph-btn-ghost tc-cta" type="button" disabled>Your plan</button>`
-    : id === 'free'
+  let ctaHtml;
+  if (isCurrent) {
+    ctaHtml = `<button class="ph-btn ph-btn-ghost tc-cta" type="button" disabled>Your plan</button>`;
+  } else if (id === 'free') {
+    // A visitor starts free through the same agreement and signup path as
+    // every other tier; a signed-in owner already has it.
+    ctaHtml = signedIn
       ? `<button class="ph-btn ph-btn-ghost tc-cta" type="button" disabled>Included</button>`
-      : `<button class="ph-btn ${featured ? '' : 'ph-btn-ghost'} tc-cta" type="button" data-tc-select="${esc(id)}">${esc(cta || `Start with ${name}`)}</button>`;
+      : `<button class="ph-btn ph-btn-ghost tc-cta" type="button" data-tc-select="free">Start free</button>`;
+  } else {
+    ctaHtml = `<button class="ph-btn ${featured ? '' : 'ph-btn-ghost'} tc-cta" type="button" data-tc-select="${esc(id)}">${esc(cta || `Start with ${name}`)}</button>`;
+  }
   return `
     <article class="tc-card ${featured ? 'is-featured' : ''}" data-tier="${esc(id)}">
       ${featured ? '<span class="tc-flag">Most popular</span>' : ''}
@@ -78,37 +125,45 @@ function cardHtml({ id, name, tag, features, featured, cta, price, cadence, curr
   `;
 }
 
+/** The gallery markup. An empty heading leaves the head out (the host section
+ *  carries its own, as on the landing). */
 export function tierCardsHtml({ heading = 'Add the platform', sub = 'Optional, cancel anytime. Your warranty never depends on it.' } = {}) {
-  const currentTier = String(cachedPing()?.user?.tier || '').toLowerCase() || null;
+  const ping = cachedPing();
+  const signedIn = !!ping?.user;
+  const currentTier = signedIn ? (String(ping.user.tier || 'free').toLowerCase() || 'free') : null;
   const paid = catalogTiers();
 
-  // Signed out (or catalog unavailable): the known trio still shows, priced
-  // as an invitation to sign in rather than a number.
+  // Catalog unavailable (no session and no public prices yet): the known trio
+  // still shows, priced as an invitation to sign in rather than a number.
   const tiers = paid.length
     ? paid
     : TIER_ORDER.map(id => ({ id, price: null }));
 
   const cards = [
-    cardHtml({ ...FREE_TIER, price: '$0', cadence: 'forever', currentTier }),
+    cardHtml({ ...FREE_TIER, price: '$0', cadence: 'forever', currentTier, signedIn }),
     ...tiers.map(({ id, price }) => {
       const copy = TIER_COPY[id] || { name: id.charAt(0).toUpperCase() + id.slice(1), tag: '', features: [] };
-      return cardHtml({ id, ...copy, price, cadence: 'per month', currentTier });
+      return cardHtml({ id, ...copy, price, cadence: 'per month', currentTier, signedIn });
     })
   ];
 
+  const head = heading
+    ? `<div class="tc-head">
+        <h3 class="tc-h">${esc(heading)}</h3>
+        ${sub ? `<p class="tc-sub muted">${esc(sub)}</p>` : ''}
+      </div>`
+    : '';
+
   return `
     <section class="tc-wrap" aria-label="Subscription tiers">
-      <div class="tc-head">
-        <h3 class="tc-h">${esc(heading)}</h3>
-        <p class="tc-sub muted">${esc(sub)}</p>
-      </div>
+      ${head}
       <div class="tc-grid">${cards.join('')}</div>
     </section>
   `;
 }
 
-/** Wire a container holding one tierCardsHtml block. Selecting a paid tier
- *  stashes the preference for the wizard and routes into the account path. */
+/** Wire a container holding one tierCardsHtml block. Selecting a tier routes
+ *  into the right path for who is looking. */
 export function bindTierCards(root) {
   if (!root || root._tcBound) return;
   root._tcBound = true;
@@ -116,20 +171,42 @@ export function bindTierCards(root) {
     const btn = e.target.closest('[data-tc-select]');
     if (!btn || btn.disabled) return;
     const tier = btn.dataset.tcSelect;
-    // An existing SUBSCRIBER changes plan in Billing (the proration-aware
-    // path), never through signup. Everyone else goes through the agreement
-    // and the wizard, which reads the stashed preference.
     const ping = cachedPing();
-    const subscribed = !!ping?.user && String(ping?.user?.tier || 'free').toLowerCase() !== 'free';
+    const signedIn = !!ping?.user;
+    const subscribed = signedIn && String(ping.user.tier || 'free').toLowerCase() !== 'free';
+    // An existing SUBSCRIBER changes plan in Billing (the proration-aware
+    // path), never through signup.
     if (subscribed) {
       window.presetAccountSection?.('subscription');
       window.setAppMode?.('account');
       return;
     }
-    try { localStorage.setItem('pragoptics_wizard_tier_pref', tier); } catch { /* fine */ }
-    // Same path the warranty account flow uses: the agreement gates account
-    // creation, and the wizard it opens into reads the stashed preference.
+    try {
+      if (tier === 'free') localStorage.removeItem('pragoptics_wizard_tier_pref');
+      else localStorage.setItem('pragoptics_wizard_tier_pref', tier);
+    } catch { /* fine */ }
+    // A signed-in Free owner goes straight to the billing wizard, which reads
+    // the stashed preference.
+    if (signedIn) {
+      (window.openWizardFromMenu?.() || window.setAppMode?.('wizard'));
+      return;
+    }
+    // Everyone else: the agreement gates account creation, and the wizard it
+    // opens into reads the stashed preference.
     window.setAppMode?.('landing');
     setTimeout(() => { window.openAgreementModal?.(); }, 250);
   });
+}
+
+/** Render the gallery into a host and bind it. A visitor's cards repaint once
+ *  the public prices land, so the numbers are real without a sign-in. */
+export function mountTierCards(host, opts = {}) {
+  const el = typeof host === 'string' ? document.getElementById(host) : host;
+  if (!el) return;
+  const paint = () => { el.innerHTML = tierCardsHtml(opts); };
+  paint();
+  bindTierCards(el);
+  if (!catalogTiers().length) {
+    loadPublicPrices().then(rows => { if (rows.length && el.isConnected) paint(); });
+  }
 }

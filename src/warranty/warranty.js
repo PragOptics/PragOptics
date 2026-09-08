@@ -18,6 +18,7 @@ import { HARDWARE, getProduct } from '../shop/products.js';
 import { renderTransfer, cancelTransfer } from './transfer.js';
 import { renderRedeem, cancelRedeem } from './redeem.js';
 import { inlineVideoHtml, bindInlineVideo, hasVideoSource } from '../components/videoOverlay.js';
+import { openLoginModal } from '../ui/login.modal.js';
 
 // The printed code alphabet (no I/L/O/U/0/1, so nothing is mistaken while
 // typing off a card). Kept in step with the backend mint alphabet.
@@ -41,6 +42,9 @@ const WARRANTY_REGISTER_URL = `${PRAG_API_BASE}/warranty/register`;
 
 const INTENT_KEY = 'pragoptics_warranty_intent_v1'; // consumed by the account-creation path
 const QUEUE_KEY  = 'pragoptics_warranty_queue_v1';  // local queue until the API is live
+// Set right before a sign-in starts from this page; bootstrap consumes it after
+// the session lands and comes back here instead of the console or the wizard.
+const RETURN_KEY = 'pragoptics_return_to';
 
 // Right-arrow "enter" glyph — the action twin of the download button's
 // down-arrow (DL_ICON in product-modal.js): same stroke, same 36px glass tile.
@@ -187,6 +191,7 @@ function contactStepHtml(p) {
             <span class="wr-path-s">Adds the platform: cloud sync, API access, optional subscription.</span>
           </button>
         </div>
+        <p class="wr-alt-note muted">Already have an account? <a href="#" data-wr-action="sign-in">Sign in</a> and this device registers straight to it.</p>
       `}
     </div>
   `;
@@ -209,16 +214,22 @@ function successHtml(p, withAccount, { linked = false } = {}) {
       <p class="wr-done-hint">Passing it on someday? Ownership, warranty included, transfers
       anytime from this page: <strong>My Products → Transfer</strong>. The email you registered
       with is the key.</p>
-      <div class="wr-done-actions">
+      ${(withAccount || linked) ? '' : `
+      <div class="wr-invite">
+        <span class="wr-invite-kicker">Optional, and free</span>
+        <h3 class="wr-invite-h">Put it on an account.</h3>
+        <p class="wr-done-hint">Your registration stands either way. An account keeps every device you own in one place: redeem a case, transfer ownership, and track orders without digging out the card. The platform plans come after, and Free is one of them.</p>
+        <div class="wr-done-actions">
+          <button class="cta" type="button" data-wr-action="create-account">Create account</button>
+          <button class="btn" type="button" data-wr-action="sign-in">Sign in</button>
+          <button class="btn" type="button" data-wr-action="see-plans">See plans</button>
+        </div>
+      </div>`}
+      <div class="wr-done-actions wr-done-secondary">
         ${linked ? '<button class="cta" type="button" data-wr-action="go-my-products">View My Products</button>' : ''}
         <button class="btn" type="button" data-wr-action="register-another">Register another device</button>
         <button class="btn" type="button" data-wr-action="back-home">Back to PragOptics</button>
       </div>
-      ${withAccount ? '' : `
-      <div class="wr-upsell">
-        <p class="wr-done-hint">Want more than the warranty? The PragOptics platform is optional and cancels anytime. Your registration stands either way.</p>
-        <button class="btn" type="button" data-wr-action="see-plans">See plans</button>
-      </div>`}
     </div>
   `;
 }
@@ -467,8 +478,26 @@ function bindOnce() {
     }
 
     if (e.target.closest('[data-wr-action="see-plans"]')) {
-      // The plans live in one place: the Get Started flow's pricing cards.
-      (window.openWizardFromMenu?.() || window.setAppMode?.('wizard'));
+      // Signed in: the billing wizard. A visitor: the plan gallery on the landing.
+      if (isSignedIn()) { (window.openWizardFromMenu?.() || window.setAppMode?.('wizard')); return; }
+      window.setAppMode?.('landing');
+      setTimeout(() => document.getElementById('landingPlans')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 120);
+      return;
+    }
+    if (e.target.closest('[data-wr-action="create-account"]')) {
+      // The same agreement -> signup path as everywhere else, with the email
+      // the device was registered under already in the form. A guest
+      // registration lists under the new account on its own (same email).
+      try { sessionStorage.setItem('pragoptics_signup_prefill_email', state.email || ''); } catch {}
+      window.setAppMode?.('landing');
+      setTimeout(() => { window.openAgreementModal?.(); }, 250);
+      return;
+    }
+    if (e.target.closest('[data-wr-action="sign-in"]')) {
+      e.preventDefault();
+      // Come back to this page after the sign-in instead of the console.
+      try { sessionStorage.setItem(RETURN_KEY, 'warranty'); } catch {}
+      openLoginModal('login');
       return;
     }
     if (e.target.closest('[data-wr-action="register-another"]')) {
@@ -577,6 +606,22 @@ export function initWarrantyView() {
   if (!$body) return;
   render(deviceStepHtml());
   bindOnce();
+  // A sign-in that started here comes back here (bootstrap consumes the return
+  // flag and raises this event). Mid-registration, the contact step re-renders
+  // as the signed-in path with the code kept; after a finished registration,
+  // the account's My Products is the place to be.
+  window.addEventListener('pragoptics:warranty-resume', () => {
+    if (!$body) return;
+    if ($body.querySelector('[data-wr-step="done"]')) {
+      window.setAppMode?.('account');
+      setTimeout(() => window.dispatchEvent(new CustomEvent('pragoptics:account-section', { detail: 'products' })), 100);
+      return;
+    }
+    if (mode === 'register' && state.deviceId && state.code && $body.querySelector('[data-wr-step="contact"]')) {
+      const p = getProduct(state.deviceId);
+      if (p) showContactStep(p);
+    }
+  });
   // Mode tabs live outside the step body — bind them on the view shell.
   document.getElementById('warrantyView')?.addEventListener('click', (e) => {
     const tab = e.target.closest('.wr-tab');

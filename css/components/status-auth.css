@@ -82,7 +82,7 @@
 }
 
 .po-status-icon.success{ color:#3ddc97; }
-.po-status-icon.error{ color:#ff6b6b; }
+.po-status-icon.error{ color:var(--danger); }
 
 @keyframes spin{
   from{ transform:rotate(0); }

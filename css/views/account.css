@@ -192,7 +192,7 @@
   border: 1px solid color-mix(in srgb, var(--danger) 35%, transparent);
 }
 .btn.btn-danger:hover {
-  color: #ff7c88;
+  color: var(--danger-text);
   background: color-mix(in srgb, var(--danger) 16%, transparent);
   border-color: color-mix(in srgb, var(--danger) 60%, transparent);
   box-shadow: 0 0 14px color-mix(in srgb, var(--danger) 18%, transparent);
@@ -211,7 +211,7 @@
   color: var(--card-title);
 }
 .cta.btn-danger-solid:hover {
-  background: linear-gradient(180deg, #ff7480, #e34b5a);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--danger) 82%, white), var(--danger));
   color: var(--card-title);
   box-shadow: 0 0 18px color-mix(in srgb, var(--danger) 35%, transparent);
 }

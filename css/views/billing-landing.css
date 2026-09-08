@@ -232,8 +232,8 @@
 /* Emphasis variants */
 .billing-landing button[data-action="cancel"]{
   background:color-mix(in srgb, var(--danger) 7.8%, transparent) !important;
-  border-color:rgba(255,107,107,.35) !important;
-  color:#ff8a8a !important;
+  border-color:color-mix(in srgb, var(--danger) 35%, transparent) !important;
+  color:var(--danger-text) !important;
 }
 
 .billing-landing button:hover[data-action="cancel"]{
