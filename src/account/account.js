@@ -48,6 +48,7 @@ const LIST_URL  = `${PRAG_API_BASE}/warranty/codes`;
 const USERS_URL = `${PRAG_API_BASE}/admin/users`;
 const USER_PATCH_URL = `${PRAG_API_BASE}/admin/users/patch`;
 const CATALOG_IMPORT_URL = `${PRAG_API_BASE}/admin/catalog/import`;
+const CATALOG_SYNC_URL = `${PRAG_API_BASE}/catalog/sync`;
 const ADMIN_ORDERS_URL = `${PRAG_API_BASE}/admin/orders`;
 const ADMIN_ORDER_LABEL_URL = `${PRAG_API_BASE}/admin/orders/label`;
 const ADMIN_ORDER_REFUND_URL = `${PRAG_API_BASE}/admin/orders/refund`;
@@ -3608,6 +3609,19 @@ function renderCatalog(main) {
     </div>
 
     <div class="adm-card">
+      <h3 class="adm-card-h">Sync from Stripe</h3>
+      <p class="adm-note">Reads this lane's Stripe prices into the catalog table: plans and add-ons by lookup key, and the
+        physical goods bound to their products (a one-time price with lookup key <code>po.goods.&lt;sku&gt;.&lt;variant&gt;</code>
+        on a product tagged <code>po_sku</code>). Run it after changing products or prices in Stripe. Nothing pulls at page load.</p>
+      <div class="adm-actions-row">
+        <button class="cta" type="button" data-adm-action="catalog-sync" title="Reads Stripe now and updates the catalog table on this lane">Sync from Stripe</button>
+        <span class="muted nt-result" id="admCatalogSyncResult"></span>
+      </div>
+      <p class="adm-error" id="admCatalogSyncError" hidden></p>
+      <div id="admCatalogSyncDiag"></div>
+    </div>
+
+    <div class="adm-card">
       <h3 class="adm-card-h">Stored snapshot</h3>
       ${snap ? `
         <p class="muted"><strong>${snap.items.length}</strong> rows from the
@@ -3629,6 +3643,33 @@ function renderCatalog(main) {
       <p class="muted" id="admCatalogResult" hidden></p>
     </div>
   `;
+}
+
+// One click, one read of Stripe, and a plain account of what came across. When
+// a product the owner tagged for the shop has no goods price, the desk names it.
+async function catalogSync(btn) {
+  showError('admCatalogSyncError', '');
+  const out = document.getElementById('admCatalogSyncResult');
+  const diagEl = document.getElementById('admCatalogSyncDiag');
+  const orig = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Syncing…';
+  try {
+    const r = await apiFetch(CATALOG_SYNC_URL, { method: 'POST', body: '{}' });
+    const d = r.diagnostics || {};
+    if (out) out.textContent = `Plans: ${r.upserted || 0} updated, ${r.retired || 0} retired. Goods: ${r.goodsUpserted || 0} updated, ${r.goodsRetired || 0} retired.`;
+    const notes = [];
+    if (Array.isArray(d.goodsKeysSeen) && d.goodsKeysSeen.length) notes.push(`Goods prices found: ${d.goodsKeysSeen.map(k => `<code>${escapeHtml(k)}</code>`).join(', ')}.`);
+    for (const p of d.skuProductsWithoutGoodsPrice || []) {
+      notes.push(`<strong>${escapeHtml(p.name || p.id)}</strong> is tagged <code>po_sku=${escapeHtml(p.sku)}</code> but none of its active one-time prices carries the lookup key <code>po.goods.${escapeHtml(p.sku)}.default</code>. Set the lookup key on the price, then sync again.`);
+    }
+    if (d.pricesWithoutLookupKey) notes.push(`${d.pricesWithoutLookupKey} active price${d.pricesWithoutLookupKey === 1 ? '' : 's'} in this Stripe account carr${d.pricesWithoutLookupKey === 1 ? 'ies' : 'y'} no lookup key at all and ${d.pricesWithoutLookupKey === 1 ? 'is' : 'are'} ignored.`);
+    if (!(r.goodsUpserted || 0) && !(d.skuProductsWithoutGoodsPrice || []).length && !(d.goodsKeysSeen || []).length) notes.push('No goods came across and no product is tagged <code>po_sku</code> in the Stripe account this lane uses. If you created the product in a different sandbox, this lane cannot see it.');
+    if (diagEl) diagEl.innerHTML = notes.length ? `<ul class="adm-note adm-diag">${notes.map(n => `<li>${n}</li>`).join('')}</ul>` : '';
+  } catch (ex) {
+    showError('admCatalogSyncError', friendlyError(ex, 'The sync could not run.'));
+  } finally {
+    btn.disabled = false; btn.textContent = orig;
+  }
 }
 
 function catalogSnapshot() {
@@ -3776,6 +3817,7 @@ function bindOnce() {
       if (admAct.dataset.admAction === 'mint') mint(admAct);
       if (admAct.dataset.admAction === 'copy') copyCodes(admAct);
       if (admAct.dataset.admAction === 'catalog-snapshot') catalogSnapshot();
+      if (admAct.dataset.admAction === 'catalog-sync') catalogSync(admAct);
       if (admAct.dataset.admAction === 'catalog-import') catalogImport(admAct);
       if (admAct.dataset.admAction === 'lane-live') switchLane('live');
       if (admAct.dataset.admAction === 'lane-dev') switchLane('dev');

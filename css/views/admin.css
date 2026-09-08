@@ -776,3 +776,6 @@ select.adm-select option:checked, select.adm-input option:checked {
   .adm-table.adm-table--orders .od-cost { display: none; }
   .adm-table.adm-table--orders tbody td.od-ellip { max-width: 120px; }
 }
+
+.adm-diag { margin: 8px 0 0; padding-left: 18px; }
+.adm-diag li { margin: 4px 0; line-height: 1.5; }
