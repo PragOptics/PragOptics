@@ -3712,8 +3712,13 @@ async function copyCatalogList(btn) {
   lines.push(`PLANS AND ADD-ONS OFFERED (${rows.length})`);
   rows.forEach(r => lines.push('  ' + r));
   if (lastCatalogSync) {
-    const hidden = Math.max(0, Number(lastCatalogSync.upserted || 0) - rows.length);
-    lines.push(`  keyed in Stripe: ${lastCatalogSync.upserted || 0}${hidden ? `, of which ${hidden} retired add-on price${hidden === 1 ? '' : 's'} hidden on purpose` : ''}`);
+    const hiddenKeys = Array.isArray(lastCatalogSync.diagnostics?.hiddenKeys) ? lastCatalogSync.diagnostics.hiddenKeys : [];
+    lines.push(`  keyed in Stripe: ${lastCatalogSync.upserted || 0}`);
+    if (hiddenKeys.length) {
+      lines.push('');
+      lines.push(`KEYED BUT NEVER OFFERED, RETIRED ADD-ONS (${hiddenKeys.length}) - archive these in Stripe to clear the clutter`);
+      hiddenKeys.forEach(k => lines.push('  ' + k));
+    }
   }
   lines.push('');
   lines.push(`GOODS (${goods.length})`);
