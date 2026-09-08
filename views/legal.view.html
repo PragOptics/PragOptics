@@ -1,7 +1,7 @@
 <!-- /views/legal.view.html -->
 <div id="legalMask" class="legal-mask" aria-hidden="true"></div>
 
-<section id="legalPanel" class="legal-panel" aria-hidden="true">
+<section id="legalPanel" class="legal-panel" role="dialog" aria-modal="true" aria-labelledby="legalTitle" aria-hidden="true">
   <div class="legal-card" tabindex="-1">
     <div class="legal-head">
       <h2 id="legalTitle" class="legal-title">Document</h2>
@@ -21,7 +21,7 @@
 
 <!-- Product brochure viewer (rich, iframe modal, opens without navigating to /docs/) -->
 <div id="brochureMask" class="legal-mask" aria-hidden="true"></div>
-<section id="brochurePanel" class="legal-panel" aria-hidden="true">
+<section id="brochurePanel" class="legal-panel" role="dialog" aria-modal="true" aria-labelledby="brochureTitle" aria-hidden="true">
   <div class="legal-card brochure-card" tabindex="-1">
     <div class="legal-head">
       <h2 id="brochureTitle" class="legal-title">Product Brochure</h2>

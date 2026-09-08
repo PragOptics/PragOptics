@@ -60,6 +60,81 @@ function currentLines() {
 }
 
 // Entry from the warranty page once the registration checked out as eligible.
+// Guest order tracking. The footer link and the /#track short link land here;
+// the order number plus the checkout email fetch the customer projection.
+const track = { orderId: '', email: '', busy: false, error: '', result: null };
+window.pragTrackOrder = () => {
+  state.step = 'track';
+  track.busy = false; track.error = ''; track.result = null;
+  render();
+};
+
+const TRACK_STATUS = {
+  PENDING_PAYMENT: 'Payment not completed', PAYMENT_FAILED: 'Payment failed',
+  PAID: 'Paid, preparing shipment', LABEL_PURCHASED: 'Label printed, awaiting pickup',
+  SHIPPED: 'Shipped', DELIVERED: 'Delivered', RETURNED: 'Returned to sender',
+  PARTIALLY_REFUNDED: 'Partially refunded', REFUNDED: 'Refunded'
+};
+
+function trackHtml() {
+  const o = track.result;
+  const result = o ? `
+    <div class="co-confirm co-track-result">
+      <h2 class="co-h2">${escapeHtml(TRACK_STATUS[String(o.status).toUpperCase()] || o.status)}</h2>
+      <p class="muted">Order <code>${escapeHtml(o.orderId)}</code>${o.paidAt ? `, paid ${escapeHtml(new Date(o.paidAt).toLocaleDateString())}` : ''}.</p>
+      <div class="co-breakdown co-track-lines">
+        ${(o.lines || []).map(l => `<div class="co-sumrow"><span>${escapeHtml(l.label || l.productId)}${Number(l.qty) > 1 ? ` x${l.qty}` : ''}</span><span>${formatPrice(l.cents)}</span></div>`).join('')}
+        ${o.shippingCents ? `<div class="co-sumrow"><span>Shipping</span><span>${formatPrice(o.shippingCents)}</span></div>` : '<div class="co-sumrow"><span>Shipping</span><span>Free</span></div>'}
+        ${o.taxCents ? `<div class="co-sumrow"><span>Sales tax</span><span>${formatPrice(o.taxCents)}</span></div>` : ''}
+        <div class="co-sumrow co-sumrow-total"><span>Total</span><span>${formatPrice(o.totalCents)}</span></div>
+        ${o.refundedCents ? `<div class="co-sumrow"><span>Refunded</span><span>${formatPrice(o.refundedCents)}</span></div>` : ''}
+      </div>
+      ${o.trackingNumber
+        ? `<p>Tracking: ${/^https:\/\//.test(o.trackingUrl || '') ? `<a class="acct-inline-link" href="${escapeHtml(o.trackingUrl)}" target="_blank" rel="noopener">${escapeHtml(o.trackingNumber)}</a>` : `<code>${escapeHtml(o.trackingNumber)}</code>`}${o.shipCarrier ? ` <span class="muted">${escapeHtml(o.shipCarrier)} ${escapeHtml(o.shipService || '')}</span>` : ''}</p>`
+        : '<p class="muted">No tracking yet. It appears here and in your email the moment the label is printed.</p>'}
+      <p class="muted co-note">Questions about this order: <a class="acct-inline-link" href="mailto:support@bridgesindust.com">support@bridgesindust.com</a>. Returns follow the <a href="#" class="acct-inline-link" data-legal="returns">returns policy</a>.</p>
+    </div>` : '';
+  return `
+    <form class="co-form co-track" id="coTrackForm" novalidate>
+      <h2 class="co-h2">Track an order</h2>
+      <p class="muted co-note">Your order number is in the confirmation email. Enter it with the email you used at checkout.</p>
+      <div class="co-field">
+        <label for="co-track-id">Order number</label>
+        <input id="co-track-id" name="orderId" type="text" required autocomplete="off" spellcheck="false" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" value="${escapeHtml(track.orderId)}">
+      </div>
+      <div class="co-field">
+        <label for="co-track-email">Email</label>
+        <input id="co-track-email" name="email" type="email" required autocomplete="email" placeholder="you@company.com" value="${escapeHtml(track.email)}">
+      </div>
+      ${track.error ? `<div class="co-error" role="alert">${escapeHtml(track.error)}</div>` : ''}
+      <div class="co-actions">
+        <button class="ph-btn" type="submit" ${track.busy ? 'disabled' : ''}>${track.busy ? 'Looking…' : 'Find my order'}</button>
+        <button class="ph-btn ph-btn-ghost" type="button" data-co-nav="shop">Back to shop</button>
+      </div>
+    </form>
+    ${result}
+  `;
+}
+
+async function submitTrack() {
+  if (track.busy) return;
+  track.orderId = (document.getElementById('co-track-id')?.value || '').trim();
+  track.email = (document.getElementById('co-track-email')?.value || '').trim();
+  track.error = ''; track.result = null;
+  if (!track.orderId || !track.email) { track.error = 'Enter the order number and the email you used.'; render(); return; }
+  track.busy = true; render();
+  try {
+    const res = await fetch(`${PRAG_API_BASE}/orders/lookup`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ orderId: track.orderId, email: track.email }) });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || (res.status === 404 ? 'No order with that number under that email.' : `Lookup failed (${res.status}).`));
+    track.result = data.order || null;
+  } catch (ex) {
+    track.error = ex?.message || 'The lookup did not go through. Try again.';
+  } finally {
+    track.busy = false; render();
+  }
+}
+
 window.pragStartRedemptionCheckout = (ctx) => {
   state.redemption = {
     code: String(ctx.code || ''), email: String(ctx.email || ''),
@@ -519,7 +594,8 @@ function doneHtml() {
       ${getAccessToken()
         ? `<p class="muted">This order is saved to your account. Track it under Orders.</p>`
         : (((LANE !== 'live') || ORDERS_CLAIM_LIVE)
-            ? `<p class="muted">Want to track this order and keep its history? Create an account with
+            ? `<p class="muted">Check on it any time from the <a href="#" class="acct-inline-link" data-track-order>Track order</a> link in the footer, with this number and your email.</p>
+               <p class="muted">Want to keep its history? Create an account with
                <strong>${escapeHtml(state.contact.email)}</strong>, then link this order with the order number above.</p>`
             : `<p class="muted">Want to track this order and keep its history? Create an account with
                <strong>${escapeHtml(state.contact.email)}</strong> and keep your order number above for your records.</p>`)}
@@ -774,6 +850,12 @@ function render() {
     return;
   }
 
+  if (state.step === 'track') {
+    setHeader('Orders', 'Track an order.', 'Your order number and the email you used at checkout.');
+    $host.innerHTML = trackHtml();
+    return;
+  }
+
   // Notify-me flow (Software Shop "Notify me" buttons) takes precedence when
   // the cart is empty, so users don't land on a confusing empty-cart page.
   if (!ls.length) {
@@ -876,6 +958,12 @@ function bindOnce() {
       submitPayment();
       return;
     }
+    if (e.target.closest('[data-track-order]')) {
+      e.preventDefault();
+      window.setAppMode?.('checkout');
+      setTimeout(() => window.pragTrackOrder?.(), 30);
+      return;
+    }
     if (e.target.closest('[data-co-signin]')) {
       e.preventDefault();
       window.openLoginModal?.();
@@ -892,6 +980,7 @@ function bindOnce() {
   });
 
   document.addEventListener('submit', async (e) => {
+    if (e.target.closest('#coTrackForm')) { e.preventDefault(); submitTrack(); return; }
     // Notify-me form (Software Shop path) --------------------------------
     const notifyForm = e.target.closest('#notifyForm');
     if (notifyForm) {

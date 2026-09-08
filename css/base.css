@@ -73,3 +73,8 @@ select.acct-select, select.acct-input, .acct-modal select {
   background-size: 6px 6px;
 }
 select option { background: var(--panel-deep-a); color: var(--ink); }
+
+/* Keyboard users jump past the header to the page. Visible only while focused. */
+.skip-link { position: absolute; left: 12px; top: -48px; z-index: 20000; padding: 8px 12px; border-radius: var(--radius-btn-sm); background: var(--brand-600); color: var(--on-brand, #fff); font-weight: 700; text-decoration: none; }
+.skip-link:focus { top: 12px; outline: 2px solid var(--ink); outline-offset: 2px; }
+main#main:focus { outline: none; }

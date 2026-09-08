@@ -281,3 +281,9 @@
   font: 700 1.25rem/1 ui-monospace, Menlo, Consolas, monospace; letter-spacing: .14em;
   background: var(--hi-bg); color: var(--hi-fg); border: 1px solid var(--hi-border);
 }
+
+/* ---- guest order tracking ---- */
+.co-track { max-width: 560px; }
+.co-track-result { margin-top: 18px; text-align: left; align-items: stretch; }
+.co-track-result .co-h2 { margin: 0; }
+.co-track-lines { width: 100%; }

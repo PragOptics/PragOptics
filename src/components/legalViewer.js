@@ -95,14 +95,16 @@ export function initLegalViewer(options = {}) {
     terms: options.termsPath || "/docs/PragOptics-Subscriber-Agreement.md",
     privacy: options.privacyPath || "/docs/PragOptics-Privacy.md",
     license: options.licensePath || "/docs/omni-LICENSE.md",
-    shipping: options.shippingPath || "/docs/PragOptics-Shipping.md"
+    shipping: options.shippingPath || "/docs/PragOptics-Shipping.md",
+    returns: options.returnsPath || "/docs/PragOptics-Returns.md"
   };
 
   const titles = {
     terms: "Terms",
     privacy: "Privacy",
     license: "Omni Design Licence",
-    shipping: "Shipping Policy"
+    shipping: "Shipping Policy",
+    returns: "Returns Policy"
   };
 
   const $mask = document.getElementById("legalMask");

@@ -50,8 +50,10 @@ function cardHtml(p) {
   // that fills the stage with the brochure's own colors. Every card keeps one
   // banner height and nothing is cut off. The product photo sits over the
   // corner as the app tile; a product with only a brochure gets no tile.
-  const flyer = p.flyer || p.image || '';
-  const tile = p.image && p.image !== flyer ? p.image : '';
+  // The cards load the compressed copies; the brochure viewer opens the full file.
+  const flyer = p.flyerCard || p.flyer || p.imageCard || p.image || '';
+  const tileSrc = p.imageCard || p.image;
+  const tile = p.image && p.image !== (p.flyer || p.image) ? tileSrc : '';
   const media = flyer
     ? `<div class="ph-media ph-media--top ph-media--stage">
          <img class="ph-media-ambient" src="${escapeHtml(flyer)}" alt="" aria-hidden="true" loading="lazy">

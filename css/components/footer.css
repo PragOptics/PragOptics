@@ -286,3 +286,7 @@ html[data-theme="light"] .footer-theme-toggle .ft-moon{ display: block; }
   color: var(--brand-600);
   filter: drop-shadow(0 0 6px color-mix(in srgb, var(--brand-600) 45%, transparent));
 }
+
+/* support contact under the tagline */
+.footer-support { display: block; margin-top: 4px; font-size: .8rem; color: var(--brand-600); text-decoration: none; }
+.footer-support:hover { text-decoration: underline; }

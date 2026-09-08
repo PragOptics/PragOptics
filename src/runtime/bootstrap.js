@@ -652,6 +652,8 @@ window.applyPostLoginResolution = applyPostLoginResolution;
       // Redemption short link: /#redeem (same page, redeem mode; used by the
       // replacement-card email)
       else if (/^#redeem/i.test(String(location.hash || ""))) setAppMode("warranty");
+      // Guest order tracking short link (the confirmation email): /#track
+      else if (/^#track/i.test(String(location.hash || ""))) { setAppMode("checkout"); setTimeout(() => window.pragTrackOrder?.(), 50); }
     })();
 
     // A SEAMLESS lane switch just landed: redeem the one-time handoff token for

@@ -8,11 +8,15 @@ function ensureModal() {
   modalEl = document.createElement("div");
   modalEl.id = "po-status-modal";
   modalEl.className = "po-status-modal hidden";
+  modalEl.setAttribute("role", "alertdialog");
+  modalEl.setAttribute("aria-modal", "true");
+  modalEl.setAttribute("aria-live", "assertive");
+  modalEl.setAttribute("aria-label", "Status");
 
   modalEl.innerHTML = `
     <div class="po-status-backdrop"></div>
     <div class="po-status-card">
-    <button class="po-status-close">✕</button>
+    <button class="po-status-close" type="button" aria-label="Close">✕</button>
       <div class="po-status-icon"></div>
       <div class="po-status-message"></div>
     </div>
