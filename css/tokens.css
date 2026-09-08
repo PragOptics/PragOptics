@@ -66,7 +66,7 @@
          48px tall (radius clamps at half-height). Use this token for every
          pill; magic-number radii are banned. Dots use 50%. */
       --radius-pill:24px;
-      --maxw: clamp(1200px, 90vw, 1600px);
+      --maxw: clamp(1200px, 96vw, 1760px);          /* panels use the desktop; caps belong to prose */
       --nav-maxw: clamp(1200px, 96vw, 1900px);
 
       /* ---- Unified card language (see card.css) ---- */

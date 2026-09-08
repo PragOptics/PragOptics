@@ -745,3 +745,34 @@ select.adm-select option:checked, select.adm-input option:checked {
 .nt-chip button { margin-left: 6px; font-size: .9rem; }
 .nt-role-add { align-items: center; }
 .nt-role-add .nt-add { margin: 0; }
+
+/* Orders desk: the range toolbar, the money strip, and a table that fits its
+   column (money cells tight, text cells flexible and ellipsized; the scroll
+   engages only when the viewport is genuinely narrower than the columns). */
+.od-range { align-items: center; margin-left: auto; }
+.od-range-lbl { display: inline-flex; align-items: center; gap: 6px; font-size: .76rem; color: var(--muted); font-weight: 600; }
+.od-date { padding: 6px 8px; font-size: .82rem; color-scheme: inherit; }
+.od-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(122px, 1fr)); gap: 8px; margin: 0 0 8px; }
+.od-sum { border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px; background: var(--surface-3); display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.od-sum-l { font: 700 .56rem/1.3 ui-monospace, "Cascadia Code", Consolas, monospace; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.od-sum-v { font-size: .96rem; font-weight: 800; color: var(--ink); text-align: left; }
+.od-sum.is-tax .od-sum-v { color: var(--brand-600); }
+.od-sum.is-net .od-sum-v { color: var(--card-title); }
+.od-note { font-size: .76rem; margin: 0 0 12px; }
+.od-warn { color: var(--gold-soft); font-size: .8rem; margin: 0 0 6px; }
+.od-bad { color: var(--danger); font-weight: 800; }
+.adm-main { container-type: inline-size; }
+.adm-table.adm-table--orders { width: 100%; font-size: .8rem; }
+.adm-table.adm-table--orders thead th { padding-left: 7px; padding-right: 7px; white-space: nowrap; }
+.adm-table.adm-table--orders tbody td { padding: 8px 7px; white-space: nowrap; vertical-align: middle; }
+.adm-table.adm-table--orders tbody td.od-ellip { max-width: 150px; overflow: hidden; text-overflow: ellipsis; }
+.adm-table.adm-table--orders .adm-order-actions { gap: 4px; }
+.adm-table.adm-table--orders .adm-order-actions .adm-copy { padding-left: 7px; padding-right: 7px; }
+.adm-table.adm-table--orders td:nth-child(5) { color: inherit; }
+/* Below 1180px of column the two cost columns fold into the Net tooltip and
+   the CSV; above it every number has its own column. The scroll box is the
+   phone's fallback, never the desktop's. */
+@container (max-width: 1179px) {
+  .adm-table.adm-table--orders .od-cost { display: none; }
+  .adm-table.adm-table--orders tbody td.od-ellip { max-width: 120px; }
+}

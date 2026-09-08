@@ -174,6 +174,9 @@ function summaryHtml(ls) {
     : physicalLines(ls).length
       ? `<div class="co-sumrow muted"><span>Shipping</span><span>${freeShipEligible(ls) ? 'free at the lowest rate' : 'calculated next'}</span></div>`
       : '';
+  const taxLine = state.order && Number(state.order.breakdown.taxCents) > 0
+    ? `<div class="co-sumrow"><span>Sales tax</span><span>${formatPrice(state.order.breakdown.taxCents)}</span></div>`
+    : '';
   const totalLabel = state.order ? formatPrice(state.order.breakdown.totalCents) : subLabel;
   return `
     <section class="co-summary">
@@ -181,6 +184,7 @@ function summaryHtml(ls) {
       ${state.redemption ? `<p class="muted co-note">Lifetime case warranty on code <strong>${escapeHtml(state.redemption.code)}</strong>. The case is covered; you pay shipping only. A new printed warranty card ships inside it.</p>` : ''}
       <div class="co-lines">${ls.map(lineHtml).join('')}</div>
       ${shippingLine}
+      ${taxLine}
       <div class="co-totals">
         <span class="co-totals-lbl">${state.order ? 'Total' : 'Subtotal'}</span>
         <span class="co-totals-val">${escapeHtml(totalLabel)}</span>
@@ -355,6 +359,7 @@ function paymentHtml(ls) {
         <div class="co-sumrow"><span>Items</span><span>${formatPrice(bd.goodsCents)}</span></div>
         ${bd.shippingCents ? `<div class="co-sumrow"><span>Shipping</span><span>${formatPrice(bd.shippingCents)}</span></div>`
           : bd.freeShipping ? `<div class="co-sumrow"><span>Shipping</span><span>Free</span></div>` : ''}
+        ${Number(bd.taxCents) > 0 ? `<div class="co-sumrow"><span>Sales tax</span><span>${formatPrice(bd.taxCents)}</span></div>` : ''}
         <div class="co-sumrow co-sumrow-total"><span>Total</span><span>${formatPrice(bd.totalCents)}</span></div>
       </div>
 
@@ -604,7 +609,7 @@ async function createOrder() {
     if (!res.ok) throw new Error(data.error || 'Could not start the redemption.');
     state.redemptionId = data.redemptionId || '';
     state.orderedLines = [];
-    return { orderId: data.orderId, clientSecret: data.clientSecret, breakdown: data.breakdown || { goodsCents: 0, shippingCents: 0, totalCents: 0 }, linked: true };
+    return { orderId: data.orderId, clientSecret: data.clientSecret, breakdown: data.breakdown || { goodsCents: 0, shippingCents: 0, taxCents: 0, totalCents: 0 }, linked: true };
   }
 
   const res = await fetch(`${PRAG_API_BASE}/orders/checkout`, {

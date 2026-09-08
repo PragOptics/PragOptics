@@ -1832,7 +1832,17 @@ function orderStatusPill(status) {
   const bad = ['REFUNDED', 'PARTIALLY_REFUNDED', 'PAYMENT_FAILED', 'RETURNED'].includes(s);
   // An abandoned or superseded start was never money expected: no warning color.
   const quiet = ['ABANDONED', 'CANCELED', 'SUPERSEDED'].includes(s);
-  return `<span class="acct-tag ${bad ? 'is-bad' : good ? 'is-verified' : quiet ? '' : 'is-pending'}">${escapeHtml(s.replaceAll('_', ' ').toLowerCase() || 'pending')}</span>`;
+  const SHORT = { LABEL_PURCHASED: 'labeled', PENDING_PAYMENT: 'pending', PARTIALLY_REFUNDED: 'partial refund', PAYMENT_FAILED: 'failed' };
+  return `<span class="acct-tag ${bad ? 'is-bad' : good ? 'is-verified' : quiet ? '' : 'is-pending'}" title="${escapeHtml(s.replaceAll('_', ' ').toLowerCase())}">${escapeHtml(SHORT[s] || s.replaceAll('_', ' ').toLowerCase() || 'pending')}</span>`;
+}
+
+/** "Sep 7", with the year only when it is not this year. */
+function fmtDay(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  const sameYear = d.getFullYear() === new Date().getFullYear();
+  return d.toLocaleDateString(undefined, sameYear ? { month: 'short', day: 'numeric' } : { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 function orderLinesLabel(lines) {
@@ -1926,7 +1936,7 @@ async function loadMyOrders() {
               <tr>
                 <td class="adm-muted cell-tight">${escapeHtml(fmtDate(o.createdAt))}</td>
                 <td class="cell-ellip" title="${escapeHtml(orderLinesLabel(o.lines))}">${escapeHtml(orderLinesLabel(o.lines))}</td>
-                <td class="adm-num cell-tight">${escapeHtml(usdCents(o.totalCents))}</td>
+                <td class="adm-num cell-tight">${escapeHtml(usdCents(o.totalCents))}${Number(o.taxCents) > 0 ? `<div class="adm-muted">incl. ${escapeHtml(usdCents(o.taxCents))} tax</div>` : ''}</td>
                 <td class="cell-tight">${orderStatusPill(o.status)}</td>
                 <td class="cell-ellip" title="${escapeHtml(o.trackingNumber || '')}">${o.trackingNumber
                   ? (safeUrl(o.trackingUrl)
@@ -2862,18 +2872,33 @@ function rpCloseReport(btn) {
 
 function admOrderRowHtml(o) {
   const paid = String(o.status).toUpperCase() === 'PAID';
-  const physical = !!(o.shipCarrier || o.shippingCents);
+  const physical = !!(o.shipCarrier || o.shippingCents || o.shipRateCents);
+  const dash = '<span class="adm-muted">—</span>';
+  const money = (cents) => (cents == null ? dash : escapeHtml(usdCents(cents)));
+  const net = odNet(o);
+  const taxBad = o.taxStatus === 'uncalculated';
+  const taxTitle = taxBad ? 'Sales tax was NOT calculated on this order. Remit it by hand.' : (o.taxSummary ? `Stripe Tax: ${o.taxSummary}` : (o.taxCents ? 'Sales tax' : 'No taxable goods'));
+  const shipTitle = o.shipRateCents ? `Rate ${usdCents(o.shipRateCents)}${o.shippingCents ? '' : ', shipped free'}` : '';
+  const labelTitle = o.labelCostCents != null ? `Label cost ${usdCents(o.labelCostCents)}${o.shippingCents ? `, customer paid ${usdCents(o.shippingCents)}` : ', customer paid nothing'}` : (o.labelUrl ? 'Label bought; cost not recorded yet' : 'No label yet');
+  const netTitle = net == null ? 'Net is known once Stripe reports its fee'
+    : `Net: total ${usdCents(o.totalCents)}${o.refundedCents ? ` less refunds ${usdCents(o.refundedCents)}` : ''}${odTaxKept(o) ? ` less tax owed ${usdCents(odTaxKept(o))}` : ''} less Stripe fee ${usdCents(o.stripeFeeCents)}${o.labelCostCents != null ? ` less label ${usdCents(o.labelCostCents)}` : ''}${o.cogsCents != null ? ` less unit cost ${usdCents(o.cogsCents)}` : ''}`;
   return `
     <tr>
-      <td class="adm-muted cell-tight">${escapeHtml(fmtDate(o.createdAt))}</td>
-      <td class="adm-cell-email cell-ellip" title="${escapeHtml(o.email || '')}">${escapeHtml(o.email || '')}</td>
-      <td class="cell-ellip" title="${escapeHtml(orderLinesLabel(o.lines))}">${escapeHtml(orderLinesLabel(o.lines))}</td>
-      <td class="adm-num cell-tight">${escapeHtml(usdCents(o.totalCents))}</td>
-      <td class="cell-tight">${orderStatusPill(o.status)}${o.refundedCents ? `<div class="adm-muted adm-money-neg">-${escapeHtml(usdCents(o.refundedCents))}</div>` : ''}${o.labelError ? `<div class="adm-muted" title="${escapeHtml(o.labelError)}">label error</div>` : ''}</td>
-      <td class="cell-ellip" title="${escapeHtml(o.trackingNumber || '')}">${o.trackingNumber
+      <td class="adm-muted cell-tight" title="${escapeHtml(fmtDate(o.createdAt))}">${escapeHtml(fmtDay(o.createdAt))}</td>
+      <td class="adm-cell-email cell-ellip od-ellip" title="${escapeHtml(o.email || '')}">${escapeHtml(o.email || '')}</td>
+      <td class="cell-ellip od-ellip" title="${escapeHtml(orderLinesLabel(o.lines))}">${escapeHtml(orderLinesLabel(o.lines))}</td>
+      <td class="adm-num cell-tight">${money(o.goodsCents)}</td>
+      <td class="adm-num cell-tight" title="${escapeHtml(shipTitle)}">${o.shippingCents ? money(o.shippingCents) : (physical ? '<span class="adm-muted">Free</span>' : dash)}</td>
+      <td class="adm-num cell-tight ${taxBad ? 'od-bad' : ''}" title="${escapeHtml(taxTitle)}">${taxBad ? 'none' : (o.taxCents ? money(o.taxCents) : dash)}</td>
+      <td class="adm-num cell-tight">${money(o.totalCents)}${o.refundedCents ? `<div class="adm-muted adm-money-neg">-${escapeHtml(usdCents(o.refundedCents))}</div>` : ''}</td>
+      <td class="adm-num cell-tight adm-muted od-cost" title="Stripe processing fee">${o.stripeFeeCents == null ? dash : '-' + escapeHtml(usdCents(o.stripeFeeCents))}</td>
+      <td class="adm-num cell-tight adm-muted od-cost" title="${escapeHtml(labelTitle)}">${o.labelCostCents == null ? (o.labelUrl ? '?' : dash) : '-' + escapeHtml(usdCents(o.labelCostCents))}</td>
+      <td class="adm-num cell-tight" title="${escapeHtml(netTitle)}">${net == null ? dash : escapeHtml(usdCents(net))}</td>
+      <td class="cell-tight">${orderStatusPill(o.status)}${o.labelError ? `<div class="adm-muted" title="${escapeHtml(o.labelError)}">label error</div>` : ''}</td>
+      <td class="cell-tight" title="${escapeHtml(o.trackingNumber || '')}">${o.trackingNumber
         ? (safeUrl(o.trackingUrl)
-            ? `<a class="acct-inline-link" href="${escapeHtml(safeUrl(o.trackingUrl))}" target="_blank" rel="noopener">${escapeHtml(o.trackingNumber)}</a>`
-            : `<code>${escapeHtml(o.trackingNumber)}</code>`)
+            ? `<a class="acct-inline-link" href="${escapeHtml(safeUrl(o.trackingUrl))}" target="_blank" rel="noopener">…${escapeHtml(String(o.trackingNumber).slice(-8))}</a>`
+            : `<code>…${escapeHtml(String(o.trackingNumber).slice(-8))}</code>`)
         : '<span class="adm-muted">—</span>'}</td>
       <td class="cell-tight">
         <div class="adm-order-actions">
@@ -2906,6 +2931,13 @@ function orderRefundable(o) {
   return paidLike && total > refunded;
 }
 
+// The desk's selection: a status tab plus an optional date range (created
+// date, whole days). The server returns the rows in range and the totals over
+// the WHOLE selection; the export writes the rows on screen with every column.
+const odRange = { from: '', to: '' };
+let odLast = { orders: [], summary: null };
+const OD_PAID_LIKE = new Set(['PAID', 'LABEL_PURCHASED', 'SHIPPED', 'DELIVERED', 'PARTIALLY_REFUNDED', 'REFUNDED', 'RETURNED']);
+
 async function renderAdminOrders(main) {
   main.innerHTML = `
     <header class="adm-sec-head">
@@ -2916,8 +2948,15 @@ async function renderAdminOrders(main) {
         <button class="adm-tab" type="button" role="tab" aria-selected="false" data-adm-orders="LABEL_PURCHASED">Labeled</button>
         <button class="adm-tab" type="button" role="tab" aria-selected="false" data-adm-orders="SHIPPED">Shipped</button>
       </div>
+      <div class="adm-toolbar od-range">
+        <label class="od-range-lbl">From <input class="adm-input od-date" id="odFrom" type="date" value="${escapeHtml(odRange.from)}" aria-label="Orders from date"></label>
+        <label class="od-range-lbl">To <input class="adm-input od-date" id="odTo" type="date" value="${escapeHtml(odRange.to)}" aria-label="Orders to date"></label>
+        <button class="btn adm-copy" type="button" data-adm-action="orders-clear-range" title="Drop the date range">All time</button>
+        <button class="btn adm-copy" type="button" data-adm-action="orders-export" title="Every row below with every money column, as a spreadsheet file">Export CSV</button>
+      </div>
     </header>
     <p class="adm-error" id="admOrdersError" hidden></p>
+    <div id="admOrdersSummary"></div>
     <div id="admOrdersBody"><p class="adm-note">Loading…</p></div>
     <div id="admLabelsBody"></div>
   `;
@@ -2925,28 +2964,138 @@ async function renderAdminOrders(main) {
   loadLabelsAndQueue();
 }
 
+function odActiveStatus() {
+  return document.querySelector('[data-adm-orders].is-active')?.dataset.admOrders || '';
+}
+
+// Totals when the server did not send them (an older lane): same arithmetic.
+// Tax that is still a liability after refunds: a refund reverses the tax on
+// it in Stripe, proportionally on a partial refund.
+function odTaxKept(o) {
+  const tax = Number(o.taxCents || 0), total = Number(o.totalCents || 0), ref = Number(o.refundedCents || 0);
+  if (!tax || !total) return 0;
+  return Math.max(0, Math.round(tax * Math.max(0, 1 - ref / total)));
+}
+function odNet(o) {
+  if (o.stripeFeeCents == null) return null;
+  return Number(o.totalCents || 0) - Number(o.refundedCents || 0) - odTaxKept(o) - Number(o.stripeFeeCents || 0) - Number(o.labelCostCents || 0) - Number(o.cogsCents || 0);
+}
+function odSummarize(orders) {
+  const s = { count: 0, paidCount: 0, goodsCents: 0, taxableCents: 0, shippingCents: 0, taxCents: 0, taxReversedCents: 0, totalCents: 0, refundedCents: 0, stripeFeeCents: 0, labelCostCents: 0, cogsCents: 0, netCents: 0, taxUncalculated: 0, feeUnknown: 0, labelCostUnknown: 0, cogsUnknown: 0 };
+  for (const o of orders) {
+    s.count++;
+    if (!OD_PAID_LIKE.has(String(o.status || '').toUpperCase())) continue;
+    s.paidCount++;
+    s.goodsCents += Number(o.goodsCents || 0); s.taxableCents += Number(o.taxableCents || 0);
+    s.shippingCents += Number(o.shippingCents || 0); s.taxCents += Number(o.taxCents || 0);
+    s.totalCents += Number(o.totalCents || 0); s.refundedCents += Number(o.refundedCents || 0);
+    s.taxReversedCents += Number(o.taxCents || 0) - odTaxKept(o);
+    if (o.taxStatus === 'uncalculated') s.taxUncalculated++;
+    if (o.stripeFeeCents == null) s.feeUnknown++; else s.stripeFeeCents += Number(o.stripeFeeCents);
+    if (o.labelUrl) { if (o.labelCostCents == null) s.labelCostUnknown++; else s.labelCostCents += Number(o.labelCostCents); }
+    if (o.cogsCents == null) { if (Number(o.goodsCents || 0) > 0) s.cogsUnknown++; } else s.cogsCents += Number(o.cogsCents);
+  }
+  s.netCents = s.totalCents - s.refundedCents - (s.taxCents - s.taxReversedCents) - s.stripeFeeCents - s.labelCostCents - s.cogsCents;
+  return s;
+}
+
+function admOrdersSummaryHtml(s) {
+  if (!s) return '';
+  const cell = (label, val, cls = '', title = '') => `<div class="od-sum ${cls}" ${title ? `title="${escapeHtml(title)}"` : ''}><span class="od-sum-l">${label}</span><span class="od-sum-v adm-num">${escapeHtml(val)}</span></div>`;
+  const neg = (c) => (Number(c) ? '-' + usdCents(c) : usdCents(0));
+  const warn = [];
+  if (s.taxUncalculated) warn.push(`${s.taxUncalculated} order${s.taxUncalculated === 1 ? '' : 's'} without a tax calculation (remit by hand)`);
+  if (s.feeUnknown) warn.push(`${s.feeUnknown} still waiting on the Stripe fee`);
+  if (s.labelCostUnknown) warn.push(`${s.labelCostUnknown} label${s.labelCostUnknown === 1 ? '' : 's'} without a recorded cost`);
+  if (s.cogsUnknown) warn.push(`${s.cogsUnknown} without a unit cost (set po_cost_cents on the Stripe product and sync)`);
+  return `
+    <div class="od-summary">
+      ${cell('Paid orders', `${s.paidCount} of ${s.count}`)}
+      ${cell('Goods', usdCents(s.goodsCents), '', 'Merchandise charged, before shipping and tax')}
+      ${cell('Taxable goods', usdCents(s.taxableCents), '', 'Physical merchandise: the figure sales tax is owed on')}
+      ${cell('Shipping charged', usdCents(s.shippingCents))}
+      ${cell('Sales tax collected', usdCents(s.taxCents), 'is-tax', 'What Stripe Tax computed and the customer paid; a liability, not revenue')}
+      ${cell('Charged', usdCents(s.totalCents), '', 'Goods plus shipping plus tax')}
+      ${cell('Refunded', neg(s.refundedCents))}
+      ${s.taxReversedCents ? cell('Tax reversed', neg(s.taxReversedCents), '', 'Tax on refunded orders, reversed in Stripe; no longer owed') : ''}
+      ${cell('Stripe fees', neg(s.stripeFeeCents))}
+      ${cell('Labels', neg(s.labelCostCents), '', 'What the bought labels cost at Shippo')}
+      ${cell('Unit cost', neg(s.cogsCents), '', 'po_cost_cents per unit sold, from the Stripe product')}
+      ${cell('Net', usdCents(s.netCents), 'is-net', 'Charged, less refunds, the tax still owed, Stripe fees, labels and unit cost')}
+    </div>
+    ${warn.length ? `<p class="adm-note od-warn">${escapeHtml(warn.join('. '))}.</p>` : ''}
+    <p class="adm-note od-note">Totals cover every paid order in the selection, whatever happened after. Taxable goods is the figure to report; the tax on a refund is reversed in Stripe.</p>`;
+}
+
 async function loadAdminOrders(status) {
   const host = document.getElementById('admOrdersBody');
+  const sum = document.getElementById('admOrdersSummary');
   if (!host) return;
   showError('admOrdersError', '');
   host.innerHTML = `<p class="adm-note">Loading…</p>`;
   try {
-    const q = status ? `?status=${encodeURIComponent(status)}&limit=200` : '?limit=200';
-    const data = await apiFetch(`${ADMIN_ORDERS_URL}${q}`);
+    const p = new URLSearchParams();
+    if (status) p.set('status', status);
+    if (odRange.from) p.set('from', odRange.from);
+    if (odRange.to) p.set('to', odRange.to);
+    p.set('limit', '1000');
+    const data = await apiFetch(`${ADMIN_ORDERS_URL}?${p.toString()}`);
     const orders = data.orders || [];
+    odLast = { orders, summary: data.summary || odSummarize(orders) };
+    if (sum) sum.innerHTML = orders.length ? admOrdersSummaryHtml(odLast.summary) : '';
     if (!orders.length) { host.innerHTML = `<p class="adm-empty">No orders in this view.</p>`; return; }
     host.innerHTML = `
       <div class="adm-table-scroll">
-        <table class="adm-table adm-table--wrap">
-          <thead><tr><th>Date</th><th>Customer</th><th>Items</th><th class="adm-num">Total</th><th>Status</th><th>Tracking</th><th>Label</th></tr></thead>
+        <table class="adm-table adm-table--orders">
+          <thead><tr>
+            <th>Date</th><th>Customer</th><th>Items</th>
+            <th class="adm-num">Goods</th><th class="adm-num">Ship</th><th class="adm-num">Tax</th><th class="adm-num">Total</th>
+            <th class="adm-num od-cost">Fee</th><th class="adm-num od-cost">Label</th><th class="adm-num">Net</th>
+            <th>Status</th><th>Tracking</th><th></th>
+          </tr></thead>
           <tbody>${orders.map(admOrderRowHtml).join('')}</tbody>
         </table>
       </div>
+      ${data.truncated ? '<p class="adm-note">The oldest orders were left out of this view. Narrow the date range to see them.</p>' : ''}
     `;
   } catch (ex) {
     host.innerHTML = '';
+    if (sum) sum.innerHTML = '';
     showError('admOrdersError', friendlyError(ex, 'Could not load orders.'));
   }
+}
+
+// Every row on screen, every money column, as a file for the books.
+function exportOrdersCsv() {
+  const rows = odLast.orders || [];
+  if (!rows.length) { showError('admOrdersError', 'Nothing to export in this view.'); return; }
+  const c = (v) => (v == null ? '' : (Number(v) / 100).toFixed(2));
+  const cols = [
+    ['Order', o => o.orderId], ['Created', o => o.createdAt], ['Paid at', o => o.paidAt], ['Status', o => o.status],
+    ['Customer', o => o.email], ['Items', o => orderLinesLabel(o.lines)],
+    ['Goods', o => c(o.goodsCents)], ['Taxable goods', o => c(o.taxableCents)], ['Shipping charged', o => c(o.shippingCents)],
+    ['Sales tax', o => c(o.taxCents)], ['Tax status', o => o.taxStatus], ['Tax jurisdiction', o => o.taxSummary],
+    ['Total charged', o => c(o.totalCents)], ['Refunded', o => c(o.refundedCents)],
+    ['Stripe fee', o => c(o.stripeFeeCents)], ['Stripe net', o => c(o.stripeNetCents)],
+    ['Label cost', o => c(o.labelCostCents)], ['Shipping rate cost', o => c(o.shipRateCents)], ['Unit cost', o => c(o.cogsCents)],
+    ['Tax kept', o => c(odTaxKept(o))],
+    ['Net', o => (odNet(o) == null ? '' : c(odNet(o)))],
+    ['Carrier', o => o.shipCarrier], ['Service', o => o.shipService], ['Tracking', o => o.trackingNumber],
+    ['Ship to state', o => o.shipTo?.state], ['Ship to zip', o => o.shipTo?.zip],
+    ['Tax calculation', o => o.taxCalculationId], ['Tax transaction', o => o.taxTransactionId], ['Tax reversals', o => o.taxReversalIds],
+    ['Refund reason', o => o.lastRefundReason]
+  ];
+  const q = (v) => { const s = v == null ? '' : String(v); return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
+  const csv = [cols.map(x => x[0]).join(',')]
+    .concat(rows.map(o => cols.map(x => q(x[1](o))).join(',')))
+    .join('\r\n');
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  const tag = (odRange.from || odRange.to) ? `${odRange.from || 'start'}_to_${odRange.to || 'today'}` : 'all';
+  a.download = `pragoptics-orders-${tag}.csv`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
 }
 
 async function buyOrderLabel(btn) {
@@ -3632,6 +3781,13 @@ function bindOnce() {
       if (admAct.dataset.admAction === 'lane-dev') switchLane('dev');
       if (admAct.dataset.admAction === 'order-label') buyOrderLabel(admAct);
       if (admAct.dataset.admAction === 'order-refund') openOrderRefund(admAct);
+      if (admAct.dataset.admAction === 'orders-export') exportOrdersCsv();
+      if (admAct.dataset.admAction === 'orders-clear-range') {
+        odRange.from = ''; odRange.to = '';
+        const f = document.getElementById('odFrom'); if (f) f.value = '';
+        const t = document.getElementById('odTo'); if (t) t.value = '';
+        loadAdminOrders(odActiveStatus());
+      }
       if (admAct.dataset.admAction === 'cost-refresh') loadAdminCosts(true);
       if (admAct.dataset.admAction === 'user-manage') openUserManage(admAct.dataset.user, admAct.dataset.email);
       if (admAct.dataset.admAction === 'wh-stripe') runWebhookSync(admAct, STRIPE_WH_SYNC_URL, 'Stripe');
@@ -3698,6 +3854,11 @@ function bindOnce() {
   });
   document.addEventListener('change', (e) => {
     if (e.target.id === 'admUserStatus' || e.target.id === 'admUserTier') renderUserRows();
+    // Orders desk: the date range reloads the selection and its totals.
+    if (e.target.id === 'odFrom' || e.target.id === 'odTo') {
+      odRange[e.target.id === 'odFrom' ? 'from' : 'to'] = e.target.value || '';
+      loadAdminOrders(odActiveStatus());
+    }
     // Notifications desk: checkboxes write straight into the routing state;
     // the account selects add a named account.
     if (e.target.matches('[data-nt-role], [data-nt-ch], [data-nt-notice-role]')) ntToggle(e.target);
