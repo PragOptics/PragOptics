@@ -34,6 +34,12 @@ export function initHeaderMenu() {
           window.openLoginModal?.();
           break;
 
+        // The same door as the landing's Get Started: the Subscriber Agreement,
+        // then signup. Shown to visitors only, never on the dev lane.
+        case 'open-signup':
+          window.openAgreementModal?.();
+          break;
+
         case 'logout':
           window.logout?.();
           break;

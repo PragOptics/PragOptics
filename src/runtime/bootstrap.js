@@ -638,11 +638,13 @@ window.applyPostLoginResolution = applyPostLoginResolution;
       });
     }
 
-    // The plans section is a signup entry, like Get Started: hidden once the
-    // visitor is signed in, and hidden on the dev lane, which has no signup.
+    // The signup entries share one rule: the landing plans section and the
+    // menu's Get Started are for visitors, hidden once signed in, and hidden on
+    // the dev lane, which has no signup.
     window.syncLandingPlans = () => {
-      const sec = document.getElementById("landingPlans");
-      if (sec) sec.classList.toggle("hidden", (LANE === "dev") || isUserLoggedIn());
+      const off = (LANE === "dev") || isUserLoggedIn();
+      document.getElementById("landingPlans")?.classList.toggle("hidden", off);
+      document.getElementById("navGetStarted")?.classList.toggle("hidden", off);
     };
     window.syncLandingPlans();
 
