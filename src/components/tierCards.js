@@ -35,7 +35,17 @@ function centsToUSD(cents) {
   return (n % 100 === 0) ? `$${n / 100}` : `$${(n / 100).toFixed(2)}`;
 }
 
+/** Signed in means a valid access token, never a leftover ping payload. */
+function signedInNow() {
+  try {
+    if (typeof window.isAccessTokenValid === 'function') return !!window.isAccessTokenValid();
+    return !!JSON.parse(sessionStorage.getItem('pragoptics_tokens') || 'null')?.access_token;
+  } catch { return false; }
+}
+
+/** The ping payload, only while a session is live; a visitor gets null. */
 function cachedPing() {
+  if (!signedInNow()) return null;
   try { return JSON.parse(sessionStorage.getItem('pragoptics_ping') || 'null'); }
   catch { return null; }
 }

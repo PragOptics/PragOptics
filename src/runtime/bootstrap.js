@@ -370,8 +370,11 @@ function setToken(tokens) {
       el.classList.remove("hidden");
     });
 
-    // Reset stored auth (frontend-only; backend remains authoritative)
+    // Reset stored auth (frontend-only; backend remains authoritative). The
+    // cached ping goes with it: a stale payload made the landing plan cards
+    // read "Your plan" for a visitor whose session had merely expired.
     sessionStorage.removeItem("pragoptics_tokens");
+    sessionStorage.removeItem("pragoptics_ping");
 
     // Drop any lane override too, so an expired session on the dev lane returns
     // this browser to its host default (live on pragoptics.com) on next load,
