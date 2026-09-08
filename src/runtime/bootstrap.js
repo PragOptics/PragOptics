@@ -365,10 +365,11 @@ function setToken(tokens) {
     const indicator = document.getElementById("authIndicator");
     if (indicator) indicator.classList.remove("signed-in");
 
-    // Restore landing CTAs (Get Started)
+    // Restore landing CTAs (Get Started) and the plans section
     document.querySelectorAll(".hero .cta").forEach(el => {
       el.classList.remove("hidden");
     });
+    setTimeout(() => window.syncLandingPlans?.(), 0);
 
     // Reset stored auth (frontend-only; backend remains authoritative). The
     // cached ping goes with it: a stale payload made the landing plan cards
@@ -461,6 +462,7 @@ function applyPostLoginResolution({ ping, force = false }) {
 
   // Internal-only nav follows the freshly resolved identity.
   refreshAdminNav();
+  window.syncLandingPlans?.();
 
 
   const decision = updateWizardMenuFromPing(ping);
@@ -635,6 +637,14 @@ window.applyPostLoginResolution = applyPostLoginResolution;
         el.classList.add("hidden");
       });
     }
+
+    // The plans section is a signup entry, like Get Started: hidden once the
+    // visitor is signed in, and hidden on the dev lane, which has no signup.
+    window.syncLandingPlans = () => {
+      const sec = document.getElementById("landingPlans");
+      if (sec) sec.classList.toggle("hidden", (LANE === "dev") || isUserLoggedIn());
+    };
+    window.syncLandingPlans();
 
     /* ===========================
        BOOT
