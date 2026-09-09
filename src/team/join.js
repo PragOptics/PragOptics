@@ -14,11 +14,11 @@
 // lose it. It is never sent anywhere but the accept and peek routes.
 
 import { PRAG_API_BASE, LANE, TEAM_LIVE } from '../runtime/config.js';
+import { openLoginModal } from '../ui/login.modal.js';
 
 // The join page follows the same live gate as Team: off on the live lane
 // until the lanes carry the tenant routes and TEAM_LIVE is flipped.
 const TEAM_ON = (LANE !== 'live') || TEAM_LIVE;
-import { openLoginModal } from '../ui/login.modal.js';
 
 const TOKEN_KEY = 'pragoptics_join_token';
 const RETURN_KEY = 'pragoptics_return_to';
