@@ -11,7 +11,7 @@
 // forges isAdmin in their own sessionStorage gets sections where every
 // request returns 403.
 
-import { PRAG_API_BASE, LANE, ORDERS_CLAIM_LIVE } from '../runtime/config.js';
+import { PRAG_API_BASE, LANE, ORDERS_CLAIM_LIVE, TEAM_LIVE } from '../runtime/config.js';
 import { registerPasskey, passkeySupported } from '../auth/passkey.js';
 import { switchLane, isPlatformOperator } from '../runtime/lane.js';
 import { stripeAppearance } from '../api/stripeAppearance.js';
@@ -307,8 +307,16 @@ const INTERNAL_SECTIONS = [
   { id: 'catalog',    label: 'Catalog' }
 ];
 
+// Team and Tenants ride the tenant spine, which reaches live only when the
+// lanes carry it and TEAM_LIVE is flipped. Until then the live lane never
+// shows them; dev always does.
+const TEAM_ON = (LANE !== 'live') || TEAM_LIVE;
+const TEAM_IDS = new Set(['team', 'tenants']);
+function customerSections() { return ACCOUNT_SECTIONS.filter(s => TEAM_ON || !TEAM_IDS.has(s.id)); }
+function internalSections() { return INTERNAL_SECTIONS.filter(s => TEAM_ON || !TEAM_IDS.has(s.id)); }
+
 function allSections() {
-  return isAdmin() ? [...ACCOUNT_SECTIONS, ...INTERNAL_SECTIONS] : ACCOUNT_SECTIONS;
+  return isAdmin() ? [...customerSections(), ...internalSections()] : customerSections();
 }
 
 function icon(id) {
@@ -338,10 +346,10 @@ function shellHtml() {
           <span class="adm-side-title">${escapeHtml(currentEmail() || 'You')}</span>
         </div>
         <ul class="adm-nav">
-          ${navItemsHtml(ACCOUNT_SECTIONS)}
+          ${navItemsHtml(customerSections())}
           ${admin ? `
             <li class="adm-nav-div" aria-hidden="true">Internal</li>
-            ${navItemsHtml(INTERNAL_SECTIONS)}
+            ${navItemsHtml(internalSections())}
           ` : ''}
         </ul>
         <div class="adm-side-report">
@@ -3840,8 +3848,10 @@ function teamDeps() {
 }
 
 function showSection(id) {
-  // A customer must never land on an internal section id (stale deep link).
+  // A customer must never land on an internal section id (stale deep link),
+  // and nobody lands on Team while it is off for this lane.
   if (!isAdmin() && INTERNAL_SECTIONS.some(s => s.id === id)) id = 'profile';
+  if (!TEAM_ON && TEAM_IDS.has(id)) id = 'profile';
   activeSection = id;
   document.querySelectorAll('.adm-nav-item').forEach(b => {
     const on = b.dataset.acctSection === id;
@@ -4026,7 +4036,7 @@ function bindOnce() {
 /** Deep-link target for the next panel entry (e.g. the old admin route lands
  *  on Overview; the warranty success screen lands on My Products). */
 export function presetAccountSection(id) {
-  const all = [...ACCOUNT_SECTIONS, ...INTERNAL_SECTIONS];
+  const all = [...customerSections(), ...internalSections()];
   if (!all.some(s => s.id === id)) return;
   // Render immediately only when the panel is actually on screen. When the
   // caller is about to setAppMode('account'), onAccountEnter renders once;
@@ -4041,7 +4051,7 @@ export function initAccountView() {
   window.presetAccountSection = presetAccountSection;
   // The join page's "Open Team" lands here. Team lives in this panel only,
   // never in the header menu (Cameron, 2026-09-09).
-  window.openTeamFromMenu = () => { presetAccountSection('team'); window.setAppMode?.('account'); };
+  window.openTeamFromMenu = () => { presetAccountSection(TEAM_ON ? 'team' : 'profile'); window.setAppMode?.('account'); };
   $body = document.getElementById('accountBody');
   if (!$body) return;
   bindOnce();

@@ -13,7 +13,11 @@
 // sign-in round trip (login modal, 2FA, the wizard's post-login routing) cannot
 // lose it. It is never sent anywhere but the accept and peek routes.
 
-import { PRAG_API_BASE } from '../runtime/config.js';
+import { PRAG_API_BASE, LANE, TEAM_LIVE } from '../runtime/config.js';
+
+// The join page follows the same live gate as Team: off on the live lane
+// until the lanes carry the tenant routes and TEAM_LIVE is flipped.
+const TEAM_ON = (LANE !== 'live') || TEAM_LIVE;
 import { openLoginModal } from '../ui/login.modal.js';
 
 const TOKEN_KEY = 'pragoptics_join_token';
@@ -227,6 +231,7 @@ function bind() {
 export function initJoinView() {
   bind();
   window.pragJoin = (token) => {
+    if (!TEAM_ON) { window.setAppMode?.('landing'); return; }
     state.token = token || tokenFromHash() || stashed();
     if (state.token) stash(state.token);
     load();
@@ -240,6 +245,7 @@ export function initJoinView() {
 
 /** Entering the view by any route: pick up the token from the hash or the stash. */
 export function onJoinEnter() {
+  if (!TEAM_ON) { window.setAppMode?.('landing'); return; }
   bind();
   const t = tokenFromHash() || state.token || stashed();
   if (t !== state.token || !state.peek) { state.token = t; if (t) stash(t); load(); }

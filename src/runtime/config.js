@@ -52,3 +52,9 @@ export const STRIPE_PUBLISHABLE_KEY = lane.stripePk;
 // 2026-09-06 (guest checkout -> confirmation email -> claim by order number).
 // Live once the backend carrying the route (3db9385 or later) is on blue/green.
 export const ORDERS_CLAIM_LIVE = true;
+
+// Team (the tenant spine in the account panel, the operator Tenants desk, and
+// the /#join invite page) on the LIVE lane. Off until blue and green carry the
+// tenant routes and Cameron calls it ready; dev always shows it. Flip to true,
+// push, done.
+export const TEAM_LIVE = false;
