@@ -1292,19 +1292,27 @@ function withoutRetiredAddons(addons = {}) {
 // or Super plan (they include their capacity), and a retired add-on on User.
 function strayAddonKeys(shape) {
   if (!shape?.subType) return [];
+  // Seats are not in addons (shapeOfItems counts them apart), so a seat line
+  // never reads as a stray add-on on Partner or Super.
   const on = Object.keys(shape.addons || {}).filter(k => shape.addons[k]);
   return shape.subType === 'user' ? on.filter(k => RETIRED_ADDON_KEYS.has(k)) : on;
 }
 function shapeOfItems(items = []) {
-  const out = { subType: null, cadence: 'monthly', addons: { domains: false, storage: false, flows: false, api: false } };
+  const out = { subType: null, cadence: 'monthly', addons: { domains: false, storage: false, flows: false, api: false }, seats: 0 };
   for (const it of items) {
     const lk = String(it.lookupKey || '');
     const base = lk.match(/^po\.(user|partner|super)\./);
     if (base) { out.subType = base[1]; out.cadence = it.interval === 'year' ? 'annual' : 'monthly'; continue; }
+    // Extra seats: one item whose quantity is the count.
+    if (/^po\.addon\.seats\./.test(lk)) { out.seats += Math.max(1, Number(it.quantity) || 1); continue; }
     const addon = lk.match(/^po\.addon\.([a-z0-9]+)\./);
     if (addon && ADDON_SLUG_TO_KEY[addon[1]]) out.addons[ADDON_SLUG_TO_KEY[addon[1]]] = true;
   }
   return out;
+}
+// Same plan, same cadence, same add-ons, same seat count: nothing to apply.
+function sameSelection(sel, live, currentKeys) {
+  return sameKeySets(new Set(sel.lookupKeys), currentKeys) && (Number(sel.seats) || 0) === (Number(live.seats) || 0);
 }
 
 const TIER_RANK = { free: 0, user: 1, partner: 2, super: 3 };
@@ -1322,11 +1330,16 @@ function changeKind(cur, des) {
   const cadDown = cur.cadence === 'annual' && des.cadence === 'monthly';
   const added = Object.keys(des.addons || {}).filter(k => des.addons[k] && !cur.addons?.[k]);
   const removed = Object.keys(cur.addons || {}).filter(k => cur.addons[k] && !des.addons?.[k]);
+  // Seats follow the same rule: more now, fewer at period end.
+  const seatsUp = (Number(des.seats) || 0) > (Number(cur.seats) || 0);
+  const seatsDown = (Number(des.seats) || 0) < (Number(cur.seats) || 0);
   if (up || (cadUp && !down)) return 'more';
   if (down || cadDown) return 'less';
-  if (added.length && removed.length) return 'both';
-  if (added.length) return 'more';
-  if (removed.length) return 'less';
+  const more = added.length > 0 || seatsUp;
+  const less = removed.length > 0 || seatsDown;
+  if (more && less) return 'both';
+  if (more) return 'more';
+  if (less) return 'less';
   return 'none';
 }
 
@@ -1642,19 +1655,19 @@ async function renderSubscription(main) {
   // The keys the selector can represent. A stray add-on on a Partner/Super
   // plan, and a retired add-on on any plan, is handled by its own card above,
   // so neither must arm Apply here.
-  const currentKeys = new Set([...keysOfCurrent(subData)].filter(k => !isRetiredLookupKey(k) && (live.subType === 'user' || !k.startsWith('po.addon.'))));
+  const currentKeys = new Set([...keysOfCurrent(subData)].filter(k => !isRetiredLookupKey(k) && (live.subType === 'user' || !k.startsWith('po.addon.') || /^po\.addon\.seats\./.test(k))));
   if (pricingHost) {
     subPricing = mountPricingSelect(pricingHost, {
       catalog: cachedPing()?.productCatalog || [],
-      initial: { subType: live.subType, cadence: live.cadence, addons: live.subType === 'user' ? withoutRetiredAddons(live.addons) : {} },
+      initial: { subType: live.subType, cadence: live.cadence, addons: live.subType === 'user' ? withoutRetiredAddons(live.addons) : {}, seats: live.seats },
       onChange: (sel) => {
         if (!applyBtn) return;
-        const dirty = sel.subType && !sameKeySets(new Set(sel.lookupKeys), currentKeys);
+        const dirty = sel.subType && !sameSelection(sel, live, currentKeys);
         applyBtn.disabled = !dirty;
       }
     });
     const sel = subPricing.get();
-    if (applyBtn) applyBtn.disabled = !sel.subType || sameKeySets(new Set(sel.lookupKeys), currentKeys);
+    if (applyBtn) applyBtn.disabled = !sel.subType || sameSelection(sel, live, currentKeys);
   }
 }
 
@@ -1662,7 +1675,7 @@ async function applyPlanChange(btn) {
   const sel = subPricing?.get();
   if (!sel?.subType) return;
   const live = shapeOfItems(subData?.subscription?.items || []);
-  const kind = changeKind(live, { subType: sel.subType, cadence: sel.cadence, addons: sel.addons });
+  const kind = changeKind(live, { subType: sel.subType, cadence: sel.cadence, addons: sel.addons, seats: sel.seats });
   const endDate = fmtDate(subData?.subscription?.currentPeriodEnd);
   const per = sel.cadence === 'annual' ? '/yr' : '/mo';
   // The confirm says what will actually happen, per the backend's rule.
@@ -1679,7 +1692,7 @@ async function applyPlanChange(btn) {
     try {
       const r = await apiFetch(SUB_UPDATE_URL, {
         method: 'POST',
-        body: JSON.stringify({ subType: sel.subType, cadence: sel.cadence, addons: sel.addons })
+        body: JSON.stringify({ subType: sel.subType, cadence: sel.cadence, addons: sel.addons, seats: sel.seats || 0 })
       });
       const msg = document.getElementById('acctPlanMsg');
       const when = r?.effectiveAt ? fmtDate(r.effectiveAt) : endDate;

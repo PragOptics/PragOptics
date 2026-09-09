@@ -39,6 +39,13 @@ const ADDON_STATE_KEY = { domains: 'domains', storage5gb: 'storage', flows10k: '
 // still render in the account panel; they are just not offered here.
 const OFFERED_ADDONS = new Set(['storage5gb', 'api50k']);
 
+// Extra seats: a quantity line on Partner and Super (po.addon.seats.<cadence>
+// in the catalog), never on User. The stepper shows only when the catalog
+// carries the price, so a lane without it simply has no seats to sell.
+const SEAT_TIERS = new Set(['partner', 'super']);
+const INCLUDED_SEATS = { user: 1, partner: 5, super: 45 };
+const MAX_EXTRA_SEATS = 500;
+
 export function mountPricingSelect(host, { catalog = [], initial = {}, onChange } = {}) {
   const model = normalizeCatalog(catalog);
   const roles = Object.keys(model.plans).filter(r => model.plans[r]?.base);
@@ -58,8 +65,12 @@ export function mountPricingSelect(host, { catalog = [], initial = {}, onChange 
       storage: !!initial.addons?.storage,
       flows: !!initial.addons?.flows,
       api: !!initial.addons?.api
-    }
+    },
+    seats: Math.max(0, Math.min(MAX_EXTRA_SEATS, Math.floor(Number(initial.seats) || 0)))
   };
+  function seatPrice(cadence) { return addonsModel.seats?.[cadence]?.amount ?? null; }
+  function seatKey(cadence) { return addonsModel.seats?.[cadence]?.lookupKey || null; }
+  function seatsApply() { return SEAT_TIERS.has(state.subType) && seatPrice(state.cadence) != null; }
 
   function priceFor(role, cadence) {
     return model.plans[role]?.base?.[cadence]?.amount ?? null;
@@ -106,13 +117,43 @@ export function mountPricingSelect(host, { catalog = [], initial = {}, onChange 
         if (lk) lookupKeys.push(lk);
       }
     }
+    // Extra seats ride Partner and Super, priced per seat from the catalog.
+    let seats = 0;
+    if (seatsApply() && state.seats > 0) {
+      seats = state.seats;
+      total += seats * Number(seatPrice(cadence));
+      const lk = seatKey(cadence);
+      if (lk) lookupKeys.push(lk);
+    }
     return {
       subType: state.subType,
       cadence,
       addons: addonsOut,
+      seats,
       totalCents: state.subType != null && base != null ? total : null,
       lookupKeys
     };
+  }
+
+  function seatsHtml() {
+    if (!seatsApply()) return '';
+    const per = state.cadence === 'annual' ? 'per seat per year' : 'per seat per month';
+    const included = INCLUDED_SEATS[state.subType] || 1;
+    const n = state.seats;
+    return `
+      <div class="pc-seats" id="pcSeats">
+        <div class="pc-seats-top">
+          <span class="pc-addon-name">Extra seats</span>
+          <span class="pc-addon-price">${esc(usd(seatPrice(state.cadence)))} ${esc(per)}</span>
+        </div>
+        <span class="pc-addon-blurb muted">${esc(TIER_COPY[state.subType]?.name || state.subType)} includes ${included} seat${included === 1 ? '' : 's'}. Each extra seat is one more person on your team. More seats start today; fewer take effect at the end of the paid period.</span>
+        <div class="pc-seats-row" role="group" aria-label="Extra seats">
+          <button class="btn btn-sm pc-step" type="button" data-pc-seat="dec" aria-label="One seat fewer" ${n <= 0 ? 'disabled' : ''}>&minus;</button>
+          <input class="pc-seat-input" type="number" inputmode="numeric" min="0" max="${MAX_EXTRA_SEATS}" step="1" value="${n}" data-pc-seat-input aria-label="Extra seats" />
+          <button class="btn btn-sm pc-step" type="button" data-pc-seat="inc" aria-label="One seat more" ${n >= MAX_EXTRA_SEATS ? 'disabled' : ''}>+</button>
+          <span class="pc-seats-sum muted">${n ? `${n} extra seat${n === 1 ? '' : 's'}: ${esc(usd(n * Number(seatPrice(state.cadence))))}${state.cadence === 'annual' ? '/yr' : '/mo'}, ${included + n} seats in all` : `${included} seats in all`}</span>
+        </div>
+      </div>`;
   }
 
   function cardHtml(role) {
@@ -181,7 +222,7 @@ export function mountPricingSelect(host, { catalog = [], initial = {}, onChange 
     const addonCount = sel.subType === 'user'
       ? Object.values(sel.addons).filter(Boolean).length : 0;
     const per = sel.cadence === 'annual' ? '/yr' : '/mo';
-    const label = `${copy.name} plan${addonCount ? ` + ${addonCount} add-on${addonCount === 1 ? '' : 's'}` : ''}`;
+    const label = `${copy.name} plan${addonCount ? ` + ${addonCount} add-on${addonCount === 1 ? '' : 's'}` : ''}${sel.seats ? ` + ${sel.seats} seat${sel.seats === 1 ? '' : 's'}` : ''}`;
     return `
       <span class="pc-total-label">${esc(label)}</span>
       <span class="pc-total-amount">${sel.totalCents != null ? esc(usd(sel.totalCents)) + per : ''}</span>
@@ -210,6 +251,7 @@ export function mountPricingSelect(host, { catalog = [], initial = {}, onChange 
             </div>
           </div>
         ` : ''}
+        ${seatsHtml()}
         <div class="pc-total">${totalHtml()}</div>
       </div>
     `;
@@ -240,7 +282,21 @@ export function mountPricingSelect(host, { catalog = [], initial = {}, onChange 
         const k = addon.dataset.pcAddon;
         state.addons[k] = !state.addons[k];
         emit();
+        return;
       }
+      const step = e.target.closest('[data-pc-seat]');
+      if (step && !step.disabled) {
+        state.seats = Math.max(0, Math.min(MAX_EXTRA_SEATS, state.seats + (step.dataset.pcSeat === 'inc' ? 1 : -1)));
+        emit();
+      }
+    });
+    // Typing a count: clamp, then re-render on commit so the sum and the
+    // step buttons follow. Input events keep the typed value live.
+    host.addEventListener('change', (e) => {
+      const inp = e.target.closest('[data-pc-seat-input]');
+      if (!inp) return;
+      state.seats = Math.max(0, Math.min(MAX_EXTRA_SEATS, Math.floor(Number(inp.value) || 0)));
+      emit();
     });
   }
 
@@ -256,6 +312,7 @@ export function mountPricingSelect(host, { catalog = [], initial = {}, onChange 
           if (next.addons[k] !== undefined) state.addons[k] = !!next.addons[k];
         }
       }
+      if (next.seats !== undefined) state.seats = Math.max(0, Math.min(MAX_EXTRA_SEATS, Math.floor(Number(next.seats) || 0)));
       emit();
     }
   };

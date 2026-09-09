@@ -185,6 +185,7 @@ function summaryHtml(v) {
           <p class="acct-card-note tm-owner">Owner ${e(t.ownerEmail || '')}. ${e(ROLE_HELP[me.role] || '')}</p>
         </div>
         <div class="tm-summary-actions">
+          ${isOwner ? `<button class="btn btn-sm" type="button" data-acct-section="subscription" title="${['partner', 'super'].includes(t.tier) ? 'Extra seats are added on the Billing section, per seat per month' : 'Partner and Super come with more seats; change the plan on the Billing section'}">${['partner', 'super'].includes(t.tier) ? 'Add seats' : 'More seats'}</button>` : ''}
           ${isOwner ? `<button class="btn btn-sm" type="button" data-team-action="rename">${name ? 'Rename' : 'Name the team'}</button>` : `<button class="btn btn-sm" type="button" data-team-action="leave">Leave team</button>`}
         </div>
       </div>

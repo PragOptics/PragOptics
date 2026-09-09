@@ -36,7 +36,7 @@
 .tm-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
 .tm-name { margin: 0 0 4px; font-size: 1.25rem; }
 .tm-owner { margin: 0; }
-.tm-summary-actions { flex: 0 0 auto; }
+.tm-summary-actions { flex: 0 0 auto; display: flex; gap: 8px; flex-wrap: wrap; }
 .tm-rename { margin-top: 12px; }
 
 .tm-seats { margin-top: 16px; }

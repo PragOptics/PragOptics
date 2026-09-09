@@ -52,11 +52,14 @@ export function setStep(id){
   if (id === "step5") startFinalizeVeil(); else endFinalizeVeil();
 }
 
-export function buildRequestedSubscription({ subType, cadence, addons }) {
+export function buildRequestedSubscription({ subType, cadence, addons, seats }) {
   return {
     subType,
     cadence,
-    addons: { ...(addons || {}) }
+    addons: { ...(addons || {}) },
+    // Extra seats on Partner and Super, a quantity line the backend composes
+    // from the same catalog price the selector priced them with.
+    seats: Math.max(0, Math.floor(Number(seats) || 0))
   };
 }
 
