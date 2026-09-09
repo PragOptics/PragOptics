@@ -1,0 +1,92 @@
+/* css/views/team.css
+   Team section of the account panel (src/account/team.js), the operator's
+   Tenants desk, and the invite landing page (/#join, src/team/join.js).
+   Everything is drawn from tokens.css so both themes hold. */
+
+/* ---------- join page ---------- */
+.join { max-width: 760px; margin-inline: auto; }
+.join-body { display: flex; flex-direction: column; align-items: stretch; }
+.join-card {
+  width: 100%; box-sizing: border-box;
+  padding: 26px 24px 22px; border-radius: 16px; text-align: center;
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  background: linear-gradient(140deg, color-mix(in srgb, var(--brand-600) 10%, transparent), color-mix(in srgb, var(--brand-purp-solid) 8%, transparent));
+  border: 1px solid color-mix(in srgb, var(--brand-600) 30%, transparent);
+}
+.join-card.is-done { border-color: color-mix(in srgb, var(--brand-cyan) 40%, transparent); }
+.join-kicker { font-size: .68rem; letter-spacing: .2em; text-transform: uppercase; font-weight: 800; color: var(--brand-600); }
+.join-h { margin: 0; font-size: 1.35rem; font-weight: 900; color: var(--card-title); text-wrap: balance; }
+.join-hint { margin: 0; color: var(--muted); line-height: 1.55; max-width: 58ch; }
+.join-hint b, .join-note b { color: var(--card-title); font-weight: 700; }
+.join-role { margin: 0; color: var(--muted); font-size: .9rem; max-width: 58ch; }
+.join-actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-top: 10px; }
+.join-note { margin: 4px 0 0; color: var(--muted); font-size: .84rem; line-height: 1.5; max-width: 60ch; }
+.join-link { background: none; border: 0; padding: 0; font: inherit; font-size: inherit; color: var(--brand-600); text-decoration: underline; cursor: pointer; }
+.join-link:hover { color: var(--card-title); }
+.join-link:focus-visible { outline: 2px solid var(--brand-600); outline-offset: 2px; border-radius: 3px; }
+.join-error { width: 100%; box-sizing: border-box; text-align: left; }
+
+/* ---------- team section ---------- */
+.tm-switch { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+.tm-switch .acct-select { min-width: 240px; }
+
+.tm-summary-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; flex-wrap: wrap; }
+.tm-summary-id { min-width: 0; flex: 1 1 320px; }
+.tm-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+.tm-name { margin: 0 0 4px; font-size: 1.25rem; }
+.tm-owner { margin: 0; }
+.tm-summary-actions { flex: 0 0 auto; }
+.tm-rename { margin-top: 12px; }
+
+.tm-seats { margin-top: 16px; }
+.tm-bar {
+  position: relative; height: 10px; border-radius: 999px; overflow: hidden;
+  background: color-mix(in srgb, var(--ink) 8%, transparent);
+  border: 1px solid var(--border);
+  display: flex;
+}
+.tm-bar-used { display: block; height: 100%; background: linear-gradient(90deg, var(--brand-600), var(--brand-purp-solid)); transition: width 240ms ease; }
+.tm-bar-pending { display: block; height: 100%; background: color-mix(in srgb, var(--gold-soft) 55%, transparent); transition: width 240ms ease; }
+.tm-seats-line { margin: 8px 0 0; color: var(--muted); font-size: .86rem; }
+
+.tm-limits { display: flex; gap: 22px; flex-wrap: wrap; margin: 14px 0 0; padding-top: 12px; border-top: 1px solid var(--border); }
+.tm-limits div { display: grid; gap: 2px; }
+.tm-limits dt { font-size: .68rem; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
+.tm-limits dd { margin: 0; font-weight: 700; color: var(--card-title); font-variant-numeric: tabular-nums; }
+
+.tm-table td { vertical-align: middle; }
+.tm-role { padding: 5px 8px; font-size: .84rem; min-width: 118px; }
+.tm-actions { white-space: nowrap; }
+.tm-mini { padding: 4px 9px; font-size: .78rem; }
+.tm-edit td { background: color-mix(in srgb, var(--brand-600) 5%, transparent); }
+.tm-edit-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.tm-edit-row .acct-label { margin: 0; font-size: .8rem; color: var(--muted); }
+.tm-edit-row .acct-input { flex: 0 1 140px; }
+.tm-edit-note { margin: 8px 0 0; }
+
+.tm-invite-row .acct-select { flex: 0 0 auto; }
+.tm-invite-result {
+  margin-top: 12px; padding: 12px 14px; border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--brand-cyan) 32%, transparent);
+  background: color-mix(in srgb, var(--brand-cyan) 8%, transparent);
+}
+.tm-invite-result p { margin: 0 0 8px; font-size: .88rem; line-height: 1.5; }
+.tm-invite-result p b { color: var(--card-title); }
+.tm-link { font-family: ui-monospace, Consolas, monospace; font-size: .8rem; }
+.tm-sub-h { margin: 18px 0 8px; font-size: .78rem; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
+.tm-invites { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.tm-invites li { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; font-size: .88rem; }
+.tm-inv-who { font-weight: 600; color: var(--card-title); flex: 1 1 200px; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.tm-recent { margin: 10px 0 0; }
+
+.tm-activity { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font-size: .86rem; }
+.tm-activity li { display: grid; grid-template-columns: 96px 1fr; gap: 10px; align-items: baseline; padding: 6px 0; border-bottom: 1px solid var(--border); }
+.tm-activity li:last-child { border-bottom: 0; }
+.tm-act-when { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.tm-act-what b { color: var(--card-title); }
+
+@media (max-width: 640px) {
+  .tm-limits { gap: 14px; }
+  .tm-activity li { grid-template-columns: 1fr; gap: 2px; }
+  .join-card { padding: 20px 16px 18px; }
+}

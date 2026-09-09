@@ -40,6 +40,7 @@
     import { initBuildsView } from '../builds/builds.js';
     import { initAdminView, onAdminEnter, refreshAdminNav } from '../admin/admin.js';
     import { initAccountView, onAccountEnter, presetAccountSection } from '../account/account.js';
+    import { initJoinView, onJoinEnter } from '../team/join.js';
     import { PRAG_API_BASE, LANE } from './config.js';
     import { consumeLaneSigninFlag, consumeLaneVerifier, consumeLaneHandoff } from './lane.js';
 
@@ -66,6 +67,7 @@
       loadView('/views/builds.view.html', 'view-builds'),
       loadView('/views/admin.view.html', 'view-admin'),
       loadView('/views/account.view.html', 'view-account'),
+      loadView('/views/join.view.html', 'view-join'),
       loadView('/views/modals/modals.view.html', 'view-modals'),
       loadView('/views/legal.view.html', 'view-legal'),
       loadView('/views/footer.view.html', 'view-footer')
@@ -107,6 +109,7 @@
     initBuildsView();
     initAdminView();
     initAccountView();
+    initJoinView();
     window.openProductModal  = openProductModal;
     window.closeProductModal = closeProductModal;
     window.openCart          = openCart;
@@ -118,6 +121,7 @@
       if (mode === 'warranty') onWarrantyEnter();
       if (mode === 'admin') onAdminEnter();
       if (mode === 'account') onAccountEnter();
+      if (mode === 'join') onJoinEnter();
     };
 
     const _mountSwirl = () => {
@@ -480,6 +484,14 @@ function applyPostLoginResolution({ ping, force = false }) {
       window.dispatchEvent(new CustomEvent("pragoptics:warranty-resume"));
       return;
     }
+    // A sign-in that started on a team invite goes back to the invite, with
+    // the token still stashed, so accepting is one click away.
+    if (back === "join") {
+      clearBillingLandingOnly();
+      setAppMode("join");
+      window.dispatchEvent(new CustomEvent("pragoptics:join-resume"));
+      return;
+    }
   }
 
   // Always start by cleaning secondary UI
@@ -667,6 +679,8 @@ window.applyPostLoginResolution = applyPostLoginResolution;
       // Redemption short link: /#redeem (same page, redeem mode; used by the
       // replacement-card email)
       else if (/^#redeem/i.test(String(location.hash || ""))) setAppMode("warranty");
+      // Team invite link (the invite email): /#join/<token>
+      else if (/^#join/i.test(String(location.hash || ""))) { setAppMode("join"); setTimeout(() => window.pragJoin?.(), 50); }
       // Guest order tracking short link (the confirmation email): /#track
       else if (/^#track/i.test(String(location.hash || ""))) { setAppMode("checkout"); setTimeout(() => window.pragTrackOrder?.(), 50); }
     })();

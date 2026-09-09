@@ -1,0 +1,21 @@
+<!-- ============ JOIN A TEAM ============ -->
+<!-- The landing for a team invite link: /#join/<token>. Says who invited whom
+     to which team as what, then offers one action: Accept when signed in,
+     Sign in or Create account otherwise, and comes back here afterwards.
+     Built into #joinBody by src/team/join.js. -->
+<section id="joinView" class="glass panel join hidden" aria-labelledby="joinTitle">
+
+  <header class="shop-head">
+    <span class="shop-kicker">Team invite</span>
+    <h1 id="joinTitle" class="shop-title">You have been invited.</h1>
+    <p class="shop-sub" id="joinSub">
+      One login, every team you belong to. Accept below and the team shows up
+      under Team in your account.
+    </p>
+  </header>
+
+  <div class="join-body" id="joinBody">
+    <!-- Populated by src/team/join.js -->
+  </div>
+
+</section>

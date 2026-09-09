@@ -19,6 +19,7 @@ import { ensureStripeJs } from '../runtime/stripeLoader.js';
 import { tierName, ADDON_NAME } from '../components/tierCopy.js';
 import { mountPricingSelect } from '../components/pricingCards.js';
 import { openReportAnomaly, installErrorCapture } from './report.js';
+import { renderTeam, renderTenants, bindTeamActions } from './team.js';
 
 // Report Anomaly attaches the last few console errors to a report, so the
 // collector starts with the panel module, not with the first click.
@@ -279,13 +280,16 @@ const ICONS = {
   inventory:    '<path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="M3.27 6.96L12 12.01l8.73-5.05"/><path d="M12 22.08V12"/>',
   catalog:      '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>',
   notify:       '<path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/>',
-  reports:      '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M12 7v4"/><path d="M12 14h.01"/>'
+  reports:      '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M12 7v4"/><path d="M12 14h.01"/>',
+  team:         '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+  tenants:      '<path d="M3 21h18"/><path d="M5 21V7l7-4 7 4v14"/><path d="M9 21v-6h6v6"/><path d="M9 10h.01"/><path d="M15 10h.01"/>'
 };
 
 const ACCOUNT_SECTIONS = [
   { id: 'profile',      label: 'Profile' },
   { id: 'products',     label: 'My Products' },
   { id: 'subscription', label: 'Billing' },
+  { id: 'team',         label: 'Team' },
   { id: 'orders',       label: 'Orders' },
   { id: 'builds',       label: 'My Builds' }
 ];
@@ -293,6 +297,7 @@ const ACCOUNT_SECTIONS = [
 const INTERNAL_SECTIONS = [
   { id: 'overview',   label: 'Overview' },
   { id: 'users',      label: 'Users' },
+  { id: 'tenants',    label: 'Tenants' },
   { id: 'notify',     label: 'Notifications' },
   { id: 'reports',    label: 'Reports' },
   { id: 'shiporders', label: 'Orders' },
@@ -3829,6 +3834,11 @@ async function catalogImport(btn) {
    ROUTING / BEHAVIOUR
    ================================================================ */
 
+// What the Team module borrows from this panel, so it carries no second copy.
+function teamDeps() {
+  return { apiFetch, escapeHtml, friendlyError, showError, fmtDate, cachedPing };
+}
+
 function showSection(id) {
   // A customer must never land on an internal section id (stale deep link).
   if (!isAdmin() && INTERNAL_SECTIONS.some(s => s.id === id)) id = 'profile';
@@ -3844,9 +3854,11 @@ function showSection(id) {
   if (id === 'products')     return void renderProducts(main);
   if (id === 'subscription') return void renderSubscription(main);
   if (id === 'orders')       return void renderOrders(main);
+  if (id === 'team')         return void renderTeam(main, teamDeps());
   if (id === 'builds')       return renderSoon(main, 'My Builds', 'Builds you publish from the PragOptics™ software will be listed here.');
   if (id === 'overview')     return void renderOverview(main);
   if (id === 'users')        return void renderUsers(main);
+  if (id === 'tenants')      return void renderTenants(main, teamDeps());
   if (id === 'notify')       return void renderNotify(main);
   if (id === 'reports')      return void renderReports(main);
   if (id === 'shiporders')   return void renderAdminOrders(main);
@@ -3865,6 +3877,7 @@ function showError(id, message) {
 function bindOnce() {
   if (bindOnce._bound) return;
   bindOnce._bound = true;
+  bindTeamActions(teamDeps());
 
   document.addEventListener('click', (e) => {
     const nav = e.target.closest('[data-acct-section]');
@@ -4026,6 +4039,9 @@ export function initAccountView() {
   // Lets other surfaces (the tier gallery) land on a section without
   // importing this module.
   window.presetAccountSection = presetAccountSection;
+  // The join page's "Open Team" lands here. Team lives in this panel only,
+  // never in the header menu (Cameron, 2026-09-09).
+  window.openTeamFromMenu = () => { presetAccountSection('team'); window.setAppMode?.('account'); };
   $body = document.getElementById('accountBody');
   if (!$body) return;
   bindOnce();
