@@ -53,3 +53,27 @@ html[data-theme="light"]{ background: var(--bg-deep) !important; }
 /* The hero tagline is the starred primary label; it needs the full primary
    on a light ground, not the softened accent. */
 html[data-theme="light"] .hero-tagline{ color: var(--brand-600); opacity: 1; }
+
+/* The hero's creation-flow scenes: Field Node Manager and the 3D Suite are
+   device UIs drawn as translucent black panels over the dark ground. On white
+   those panels turn grey and the LED text loses its contrast. Here they get
+   the opaque dark ground they assume, and the labels that sit on the page
+   itself take readable light-theme accents. */
+html[data-theme="light"] .fm-card,
+html[data-theme="light"] .fm-cmds,
+html[data-theme="light"] .gs-tree,
+html[data-theme="light"] .gs-tool{
+  background: #0b0f14;
+  border-color: rgba(255,255,255,.16);
+  box-shadow: 0 8px 24px rgba(30,20,64,.18);
+}
+html[data-theme="light"] .fm-connect{
+  color: #0e7c9c;
+  border-color: rgba(14,124,156,.45);
+  background: rgba(14,124,156,.08);
+}
+html[data-theme="light"] .fm-det{ color: #0b7a5e; }
+html[data-theme="light"] .hs-brand u{
+  background: linear-gradient(120deg, #4c3fa3, #6d28d9 55%, #0e9c8b);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}

@@ -180,7 +180,7 @@ function summaryHtml(v) {
     <section class="acct-card tm-summary">
       <div class="tm-summary-head">
         <div class="tm-summary-id">
-          <div class="tm-tags"><span class="acct-tag is-primary">${e(tierName(t.tier))}</span><span class="acct-tag">${e(cap(me.role))}</span>${t.provisioned ? '' : '<span class="acct-tag is-pending" title="The software has not provisioned storage for this team yet">team only</span>'}</div>
+          <div class="tm-tags"><span class="acct-tag is-primary">${e(tierName(t.tier))}</span><span class="acct-tag">${e(cap(me.role))}</span>${t.provisioned ? '' : '<span class="acct-tag is-pending" title="No storage has been provisioned for this team yet. The software does that.">no storage yet</span>'}</div>
           <h3 class="acct-card-h tm-name">${e(name || (isOwner ? 'Your team' : 'Unnamed team'))}</h3>
           <p class="acct-card-note tm-owner">Owner ${e(t.ownerEmail || '')}. ${e(ROLE_HELP[me.role] || '')}</p>
         </div>

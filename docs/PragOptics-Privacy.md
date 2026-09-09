@@ -195,7 +195,17 @@ You can clear everything above at any time through your browser's site data sett
 
 ---
 
-## 12. Contact
+## 12. Teams
+
+A subscriber can run a team on PragOptics and invite other people to it. When you invite someone, we store the email address you enter, the role you give them, and when the invitation was sent, accepted, withdrawn, or expired. The invitation email goes to that address and carries a one-time link that works for seven days. When a person joins a team, their existing PragOptics account is linked to it. We never create an account for them, and we never copy their password or sign-in factors anywhere.
+
+Each team keeps an activity log of team changes: who invited, joined, left, or was removed, and changes to roles, seats, and limits. The team's owner and admins can read this log. Team information is visible to the members of that team and to PragOptics operators as counts and names for support and billing. It is never shown on the public site to anyone outside the team.
+
+If you leave a team or are removed from it, your membership is closed. The team keeps the record that you were a member and when, as part of its log.
+
+---
+
+## 13. Contact
 
 For privacy-related inquiries or requests, contact:
 
