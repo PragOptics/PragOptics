@@ -160,8 +160,8 @@ function switcherHtml(v) {
   return `
     <div class="tm-switch">
       <label class="acct-label" for="tmSwitch">Team</label>
-      <select class="acct-select" id="tmSwitch" aria-label="Which team to show">
-        ${teams.map(t => `<option value="${D.escapeHtml(t.environmentId)}" ${t.environmentId === current ? 'selected' : ''}>${D.escapeHtml(t.organizationName || 'Unnamed team')} (${D.escapeHtml(t.role)}${t.own ? ', yours' : ''})</option>`).join('')}
+      <select class="adm-select" id="tmSwitch" aria-label="Which team to show">
+        ${teams.map(t => `<option value="${D.escapeHtml(t.environmentId)}" ${t.environmentId === current ? 'selected' : ''}>${D.escapeHtml(t.organizationName || (t.own ? 'Your team' : 'Unnamed team'))} (${D.escapeHtml(t.role)}${t.own ? ', yours' : ''})</option>`).join('')}
       </select>
     </div>`;
 }
@@ -181,7 +181,7 @@ function summaryHtml(v) {
       <div class="tm-summary-head">
         <div class="tm-summary-id">
           <div class="tm-tags"><span class="acct-tag is-primary">${e(tierName(t.tier))}</span><span class="acct-tag">${e(cap(me.role))}</span>${t.provisioned ? '' : '<span class="acct-tag is-pending" title="The software has not provisioned storage for this team yet">team only</span>'}</div>
-          <h3 class="acct-card-h tm-name">${e(name || 'Unnamed team')}</h3>
+          <h3 class="acct-card-h tm-name">${e(name || (isOwner ? 'Your team' : 'Unnamed team'))}</h3>
           <p class="acct-card-note tm-owner">Owner ${e(t.ownerEmail || '')}. ${e(ROLE_HELP[me.role] || '')}</p>
         </div>
         <div class="tm-summary-actions">
@@ -230,7 +230,7 @@ function membersHtml(v) {
     const self = m.userId === me.userId;
     const act = manage && !self && canActOn(me.role, m.role);
     const roleCell = act
-      ? `<select class="acct-select tm-role" data-team-role="${e(m.userId)}" aria-label="Role for ${e(m.email)}">
+      ? `<select class="adm-select tm-role" data-team-role="${e(m.userId)}" aria-label="Role for ${e(m.email)}">
            ${tm.roles.map(r => `<option value="${e(r)}" ${r === m.role ? 'selected' : ''}>${e(cap(r))}</option>`).join('')}
          </select>`
       : `<span class="acct-tag ${m.role === 'owner' ? 'is-primary' : ''}">${e(cap(m.role))}</span>`;
@@ -240,10 +240,10 @@ function membersHtml(v) {
         <td class="cell-ellip" title="${e(m.email)}">${e(m.email)}${self ? ' <span class="adm-muted">(you)</span>' : ''}</td>
         <td class="cell-tight">${roleCell}</td>
         <td class="cell-tight">${statusTag(m.status)}${m.seat ? '' : ' <span class="adm-muted">no seat</span>'}</td>
-        <td class="cell-tight">${e(allowanceText(m))}${act && m.role !== 'owner' ? ` <button class="btn btn-sm tm-mini" type="button" data-team-action="allow-edit" data-user="${e(m.userId)}">Edit</button>` : ''}</td>
+        <td class="cell-tight">${e(allowanceText(m))}${act && m.role !== 'owner' ? ` <button class="btn btn-sm" type="button" data-team-action="allow-edit" data-user="${e(m.userId)}">Edit</button>` : ''}</td>
         <td class="cell-tight tm-actions">${act ? `
-          <button class="btn btn-sm tm-mini" type="button" data-team-action="${suspended ? 'restore' : 'suspend'}" data-user="${e(m.userId)}" data-email="${e(m.email)}">${suspended ? 'Restore' : 'Suspend'}</button>
-          <button class="btn btn-sm tm-mini" type="button" data-team-action="remove" data-user="${e(m.userId)}" data-email="${e(m.email)}">Remove</button>` : ''}</td>
+          <button class="btn btn-sm" type="button" data-team-action="${suspended ? 'restore' : 'suspend'}" data-user="${e(m.userId)}" data-email="${e(m.email)}">${suspended ? 'Restore' : 'Suspend'}</button>
+          <button class="btn btn-sm" type="button" data-team-action="remove" data-user="${e(m.userId)}" data-email="${e(m.email)}">Remove</button>` : ''}</td>
       </tr>
       ${tm.editing === m.userId ? `
       <tr class="tm-edit"><td colspan="5">
@@ -284,7 +284,7 @@ function inviteHtml(v) {
       <p class="acct-card-note">They get an email with a one-time link that works for seven days, and they must sign in with the address you invite. ${open ? `${e(String(open))} seat${open === 1 ? '' : 's'} open.` : 'No seats open: invite as a viewer, free a seat, or add seats.'}</p>
       <div class="acct-add-row tm-invite-row">
         <input class="acct-input" type="email" id="tmInviteEmail" placeholder="name@company.com" autocomplete="off" spellcheck="false" />
-        <select class="acct-select" id="tmInviteRole" aria-label="Role for the invite">
+        <select class="adm-select" id="tmInviteRole" aria-label="Role for the invite">
           ${tm.roles.map(r => `<option value="${e(r)}" ${r === 'member' ? 'selected' : ''}>${e(cap(r))}</option>`).join('')}
         </select>
         <button class="btn" type="button" data-team-action="invite">Send invite</button>
@@ -299,7 +299,7 @@ function inviteHtml(v) {
               <span class="tm-inv-who">${e(i.email)}</span>
               <span class="acct-tag">${e(cap(i.role))}</span>
               <span class="adm-muted">expires ${e(D.fmtDate(i.expiresAt))}</span>
-              <button class="btn btn-sm tm-mini" type="button" data-team-action="revoke" data-invite="${e(i.inviteId)}" data-email="${e(i.email)}">Revoke</button>
+              <button class="btn btn-sm" type="button" data-team-action="revoke" data-invite="${e(i.inviteId)}" data-email="${e(i.email)}">Revoke</button>
             </li>`).join('')}
         </ul>` : `<p class="acct-empty">No pending invites.</p>`}
       ${recent.length ? `<p class="acct-card-note tm-recent">Recent: ${recent.map(i => `${e(i.email)} (${e(i.status.toLowerCase())})`).join(', ')}.</p>` : ''}

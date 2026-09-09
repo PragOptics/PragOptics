@@ -13,7 +13,7 @@
   background: linear-gradient(140deg, color-mix(in srgb, var(--brand-600) 10%, transparent), color-mix(in srgb, var(--brand-purp-solid) 8%, transparent));
   border: 1px solid color-mix(in srgb, var(--brand-600) 30%, transparent);
 }
-.join-card.is-done { border-color: color-mix(in srgb, var(--brand-cyan) 40%, transparent); }
+.join-card.is-done { border-color: color-mix(in srgb, var(--brand-600) 45%, transparent); }
 .join-kicker { font-size: .68rem; letter-spacing: .2em; text-transform: uppercase; font-weight: 800; color: var(--brand-600); }
 .join-h { margin: 0; font-size: 1.35rem; font-weight: 900; color: var(--card-title); text-wrap: balance; }
 .join-hint { margin: 0; color: var(--muted); line-height: 1.55; max-width: 58ch; }
@@ -28,7 +28,8 @@
 
 /* ---------- team section ---------- */
 .tm-switch { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
-.tm-switch .acct-select { min-width: 240px; }
+.tm-switch .adm-select { min-width: 240px; }
+.tm-switch .acct-label { margin: 0; }
 
 .tm-summary-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; flex-wrap: wrap; }
 .tm-summary-id { min-width: 0; flex: 1 1 320px; }
@@ -45,8 +46,8 @@
   border: 1px solid var(--border);
   display: flex;
 }
-.tm-bar-used { display: block; height: 100%; background: linear-gradient(90deg, var(--brand-600), var(--brand-purp-solid)); transition: width 240ms ease; }
-.tm-bar-pending { display: block; height: 100%; background: color-mix(in srgb, var(--gold-soft) 55%, transparent); transition: width 240ms ease; }
+.tm-bar-used { display: block; height: 100%; background: var(--brand-600); transition: width 240ms ease; }
+.tm-bar-pending { display: block; height: 100%; background: color-mix(in srgb, var(--gold-soft) 45%, transparent); transition: width 240ms ease; }
 .tm-seats-line { margin: 8px 0 0; color: var(--muted); font-size: .86rem; }
 
 .tm-limits { display: flex; gap: 22px; flex-wrap: wrap; margin: 14px 0 0; padding-top: 12px; border-top: 1px solid var(--border); }
@@ -55,27 +56,27 @@
 .tm-limits dd { margin: 0; font-weight: 700; color: var(--card-title); font-variant-numeric: tabular-nums; }
 
 .tm-table td { vertical-align: middle; }
-.tm-role { padding: 5px 8px; font-size: .84rem; min-width: 118px; }
+.tm-role { min-width: 132px; }
 .tm-actions { white-space: nowrap; }
-.tm-mini { padding: 4px 9px; font-size: .78rem; }
+.tm-actions .btn + .btn { margin-left: 6px; }
 .tm-edit td { background: color-mix(in srgb, var(--brand-600) 5%, transparent); }
 .tm-edit-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .tm-edit-row .acct-label { margin: 0; font-size: .8rem; color: var(--muted); }
 .tm-edit-row .acct-input { flex: 0 1 140px; }
 .tm-edit-note { margin: 8px 0 0; }
 
-.tm-invite-row .acct-select { flex: 0 0 auto; }
+.tm-invite-row .adm-select { flex: 0 0 auto; }
 .tm-invite-result {
-  margin-top: 12px; padding: 12px 14px; border-radius: 10px;
-  border: 1px solid color-mix(in srgb, var(--brand-cyan) 32%, transparent);
-  background: color-mix(in srgb, var(--brand-cyan) 8%, transparent);
+  margin-top: 12px; padding: 12px 14px; border-radius: var(--radius-ctl);
+  border: 1px solid color-mix(in srgb, var(--brand-600) 32%, transparent);
+  background: color-mix(in srgb, var(--brand-600) 8%, transparent);
 }
 .tm-invite-result p { margin: 0 0 8px; font-size: .88rem; line-height: 1.5; }
 .tm-invite-result p b { color: var(--card-title); }
 .tm-link { font-family: ui-monospace, Consolas, monospace; font-size: .8rem; }
 .tm-sub-h { margin: 18px 0 8px; font-size: .78rem; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
 .tm-invites { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
-.tm-invites li { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; font-size: .88rem; }
+.tm-invites li { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius-ctl); background: var(--surface-3); font-size: .88rem; }
 .tm-inv-who { font-weight: 600; color: var(--card-title); flex: 1 1 200px; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .tm-recent { margin: 10px 0 0; }
 
