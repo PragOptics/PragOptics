@@ -1686,7 +1686,10 @@ async function applyPlanChange(btn) {
       : `Confirm: ${usdCents(sel.totalCents)}${per}, difference charged today`;
   armConfirm(btn, armed, async () => {
     btn.disabled = true;
-    const orig = btn.textContent;
+    // The unarmed label, not the confirm text the button carried a moment
+    // ago: after a refusal the button must read as a fresh Apply, not as a
+    // confirm that already fired.
+    const orig = 'Apply changes';
     btn.textContent = 'Applying…';
     showError('acctPlanError', '');
     try {
