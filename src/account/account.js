@@ -1859,6 +1859,11 @@ async function setCancelState(btn, action) {
 
 /* ---------- orders (the customer's own) ---------- */
 
+// The carrier's latest word under the tracking number, from the track webhook.
+const CARRIER_WORDS = {
+  PRE_TRANSIT: 'Label created', TRANSIT: 'In transit', DELIVERED: 'Delivered',
+  RETURNED: 'Returned to sender', FAILURE: 'Delivery problem', UNKNOWN: 'No carrier update yet'
+};
 function orderStatusPill(status) {
   const s = String(status || '').toUpperCase();
   const good = ['PAID', 'LABEL_PURCHASED', 'SHIPPED', 'DELIVERED'].includes(s);
@@ -1975,7 +1980,8 @@ async function loadMyOrders() {
                   ? (safeUrl(o.trackingUrl)
                       ? `<a class="acct-inline-link" href="${escapeHtml(safeUrl(o.trackingUrl))}" target="_blank" rel="noopener">${escapeHtml(o.trackingNumber)}</a>`
                       : `<code>${escapeHtml(o.trackingNumber)}</code>`)
-                  : '<span class="adm-muted">—</span>'}</td>
+                  : '<span class="adm-muted">—</span>'}${o.shipmentStatus
+                  ? `<div class="adm-muted">${escapeHtml(CARRIER_WORDS[String(o.shipmentStatus).toUpperCase()] || o.shipmentStatus)}${o.lastTrackUpdateAt ? ` · ${escapeHtml(fmtDay(o.lastTrackUpdateAt))}` : ''}</div>` : ''}</td>
               </tr>
             `).join('')}
           </tbody>

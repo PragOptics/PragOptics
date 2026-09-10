@@ -69,6 +69,11 @@ window.pragTrackOrder = () => {
   render();
 };
 
+// The carrier's own word, as the track webhook recorded it.
+const CARRIER_STATUS = {
+  PRE_TRANSIT: 'Label created, waiting for the carrier', TRANSIT: 'In transit', DELIVERED: 'Delivered',
+  RETURNED: 'Returned to sender', FAILURE: 'Delivery problem, contact support', UNKNOWN: 'No carrier update yet'
+};
 const TRACK_STATUS = {
   PENDING_PAYMENT: 'Payment not completed', PAYMENT_FAILED: 'Payment failed',
   PAID: 'Paid, preparing shipment', LABEL_PURCHASED: 'Label printed, awaiting pickup',
@@ -90,7 +95,8 @@ function trackHtml() {
         ${o.refundedCents ? `<div class="co-sumrow"><span>Refunded</span><span>${formatPrice(o.refundedCents)}</span></div>` : ''}
       </div>
       ${o.trackingNumber
-        ? `<p>Tracking: ${/^https:\/\//.test(o.trackingUrl || '') ? `<a class="acct-inline-link" href="${escapeHtml(o.trackingUrl)}" target="_blank" rel="noopener">${escapeHtml(o.trackingNumber)}</a>` : `<code>${escapeHtml(o.trackingNumber)}</code>`}${o.shipCarrier ? ` <span class="muted">${escapeHtml(o.shipCarrier)} ${escapeHtml(o.shipService || '')}</span>` : ''}</p>`
+        ? `<p>Tracking: ${/^https:\/\//.test(o.trackingUrl || '') ? `<a class="acct-inline-link" href="${escapeHtml(o.trackingUrl)}" target="_blank" rel="noopener">${escapeHtml(o.trackingNumber)}</a>` : `<code>${escapeHtml(o.trackingNumber)}</code>`}${o.shipCarrier ? ` <span class="muted">${escapeHtml(o.shipCarrier)} ${escapeHtml(o.shipService || '')}</span>` : ''}</p>
+           ${o.shipmentStatus ? `<p class="muted co-note">Carrier status: ${escapeHtml(CARRIER_STATUS[String(o.shipmentStatus).toUpperCase()] || o.shipmentStatus)}${o.lastTrackUpdateAt ? `, updated ${escapeHtml(new Date(o.lastTrackUpdateAt).toLocaleString())}` : ''}.${o.shipmentStatusDetail ? ` ${escapeHtml(o.shipmentStatusDetail)}` : ''}</p>` : ''}`
         : '<p class="muted">No tracking yet. It appears here and in your email the moment the label is printed.</p>'}
       <p class="muted co-note">Questions about this order: <a class="acct-inline-link" href="mailto:support@bridgesindust.com">support@bridgesindust.com</a>. Returns follow the <a href="#" class="acct-inline-link" data-legal="returns">returns policy</a>.</p>
     </div>` : '';
