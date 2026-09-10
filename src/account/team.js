@@ -201,6 +201,7 @@ function summaryHtml(v) {
           <span class="tm-bar-used" style="width:${usedPct}%"></span><span class="tm-bar-pending" style="width:${pendPct}%"></span>
         </div>
         <p class="tm-seats-line">${e(String(s.used || 0))} of ${e(String(limit))} seat${limit === 1 ? '' : 's'} used${Number(s.pending) ? `, ${e(String(s.pending))} reserved by pending invite${s.pending === 1 ? '' : 's'}` : ''}. Viewers never use a seat.</p>
+        ${Number(s.over) > 0 ? `<p class="acct-error tm-over">${e(String(s.over))} ${s.over === 1 ? 'person is' : 'people are'} in seats beyond what the plan carries. Nobody is removed, but no new seat can be filled until ${s.over === 1 ? 'one person moves' : `${e(String(s.over))} people move`} to viewer or leave${isOwner ? ', or you add seats on Billing' : ''}.</p>` : ''}
       </div>
       <dl class="tm-limits">
         <div><dt>Your API calls</dt><dd>${e(num(lim.apiCalls))} <span class="adm-muted">per month</span></dd></div>

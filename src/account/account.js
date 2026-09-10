@@ -1497,7 +1497,7 @@ function subManagerHtml(data) {
           ${sub.cancelAtPeriodEnd ? `<span class="acct-tag is-pending">Ends ${escapeHtml(fmtDate(sub.currentPeriodEnd))}</span>` : ''}
         </div>
         <p class="acct-card-note">
-          ${escapeHtml(usdCents(totalCents))}${per} ·
+          ${escapeHtml(usdCents(totalCents))}${per}${shape.seats ? ` · ${shape.seats} extra seat${shape.seats === 1 ? '' : 's'}` : ''} ·
           ${sub.cancelAtPeriodEnd
             ? `runs until ${escapeHtml(fmtDate(sub.currentPeriodEnd))}, then ends`
             : `renews ${escapeHtml(fmtDate(sub.currentPeriodEnd))}`}${

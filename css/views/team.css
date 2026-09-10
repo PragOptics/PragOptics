@@ -49,6 +49,7 @@
 .tm-bar-used { display: block; height: 100%; background: var(--brand-600); transition: width 240ms ease; }
 .tm-bar-pending { display: block; height: 100%; background: color-mix(in srgb, var(--gold-soft) 45%, transparent); transition: width 240ms ease; }
 .tm-seats-line { margin: 8px 0 0; color: var(--muted); font-size: .86rem; }
+.tm-over { margin-top: 10px; }
 
 .tm-limits { display: flex; gap: 22px; flex-wrap: wrap; margin: 14px 0 0; padding-top: 12px; border-top: 1px solid var(--border); }
 .tm-limits div { display: grid; gap: 2px; }
