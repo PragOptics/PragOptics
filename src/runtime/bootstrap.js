@@ -350,6 +350,65 @@ function setToken(tokens) {
       return !!getStoredTokens()?.access_token && isAccessTokenValid();
     }
 
+    /* ===========================
+       SLIDING SESSION
+       A token lives one hour. In its last ten minutes, if the person has
+       clicked or typed within the last fifteen, the app trades it for a
+       fresh one (POST v1/auth/refresh re-reads the account row and refuses
+       past the absolute session age). Idle tabs lapse on their own. A lane
+       without the route answers 404 once and the app stops asking for the
+       rest of this session. Any other failure changes nothing: the next
+       real request decides, exactly as before.
+       =========================== */
+    const REFRESH_URL = `${PRAG_API_BASE}/auth/refresh`;
+    const REFRESH_WINDOW_S = 600;
+    const ACTIVE_WITHIN_MS = 15 * 60 * 1000;
+    let lastActivityAt = Date.now();
+    let refreshUnsupported = false;
+    let refreshInFlight = false;
+    for (const ev of ["pointerdown", "keydown", "touchstart"]) {
+      window.addEventListener(ev, () => { lastActivityAt = Date.now(); }, { passive: true, capture: true });
+    }
+    function accessTokenExp(token) {
+      try {
+        const parts = String(token || "").split(".");
+        if (parts.length < 2) return 0;
+        let b64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+        while (b64.length % 4) b64 += "=";
+        return Number(JSON.parse(atob(b64)).exp) || 0;
+      } catch { return 0; }
+    }
+    // `force` skips the window and activity gates (an explicit extend, or a proof on dev).
+    async function maybeRefreshSession(force = false) {
+      if (refreshUnsupported || refreshInFlight) return { refreshed: false, reason: "busy-or-unsupported" };
+      const tokens = getStoredTokens();
+      if (!tokens?.access_token) return { refreshed: false, reason: "no-session" };
+      const left = accessTokenExp(tokens.access_token) - Math.floor(Date.now() / 1000);
+      if (left <= 0) return { refreshed: false, reason: "already-expired" };
+      if (!force && left > REFRESH_WINDOW_S) return { refreshed: false, reason: "not-yet", secondsLeft: left };
+      if (!force && Date.now() - lastActivityAt > ACTIVE_WITHIN_MS) return { refreshed: false, reason: "idle" };
+      refreshInFlight = true;
+      try {
+        const res = await fetch(REFRESH_URL, { method: "POST", headers: { Authorization: `Bearer ${tokens.access_token}` } });
+        if (res.status === 404) { refreshUnsupported = true; return { refreshed: false, reason: "unsupported" }; }
+        const data = await res.json().catch(() => ({}));
+        if (res.ok && data?.tokens?.access_token) {
+          setToken({ ...tokens, ...data.tokens });
+          return { refreshed: true, secondsLeft: accessTokenExp(data.tokens.access_token) - Math.floor(Date.now() / 1000) };
+        }
+        if (res.status === 401 && data?.code === "SESSION_MAX_AGE") { invalidateSession("expired"); return { refreshed: false, reason: "max-age" }; }
+        return { refreshed: false, reason: `http-${res.status}` };
+      } catch {
+        return { refreshed: false, reason: "network" };
+      } finally {
+        refreshInFlight = false;
+      }
+    }
+    setInterval(() => { maybeRefreshSession(); }, 60 * 1000);
+    window.addEventListener("focus", () => { maybeRefreshSession(); });
+    document.addEventListener("visibilitychange", () => { if (!document.hidden) maybeRefreshSession(); });
+    window.pragRefreshSession = maybeRefreshSession;
+
     function getWizardMenuEl() {
       return document.getElementById("navWizard");
     }
