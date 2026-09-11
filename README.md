@@ -122,7 +122,8 @@ Flip the flag and push once the backend is live.
 | `SHOP_LIVE` | `src/shop/products.js` | on |
 | `WARRANTY_API_LIVE` | `src/warranty/warranty.js` | on |
 | `TRANSFER_API_LIVE` | `src/warranty/transfer.js` | on |
-| `ORDERS_CLAIM_LIVE` | `src/runtime/config.js` | off (dev shows it regardless) |
+| `ORDERS_CLAIM_LIVE` | `src/runtime/config.js` | on (2026-09-06) |
+| `TEAM_LIVE` | `src/runtime/config.js` | off: the Team section, the join page and the Tenants desk stay off the live lane until tenant storage is real (dev shows them regardless) |
 | `BUILDS_API_LIVE` | `src/builds/builds.js` | off |
 
 ---
@@ -163,6 +164,13 @@ client can never elevate itself by editing what it holds. Signing out clears the
 session keys and the lane override, and deliberately leaves `localStorage`
 alone, because the cart, warranty queue, and builds queue are the customer's own
 work.
+
+**A session slides while the person works.** An access token lives one hour. In
+its last ten minutes, if the person has clicked or typed within the last
+fifteen, the app trades it for a fresh one through `POST /v1/auth/refresh`,
+which re-reads the account row and refuses past a twelve-hour absolute age
+from the original sign-in. Idle tabs still lapse at the hour. A lane without
+the route answers 404 once and the app stops asking for that session.
 
 **A session can die underneath an open console.** An operator suspending an
 account, a password reset, or a sign-out elsewhere all take effect on the very
@@ -231,5 +239,14 @@ Industrial.
 
 ## Status
 
-PragOptics is actively evolving. Interfaces may expand and tooling may grow;
-this repository represents the current state of that evolution.
+Updated 2026-09-11 with main at `bf781da`. Landed since 2026-09-08: the Team
+section in the profile panel, the invite join page and the operator's Tenants
+desk (all behind `TEAM_LIVE`); extra seats in the plan editor and the wizard;
+the carrier's latest status on the guest track page and the Orders section;
+the sliding session; mobile close buttons, the hero scenes on the light theme,
+the footer trim, the Privacy Teams section.
+
+Next on this repo (round 3, in order): the Environment, storage and Keys cards
+in the account panel, storage and a Repair door on the Tenants desk, then the
+Domains card. PragOptics is actively evolving; this repository is the current
+state of that evolution.
