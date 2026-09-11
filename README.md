@@ -211,7 +211,9 @@ Because of that, treat `main` as production:
 **The Environment section** (`src/account/environment.js`,
 `css/views/environment.css`) is the customer's view of the private space a
 paid plan sets up: the storage bar against the allowance, the files in their
-container, and their API keys. It follows the Team section's choice of team.
+container, their connected domains (a Domains card that hands out the TXT
+record to create, verifies it on demand, and shows the CNAME once the
+software is hosted), and their API keys. It follows the Team section's choice of team.
 An upload goes straight from the browser to the tenant's container through a
 ten-minute link the API mints, so the page's Content Security Policy lists
 the two storage hosts in `connect-src` and each storage account carries a CORS
@@ -264,10 +266,11 @@ panel, the invite join page and the operator's Tenants desk (all behind
 `TEAM_LIVE`); extra seats in the plan editor and the wizard; the carrier's
 latest status on the guest track page and the Orders section; the sliding
 session; the How it works explainers; the platform's own social preview; the
-Environment section (storage bar, files, API keys) and the Tenants desk's
-storage column and Repair door; mobile close buttons, the hero scenes on the
+Environment section (storage bar, files, domains, API keys) and the Tenants
+desk's storage column and Repair door; mobile close buttons, the hero scenes on the
 light theme, the footer trim, the Privacy Teams section.
 
-Next on this repo (round 3, in order): the Domains card, then the front end
-closeout list. PragOptics is actively evolving; this repository is the current
+Next on this repo (round 3, in order): the serving record once the software
+is hosted, domain registration pass-through, then the front end closeout
+list. PragOptics is actively evolving; this repository is the current
 state of that evolution.

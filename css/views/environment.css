@@ -44,3 +44,23 @@
   .ev-key-row .acct-input { flex-basis: 100%; }
   .ev-actions-cell .btn + .btn { margin-left: 0; margin-top: 4px; }
 }
+
+/* domains */
+.ev-domains { display: grid; gap: 10px; margin-top: 12px; }
+.ev-dom { border: 1px solid var(--border); border-radius: var(--radius-ctl); padding: 10px 12px; background: var(--surface-3); }
+.ev-dom-head { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.ev-dom-host { font-weight: 700; color: var(--card-title); font-family: ui-monospace, "Cascadia Code", Consolas, monospace; font-size: .9rem; overflow-wrap: anywhere; }
+.ev-dom-when { color: var(--muted); font-size: .84rem; }
+.ev-dom-note { margin: 8px 0 0; font-size: .86rem; }
+.ev-record { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 6px 10px; align-items: center; margin-top: 8px; font-size: .86rem; }
+.ev-record dt { margin: 0; color: var(--muted); font-size: .68rem; letter-spacing: .14em; text-transform: uppercase; font-weight: 700; }
+.ev-record dd { margin: 0; min-width: 0; }
+.ev-record code { font-family: ui-monospace, "Cascadia Code", Consolas, monospace; font-size: .82rem; overflow-wrap: anywhere; color: var(--card-title); }
+.ev-dom-actions { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
+.ev-dom-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 12px; }
+.ev-dom-row .acct-input { flex: 1 1 260px; min-width: 0; }
+@media (max-width: 640px) {
+  .ev-record { grid-template-columns: 1fr; gap: 2px; }
+  .ev-record dt { margin-top: 6px; }
+  .ev-dom-row .acct-input { flex-basis: 100%; }
+}

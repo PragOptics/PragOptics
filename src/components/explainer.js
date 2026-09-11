@@ -28,7 +28,8 @@ const DOCS = {
   orders:      { title: 'Orders and tracking' },
   warranty:    { title: 'Registration and transfers' },
   environment: { title: 'Your environment and storage' },
-  keys:        { title: 'API keys' }
+  keys:        { title: 'API keys' },
+  domains:     { title: 'Connecting a domain' }
 };
 const KICKER = 'How it works';
 const BASE = '/docs/explain/';

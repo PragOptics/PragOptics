@@ -31,8 +31,9 @@ const TENANT_URL = `${PRAG_API_BASE}/tenant`;
 const ENV_URL = `${PRAG_API_BASE}/environment`;
 const TEAM_KEY = 'pragoptics_team_id';   // written by team.js; read here so both sections mean the same team
 const SEAT_ROLES = new Set(['owner', 'admin', 'developer', 'member']);
+const DOMAIN_ROLES = new Set(['owner', 'admin', 'developer']);   // who connects, verifies and removes a domain
 
-const ev = { teamId: '', view: null, files: null, filesTruncated: false, keys: null, madeKey: null, filesNote: '', uploading: false };
+const ev = { teamId: '', view: null, files: null, filesTruncated: false, keys: null, madeKey: null, filesNote: '', uploading: false, domains: null, domainLimit: 0, cnameTarget: null, domainNote: '', checking: '' };
 let D = null;
 
 function teamId() { try { return sessionStorage.getItem(TEAM_KEY) || ''; } catch { return ''; } }
@@ -66,6 +67,7 @@ function phaseTag(phase) {
 function myRole() { return String(ev.view?.membership?.role || 'viewer').toLowerCase(); }
 function canWrite() { return SEAT_ROLES.has(myRole()); }
 function canManageKeys() { return myRole() === 'owner' || myRole() === 'admin'; }
+function canManageDomains() { return DOMAIN_ROLES.has(myRole()); }
 
 /* ================================================================
    render
@@ -73,7 +75,7 @@ function canManageKeys() { return myRole() === 'owner' || myRole() === 'admin'; 
 
 export async function renderEnvironment(main, deps) {
   D = deps;
-  ev.madeKey = null; ev.filesNote = ''; ev.files = null; ev.keys = null;
+  ev.madeKey = null; ev.filesNote = ''; ev.files = null; ev.keys = null; ev.domains = null; ev.domainNote = ''; ev.checking = '';
   main.innerHTML = `
     <header class="acct-sec-head has-explain"><h2 class="acct-sec-title">Environment</h2>${explainLink('environment', 'How your environment works')}</header>
     <p class="acct-error" id="evError" hidden></p>
@@ -100,7 +102,7 @@ async function load() {
     ev.view = await fetchView();
     if (!ev.view.tenant) { host.innerHTML = emptyHtml(ev.view); return; }
     paint();
-    if (phaseOf(ev.view.tenant) === 'READY') await Promise.all([loadFiles(), loadKeys()]);
+    if (phaseOf(ev.view.tenant) === 'READY') await Promise.all([loadFiles(), loadDomains(), loadKeys()]);
   } catch (ex) {
     host.innerHTML = '';
     if (ex?.status === 404 && !ex?.data?.needsTenant) {
@@ -123,6 +125,20 @@ async function loadFiles() {
   paintFiles();
 }
 
+async function loadDomains() {
+  try {
+    const d = await D.apiFetch(url(`${ENV_URL}/domains`));
+    ev.domains = d.domains || [];
+    ev.domainLimit = Number(d.limit || 0);
+    ev.cnameTarget = d.cnameTarget || null;
+  } catch (ex) {
+    ev.domains = [];
+    if (ex?.status === 404) ev.domainNote = 'The domain routes are not on this lane yet.';
+    else ev.domainNote = ex?.sessionInvalidated ? '' : (ex?.data?.error || D.friendlyError(ex, 'Could not list the domains.'));
+  }
+  paintDomains();
+}
+
 async function loadKeys() {
   if (!canWrite()) { ev.keys = []; paintKeys(); return; }
   try {
@@ -141,10 +157,11 @@ function paint() {
   const ready = phaseOf(ev.view.tenant) === 'READY';
   host.innerHTML = `
     ${summaryHtml(ev.view)}
-    ${ready ? `<div id="evFiles">${filesHtml()}</div><div id="evKeys">${keysHtml()}</div>` : ''}
+    ${ready ? `<div id="evFiles">${filesHtml()}</div><div id="evDomains">${domainsHtml()}</div><div id="evKeys">${keysHtml()}</div>` : ''}
   `;
 }
 function paintFiles() { const h = document.getElementById('evFiles'); if (h) h.innerHTML = filesHtml(); }
+function paintDomains() { const h = document.getElementById('evDomains'); if (h) h.innerHTML = domainsHtml(); }
 function paintKeys() { const h = document.getElementById('evKeys'); if (h) h.innerHTML = keysHtml(); }
 
 function emptyHtml(view) {
@@ -256,6 +273,83 @@ function filesHtml() {
         <span class="ev-status" id="evUpStatus" aria-live="polite">${e(ev.filesNote)}</span>
       </div>` : (ev.filesNote ? `<p class="acct-error">${e(ev.filesNote)}</p>` : '')}
       <p class="acct-error" id="evFileError" hidden></p>
+      ${list}
+    </section>`;
+}
+
+/* ---------- domains ---------- */
+
+function domainTag(status) {
+  if (status === 'VERIFIED') return '<span class="acct-tag is-verified">verified</span>';
+  if (status === 'FAILED') return '<span class="acct-tag is-bad">record missing</span>';
+  return '<span class="acct-tag is-pending">waiting for the record</span>';
+}
+
+function recordHtml(label, rec) {
+  const e = D.escapeHtml;
+  return `
+    <dl class="ev-record" aria-label="${e(label)}">
+      <dt>Type</dt><dd><code>${e(rec.type)}</code></dd><dd></dd>
+      <dt>Name</dt><dd><code>${e(rec.name)}</code></dd><dd><button class="btn btn-sm" type="button" data-env-action="domain-copy" data-text="${e(rec.name)}">Copy</button></dd>
+      <dt>${rec.type === 'CNAME' ? 'Target' : 'Value'}</dt><dd><code>${e(rec.value || rec.target || '')}</code></dd><dd><button class="btn btn-sm" type="button" data-env-action="domain-copy" data-text="${e(rec.value || rec.target || '')}">Copy</button></dd>
+    </dl>`;
+}
+
+function domainHtml(d) {
+  const e = D.escapeHtml;
+  const manage = canManageDomains();
+  const verified = d.status === 'VERIFIED';
+  const checking = ev.checking === d.host;
+  let body = '';
+  if (!verified) {
+    body = `
+      <p class="acct-card-note ev-dom-note">Add this record where you manage the domain's DNS, then press Verify.${d.status === 'FAILED' ? ' The record was found before and is missing now; put it back to keep the domain.' : ''}</p>
+      ${recordHtml('The verification record', d.verifyRecord)}
+      ${d.lastCheckedAt ? `<p class="acct-card-note ev-dom-note"><span class="adm-muted">Last checked ${e(D.fmtDate(d.lastCheckedAt))}.</span> ${e(d.lastCheckError || '')}</p>` : ''}`;
+  } else if (d.cname) {
+    body = `
+      <p class="acct-card-note ev-dom-note">Proven ${e(D.fmtDate(d.verifiedAt))}. Point the name at the software with this record, and it serves your site.</p>
+      ${recordHtml('The serving record', d.cname)}`;
+  } else {
+    body = `<p class="acct-card-note ev-dom-note">Proven ${e(D.fmtDate(d.verifiedAt))}. Serving arrives when the software is hosted; there is nothing more to do for now, and the platform re-checks the record daily.</p>`;
+  }
+  return `
+    <div class="ev-dom">
+      <div class="ev-dom-head">
+        <span class="ev-dom-host">${e(d.host)}</span>
+        ${domainTag(d.status)}
+        ${d.addedBy ? `<span class="ev-dom-when">connected by ${e(d.addedBy)} ${e(D.fmtDate(d.addedAt))}</span>` : ''}
+      </div>
+      ${body}
+      ${manage ? `
+      <div class="ev-dom-actions">
+        ${verified ? '' : `<button class="btn btn-sm" type="button" data-env-action="domain-verify" data-host="${e(d.host)}" ${checking ? 'disabled' : ''}>${checking ? 'Checking…' : 'Verify'}</button>`}
+        <button class="btn btn-sm" type="button" data-env-action="domain-remove" data-host="${e(d.host)}">Remove</button>
+      </div>` : ''}
+    </div>`;
+}
+
+function domainsHtml() {
+  const e = D.escapeHtml;
+  const manage = canManageDomains();
+  const rows = ev.domains;
+  const limit = ev.domainLimit;
+  const full = rows && limit && rows.length >= limit;
+  const list = rows == null ? '<p class="acct-loading">Loading domains…</p>'
+    : !rows.length ? `<p class="acct-empty">No domain connected yet.</p>`
+    : `<div class="ev-domains">${rows.map(domainHtml).join('')}</div>`;
+  return `
+    <section class="acct-card">
+      <h3 class="acct-card-h">Domains</h3>
+      <p class="acct-card-note">Connect a domain you own. One TXT record at your registrar proves it is yours; the platform never needs your registrar login. ${explainLink('domains', 'How domains work')}</p>
+      ${manage ? `
+      <div class="ev-dom-row">
+        <input class="acct-input" type="text" id="evDomainHost" maxlength="253" placeholder="www.example.com" autocomplete="off" spellcheck="false" autocapitalize="off" ${full ? 'disabled' : ''} />
+        <button class="btn" type="button" data-env-action="domain-add" ${full ? 'disabled' : ''}>Connect</button>
+      </div>
+      ${limit ? `<p class="acct-card-note ev-count">${e(String((rows || []).length))} of ${e(String(limit))} on this plan.${full ? ' Remove one to connect another, or move up a plan.' : ''}</p>` : ''}` : `<p class="acct-card-note">The owner, an admin or a developer connects domains; everyone on the team sees them here.</p>`}
+      <p class="acct-error" id="evDomainError" hidden></p>
+      ${ev.domainNote ? `<p class="acct-card-note">${e(ev.domainNote)}</p>` : ''}
       ${list}
     </section>`;
 }
@@ -459,6 +553,49 @@ async function copyKey(btn) {
   setTimeout(() => { btn.textContent = orig; }, 1600);
 }
 
+async function addDomain(btn) {
+  D.showError('evDomainError', '');
+  const host = (document.getElementById('evDomainHost')?.value || '').trim();
+  if (!host) { D.showError('evDomainError', 'Enter the domain to connect, e.g. www.example.com.'); return; }
+  btn.disabled = true;
+  try {
+    await post(`${ENV_URL}/domains`, { host });
+    ev.domainNote = '';
+    await loadDomains();
+  } catch (ex) {
+    btn.disabled = false;
+    D.showError('evDomainError', errText(ex, 'That domain could not be connected.'));
+  }
+}
+
+async function verifyDomain(host) {
+  D.showError('evDomainError', '');
+  ev.checking = host; paintDomains();
+  try {
+    const r = await post(`${ENV_URL}/domains/verify`, { host });
+    ev.checking = '';
+    await loadDomains();
+    if (!r.verified) D.showError('evDomainError', r.error || 'The record was not found yet.');
+  } catch (ex) {
+    ev.checking = ''; paintDomains();
+    D.showError('evDomainError', errText(ex, 'The check did not run.'));
+  }
+}
+
+async function removeDomain(host) {
+  if (!window.confirm(`Remove ${host}? It stops serving anything from here and can be connected again later.`)) return;
+  D.showError('evDomainError', '');
+  try { await post(`${ENV_URL}/domains/remove`, { host }); await loadDomains(); }
+  catch (ex) { D.showError('evDomainError', errText(ex, 'Could not remove that domain.')); }
+}
+
+async function copyText(text, btn) {
+  const orig = btn.textContent;
+  try { await navigator.clipboard.writeText(text); btn.textContent = 'Copied'; }
+  catch { btn.textContent = 'Select the text'; }
+  setTimeout(() => { btn.textContent = orig; }, 1600);
+}
+
 export function bindEnvironmentActions(deps) {
   if (bindEnvironmentActions._bound) return;
   bindEnvironmentActions._bound = true;
@@ -477,6 +614,10 @@ export function bindEnvironmentActions(deps) {
     if (a === 'key-make') return void makeKey(btn);
     if (a === 'key-copy') return void copyKey(btn);
     if (a === 'key-revoke') return void revokeKey(btn.dataset.key || '', btn.dataset.label || 'this key');
+    if (a === 'domain-add') return void addDomain(btn);
+    if (a === 'domain-verify') return void verifyDomain(btn.dataset.host || '');
+    if (a === 'domain-remove') return void removeDomain(btn.dataset.host || '');
+    if (a === 'domain-copy') return void copyText(btn.dataset.text || '', btn);
   });
 
   document.addEventListener('change', (e) => {
@@ -485,5 +626,6 @@ export function bindEnvironmentActions(deps) {
 
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && e.target.id === 'evKeyLabel') { e.preventDefault(); document.querySelector('[data-env-action="key-make"]')?.click(); }
+    if (e.key === 'Enter' && e.target.id === 'evDomainHost') { e.preventDefault(); document.querySelector('[data-env-action="domain-add"]')?.click(); }
   });
 }

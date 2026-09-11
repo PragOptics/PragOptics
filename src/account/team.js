@@ -474,7 +474,10 @@ function storageCell(t) {
   const e = D.escapeHtml;
   const phase = String(t.phase || (t.provisioned ? 'READY' : '')).toUpperCase();
   const s = t.storage || {};
-  if (phase === 'READY') return `<span class="adm-num">${e(gb(s.usedBytes) || '0 GB')} / ${e(gb(s.limitBytes) || gb(t.limits?.storageBytes) || '')}</span><div class="adm-muted">provisioned</div>`;
+  if (phase === 'READY') {
+    const dn = Number(t.domains?.count || 0);
+    return `<span class="adm-num">${e(gb(s.usedBytes) || '0 GB')} / ${e(gb(s.limitBytes) || gb(t.limits?.storageBytes) || '')}</span><div class="adm-muted">provisioned${dn ? `, ${e(String(dn))} domain${dn === 1 ? '' : 's'}` : ''}</div>`;
+  }
   if (phase === 'PROVISIONING') return `<span class="acct-tag is-pending">provisioning</span>${t.provisionNote ? `<div class="adm-muted cell-ellip" title="${e(t.provisionNote)}">${e(t.provisionNote)}</div>` : ''}`;
   if (phase === 'SUSPENDED') return `<span class="acct-tag is-bad">suspended</span><div class="adm-muted">${e(gb(s.usedBytes) || '0 GB')} held</div>`;
   return '<span class="acct-tag">team only</span>';
