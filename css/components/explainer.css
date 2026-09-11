@@ -1,0 +1,86 @@
+/* css/components/explainer.css
+   The "How it works" pop-out (src/components/explainer.js) and the text link
+   that opens it. Rides the legal viewer's panel classes and draws every
+   color from tokens.css, so both themes hold. */
+
+/* ---------- the link ---------- */
+.explain-link {
+  appearance: none; background: none; border: 0; padding: 0; margin: 0;
+  font: inherit; font-size: .86rem; font-weight: 700; letter-spacing: .01em;
+  color: var(--brand-600); cursor: pointer;
+  border-bottom: 1px solid color-mix(in srgb, var(--brand-600) 35%, transparent);
+  transition: color 160ms ease, border-color 160ms ease;
+  white-space: nowrap;
+}
+.explain-link:hover { color: var(--card-title); border-color: var(--brand-purp); }
+.explain-link:focus-visible { outline: 2px solid var(--brand-600); outline-offset: 3px; border-radius: 3px; }
+
+/* A section head that carries the link: title left, link on the baseline right. */
+.acct-sec-head.has-explain {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+}
+.acct-card-note .explain-link { margin-left: 6px; }
+.explain-row { margin: 6px 0 14px; }
+
+/* ---------- the panel ---------- */
+.explain-card { width: min(820px, 94vw); }
+.explain-head { align-items: center; }
+.explain-head-text { display: grid; gap: 2px; min-width: 0; }
+.explain-kicker {
+  font-size: .72rem; letter-spacing: .22em; text-transform: uppercase; font-weight: 800;
+  color: var(--brand-600);
+}
+.explain-title { font-size: 1.25rem; line-height: 1.2; }
+.explain-content { max-width: 70ch; }
+.explain-content h2 { font-size: 1.05rem; margin: 22px 0 8px; }
+.explain-content h3 { font-size: .95rem; margin: 18px 0 6px; }
+.explain-content p, .explain-content li { color: color-mix(in srgb, var(--ink) 86%, transparent); }
+.explain-content strong { color: var(--card-title); }
+.explain-content table { font-size: .92rem; }
+.explain-content thead th { font-size: .72rem; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+
+/* ---------- ladder: a hierarchy, top rung strongest ---------- */
+.xp-ladder {
+  list-style: none; margin: 14px 0 18px; padding: 0 0 0 26px; position: relative;
+  counter-reset: rung;
+}
+.xp-ladder::before {
+  content: ""; position: absolute; left: 9px; top: 12px; bottom: 12px; width: 2px;
+  background: linear-gradient(180deg, var(--brand-600), color-mix(in srgb, var(--brand-purp) 70%, transparent));
+  border-radius: 2px;
+}
+.xp-ladder .xp-item {
+  position: relative; display: grid; gap: 2px; padding: 8px 12px; margin: 6px 0;
+  border: 1px solid var(--border); border-radius: 12px;
+  background: color-mix(in srgb, var(--ink) 2%, transparent);
+}
+.xp-ladder .xp-item::before {
+  content: ""; position: absolute; left: -22px; top: 15px; width: 10px; height: 10px; border-radius: 50%;
+  background: var(--brand-600); box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand-600) 22%, transparent);
+}
+.xp-ladder .xp-item:first-child { border-color: color-mix(in srgb, var(--brand-600) 45%, transparent); background: color-mix(in srgb, var(--brand-600) 7%, transparent); }
+.xp-label { font-weight: 800; color: var(--card-title); font-size: .95rem; }
+.xp-text { color: var(--muted); font-size: .88rem; line-height: 1.5; }
+
+/* ---------- flow: a sequence, left to right, stacks on a phone ---------- */
+.xp-flow {
+  list-style: none; margin: 14px 0 18px; padding: 0;
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px 22px;
+}
+.xp-flow .xp-item {
+  position: relative; display: grid; gap: 2px; padding: 10px 12px;
+  border: 1px solid var(--border); border-radius: 12px;
+  background: color-mix(in srgb, var(--ink) 2%, transparent);
+}
+.xp-flow .xp-item:not(:last-child)::after {
+  content: "\2192"; position: absolute; right: -19px; top: 10px;
+  color: var(--brand-600); font-weight: 800; font-size: 1rem;
+}
+.xp-flow .xp-item:last-child { border-color: color-mix(in srgb, var(--brand-600) 45%, transparent); background: color-mix(in srgb, var(--brand-600) 7%, transparent); }
+
+@media (max-width: 640px) {
+  .xp-flow { grid-template-columns: 1fr; gap: 8px; }
+  .xp-flow .xp-item:not(:last-child)::after { content: "\2193"; right: auto; left: 14px; top: auto; bottom: -19px; }
+  .explain-card { width: 96vw; }
+}
+@media (prefers-reduced-motion: reduce) { .explain-link { transition: none; } }

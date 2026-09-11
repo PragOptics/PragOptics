@@ -20,6 +20,7 @@ import { tierName, ADDON_NAME } from '../components/tierCopy.js';
 import { mountPricingSelect } from '../components/pricingCards.js';
 import { openReportAnomaly, installErrorCapture } from './report.js';
 import { renderTeam, renderTenants, bindTeamActions } from './team.js';
+import { explainLink } from '../components/explainer.js';
 
 // Report Anomaly attaches the last few console errors to a report, so the
 // collector starts with the panel module, not with the first click.
@@ -437,7 +438,7 @@ async function renderProfile(main) {
     </section>
     <section class="acct-card">
       <h3 class="acct-card-h">Two-factor authentication</h3>
-      <p class="acct-card-note">Sign-in always needs a second step. Use an authenticator app, a passkey (fingerprint, face, or PIN on a device you own), or both. Either one completes the step; you are never asked for both. Your recovery codes work whichever you use.</p>
+      <p class="acct-card-note">Sign-in always needs a second step. Use an authenticator app, a passkey (fingerprint, face, or PIN on a device you own), or both. Either one completes the step; you are never asked for both. Your recovery codes work whichever you use. ${explainLink('security', 'How your sign-in works')}</p>
       <div class="acct-alias-list" id="acctPasskeyList"><span class="acct-loading">Loading…</span></div>
       <div class="acct-add-row">
         <button class="cta btn-sm" type="button" data-acct-action="add-passkey" title="Registers a passkey on this device. You confirm with your current password.">Add passkey</button>
@@ -1617,7 +1618,7 @@ function subManagerHtml(data) {
 
 async function renderSubscription(main) {
   main.innerHTML = `
-    <header class="acct-sec-head"><h2 class="acct-sec-title">Billing</h2></header>
+    <header class="acct-sec-head has-explain"><h2 class="acct-sec-title">Billing</h2>${explainLink('billing')}</header>
     <p class="acct-error" id="acctSubError" hidden></p>
     <div id="acctSubBody"><p class="acct-loading">Loading your subscription…</p></div>
   `;
@@ -1890,7 +1891,7 @@ function orderLinesLabel(lines) {
 async function renderOrders(main) {
   const showClaim = (LANE !== 'live') || ORDERS_CLAIM_LIVE;
   main.innerHTML = `
-    <header class="acct-sec-head"><h2 class="acct-sec-title">Orders</h2></header>
+    <header class="acct-sec-head has-explain"><h2 class="acct-sec-title">Orders</h2>${explainLink('orders')}</header>
     <section class="acct-card">
       <p class="acct-card-note">Orders linked to this account.${showClaim ? ' A guest order stays on its receipt email until you link it below.' : ' Guest orders stay on their receipt email.'}</p>
       <p class="acct-error" id="acctOrdersError" hidden></p>

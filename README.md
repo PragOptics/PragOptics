@@ -208,6 +208,16 @@ Because of that, treat `main` as production:
 
 ## Documentation and the Codex
 
+**In-product explainers.** Every complex surface carries a plain text link,
+"How this works", that opens a short, human-written explainer from
+`docs/explain/` in the legal viewer's frame (`src/components/explainer.js`,
+`css/components/explainer.css`). The Markdown may carry two blocks the legal
+viewer does not know: a `ladder` (a hierarchy, top rung strongest) and a
+`flow` (a sequence), one item per line as `Label | what it means`. Today:
+teams and seats, plans and add-ons, which plan fits, sign-in security, orders
+and tracking, registration and transfers, and, for the cards that land with
+round 3, the environment and API keys.
+
 Human-readable documentation, agreements, and policy materials live in `/docs`
 and are rendered through the PragOptics Codex, which provides a structured,
 navigable view rather than exposing raw files by default.

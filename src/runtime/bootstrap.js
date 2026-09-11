@@ -27,6 +27,7 @@
     import { initFooter } from '../components/footer.js';
     import { initCookieNotice } from '../components/cookieNotice.js';
     import { initLegalViewer } from '../components/legalViewer.js';
+    import { initExplainer } from '../components/explainer.js';
     import { initBrochureViewer } from '../components/brochureViewer.js';
     import { renderHardwareGallery } from '../shop/gallery.js';
     import { renderFeaturedProducts } from '../shop/featured.js';
@@ -87,6 +88,10 @@
     });
 
     initBrochureViewer({ src: "/docs/brochure-view.html" });
+
+    // The "How it works" pop-outs: one text link per complex surface, a short
+    // human-written explainer from /docs/explain/ in the legal viewer's frame.
+    initExplainer();
 
     initFooter();
     initCookieNotice();

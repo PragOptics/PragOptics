@@ -16,6 +16,7 @@
 
 import { PRAG_API_BASE } from '../runtime/config.js';
 import { tierName } from '../components/tierCopy.js';
+import { explainLink } from '../components/explainer.js';
 
 const TENANT_URL = `${PRAG_API_BASE}/tenant`;
 const ADMIN_TENANTS_URL = `${PRAG_API_BASE}/admin/tenants`;
@@ -76,7 +77,7 @@ export async function renderTeam(main, deps) {
   D = deps;
   tm.editing = null; tm.renaming = false;
   main.innerHTML = `
-    <header class="acct-sec-head"><h2 class="acct-sec-title">Team</h2></header>
+    <header class="acct-sec-head has-explain"><h2 class="acct-sec-title">Team</h2>${explainLink('team', 'How teams, seats and roles work')}</header>
     <p class="acct-error" id="tmError" hidden></p>
     <div id="tmBody"><p class="acct-loading">Loading…</p></div>
   `;

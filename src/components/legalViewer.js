@@ -9,7 +9,7 @@ function esc(s) {
   }[c]));
 }
 
-function mdToHtml(md) {
+export function mdToHtml(md) {
   md = md.replace(/\r\n?/g, "\n");
 
   // horizontal rules
