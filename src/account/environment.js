@@ -201,7 +201,7 @@ function summaryHtml(v) {
       <div class="use-row ev-meter">
         <div class="use-head">
           <span class="use-name">Storage</span>
-          <span class="use-val">${e(gb(used))} / ${e(gb(limit))}</span>
+          <span class="use-val">${e(used > 0 && used < 0.05 * 1024 ** 3 ? bytesFmt(used) : gb(used))} / ${e(gb(limit))}</span>
         </div>
         <div class="use-track"><div class="use-fill ${cls}" style="width:${pct.toFixed(1)}%"></div></div>
       </div>
