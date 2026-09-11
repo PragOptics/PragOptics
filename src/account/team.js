@@ -20,6 +20,7 @@ import { explainLink } from '../components/explainer.js';
 
 const TENANT_URL = `${PRAG_API_BASE}/tenant`;
 const ADMIN_TENANTS_URL = `${PRAG_API_BASE}/admin/tenants`;
+const PROVISION_URL = `${PRAG_API_BASE}/environment/provision`;
 const TEAM_KEY = 'pragoptics_team_id';
 
 const ROLE_HELP = {
@@ -383,6 +384,8 @@ export function bindTeamActions(deps) {
   D = D || deps;
 
   document.addEventListener('click', (e) => {
+    const tb = e.target.closest('[data-tenant-action]');
+    if (tb) { e.preventDefault(); if (tb.dataset.tenantAction === 'repair') repairTenant(tb); return; }
     const btn = e.target.closest('[data-team-action]');
     if (!btn) return;
     e.preventDefault();
@@ -466,12 +469,45 @@ export function bindTeamActions(deps) {
    TENANTS (operators only; the server re-checks every call)
    ================================================================ */
 
+/** The desk's storage cell: used against the allowance when provisioned, else the phase. */
+function storageCell(t) {
+  const e = D.escapeHtml;
+  const phase = String(t.phase || (t.provisioned ? 'READY' : '')).toUpperCase();
+  const s = t.storage || {};
+  if (phase === 'READY') return `<span class="adm-num">${e(gb(s.usedBytes) || '0 GB')} / ${e(gb(s.limitBytes) || gb(t.limits?.storageBytes) || '')}</span><div class="adm-muted">provisioned</div>`;
+  if (phase === 'PROVISIONING') return `<span class="acct-tag is-pending">provisioning</span>${t.provisionNote ? `<div class="adm-muted cell-ellip" title="${e(t.provisionNote)}">${e(t.provisionNote)}</div>` : ''}`;
+  if (phase === 'SUSPENDED') return `<span class="acct-tag is-bad">suspended</span><div class="adm-muted">${e(gb(s.usedBytes) || '0 GB')} held</div>`;
+  return '<span class="acct-tag">team only</span>';
+}
+/** Repair makes sense for a paid, active owner whose environment is not READY. */
+function repairable(t) {
+  return String(t.tier || 'free') !== 'free'
+    && String(t.phase || (t.provisioned ? 'READY' : '')).toUpperCase() !== 'READY'
+    && String(t.ownerStatus || 'ACTIVE').toUpperCase() === 'ACTIVE'
+    && !!t.ownerUserId;
+}
+async function repairTenant(btn) {
+  const name = btn.dataset.name || 'this team';
+  if (!window.confirm(`Run provisioning for ${name}? It creates whatever is missing and changes nothing that exists.`)) return;
+  D.showError('tnError', '');
+  btn.disabled = true; btn.textContent = 'Running…';
+  try {
+    const r = await D.apiFetch(PROVISION_URL, { method: 'POST', body: JSON.stringify({ userId: btn.dataset.user }) });
+    const main = document.getElementById('acctMain');
+    if (main) await renderTenants(main, D);
+    if (r.status !== 'READY') D.showError('tnError', `${name}: ${r.note || r.nextAction?.message || r.status}`);
+  } catch (ex) {
+    btn.disabled = false; btn.textContent = 'Repair';
+    D.showError('tnError', ex?.sessionInvalidated ? '' : (ex?.data?.error || D.friendlyError(ex, 'Provisioning did not run.')));
+  }
+}
+
 export async function renderTenants(main, deps) {
   D = deps;
   const e = D.escapeHtml;
   main.innerHTML = `
     <header class="adm-sec-head"><h2 class="adm-sec-title">Tenants</h2></header>
-    <p class="adm-note">Every team on the platform: who owns it, its plan, whether the software has provisioned storage, seats in use. Counts and names only. Tenant data never renders here.</p>
+    <p class="adm-note">Every team on the platform: who owns it, its plan, its storage against the allowance, seats in use. Counts and names only; tenant data never renders here. Repair runs the one-pass provisioning for an environment that stalled: it creates what is missing and changes nothing that exists.</p>
     <p class="adm-error" id="tnError" hidden></p>
     <div id="tnBody"><p class="adm-note">Loading…</p></div>
   `;
@@ -483,17 +519,18 @@ export async function renderTenants(main, deps) {
     host.innerHTML = `
       <div class="adm-table-scroll">
         <table class="adm-table adm-table--wrap">
-          <thead><tr><th>Team</th><th>Owner</th><th>Plan</th><th>Storage</th><th class="adm-num">Seats</th><th class="adm-num">Members</th><th>Created</th></tr></thead>
+          <thead><tr><th>Team</th><th>Owner</th><th>Plan</th><th>Storage</th><th class="adm-num">Seats</th><th class="adm-num">Members</th><th>Created</th><th></th></tr></thead>
           <tbody>
             ${rows.map(t => `
               <tr>
                 <td class="cell-ellip" title="${e(t.environmentId)}">${e(t.organizationName || 'Unnamed')}<div class="adm-muted"><code>${e(String(t.environmentId).slice(0, 8))}</code></div></td>
                 <td class="cell-ellip adm-cell-email" title="${e(t.ownerEmail)}">${e(t.ownerEmail || '')}${t.ownerStatus && t.ownerStatus !== 'ACTIVE' ? ` <span class="acct-tag is-pending">${e(String(t.ownerStatus).toLowerCase())}</span>` : ''}</td>
                 <td class="cell-tight"><span class="adm-tier adm-tier-${e(t.tier)}">${e(tierName(t.tier))}</span></td>
-                <td class="cell-tight">${t.provisioned ? '<span class="acct-tag is-verified">provisioned</span>' : '<span class="acct-tag">team only</span>'}</td>
+                <td class="cell-tight">${storageCell(t)}</td>
                 <td class="adm-num cell-tight">${e(String(t.seats?.used ?? 0))} / ${e(String(t.seats?.limit ?? 0))}${Number(t.seats?.pending) ? `<div class="adm-muted">+${e(String(t.seats.pending))} pending</div>` : ''}</td>
                 <td class="adm-num cell-tight">${e(String(t.members ?? 0))}${Number(t.viewers) ? `<div class="adm-muted">${e(String(t.viewers))} viewer${t.viewers === 1 ? '' : 's'}</div>` : ''}</td>
                 <td class="adm-muted cell-tight">${e(D.fmtDate(t.createdAt))}</td>
+                <td class="cell-tight tm-actions">${repairable(t) ? `<button class="btn btn-sm" type="button" data-tenant-action="repair" data-user="${e(t.ownerUserId)}" data-name="${e(t.organizationName || t.ownerEmail || 'this team')}">Repair</button>` : ''}</td>
               </tr>`).join('')}
           </tbody>
         </table>

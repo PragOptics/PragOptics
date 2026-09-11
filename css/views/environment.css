@@ -1,0 +1,46 @@
+/* css/views/environment.css
+   Environment section of the account panel (src/account/environment.js):
+   the team's storage, its files and its API keys. Everything is drawn from
+   tokens.css so both themes hold; the meter is the Billing card's .use-*
+   recipe, the tables are the panel's .adm-table. */
+
+.ev-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; flex-wrap: wrap; }
+.ev-id { min-width: 0; flex: 1 1 320px; }
+.ev-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 6px; }
+.ev-name { margin: 0; }
+.ev-owner { margin-top: 4px; }
+.ev-actions { flex: 0 0 auto; display: flex; gap: 8px; flex-wrap: wrap; }
+.ev-meter { margin-top: 14px; }
+.ev-note { margin: 10px 0 0; }
+
+/* files */
+.ev-upload-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin: 12px 0; }
+.ev-file { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; pointer-events: none; }
+.ev-status { color: var(--muted); font-size: .86rem; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.ev-table td { vertical-align: middle; }
+.ev-name-cell { font-family: ui-monospace, "Cascadia Code", Consolas, monospace; font-size: .82rem; }
+.ev-actions-cell { white-space: nowrap; }
+.ev-actions-cell .btn + .btn { margin-left: 6px; }
+.ev-muted-row td { color: var(--muted); }
+
+/* keys */
+.ev-key-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 12px; }
+.ev-key-row .acct-input { flex: 1 1 260px; min-width: 0; }
+.ev-scopes { display: flex; gap: 14px; align-items: center; font-size: .86rem; color: var(--muted); }
+.ev-scopes label { display: inline-flex; gap: 6px; align-items: center; cursor: pointer; }
+.ev-scopes input { accent-color: var(--brand-600); width: 15px; height: 15px; margin: 0; }
+.ev-key-result {
+  margin-top: 12px; padding: 12px 14px; border-radius: var(--radius-ctl);
+  border: 1px solid color-mix(in srgb, var(--brand-600) 32%, transparent);
+  background: color-mix(in srgb, var(--brand-600) 8%, transparent);
+}
+.ev-key-result p { margin: 0 0 8px; font-size: .88rem; line-height: 1.5; }
+.ev-key-result p b { color: var(--card-title); }
+.ev-key-result code { font-family: ui-monospace, "Cascadia Code", Consolas, monospace; font-size: .82rem; }
+.ev-key, .ev-prefix { font-family: ui-monospace, "Cascadia Code", Consolas, monospace; font-size: .8rem; }
+.ev-count { margin: 12px 0 6px; }
+
+@media (max-width: 640px) {
+  .ev-key-row .acct-input { flex-basis: 100%; }
+  .ev-actions-cell .btn + .btn { margin-left: 0; margin-top: 4px; }
+}

@@ -123,7 +123,7 @@ Flip the flag and push once the backend is live.
 | `WARRANTY_API_LIVE` | `src/warranty/warranty.js` | on |
 | `TRANSFER_API_LIVE` | `src/warranty/transfer.js` | on |
 | `ORDERS_CLAIM_LIVE` | `src/runtime/config.js` | on (2026-09-06) |
-| `TEAM_LIVE` | `src/runtime/config.js` | off: the Team section, the join page and the Tenants desk stay off the live lane until tenant storage is real (dev shows them regardless) |
+| `TEAM_LIVE` | `src/runtime/config.js` | off: the Team and Environment sections, the join page and the Tenants desk stay off the live lane until the lanes carry tenant storage (dev shows them regardless) |
 | `BUILDS_API_LIVE` | `src/builds/builds.js` | off |
 
 ---
@@ -208,6 +208,16 @@ Because of that, treat `main` as production:
 
 ## Documentation and the Codex
 
+**The Environment section** (`src/account/environment.js`,
+`css/views/environment.css`) is the customer's view of the private space a
+paid plan sets up: the storage bar against the allowance, the files in their
+container, and their API keys. It follows the Team section's choice of team.
+An upload goes straight from the browser to the tenant's container through a
+ten-minute link the API mints, so the page's Content Security Policy lists
+the two storage hosts in `connect-src` and each storage account carries a CORS
+rule for the site's origin. Files are named and sized here; tenant data
+values are never fetched by the site.
+
 **In-product explainers.** Every complex surface carries a plain text link,
 "How this works", that opens a short, human-written explainer from
 `docs/explain/` in the legal viewer's frame (`src/components/explainer.js`,
@@ -249,14 +259,15 @@ Industrial.
 
 ## Status
 
-Updated 2026-09-11 with main at `bf781da`. Landed since 2026-09-08: the Team
-section in the profile panel, the invite join page and the operator's Tenants
-desk (all behind `TEAM_LIVE`); extra seats in the plan editor and the wizard;
-the carrier's latest status on the guest track page and the Orders section;
-the sliding session; mobile close buttons, the hero scenes on the light theme,
-the footer trim, the Privacy Teams section.
+Updated 2026-09-11. Landed since 2026-09-08: the Team section in the profile
+panel, the invite join page and the operator's Tenants desk (all behind
+`TEAM_LIVE`); extra seats in the plan editor and the wizard; the carrier's
+latest status on the guest track page and the Orders section; the sliding
+session; the How it works explainers; the platform's own social preview; the
+Environment section (storage bar, files, API keys) and the Tenants desk's
+storage column and Repair door; mobile close buttons, the hero scenes on the
+light theme, the footer trim, the Privacy Teams section.
 
-Next on this repo (round 3, in order): the Environment, storage and Keys cards
-in the account panel, storage and a Repair door on the Tenants desk, then the
-Domains card. PragOptics is actively evolving; this repository is the current
+Next on this repo (round 3, in order): the Domains card, then the front end
+closeout list. PragOptics is actively evolving; this repository is the current
 state of that evolution.

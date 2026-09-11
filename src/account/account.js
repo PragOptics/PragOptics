@@ -20,6 +20,7 @@ import { tierName, ADDON_NAME } from '../components/tierCopy.js';
 import { mountPricingSelect } from '../components/pricingCards.js';
 import { openReportAnomaly, installErrorCapture } from './report.js';
 import { renderTeam, renderTenants, bindTeamActions } from './team.js';
+import { renderEnvironment, bindEnvironmentActions } from './environment.js';
 import { explainLink } from '../components/explainer.js';
 
 // Report Anomaly attaches the last few console errors to a report, so the
@@ -283,7 +284,8 @@ const ICONS = {
   notify:       '<path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/>',
   reports:      '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M12 7v4"/><path d="M12 14h.01"/>',
   team:         '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
-  tenants:      '<path d="M3 21h18"/><path d="M5 21V7l7-4 7 4v14"/><path d="M9 21v-6h6v6"/><path d="M9 10h.01"/><path d="M15 10h.01"/>'
+  tenants:      '<path d="M3 21h18"/><path d="M5 21V7l7-4 7 4v14"/><path d="M9 21v-6h6v6"/><path d="M9 10h.01"/><path d="M15 10h.01"/>',
+  environment:  '<ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.66 3.58 3 8 3s8-1.34 8-3V5"/><path d="M4 12c0 1.66 3.58 3 8 3s8-1.34 8-3"/>'
 };
 
 const ACCOUNT_SECTIONS = [
@@ -291,6 +293,7 @@ const ACCOUNT_SECTIONS = [
   { id: 'products',     label: 'My Products' },
   { id: 'subscription', label: 'Billing' },
   { id: 'team',         label: 'Team' },
+  { id: 'environment',  label: 'Environment' },
   { id: 'orders',       label: 'Orders' },
   { id: 'builds',       label: 'My Builds' }
 ];
@@ -308,11 +311,11 @@ const INTERNAL_SECTIONS = [
   { id: 'catalog',    label: 'Catalog' }
 ];
 
-// Team and Tenants ride the tenant spine, which reaches live only when the
-// lanes carry it and TEAM_LIVE is flipped. Until then the live lane never
-// shows them; dev always does.
+// Team, Environment and Tenants ride the tenant spine, which reaches live
+// only when the lanes carry it and TEAM_LIVE is flipped. Until then the live
+// lane never shows them; dev always does.
 const TEAM_ON = (LANE !== 'live') || TEAM_LIVE;
-const TEAM_IDS = new Set(['team', 'tenants']);
+const TEAM_IDS = new Set(['team', 'environment', 'tenants']);
 function customerSections() { return ACCOUNT_SECTIONS.filter(s => TEAM_ON || !TEAM_IDS.has(s.id)); }
 function internalSections() { return INTERNAL_SECTIONS.filter(s => TEAM_ON || !TEAM_IDS.has(s.id)); }
 
@@ -3888,6 +3891,7 @@ function showSection(id) {
   if (id === 'subscription') return void renderSubscription(main);
   if (id === 'orders')       return void renderOrders(main);
   if (id === 'team')         return void renderTeam(main, teamDeps());
+  if (id === 'environment')  return void renderEnvironment(main, teamDeps());
   if (id === 'builds')       return renderSoon(main, 'My Builds', 'Builds you publish from the PragOptics™ software will be listed here.');
   if (id === 'overview')     return void renderOverview(main);
   if (id === 'users')        return void renderUsers(main);
@@ -3911,6 +3915,7 @@ function bindOnce() {
   if (bindOnce._bound) return;
   bindOnce._bound = true;
   bindTeamActions(teamDeps());
+  bindEnvironmentActions(teamDeps());
 
   document.addEventListener('click', (e) => {
     const nav = e.target.closest('[data-acct-section]');
