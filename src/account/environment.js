@@ -414,7 +414,7 @@ function registerHtml() {
     }
     return `
       ${head}
-      <p class="acct-card-note"><b>${e(q.host)}</b> is available: <b>${e(money(q.priceCents))}</b> for the first year, the registrar's price with no markup. ${e(q.note || '')}</p>
+      <p class="acct-card-note"><b>${e(q.host)}</b> is available: <b>${e(money(q.priceCents))}</b> for the first year${q.priceSource === 'azure-live' ? ', Azure’s current price read just now' : ''}, passed through with no markup. ${e(q.note || '')}</p>
       <div class="ev-dom-actions">
         <button class="btn" type="button" data-env-action="domain-reg-continue">Continue</button>
         <button class="btn btn-sm" type="button" data-env-action="domain-reg-cancel">Try another</button>

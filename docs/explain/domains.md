@@ -28,7 +28,7 @@ A verified domain whose record later disappears is marked failed after three dai
 
 ## Registering a new one here
 
-If you do not have a domain yet, the card can register one for you. Type the name you want; the card says whether it is free and what it costs for the first year. The price is the registrar's, passed through with no markup, and it is an ordinary order on your account with a receipt.
+If you do not have a domain yet, the card can register one for you. Type the name you want; the card says whether it is free and what it costs for the first year. The price is Azure's own price for a domain, read from Azure's price list at the moment you check, passed through with no markup, and it is an ordinary order on your account with a receipt.
 
 The registry records a contact for every domain: a name, an email, a phone number and a mailing address. That is the same at every registrar. Privacy protection is on, so the public record shows the registrar's proxy instead of your details.
 
