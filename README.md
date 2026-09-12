@@ -215,7 +215,10 @@ container, their connected domains (a Domains card that hands out the TXT
 record to create, verifies it on demand, shows the CNAME once the software
 is hosted, and registers a new name through PragOptics: a quote, the
 registrant contact, the registrar agreements, and payment in the card
-through the shop order path), and their API keys. It follows the Team section's choice of team.
+through the shop order path), and their API keys. A paused environment
+(the subscription ended or the account closed) shows the date it is kept
+until, keeps every read and the Download everything export working, and
+hides the write controls; the routes refuse writes regardless. It follows the Team section's choice of team.
 An upload goes straight from the browser to the tenant's container through a
 ten-minute link the API mints, so the page's Content Security Policy lists
 the two storage hosts in `connect-src` and each storage account carries a CORS

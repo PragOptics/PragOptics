@@ -73,9 +73,10 @@ function phaseTag(phase) {
   return '<span class="acct-tag">no storage yet</span>';
 }
 function myRole() { return String(ev.view?.membership?.role || 'viewer').toLowerCase(); }
-function canWrite() { return SEAT_ROLES.has(myRole()); }
+function paused() { return phaseOf(ev.view?.tenant) === 'SUSPENDED'; }
+function canWrite() { return SEAT_ROLES.has(myRole()) && !paused(); }
 function canManageKeys() { return myRole() === 'owner' || myRole() === 'admin'; }
-function canManageDomains() { return DOMAIN_ROLES.has(myRole()); }
+function canManageDomains() { return DOMAIN_ROLES.has(myRole()) && !paused(); }
 
 /* ================================================================
    render
@@ -110,7 +111,7 @@ async function load() {
     ev.view = await fetchView();
     if (!ev.view.tenant) { host.innerHTML = emptyHtml(ev.view); return; }
     paint();
-    if (phaseOf(ev.view.tenant) === 'READY') await Promise.all([loadFiles(), loadDomains(), loadKeys()]);
+    if (['READY', 'SUSPENDED'].includes(phaseOf(ev.view.tenant))) await Promise.all([loadFiles(), loadDomains(), loadKeys()]);
   } catch (ex) {
     host.innerHTML = '';
     if (ex?.status === 404 && !ex?.data?.needsTenant) {
@@ -163,7 +164,8 @@ async function loadKeys() {
 function paint() {
   const host = document.getElementById('evBody');
   if (!host || !ev.view?.tenant) return;
-  const ready = phaseOf(ev.view.tenant) === 'READY';
+  const phase = phaseOf(ev.view.tenant);
+  const ready = phase === 'READY' || phase === 'SUSPENDED';   // paused: the cards show, reads work, writes are refused by the routes
   host.innerHTML = `
     ${summaryHtml(ev.view)}
     ${ready ? `<div id="evFiles">${filesHtml()}</div><div id="evDomains">${domainsHtml()}</div><div id="evKeys">${keysHtml()}</div>` : ''}
@@ -231,7 +233,9 @@ function summaryHtml(v) {
         </div>
         <div class="use-track"><div class="use-fill ${cls}" style="width:${pct.toFixed(1)}%"></div></div>
       </div>
-      <p class="acct-card-note ev-note">${s.unknown ? 'The bar reads what the plan carries; the figure refreshes with the next read.' : `Every value and every file counts. A write past the allowance plus ${e(gb(s.graceBytes || Math.ceil(limit * 0.1)))} of grace is refused, and nothing is ever deleted to make room.`}${phase === 'SUSPENDED' ? ' <span class="acct-tag is-bad">suspended</span> Reads and exports work; writes are refused until the subscription is active again.' : ''}</p>` : ''}
+      <p class="acct-card-note ev-note">${s.unknown ? 'The bar reads what the plan carries; the figure refreshes with the next read.' : `Every value and every file counts. A write past the allowance plus ${e(gb(s.graceBytes || Math.ceil(limit * 0.1)))} of grace is refused, and nothing is ever deleted to make room.`}</p>
+      ${phase === 'SUSPENDED' ? `<p class="acct-error ev-note">This environment is paused${t.suspendReason === 'closed' ? ' because the account was closed' : ' because the subscription ended'}. Everything in it can still be read and downloaded, nothing new can be written.${t.keepUntil ? ` It is kept until ${e(D.fmtDate(t.keepUntil))}, then removed.` : ''}${t.suspendReason === 'closed' ? '' : ' Restore a paid plan on Billing and it resumes exactly as it was.'}</p>` : ''}
+      ${(me.role === 'owner' || me.role === 'admin') ? `<div class="acct-actions-row ev-export-row"><button class="btn btn-sm" type="button" data-env-action="export" title="Everything in this environment as one file: data, file links, domains, keys, members">Download everything</button><span class="ev-status" id="evExportStatus" aria-live="polite"></span></div><p class="acct-error" id="evExportError" hidden></p>` : ''}` : ''}
       ${stalled ? `
       <p class="acct-card-note ev-note">${phase === 'PROVISIONING'
         ? `Setup started and did not finish${t.provisionNote ? `: ${e(t.provisionNote)}` : ''}. It completes on its own within minutes; ${isOwner ? 'you can also finish it now.' : 'the owner can also finish it now.'}`
@@ -804,6 +808,30 @@ async function removeDomain(host) {
   catch (ex) { D.showError('evDomainError', errText(ex, 'Could not remove that domain.')); }
 }
 
+// The export: one JSON file with everything, fetched with the session and
+// handed to the browser as a download. Big environments take a moment.
+async function exportEnvironment(btn) {
+  D.showError('evExportError', '');
+  const status = document.getElementById('evExportStatus');
+  btn.disabled = true;
+  if (status) status.textContent = 'Gathering everything…';
+  try {
+    const token = JSON.parse(sessionStorage.getItem('pragoptics_tokens') || 'null')?.access_token || '';
+    const res = await fetch(url(`${ENV_URL}/export`), { headers: { Authorization: `Bearer ${token}` } });
+    if (!res.ok) { let d = null; try { d = await res.json(); } catch { /* fine */ } throw Object.assign(new Error(d?.error || `Export failed (${res.status})`), { status: res.status, data: d }); }
+    const blob = await res.blob();
+    const name = (res.headers.get('content-disposition') || '').match(/filename="([^"]+)"/)?.[1] || 'pragoptics-environment.json';
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = name; a.rel = 'noopener';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+    if (status) status.textContent = `Saved ${name} (${bytesFmt(blob.size)}). The file links inside live ten minutes.`;
+  } catch (ex) {
+    if (status) status.textContent = '';
+    D.showError('evExportError', errText(ex, 'The export did not finish.'));
+  } finally { btn.disabled = false; }
+}
+
 async function setRenewal(host, autoRenew, input) {
   D.showError('evDomainError', '');
   input.disabled = true;
@@ -829,6 +857,7 @@ export function bindEnvironmentActions(deps) {
     e.preventDefault();
     const a = btn.dataset.envAction;
     if (a === 'refresh') return void refreshAll();
+    if (a === 'export') return void exportEnvironment(btn);
     if (a === 'provision') return void provision();
     if (a === 'upload') { document.getElementById('evFile')?.click(); return; }
     if (a === 'download') return void download(btn.dataset.name || '', btn);
