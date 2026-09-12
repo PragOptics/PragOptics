@@ -222,6 +222,13 @@ the two storage hosts in `connect-src` and each storage account carries a CORS
 rule for the site's origin. Files are named and sized here; tenant data
 values are never fetched by the site.
 
+**The theme follows the account.** Signed out, the footer toggle and the
+browser's stored choice work as before. Signed in, the choice lives on the
+Profile section's Appearance card, is saved to the account
+(`v1/account/preferences`, every tier), arrives on `/ping` as `user.theme`,
+and `src/runtime/userTheme.js` applies it the moment a session exists and
+hides the footer toggle (`body.has-session`).
+
 **In-product explainers.** Every complex surface carries a plain text link,
 "How this works", that opens a short, human-written explainer from
 `docs/explain/` in the legal viewer's frame (`src/components/explainer.js`,

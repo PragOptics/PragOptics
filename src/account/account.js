@@ -22,6 +22,8 @@ import { openReportAnomaly, installErrorCapture } from './report.js';
 import { renderTeam, renderTenants, bindTeamActions } from './team.js';
 import { renderEnvironment, bindEnvironmentActions } from './environment.js';
 import { explainLink } from '../components/explainer.js';
+import { applyTheme, getTheme } from '../runtime/theme.js';
+import { syncUserTheme, rememberUserTheme } from '../runtime/userTheme.js';
 
 // Report Anomaly attaches the last few console errors to a report, so the
 // collector starts with the panel module, not with the first click.
@@ -399,9 +401,36 @@ function aliasRowHtml(a) {
   `;
 }
 
+// The theme lives on the account (v1/account/preferences, every tier): apply
+// it here at once, remember it, and keep the cached ping honest so a re-sync
+// never undoes the click. A save that fails leaves the theme applied for this
+// browser and says so.
+async function setThemePreference(theme) {
+  const t = theme === 'light' ? 'light' : 'dark';
+  applyTheme(t);
+  document.querySelectorAll('[data-acct-action="theme-set"]').forEach(b => b.setAttribute('aria-pressed', b.dataset.theme === t ? 'true' : 'false'));
+  showError('acctThemeError', '');
+  try {
+    await apiFetch(`${PRAG_API_BASE}/account/preferences`, { method: 'POST', body: JSON.stringify({ theme: t }) });
+    rememberUserTheme(t);
+  } catch (ex) {
+    if (ex?.status === 404) { showError('acctThemeError', 'Applied here. This lane does not remember the choice yet.'); return; }
+    showError('acctThemeError', friendlyError(ex, 'Applied here, but the choice could not be saved to your account.'));
+  }
+}
+
 async function renderProfile(main) {
   main.innerHTML = `
     <header class="acct-sec-head"><h2 class="acct-sec-title">Profile</h2></header>
+    <section class="acct-card">
+      <h3 class="acct-card-h">Appearance</h3>
+      <p class="acct-card-note">Dark or light, remembered on your account, so the site looks the same wherever you sign in.</p>
+      <div class="acct-seg" role="group" aria-label="Theme">
+        <button class="btn btn-sm" type="button" data-acct-action="theme-set" data-theme="dark" aria-pressed="${getTheme() === 'dark' ? 'true' : 'false'}">Dark</button>
+        <button class="btn btn-sm" type="button" data-acct-action="theme-set" data-theme="light" aria-pressed="${getTheme() === 'light' ? 'true' : 'false'}">Light</button>
+      </div>
+      <p class="acct-error" id="acctThemeError" hidden></p>
+    </section>
     <section class="acct-card">
       <h3 class="acct-card-h">Email addresses</h3>
       <p class="acct-card-note">Any verified address can sign you in. Your primary address is where account and recovery mail is sent.</p>
@@ -3944,6 +3973,7 @@ function bindOnce() {
       if (a === 'phone-remove') return void removePhone();
       if (a === 'report-anomaly') return void reportAnomaly();
       if (a === 'notify-save') return void saveNotifyPrefs(act);
+      if (a === 'theme-set') return void setThemePreference(act.dataset.theme);
       if (a === 'close-account') return void closeAccount();
       if (a === 'add-alias') return void addAlias();
       if (a === 'change-password') return void changePassword();
@@ -4091,6 +4121,7 @@ export function initAccountView() {
 
 export function onAccountEnter() {
   if (!$body) return;
+  syncUserTheme();
   if (!hasLiveSession()) {
     $body.innerHTML = '';
     mounted = false;

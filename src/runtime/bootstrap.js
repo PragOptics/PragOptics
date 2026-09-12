@@ -28,6 +28,7 @@
     import { initCookieNotice } from '../components/cookieNotice.js';
     import { initLegalViewer } from '../components/legalViewer.js';
     import { initExplainer } from '../components/explainer.js';
+    import { syncUserTheme } from './userTheme.js';
     import { initBrochureViewer } from '../components/brochureViewer.js';
     import { renderHardwareGallery } from '../shop/gallery.js';
     import { renderFeaturedProducts } from '../shop/featured.js';
@@ -92,6 +93,9 @@
     // The "How it works" pop-outs: one text link per complex surface, a short
     // human-written explainer from /docs/explain/ in the legal viewer's frame.
     initExplainer();
+    // A page that loads with a session already in it: the account's theme
+    // and the footer toggle's absence apply at once (src/runtime/userTheme.js).
+    syncUserTheme();
 
     initFooter();
     initCookieNotice();
@@ -495,6 +499,9 @@ function setToken(tokens) {
 
     // make it available to all view controllers
     window.isAccessTokenValid = isAccessTokenValid;
+    // The session's state is settled here: the account's theme and the footer
+    // toggle's absence follow it (src/runtime/userTheme.js).
+    syncUserTheme();
 
     /* ===========================
        AGREEMENT MODAL
@@ -782,6 +789,7 @@ window.applyPostLoginResolution = applyPostLoginResolution;
           });
           const ping = await pingRes.json();
           sessionStorage.setItem("pragoptics_ping", JSON.stringify(ping));
+          syncUserTheme();
           window.setConsoleAuthenticated?.();
           applyPostLoginResolution({ ping });
         } catch {
@@ -853,6 +861,7 @@ window.applyPostLoginResolution = applyPostLoginResolution;
         headers: { Authorization: `Bearer ${token}` }
       });
       sessionStorage.setItem("pragoptics_ping", JSON.stringify(ping));
+      syncUserTheme();
 
       if (!ping?.billingProfile) {
         // Nothing to manage yet: run first-time setup. force: the owner asked
@@ -889,6 +898,7 @@ window.applyPostLoginResolution = applyPostLoginResolution;
         headers: { Authorization: `Bearer ${token}` }
       });
       sessionStorage.setItem("pragoptics_ping", JSON.stringify(ping));
+      syncUserTheme();
     } catch (e) {
       showStatusModal({
         mode: "error",

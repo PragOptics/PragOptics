@@ -73,3 +73,4 @@
 .ev-agree input { accent-color: var(--brand-600); width: 15px; height: 15px; margin: 3px 0 0; flex: none; }
 .ev-pay { margin: 12px 0; }
 @media (max-width: 640px) { .ev-reg-form { grid-template-columns: 1fr; } }
+.ev-renew { margin-top: 8px; }

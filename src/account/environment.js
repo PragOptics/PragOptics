@@ -322,6 +322,16 @@ function domainHtml(d) {
   } else {
     body = `<p class="acct-card-note ev-dom-note">Proven ${e(D.fmtDate(d.verifiedAt))}. Serving arrives when the software is hosted; there is nothing more to do for now, and the platform re-checks the record daily.</p>`;
   }
+  // A name registered through PragOptics: its term and the renewal choice
+  // (the owner's). The row is the truth the yearly renewal reads.
+  if (d.registrar) {
+    const r = d.registrar;
+    const owner = myRole() === 'owner';
+    body += `
+      <p class="acct-card-note ev-dom-note">Registered through PragOptics${r.expiresAt ? `, current term ends ${e(D.fmtDate(r.expiresAt))}` : ''}. ${r.autoRenew ? 'Renews yearly at Azure’s price that day, charged to your account a month ahead.' : 'Renewal is off: the name expires at the end of its term unless you turn renewal back on.'}</p>
+      ${owner ? `
+      <label class="ev-agree ev-renew"><input type="checkbox" data-env-toggle="domain-renew" data-host="${e(d.host)}" ${r.autoRenew ? 'checked' : ''} /> <span>Renew automatically each year</span></label>` : ''}`;
+  }
   return `
     <div class="ev-dom">
       <div class="ev-dom-head">
@@ -794,6 +804,13 @@ async function removeDomain(host) {
   catch (ex) { D.showError('evDomainError', errText(ex, 'Could not remove that domain.')); }
 }
 
+async function setRenewal(host, autoRenew, input) {
+  D.showError('evDomainError', '');
+  input.disabled = true;
+  try { await post(`${ENV_URL}/domains/renewal`, { host, autoRenew }); await loadDomains(); }
+  catch (ex) { input.disabled = false; input.checked = !autoRenew; D.showError('evDomainError', errText(ex, 'Could not change the renewal choice.')); }
+}
+
 async function copyText(text, btn) {
   const orig = btn.textContent;
   try { await navigator.clipboard.writeText(text); btn.textContent = 'Copied'; }
@@ -832,6 +849,8 @@ export function bindEnvironmentActions(deps) {
 
   document.addEventListener('change', (e) => {
     if (e.target.id === 'evFile') uploadFiles(e.target.files);
+    const t = e.target.closest?.('[data-env-toggle="domain-renew"]');
+    if (t) setRenewal(t.dataset.host || '', !!t.checked, t);
   });
 
   document.addEventListener('keydown', (e) => {

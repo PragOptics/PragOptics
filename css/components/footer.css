@@ -290,3 +290,7 @@ html[data-theme="light"] .footer-theme-toggle .ft-moon{ display: block; }
 /* support contact under the tagline */
 .footer-support { display: block; margin-top: 4px; font-size: .8rem; color: var(--brand-600); text-decoration: none; }
 .footer-support:hover { text-decoration: underline; }
+
+/* Signed in, the theme is chosen on the Profile section and remembered on
+   the account (src/runtime/userTheme.js); the public toggle steps aside. */
+body.has-session .footer-theme { display: none; }

@@ -12,6 +12,7 @@
 
 import { PRAG_API_BASE } from "../runtime/config.js";
 import { fetchWithDna } from "../api/fetchWithDna.js";
+import { syncUserTheme } from "../runtime/userTheme.js";
 import { passkeySupported, registerPasskey, authenticatePasskey } from "./passkey.js";
 
 // ---- shared session finalizer (mirrors native.js / login.modal.js) ------
@@ -25,6 +26,7 @@ async function finalizeSession(tokens) {
   if (!pingRes.ok) throw new Error(`Ping failed: HTTP ${pingRes.status}`);
   const ping = await pingRes.json();
   sessionStorage.setItem("pragoptics_ping", JSON.stringify(ping));
+  syncUserTheme();
 
   closeHost();
   document.getElementById("loginMask")?.classList.remove("is-open");

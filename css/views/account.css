@@ -275,3 +275,11 @@ select.acct-input { background-color: var(--surface-deep); }
 .acct-notify-detail { font-size: .8rem; line-height: 1.4; }
 .acct-notify-ctl { display: flex; gap: 14px; flex-wrap: wrap; }
 .acct-notify-why { margin: 0 0 10px; }
+
+/* Appearance (Profile): a two-way choice, the pressed side reads as chosen. */
+.acct-seg { display: flex; gap: 8px; flex-wrap: wrap; }
+.acct-seg .btn[aria-pressed="true"] {
+  color: var(--brand-600);
+  border-color: color-mix(in srgb, var(--brand-600) 55%, transparent);
+  background: color-mix(in srgb, var(--brand-600) 12%, transparent);
+}
