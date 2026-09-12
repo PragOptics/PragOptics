@@ -36,7 +36,7 @@ const TEAM_KEY = 'pragoptics_team_id';   // written by team.js; read here so bot
 const SEAT_ROLES = new Set(['owner', 'admin', 'developer', 'member']);
 const DOMAIN_ROLES = new Set(['owner', 'admin', 'developer']);   // who connects, verifies and removes a domain
 
-const ev = { teamId: '', view: null, files: null, filesTruncated: false, keys: null, madeKey: null, filesNote: '', uploading: false, domains: null, domainLimit: 0, cnameTarget: null, domainNote: '', checking: '', registrations: [], reg: null };
+const ev = { teamId: '', view: null, files: null, filesTruncated: false, keys: null, madeKey: null, filesNote: '', uploading: false, domains: null, domainLimit: 0, cnameTarget: null, serving: null, binding: '', domainNote: '', checking: '', registrations: [], reg: null };
 let D = null;
 
 // The registration flow's own state (round 3b-2): a quote, the registrant
@@ -140,6 +140,7 @@ async function loadDomains() {
     ev.domains = d.domains || [];
     ev.domainLimit = Number(d.limit || 0);
     ev.cnameTarget = d.cnameTarget || null;
+    ev.serving = d.serving || null;
     ev.registrations = d.registrations || [];
   } catch (ex) {
     ev.domains = [];
@@ -221,6 +222,7 @@ function summaryHtml(v) {
           <p class="acct-card-note ev-owner">Owner ${e(t.ownerEmail || '')}. The private space where the software, your programs and your team keep data and files.</p>
         </div>
         <div class="ev-actions">
+          ${phase === 'READY' && t.software?.url ? `<a class="btn btn-sm" href="${e(t.software.url)}" target="_blank" rel="noopener" title="The software, in a new tab, signed in with this account">Open the software</a>` : ''}
           <button class="btn btn-sm" type="button" data-env-action="refresh" title="Read the figures again">Refresh</button>
           ${isOwner ? `<button class="btn btn-sm" type="button" data-acct-section="subscription" title="Storage grows with the plan, and with the storage add-on on the User plan">More storage</button>` : ''}
         </div>
@@ -292,7 +294,12 @@ function filesHtml() {
 
 /* ---------- domains ---------- */
 
-function domainTag(status) {
+function domainTag(d) {
+  const status = typeof d === 'string' ? d : d.status;
+  const bs = typeof d === 'string' ? '' : (d.binding?.status || '');
+  if (status === 'VERIFIED' && bs === 'BOUND') return '<span class="acct-tag is-verified">serving</span>';
+  if (status === 'VERIFIED' && bs === 'BINDING') return '<span class="acct-tag is-verified">verified</span><span class="acct-tag is-pending">certificate pending</span>';
+  if (status === 'VERIFIED' && bs === 'BIND_FAILED') return '<span class="acct-tag is-verified">verified</span><span class="acct-tag is-bad">not serving</span>';
   if (status === 'VERIFIED') return '<span class="acct-tag is-verified">verified</span>';
   if (status === 'FAILED') return '<span class="acct-tag is-bad">record missing</span>';
   return '<span class="acct-tag is-pending">waiting for the record</span>';
@@ -313,12 +320,32 @@ function domainHtml(d) {
   const manage = canManageDomains();
   const verified = d.status === 'VERIFIED';
   const checking = ev.checking === d.host;
+  const hosted = !!ev.serving?.hosted;
+  const b = d.binding || {};
+  const bs = b.status || 'UNBOUND';
+  const busy = ev.binding === d.host;
   let body = '';
   if (!verified) {
     body = `
       <p class="acct-card-note ev-dom-note">Add this record where you manage the domain's DNS, then press Verify.${d.status === 'FAILED' ? ' The record was found before and is missing now; put it back to keep the domain.' : ''}</p>
       ${recordHtml('The verification record', d.verifyRecord)}
       ${d.lastCheckedAt ? `<p class="acct-card-note ev-dom-note"><span class="adm-muted">Last checked ${e(D.fmtDate(d.lastCheckedAt))}.</span> ${e(d.lastCheckError || '')}</p>` : ''}`;
+  } else if (hosted) {
+    const recs = (d.records || []).map(r => recordHtml(r.purpose === 'ownership' ? 'The ownership record for the software' : 'The serving record', r)).join('');
+    if (bs === 'BOUND') {
+      body = `<p class="acct-card-note ev-dom-note">Serving at <a href="${e(b.url || `https://${d.host}`)}" target="_blank" rel="noopener">${e(b.url || `https://${d.host}`)}</a> since ${e(D.fmtDate(b.boundAt))}, with a certificate Azure issues and renews. Keep the two records in place.</p>`;
+    } else if (bs === 'BINDING') {
+      body = `<p class="acct-card-note ev-dom-note">Proven ${e(D.fmtDate(d.verifiedAt))}. The certificate for this name is being issued; that usually takes a few minutes, sometimes longer. ${manage ? 'Press Check to see whether it is done; the platform also checks nightly.' : 'The platform checks nightly.'}</p>`;
+    } else if (bs === 'BIND_FAILED') {
+      body = `
+      <p class="acct-error ev-dom-note">Binding did not complete: ${e(b.error || 'Azure did not say why.')}</p>
+      <p class="acct-card-note ev-dom-note">${d.registrar ? 'The platform holds this name’s DNS and has written the records; DNS can take up to an hour to show. It tries again nightly, or now with Try again.' : 'Check the two records below, give DNS a few minutes, then press Try again.'}</p>
+      ${recs}`;
+    } else {
+      body = `
+      <p class="acct-card-note ev-dom-note">Proven ${e(D.fmtDate(d.verifiedAt))}. ${d.registrar ? 'The platform holds this name’s DNS and points it at the software on its own: binding starts within a day, or now with Bind.' : 'Create these two records where you manage the domain’s DNS, then press Bind. The software then serves your site at this name, with a certificate Azure issues and renews.'}</p>
+      ${recs}`;
+    }
   } else if (d.cname) {
     body = `
       <p class="acct-card-note ev-dom-note">Proven ${e(D.fmtDate(d.verifiedAt))}. Point the name at the software with this record, and it serves your site.</p>
@@ -340,13 +367,16 @@ function domainHtml(d) {
     <div class="ev-dom">
       <div class="ev-dom-head">
         <span class="ev-dom-host">${e(d.host)}</span>
-        ${domainTag(d.status)}
+        ${domainTag(d)}
         ${d.addedBy ? `<span class="ev-dom-when">connected by ${e(d.addedBy)} ${e(D.fmtDate(d.addedAt))}</span>` : ''}
       </div>
       ${body}
       ${manage ? `
       <div class="ev-dom-actions">
         ${verified ? '' : `<button class="btn btn-sm" type="button" data-env-action="domain-verify" data-host="${e(d.host)}" ${checking ? 'disabled' : ''}>${checking ? 'Checking…' : 'Verify'}</button>`}
+        ${verified && hosted ? (bs === 'BOUND'
+          ? `<button class="btn btn-sm" type="button" data-env-action="domain-unbind" data-host="${e(d.host)}">Unbind</button>`
+          : `<button class="btn btn-sm" type="button" data-env-action="domain-bind" data-host="${e(d.host)}" ${busy ? 'disabled' : ''}>${busy ? 'Working…' : bs === 'BINDING' ? 'Check' : bs === 'BIND_FAILED' ? 'Try again' : 'Bind'}</button>`) : ''}
         <button class="btn btn-sm" type="button" data-env-action="domain-remove" data-host="${e(d.host)}">Remove</button>
       </div>` : ''}
     </div>`;
@@ -801,6 +831,27 @@ async function verifyDomain(host) {
   }
 }
 
+async function bindDomain(host) {
+  D.showError('evDomainError', '');
+  ev.binding = host; paintDomains();
+  try {
+    const r = await post(`${ENV_URL}/domains/bind`, { host });
+    ev.binding = '';
+    await loadDomains();
+    if (r.outcome === 'failed') D.showError('evDomainError', r.domain?.binding?.error || 'Binding did not complete.');
+  } catch (ex) {
+    ev.binding = ''; paintDomains();
+    D.showError('evDomainError', errText(ex, 'Binding did not run.'));
+  }
+}
+
+async function unbindDomain(host) {
+  if (!window.confirm(`Stop serving at ${host}? The name stays connected and verified; Bind puts it back.`)) return;
+  D.showError('evDomainError', '');
+  try { await post(`${ENV_URL}/domains/unbind`, { host }); await loadDomains(); }
+  catch (ex) { D.showError('evDomainError', errText(ex, 'Could not unbind that domain.')); }
+}
+
 async function removeDomain(host) {
   if (!window.confirm(`Remove ${host}? It stops serving anything from here and can be connected again later.`)) return;
   D.showError('evDomainError', '');
@@ -874,6 +925,8 @@ export function bindEnvironmentActions(deps) {
     if (a === 'domain-add') return void addDomain(btn);
     if (a === 'domain-verify') return void verifyDomain(btn.dataset.host || '');
     if (a === 'domain-remove') return void removeDomain(btn.dataset.host || '');
+    if (a === 'domain-bind') return void bindDomain(btn.dataset.host || '');
+    if (a === 'domain-unbind') return void unbindDomain(btn.dataset.host || '');
     if (a === 'domain-copy') return void copyText(btn.dataset.text || '', btn);
     if (a === 'domain-reg-check') return void regCheck();
     if (a === 'domain-reg-continue') { ev.reg.step = 'contact'; ev.reg.error = ''; paintDomains(); document.getElementById('evRegFirst')?.focus(); return; }

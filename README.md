@@ -212,8 +212,12 @@ Because of that, treat `main` as production:
 `css/views/environment.css`) is the customer's view of the private space a
 paid plan sets up: the storage bar against the allowance, the files in their
 container, their connected domains (a Domains card that hands out the TXT
-record to create, verifies it on demand, shows the CNAME once the software
-is hosted, and registers a new name through PragOptics: a quote, the
+record to create, verifies it on demand, and once the software is hosted
+shows the two serving records and binds the name to the software with a
+certificate: Bind, certificate pending with Check, serving with the address,
+a refusal with Azure's sentence and Try again, Unbind; a name registered here
+is bound by the platform on its own. The card also registers a new name
+through PragOptics: a quote, the
 registrant contact, the registrar agreements, and payment in the card
 through the shop order path), and their API keys. A paused environment
 (the subscription ended or the account closed) shows the date it is kept

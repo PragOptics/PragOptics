@@ -7,7 +7,7 @@ A domain you own can serve what you build here. Connecting it is two short steps
 ```flow
 Connect | Type the name, e.g. www.example.com. You get one TXT record to add at your registrar: a name and a value.
 Prove | Add that record where you manage the domain's DNS, then press Verify. The platform reads the record back. That is the whole proof of ownership.
-Point | Once the software is hosted, the card shows one more record, a CNAME, that sends visitors to your site. Until then there is nothing else to do.
+Point | Once the software is hosted, the card shows two more records that send visitors to your site, and a Bind button. Press it and the platform issues a certificate and serves your site at the name. Until then there is nothing else to do.
 ```
 
 ## Where the record goes
@@ -25,6 +25,16 @@ A record exists but carries a different value. Compare it with the card; the val
 The name is already connected to another environment. One environment holds a name at a time. Remove it there first.
 
 A verified domain whose record later disappears is marked failed after three daily checks. Put the record back and press Verify.
+
+## Serving your site at the name
+
+Once the software is hosted, a verified name gets two more records on the card: a TXT record at asuid.your-name that proves the name to Azure, and a record that points the name at the software: a CNAME for a name like www.example.com, an A record for example.com itself. Add both where you manage the DNS, then press Bind.
+
+Binding puts the name on the software and asks Azure for a certificate. The card reads certificate pending while Azure issues it, usually a few minutes; press Check, or wait, since the platform checks nightly. When it is done the card reads serving, and https://your-name opens your site with a certificate that renews on its own.
+
+If a record is missing, Azure says so and the card shows the sentence. Fix the record, give DNS a few minutes, and press Try again. Unbind takes the name off the software and keeps it connected and verified, so Bind puts it back any time.
+
+A name registered through PragOptics needs none of this by hand: the platform holds its DNS, writes the records itself and binds it within a day, or at once when you press Bind.
 
 ## Registering a new one here
 
