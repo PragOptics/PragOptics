@@ -424,7 +424,7 @@ function registerHtml() {
     const f = (id, label, val, extra = '') => `<label class="acct-label" for="${id}">${label}</label><input class="acct-input" type="text" id="${id}" value="${e(val || '')}" ${extra} />`;
     return `
       ${head}
-      <p class="acct-card-note"><b>${e(q.host)}</b>, ${e(money(q.priceCents))} for the first year. The registry records a contact for every domain; privacy protection is on, so the public record shows the registrar's proxy, not you.</p>
+      <p class="acct-card-note"><b>${e(q.host)}</b>, ${e(money(q.priceCents))} for the first year, plus any sales tax due at your address. The registry records a contact for every domain; privacy protection is on, so the public record shows the registrar's proxy, not you.</p>
       <div class="ev-reg-form">
         ${f('evRegFirst', 'First name', c.nameFirst, 'autocomplete="given-name"')}
         ${f('evRegLast', 'Last name', c.nameLast, 'autocomplete="family-name"')}
