@@ -26,15 +26,23 @@
 import { PRAG_API_BASE } from '../runtime/config.js';
 import { tierName } from '../components/tierCopy.js';
 import { explainLink } from '../components/explainer.js';
+import { stripeAppearance } from '../api/stripeAppearance.js';
+import { ensureStripeJs } from '../runtime/stripeLoader.js';
 
 const TENANT_URL = `${PRAG_API_BASE}/tenant`;
 const ENV_URL = `${PRAG_API_BASE}/environment`;
+const ORDERS_CHECKOUT_URL = `${PRAG_API_BASE}/orders/checkout`;
 const TEAM_KEY = 'pragoptics_team_id';   // written by team.js; read here so both sections mean the same team
 const SEAT_ROLES = new Set(['owner', 'admin', 'developer', 'member']);
 const DOMAIN_ROLES = new Set(['owner', 'admin', 'developer']);   // who connects, verifies and removes a domain
 
-const ev = { teamId: '', view: null, files: null, filesTruncated: false, keys: null, madeKey: null, filesNote: '', uploading: false, domains: null, domainLimit: 0, cnameTarget: null, domainNote: '', checking: '' };
+const ev = { teamId: '', view: null, files: null, filesTruncated: false, keys: null, madeKey: null, filesNote: '', uploading: false, domains: null, domainLimit: 0, cnameTarget: null, domainNote: '', checking: '', registrations: [], reg: null };
 let D = null;
+
+// The registration flow's own state (round 3b-2): a quote, the registrant
+// contact, an order with its payment element, then the wait for the registry.
+function freshReg() { return { host: '', quote: null, step: 'idle', error: '', busy: false, contact: {}, order: null, stripe: null, elements: null, polls: 0 }; }
+ev.reg = freshReg();
 
 function teamId() { try { return sessionStorage.getItem(TEAM_KEY) || ''; } catch { return ''; } }
 function forgetTeam() { try { sessionStorage.removeItem(TEAM_KEY); } catch { /* fine */ } }
@@ -75,7 +83,7 @@ function canManageDomains() { return DOMAIN_ROLES.has(myRole()); }
 
 export async function renderEnvironment(main, deps) {
   D = deps;
-  ev.madeKey = null; ev.filesNote = ''; ev.files = null; ev.keys = null; ev.domains = null; ev.domainNote = ''; ev.checking = '';
+  ev.madeKey = null; ev.filesNote = ''; ev.files = null; ev.keys = null; ev.domains = null; ev.domainNote = ''; ev.checking = ''; ev.registrations = []; ev.reg = freshReg();
   main.innerHTML = `
     <header class="acct-sec-head has-explain"><h2 class="acct-sec-title">Environment</h2>${explainLink('environment', 'How your environment works')}</header>
     <p class="acct-error" id="evError" hidden></p>
@@ -131,6 +139,7 @@ async function loadDomains() {
     ev.domains = d.domains || [];
     ev.domainLimit = Number(d.limit || 0);
     ev.cnameTarget = d.cnameTarget || null;
+    ev.registrations = d.registrations || [];
   } catch (ex) {
     ev.domains = [];
     if (ex?.status === 404) ev.domainNote = 'The domain routes are not on this lane yet.';
@@ -350,8 +359,204 @@ function domainsHtml() {
       ${limit ? `<p class="acct-card-note ev-count">${e(String((rows || []).length))} of ${e(String(limit))} on this plan.${full ? ' Remove one to connect another, or move up a plan.' : ''}</p>` : ''}` : `<p class="acct-card-note">The owner, an admin or a developer connects domains; everyone on the team sees them here.</p>`}
       <p class="acct-error" id="evDomainError" hidden></p>
       ${ev.domainNote ? `<p class="acct-card-note">${e(ev.domainNote)}</p>` : ''}
+      ${registrationsHtml()}
       ${list}
+      ${myRole() === 'owner' && !ev.domainNote ? registerHtml() : ''}
     </section>`;
+}
+
+/* ---------- registration through PragOptics ---------- */
+
+function money(cents) { return `$${(Number(cents || 0) / 100).toFixed(2)}`; }
+
+/** Names bought and not on the list yet: the registry is still working, or it failed. */
+function registrationsHtml() {
+  const e = D.escapeHtml;
+  const rows = ev.registrations || [];
+  if (!rows.length) return '';
+  return `
+    <div class="ev-domains">
+      ${rows.map(r => `
+        <div class="ev-dom">
+          <div class="ev-dom-head">
+            <span class="ev-dom-host">${e(r.host)}</span>
+            ${r.status === 'FAILED' ? '<span class="acct-tag is-bad">registration failed</span>' : '<span class="acct-tag is-pending">registering</span>'}
+          </div>
+          <p class="acct-card-note ev-dom-note">${r.status === 'FAILED'
+            ? `The registry did not complete it${r.error ? `: ${e(r.error)}` : ''}. Nothing was registered; support refunds order ${e(String(r.orderId).slice(0, 8))} in full.`
+            : `Paid on order ${e(String(r.orderId).slice(0, 8))}. The registry usually finishes within a few minutes; this card updates on its own.`}</p>
+        </div>`).join('')}
+    </div>`;
+}
+
+function registerHtml() {
+  const e = D.escapeHtml;
+  const r = ev.reg;
+  const q = r.quote;
+  const c = r.contact || {};
+  const head = `<h4 class="tm-sub-h">Register a new domain</h4>`;
+  if (r.step === 'idle' || r.step === 'checking') {
+    return `
+      ${head}
+      <p class="acct-card-note">Do not have one yet? Type the name you want. The price is the registrar's, passed through with no markup, and the domain is yours.</p>
+      <div class="ev-dom-row">
+        <input class="acct-input" type="text" id="evRegHost" maxlength="253" placeholder="yourname.com" autocomplete="off" spellcheck="false" autocapitalize="off" value="${e(r.host)}" ${r.busy ? 'disabled' : ''} />
+        <button class="btn" type="button" data-env-action="domain-reg-check" ${r.busy ? 'disabled' : ''}>${r.busy ? 'Checking…' : 'Check'}</button>
+      </div>
+      <p class="acct-error" id="evRegError" ${r.error ? '' : 'hidden'}>${e(r.error)}</p>`;
+  }
+  if (r.step === 'quoted') {
+    if (!q.offered) {
+      return `${head}<p class="acct-card-note"><b>${e(q.host)}</b>: ${e(q.reason || 'not offered here.')}</p><div class="ev-dom-actions"><button class="btn btn-sm" type="button" data-env-action="domain-reg-cancel">Try another</button></div>`;
+    }
+    if (!q.available) {
+      return `${head}<p class="acct-card-note"><b>${e(q.host)}</b> is taken. If it is yours, connect it above instead.</p><div class="ev-dom-actions"><button class="btn btn-sm" type="button" data-env-action="domain-reg-cancel">Try another</button></div>`;
+    }
+    return `
+      ${head}
+      <p class="acct-card-note"><b>${e(q.host)}</b> is available: <b>${e(money(q.priceCents))}</b> for the first year, the registrar's price with no markup. ${e(q.note || '')}</p>
+      <div class="ev-dom-actions">
+        <button class="btn" type="button" data-env-action="domain-reg-continue">Continue</button>
+        <button class="btn btn-sm" type="button" data-env-action="domain-reg-cancel">Try another</button>
+      </div>`;
+  }
+  if (r.step === 'contact') {
+    const f = (id, label, val, extra = '') => `<label class="acct-label" for="${id}">${label}</label><input class="acct-input" type="text" id="${id}" value="${e(val || '')}" ${extra} />`;
+    return `
+      ${head}
+      <p class="acct-card-note"><b>${e(q.host)}</b>, ${e(money(q.priceCents))} for the first year. The registry records a contact for every domain; privacy protection is on, so the public record shows the registrar's proxy, not you.</p>
+      <div class="ev-reg-form">
+        ${f('evRegFirst', 'First name', c.nameFirst, 'autocomplete="given-name"')}
+        ${f('evRegLast', 'Last name', c.nameLast, 'autocomplete="family-name"')}
+        ${f('evRegOrg', 'Organization (optional)', c.organization, 'autocomplete="organization"')}
+        ${f('evRegEmail', 'Email', c.email || q.contact?.email, 'autocomplete="email" inputmode="email"')}
+        ${f('evRegPhone', 'Phone', c.phone, 'autocomplete="tel" inputmode="tel" placeholder="+1 555 123 4567"')}
+        ${f('evRegAddr1', 'Street', c.address1, 'autocomplete="address-line1"')}
+        ${f('evRegAddr2', 'Street, line 2 (optional)', c.address2, 'autocomplete="address-line2"')}
+        ${f('evRegCity', 'City', c.city, 'autocomplete="address-level2"')}
+        ${f('evRegState', 'State', c.state, 'autocomplete="address-level1"')}
+        ${f('evRegZip', 'Postal code', c.postalCode, 'autocomplete="postal-code"')}
+        ${f('evRegCountry', 'Country (two letters)', c.country || 'US', 'autocomplete="country" maxlength="2"')}
+      </div>
+      <label class="ev-agree"><input type="checkbox" id="evRegAgree" ${r.agree ? 'checked' : ''} /> <span>I accept the registrar agreements: ${(q.agreements || []).map(a => a.url ? `<a class="acct-inline-link" href="${e(a.url)}" target="_blank" rel="noopener noreferrer">${e(a.title || a.key)}</a>` : e(a.title || a.key)).join(', ')}.</span></label>
+      <p class="acct-error" id="evRegError" ${r.error ? '' : 'hidden'}>${e(r.error)}</p>
+      <div class="ev-dom-actions">
+        <button class="btn" type="button" data-env-action="domain-reg-pay" ${r.busy ? 'disabled' : ''}>${r.busy ? 'Starting…' : `Pay ${e(money(q.priceCents))} and register`}</button>
+        <button class="btn btn-sm" type="button" data-env-action="domain-reg-cancel">Cancel</button>
+      </div>`;
+  }
+  if (r.step === 'paying') {
+    return `
+      ${head}
+      <p class="acct-card-note"><b>${e(q.host)}</b>, ${e(money(r.order?.breakdown?.totalCents ?? q.priceCents))}${r.order?.breakdown?.taxCents ? ` including ${e(money(r.order.breakdown.taxCents))} tax` : ''}. Order ${e(String(r.order?.orderId || '').slice(0, 8))}.</p>
+      <div id="evRegPayEl" class="ev-pay"></div>
+      <p class="acct-error" id="evRegError" ${r.error ? '' : 'hidden'}>${e(r.error)}</p>
+      <div class="ev-dom-actions">
+        <button class="btn" type="button" data-env-action="domain-reg-confirm" ${r.busy ? 'disabled' : ''}>${r.busy ? 'Paying…' : 'Confirm payment'}</button>
+        <button class="btn btn-sm" type="button" data-env-action="domain-reg-cancel" ${r.busy ? 'disabled' : ''}>Cancel</button>
+      </div>`;
+  }
+  if (r.step === 'paid') {
+    return `${head}<p class="acct-card-note"><b>${e(q.host)}</b> is paid. The registry is working; it usually takes a few minutes and this card updates on its own.</p>`;
+  }
+  if (r.step === 'done') {
+    return `${head}<p class="acct-card-note"><b>${e(q.host)}</b> is registered and on the list above.</p><div class="ev-dom-actions"><button class="btn btn-sm" type="button" data-env-action="domain-reg-cancel">Register another</button></div>`;
+  }
+  return '';
+}
+
+function readContact() {
+  const v = (id) => (document.getElementById(id)?.value || '').trim();
+  return {
+    nameFirst: v('evRegFirst'), nameLast: v('evRegLast'), organization: v('evRegOrg'), email: v('evRegEmail'), phone: v('evRegPhone'),
+    address1: v('evRegAddr1'), address2: v('evRegAddr2'), city: v('evRegCity'), state: v('evRegState'), postalCode: v('evRegZip'), country: v('evRegCountry').toUpperCase()
+  };
+}
+
+async function regCheck() {
+  const r = ev.reg;
+  r.host = (document.getElementById('evRegHost')?.value || '').trim();
+  r.error = '';
+  if (!r.host) { r.error = 'Type the name you want, e.g. yourname.com.'; paintDomains(); return; }
+  r.busy = true; paintDomains();
+  try {
+    r.quote = await post(`${ENV_URL}/domains/register/check`, { host: r.host });
+    r.step = 'quoted';
+  } catch (ex) {
+    r.error = errText(ex, 'Could not check that name.');
+    if (ex?.data?.suggest) r.host = ex.data.suggest;
+  }
+  r.busy = false; paintDomains();
+}
+
+async function regPay() {
+  const r = ev.reg;
+  r.contact = readContact();
+  r.agree = !!document.getElementById('evRegAgree')?.checked;
+  r.error = '';
+  if (!r.agree) { r.error = 'Accept the registrar agreements to continue.'; paintDomains(); return; }
+  r.busy = true; paintDomains();
+  try {
+    const me = D.cachedPing?.()?.user || {};
+    const data = await D.apiFetch(ORDERS_CHECKOUT_URL, {
+      method: 'POST',
+      body: JSON.stringify({
+        email: r.contact.email || me.email || '',
+        name: `${r.contact.nameFirst} ${r.contact.nameLast}`.trim(),
+        lines: [{ productId: r.quote.sku, qty: 1, domain: { host: r.quote.host, environmentId: ev.view?.tenant?.environmentId, contact: r.contact, agreementKeys: (r.quote.agreements || []).map(a => a.key) } }]
+      })
+    });
+    r.order = data;
+    r.step = 'paying'; r.busy = false; paintDomains();
+    await ensureStripeJs().catch(() => null);
+    const stripe = window.Stripe?.(window.STRIPE_PUBLISHABLE_KEY);
+    if (!stripe) throw new Error('Stripe is not available right now.');
+    const elements = stripe.elements({ clientSecret: data.clientSecret, appearance: stripeAppearance() });
+    const el = elements.create('payment');
+    el.mount('#evRegPayEl');
+    r.stripe = stripe; r.elements = elements;
+  } catch (ex) {
+    r.busy = false;
+    r.error = errText(ex, 'Could not start the order.');
+    if (r.step === 'paying') r.step = 'contact';
+    paintDomains();
+  }
+}
+
+async function regConfirm() {
+  const r = ev.reg;
+  if (!r.stripe || !r.elements) return;
+  r.error = ''; r.busy = true;
+  const btn = document.querySelector('[data-env-action="domain-reg-confirm"]');
+  if (btn) { btn.disabled = true; btn.textContent = 'Paying…'; }
+  try {
+    const { error, paymentIntent } = await r.stripe.confirmPayment({
+      elements: r.elements,
+      confirmParams: { return_url: `${location.origin}${location.pathname}?post=domain` },
+      redirect: 'if_required'
+    });
+    if (error) throw new Error(error.message || 'Payment failed.');
+    if (paymentIntent && paymentIntent.status !== 'succeeded' && paymentIntent.status !== 'processing') throw new Error(`Payment ${paymentIntent.status}.`);
+    r.step = 'paid'; r.busy = false; r.stripe = null; r.elements = null;
+    paintDomains();
+    pollRegistration(r.quote.host);
+  } catch (ex) {
+    r.busy = false; r.error = ex?.message || 'Payment failed.';
+    paintDomains();
+    // The element was unmounted by the repaint; mount it again for another try.
+    if (r.elements) { try { r.elements.create('payment').mount('#evRegPayEl'); } catch { /* fine */ } }
+  }
+}
+
+async function pollRegistration(host) {
+  const r = ev.reg;
+  for (let i = 0; i < 40 && ev.reg === r && r.step === 'paid'; i++) {
+    await new Promise(res => setTimeout(res, 6000));
+    if (ev.reg !== r || r.step !== 'paid') return;
+    await loadDomains();
+    if ((ev.domains || []).some(d => d.host === host)) { r.step = 'done'; paintDomains(); return; }
+    if ((ev.registrations || []).some(x => x.host === host && x.status === 'FAILED')) { r.step = 'idle'; r.host = ''; paintDomains(); return; }
+  }
 }
 
 /* ---------- keys ---------- */
@@ -618,6 +823,11 @@ export function bindEnvironmentActions(deps) {
     if (a === 'domain-verify') return void verifyDomain(btn.dataset.host || '');
     if (a === 'domain-remove') return void removeDomain(btn.dataset.host || '');
     if (a === 'domain-copy') return void copyText(btn.dataset.text || '', btn);
+    if (a === 'domain-reg-check') return void regCheck();
+    if (a === 'domain-reg-continue') { ev.reg.step = 'contact'; ev.reg.error = ''; paintDomains(); document.getElementById('evRegFirst')?.focus(); return; }
+    if (a === 'domain-reg-pay') return void regPay();
+    if (a === 'domain-reg-confirm') return void regConfirm();
+    if (a === 'domain-reg-cancel') { ev.reg = freshReg(); paintDomains(); return; }
   });
 
   document.addEventListener('change', (e) => {
@@ -627,5 +837,6 @@ export function bindEnvironmentActions(deps) {
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && e.target.id === 'evKeyLabel') { e.preventDefault(); document.querySelector('[data-env-action="key-make"]')?.click(); }
     if (e.key === 'Enter' && e.target.id === 'evDomainHost') { e.preventDefault(); document.querySelector('[data-env-action="domain-add"]')?.click(); }
+    if (e.key === 'Enter' && e.target.id === 'evRegHost') { e.preventDefault(); document.querySelector('[data-env-action="domain-reg-check"]')?.click(); }
   });
 }
