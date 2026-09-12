@@ -139,9 +139,13 @@ function currentEmail() { return knownPrimary || cachedPing()?.user?.email || ''
 // this after a change that moves the primary so the new one survives a reload.
 async function refreshCachedPing() {
   try {
-    const fresh = await apiFetch(PING_URL);
+    // Bypass the browser cache: a plain GET /ping can be served stale (the
+    // catalog desk kept showing a retired lookup key after a sync because the
+    // cached ping never updated). A cache-buster forces the current catalog.
+    const fresh = await apiFetch(`${PING_URL}?t=${Date.now()}`, { cache: 'no-store' });
     if (fresh && fresh.user) sessionStorage.setItem('pragoptics_ping', JSON.stringify(fresh));
-  } catch { /* best-effort; knownPrimary still covers this session */ }
+    return fresh || null;
+  } catch { return null; /* best-effort; knownPrimary still covers this session */ }
 }
 
 // A session that died underneath an open console, named precisely.
@@ -3628,6 +3632,13 @@ function readSnapshot() {
   } catch { return null; }
 }
 
+function catalogPlanRowHtml(r) {
+  return `<tr>
+    <td><code>${escapeHtml(r.lookupKey)}</code></td>
+    <td>${escapeHtml(r.interval || '')}</td>
+    <td>${r.amount !== '' && r.amount != null ? '$' + (Number(r.amount) / 100).toFixed(2) : ''}</td>
+  </tr>`;
+}
 function renderCatalog(main) {
   const ping = cachedPing();
   const rows = Array.isArray(ping?.productCatalog) ? ping.productCatalog : [];
@@ -3660,12 +3671,8 @@ function renderCatalog(main) {
         <div class="adm-table-scroll">
           <table class="adm-table">
             <thead><tr><th>Lookup key</th><th>Interval</th><th>Amount</th></tr></thead>
-            <tbody>
-              ${rows.map(r => `<tr>
-                <td><code>${escapeHtml(r.lookupKey)}</code></td>
-                <td>${escapeHtml(r.interval || '')}</td>
-                <td>${r.amount !== '' && r.amount != null ? '$' + (Number(r.amount) / 100).toFixed(2) : ''}</td>
-              </tr>`).join('')}
+            <tbody id="admCatalogPlanBody">
+              ${rows.map(catalogPlanRowHtml).join('')}
             </tbody>
           </table>
         </div>
@@ -3833,6 +3840,15 @@ async function catalogSync(btn) {
       notes.push(`<details class="adm-details"><summary>${d.pricesWithoutLookupKey} active price${d.pricesWithoutLookupKey === 1 ? '' : 's'} in this Stripe account carr${d.pricesWithoutLookupKey === 1 ? 'ies' : 'y'} no lookup key. The sync leaves them alone and nothing on the site offers them. Open to see which.</summary>${items ? `<ul>${items}</ul>` : ''}</details>`);
     }
     loadCatalogGoods();
+    // The sync just changed this lane's catalog; the ping the desk read is now
+    // stale (retired rows still showing). Refresh it and refill the plan table
+    // in place, so a rename or retirement drops out of the view at once.
+    await refreshCachedPing();
+    const planBody = document.getElementById('admCatalogPlanBody');
+    if (planBody) {
+      const fresh = Array.isArray(cachedPing()?.productCatalog) ? cachedPing().productCatalog : [];
+      if (fresh.length) planBody.innerHTML = fresh.map(catalogPlanRowHtml).join('');
+    }
     if (!(r.goodsUpserted || 0) && !(d.skuProductsWithoutGoodsPrice || []).length && !(d.goodsKeysSeen || []).length) notes.push('No goods came across and no product is tagged <code>po_sku</code> in the Stripe account this lane uses. If you created the product in a different sandbox, this lane cannot see it.');
     if (diagEl) diagEl.innerHTML = notes.length ? `<ul class="adm-note adm-diag">${notes.map(n => `<li>${n}</li>`).join('')}</ul>` : '';
   } catch (ex) {
