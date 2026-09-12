@@ -146,6 +146,11 @@ export async function submitNativeSignup({
     phone: String(phone || "").trim(),
     agreementAck
   };
+  // A team invite the person arrived with (the join page stashes it). Live
+  // ignores it; the dev sandbox, where signup is otherwise closed, opens for
+  // exactly the address a pending invite names, so the stranger path can be
+  // tested there.
+  try { const t = sessionStorage.getItem("pragoptics_join_token"); if (t) body.inviteToken = String(t); } catch { /* fine */ }
 
   const result = await postJson("/auth/signup", body);
   // A brand-new account just set a password: offer to save it. Signup now

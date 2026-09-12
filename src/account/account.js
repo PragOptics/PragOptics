@@ -1533,7 +1533,7 @@ function subManagerHtml(data) {
           ${escapeHtml(usdCents(totalCents))}${per}${shape.seats ? ` · ${shape.seats} extra seat${shape.seats === 1 ? '' : 's'}` : ''} ·
           ${sub.cancelAtPeriodEnd
             ? `runs until ${escapeHtml(fmtDate(sub.currentPeriodEnd))}, then ends`
-            : `renews ${escapeHtml(fmtDate(sub.currentPeriodEnd))}`}${
+            : `renews ${escapeHtml(fmtDate(sub.currentPeriodEnd))}`}${sub.taxEnabled ? ' · sales tax added at your billing address' : ''}${
           data.upcomingInvoice?.amountDueCents != null && !sub.cancelAtPeriodEnd
             ? ` · next charge ${escapeHtml(usdCents(data.upcomingInvoice.amountDueCents))}` : ''}
         </p>
@@ -1713,10 +1713,10 @@ async function applyPlanChange(btn) {
   const per = sel.cadence === 'annual' ? '/yr' : '/mo';
   // The confirm says what will actually happen, per the backend's rule.
   const armed = kind === 'less'
-    ? `Confirm: ${usdCents(sel.totalCents)}${per} from ${endDate}, no charge now`
+    ? `Confirm: ${usdCents(sel.totalCents)}${per} plus sales tax from ${endDate}, no charge now`
     : kind === 'both'
       ? `Confirm: additions charge today; removals on ${endDate}`
-      : `Confirm: ${usdCents(sel.totalCents)}${per}, difference charged today`;
+      : `Confirm: ${usdCents(sel.totalCents)}${per} plus sales tax, difference charged today`;
   armConfirm(btn, armed, async () => {
     btn.disabled = true;
     // The unarmed label, not the confirm text the button carried a moment
