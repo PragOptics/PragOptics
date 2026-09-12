@@ -820,7 +820,13 @@ async function exportEnvironment(btn) {
     const res = await fetch(url(`${ENV_URL}/export`), { headers: { Authorization: `Bearer ${token}` } });
     if (!res.ok) { let d = null; try { d = await res.json(); } catch { /* fine */ } throw Object.assign(new Error(d?.error || `Export failed (${res.status})`), { status: res.status, data: d }); }
     const blob = await res.blob();
-    const name = (res.headers.get('content-disposition') || '').match(/filename="([^"]+)"/)?.[1] || 'pragoptics-environment.json';
+    // The filename header is not readable across origins, so the name is
+    // composed here the way the API composes it: environment id and date.
+    let name = (res.headers.get('content-disposition') || '').match(/filename="([^"]+)"/)?.[1] || '';
+    if (!name) {
+      const id = String(ev.view?.tenant?.environmentId || '').slice(0, 8) || 'export';
+      name = `pragoptics-environment-${id}-${new Date().toISOString().slice(0, 10)}.json`;
+    }
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob); a.download = name; a.rel = 'noopener';
     document.body.appendChild(a); a.click(); a.remove();
