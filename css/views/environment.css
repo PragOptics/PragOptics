@@ -40,6 +40,17 @@
 .ev-key, .ev-prefix { font-family: ui-monospace, "Cascadia Code", Consolas, monospace; font-size: .8rem; }
 .ev-count { margin: 12px 0 6px; }
 
+/* lanes: Live | Sandbox, a pill switch on the summary card */
+.ev-lanes { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 14px 0 4px; }
+.ev-lane { padding: 6px 14px; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--ink) 18%, transparent); background: transparent; color: var(--muted); font: inherit; font-size: .86rem; font-weight: 600; cursor: pointer; transition: background 140ms ease, color 140ms ease, border-color 140ms ease; }
+.ev-lane:hover { border-color: color-mix(in srgb, var(--brand-600) 60%, transparent); color: var(--card-title); }
+.ev-lane.is-on { background: var(--brand-600); border-color: var(--brand-600); color: var(--on-brand, #fff); }
+.ev-lane:focus-visible { outline: 2px solid var(--brand-600); outline-offset: 2px; }
+.ev-lane .acct-tag { margin-left: 6px; font-size: .68rem; vertical-align: middle; }
+.ev-lane.is-on .acct-tag { background: color-mix(in srgb, #fff 22%, transparent); color: var(--on-brand, #fff); }
+.ev-lane-hint { font-size: .84rem; color: var(--muted); margin-left: 4px; }
+@media (max-width: 640px) { .ev-lane-hint { flex-basis: 100%; margin-left: 0; } }
+
 /* connected accounts: a provider picker, then that provider's own fields */
 .ev-conn-add { margin-top: 4px; }
 .ev-conn-add .ev-key-row .acct-select { flex: 1 1 260px; }

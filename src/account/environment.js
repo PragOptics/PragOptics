@@ -37,7 +37,9 @@ const TEAM_KEY = 'pragoptics_team_id';   // written by team.js; read here so bot
 const SEAT_ROLES = new Set(['owner', 'admin', 'developer', 'member']);
 const DOMAIN_ROLES = new Set(['owner', 'admin', 'developer']);   // who connects, verifies and removes a domain
 
-const ev = { teamId: '', view: null, files: null, filesTruncated: false, keys: null, madeKey: null, filesNote: '', uploading: false, domains: null, domainLimit: 0, cnameTarget: null, serving: null, binding: '', domainNote: '', checking: '', registrations: [], reg: null,
+const LANE_KEY = 'pragoptics_env_lane';   // the lane the person was looking at; survives a section re-render
+function laneChoice() { try { return sessionStorage.getItem(LANE_KEY) === 'sandbox' ? 'sandbox' : 'live'; } catch { return 'live'; } }
+const ev = { lane: laneChoice(), teamId: '', view: null, files: null, filesTruncated: false, keys: null, madeKey: null, filesNote: '', uploading: false, domains: null, domainLimit: 0, cnameTarget: null, serving: null, binding: '', domainNote: '', checking: '', registrations: [], reg: null,
   // Connected accounts (the connection broker): the list, the provider
   // catalog the form renders from, the picked provider, and the last outcome.
   connections: null, connProviders: [], connLimit: 0, connNote: '', connPick: '', connBusy: false, connResult: '', connTesting: '',
@@ -57,10 +59,15 @@ function forgetTeam() { try { sessionStorage.removeItem(TEAM_KEY); } catch { /* 
 function url(path, extra = {}) {
   const u = new URL(path);
   if (ev.teamId) u.searchParams.set('tenant', ev.teamId);
+  if (ev.lane === 'sandbox') u.searchParams.set('lane', 'sandbox');
   for (const [k, v] of Object.entries(extra)) if (v != null && v !== '') u.searchParams.set(k, String(v));
   return u.toString();
 }
-function body(obj) { return JSON.stringify(ev.teamId ? { tenant: ev.teamId, ...obj } : obj); }
+function body(obj) { return JSON.stringify({ ...(ev.teamId ? { tenant: ev.teamId } : {}), ...(ev.lane === 'sandbox' ? { lane: 'sandbox' } : {}), ...obj }); }
+/** Both lanes off the tenant view (older builds carry none: then live is all there is). */
+function lanesOf(t) { return t?.lanes || null; }
+function sandboxState(t) { const l = lanesOf(t); return l ? { phase: String(l.sandbox?.phase || 'NONE').toUpperCase(), available: !!l.sandbox?.available, note: String(l.sandbox?.note || ''), account: String(l.sandbox?.storage?.account || '') } : null; }
+function laneReady(t) { return ev.lane === 'sandbox' ? sandboxState(t)?.phase === 'READY' : true; }
 function cap(s) { s = String(s || ''); return s.charAt(0).toUpperCase() + s.slice(1); }
 function gb(bytes) {
   const v = Number(bytes || 0) / (1024 ** 3);
@@ -143,7 +150,10 @@ async function load() {
     ev.view = await fetchView();
     if (!ev.view.tenant) { host.innerHTML = emptyHtml(ev.view); return; }
     paint();
-    if (['READY', 'SUSPENDED'].includes(phaseOf(ev.view.tenant))) await Promise.all([loadFiles(), loadDomains(), loadKeys(), loadConnections()]);
+    if (['READY', 'SUSPENDED'].includes(phaseOf(ev.view.tenant))) {
+      if (ev.lane === 'sandbox' && !laneReady(ev.view.tenant)) return;   // the setup card is all there is
+      await Promise.all([loadFiles(), ...(ev.lane === 'live' ? [loadDomains()] : []), loadKeys(), loadConnections()]);
+    }
   } catch (ex) {
     host.innerHTML = '';
     if (ex?.status === 404 && !ex?.data?.needsTenant) {
@@ -216,10 +226,86 @@ function paint() {
   if (!host || !ev.view?.tenant) return;
   const phase = phaseOf(ev.view.tenant);
   const ready = phase === 'READY' || phase === 'SUSPENDED';   // paused: the cards show, reads work, writes are refused by the routes
+  // On the sandbox lane the cards appear only once the sandbox is READY;
+  // until then the section explains and (for the owner) offers to set it up.
+  const cards = ev.lane === 'sandbox'
+    ? (laneReady(ev.view.tenant) ? `<div id="evFiles">${filesHtml()}</div><div id="evConnections">${connectionsHtml()}</div><div id="evKeys">${keysHtml()}</div>` : sandboxSetupHtml(ev.view))
+    : `<div id="evFiles">${filesHtml()}</div><div id="evConnections">${connectionsHtml()}</div><div id="evDomains">${domainsHtml()}</div><div id="evKeys">${keysHtml()}</div>`;
   host.innerHTML = `
     ${summaryHtml(ev.view)}
-    ${ready ? `<div id="evFiles">${filesHtml()}</div><div id="evConnections">${connectionsHtml()}</div><div id="evDomains">${domainsHtml()}</div><div id="evKeys">${keysHtml()}</div>` : ''}
+    ${ready ? cards : ''}
   `;
+}
+
+/* ---------- lanes ---------- */
+
+function laneSwitchHtml(t) {
+  const l = lanesOf(t);
+  if (!l) return '';
+  const sb = sandboxState(t);
+  const tag = sb.phase === 'READY' ? '' : sb.phase === 'PROVISIONING' ? ' <span class="acct-tag is-pending">setting up</span>' : ' <span class="acct-tag">not set up</span>';
+  return `
+    <div class="ev-lanes" role="tablist" aria-label="Which lane of this environment">
+      <button class="ev-lane ${ev.lane === 'live' ? 'is-on' : ''}" type="button" role="tab" aria-selected="${ev.lane === 'live'}" data-env-action="lane-live">Live</button>
+      <button class="ev-lane ${ev.lane === 'sandbox' ? 'is-on' : ''}" type="button" role="tab" aria-selected="${ev.lane === 'sandbox'}" data-env-action="lane-sandbox">Sandbox${tag}</button>
+      <span class="ev-lane-hint">${ev.lane === 'sandbox' ? 'Build and test here. Nothing touches live.' : 'What your programs and your customers use.'}</span>
+    </div>`;
+}
+
+function sandboxSetupHtml(v) {
+  const e = D.escapeHtml;
+  const t = v.tenant, me = v.membership || {};
+  const sb = sandboxState(t) || { phase: 'NONE', available: false, note: '' };
+  const isOwner = me.role === 'owner';
+  if (!sb.available) {
+    return `
+      <section class="acct-card">
+        <h3 class="acct-card-h">Sandbox</h3>
+        <p class="acct-card-note">A sandbox is not available on this lane yet. ${explainLink('environment', 'How your environment works')}</p>
+      </section>`;
+  }
+  if (sb.phase === 'PROVISIONING') {
+    return `
+      <section class="acct-card">
+        <h3 class="acct-card-h">Your sandbox is being set up</h3>
+        <p class="acct-card-note">${e(sb.note || 'Its own storage account is being created. This takes a moment and finishes on its own.')}</p>
+        <div class="acct-actions-row"><button class="btn btn-sm" type="button" data-env-action="refresh">Check again</button></div>
+      </section>`;
+  }
+  return `
+    <section class="acct-card">
+      <h3 class="acct-card-h">A place to build and test</h3>
+      <p class="acct-card-note">A sandbox is a second environment of your own: its own storage account, its own vault, its own connected accounts. Build and test here with test keys, and nothing touches what your customers use. When you are ready, the software pushes your work live. ${explainLink('environment', 'How your environment works')}</p>
+      ${isOwner
+        ? `<div class="acct-actions-row"><button class="btn" type="button" data-env-action="sandbox-setup" ${ev.sandboxBusy ? 'disabled' : ''}>${ev.sandboxBusy ? 'Setting up…' : 'Set up a sandbox'}</button></div>`
+        : `<p class="acct-card-note ev-note">The owner sets up the sandbox. Once it exists, it shows here for everyone on the team.</p>`}
+      <p class="acct-error" id="evSandboxError" hidden></p>
+    </section>`;
+}
+
+async function setLane(lane) {
+  ev.lane = lane === 'sandbox' ? 'sandbox' : 'live';
+  try { sessionStorage.setItem(LANE_KEY, ev.lane); } catch { /* fine */ }
+  ev.files = null; ev.keys = null; ev.domains = null; ev.connections = null; ev.connPick = ''; ev.connResult = ''; ev.madeKey = null; ev.filesNote = '';
+  paint();
+  if (ev.lane === 'live' || laneReady(ev.view?.tenant)) await Promise.all([loadFiles(), ...(ev.lane === 'live' ? [loadDomains()] : []), loadKeys(), loadConnections()]);
+}
+
+async function setupSandbox(btn) {
+  if (ev.sandboxBusy) return;
+  ev.sandboxBusy = true; paint();
+  try {
+    const d = await post(`${ENV_URL}/sandbox`, {});
+    ev.filesNote = '';
+    try { ev.view = await fetchView(); } catch { /* keep */ }
+    ev.sandboxBusy = false;
+    paint();
+    if (d.phase === 'READY') await Promise.all([loadFiles(), loadKeys(), loadConnections()]);
+    const host = document.getElementById('evSandboxError'); if (host && d.note && d.phase !== 'READY') { host.textContent = d.note; host.hidden = false; host.classList.remove('acct-error'); host.classList.add('acct-card-note'); }
+  } catch (ex) {
+    ev.sandboxBusy = false; paint();
+    D.showError('evSandboxError', errText(ex, 'Could not set up the sandbox.'));
+  }
 }
 function paintFiles() { const h = document.getElementById('evFiles'); if (h) h.innerHTML = filesHtml(); }
 function paintDomains() { const h = document.getElementById('evDomains'); if (h) h.innerHTML = domainsHtml(); }
@@ -278,6 +364,7 @@ function summaryHtml(v) {
         </div>
       </div>
       ${phase === 'READY' || phase === 'SUSPENDED' ? `
+      ${laneSwitchHtml(t)}
       <div class="use-row ev-meter">
         <div class="use-head">
           <span class="use-name">Storage</span>
@@ -286,9 +373,11 @@ function summaryHtml(v) {
         <div class="use-track"><div class="use-fill ${cls}" style="width:${pct.toFixed(1)}%"></div></div>
       </div>
       <p class="acct-card-note ev-note">${s.unknown ? 'The bar reads what the plan carries; the figure refreshes with the next read.' : `Every value and every file counts. A write past the allowance plus ${e(gb(s.graceBytes || Math.ceil(limit * 0.1)))} of grace is refused, and nothing is ever deleted to make room.`}</p>
-      ${s.kind ? `<p class="acct-card-note ev-note ev-where">${s.kind === 'dedicated'
-        ? `<span class="acct-tag is-verified">your own storage</span> This environment lives in its own Azure storage account${s.account ? `, <code class="ev-prefix">${e(s.account)}</code>` : ''}: nothing shared with any other customer.`
-        : `<span class="acct-tag">shared storage</span> This environment lives in a private partition of the platform's storage account.`}</p>` : ''}
+      ${(() => { const l = lanesOf(t); const w = (l && l[ev.lane] && l[ev.lane].storage) || { kind: s.kind, account: s.account }; const laneWord = ev.lane === 'sandbox' ? 'Your sandbox' : 'This environment';
+        if (ev.lane === 'sandbox' && (sandboxState(t)?.phase !== 'READY')) return '';
+        return w.kind ? `<p class="acct-card-note ev-note ev-where">${w.kind === 'dedicated'
+          ? `<span class="acct-tag is-verified">your own storage</span> ${laneWord} lives in its own Azure storage account${w.account ? `, <code class="ev-prefix">${e(w.account)}</code>` : ''}: nothing shared with any other customer${ev.lane === 'sandbox' ? ', and nothing shared with your live lane' : ''}.`
+          : `<span class="acct-tag">shared storage</span> ${laneWord} lives in a private partition of the platform's storage account.`}</p>` : ''; })()}
       ${phase === 'SUSPENDED' ? `<p class="acct-error ev-note">This environment is paused${t.suspendReason === 'closed' ? ' because the account was closed' : ' because the subscription ended'}. Everything in it can still be read and downloaded, nothing new can be written.${t.keepUntil ? ` It is kept until ${e(D.fmtDate(t.keepUntil))}, then removed.` : ''}${t.suspendReason === 'closed' ? '' : ' Restore a paid plan on Billing and it resumes exactly as it was.'}</p>` : ''}
       ${(me.role === 'owner' || me.role === 'admin') ? `<div class="acct-actions-row ev-export-row"><button class="btn btn-sm" type="button" data-env-action="export" title="Everything in this environment as one file: data, file links, domains, keys, members">Download everything</button><span class="ev-status" id="evExportStatus" aria-live="polite"></span></div><p class="acct-error" id="evExportError" hidden></p>` : ''}` : ''}
       ${stalled ? `
@@ -743,7 +832,7 @@ function connectionsHtml() {
   return `
     <section class="acct-card">
       <h3 class="acct-card-h">Connected accounts</h3>
-      <p class="acct-card-note">The accounts your environment acts through: text messages, shipping labels, payments, code, mail. You hand over a credential once; the platform proves it with the provider, locks it in a vault that belongs to this environment alone, and uses it on your behalf from then on. It is never shown again. ${explainLink('connections', 'How connected accounts work')}</p>
+      <p class="acct-card-note">The accounts your environment acts through: text messages, shipping labels, payments, code, mail. You hand over a credential once; the platform proves it with the provider, locks it in a vault that belongs to this environment alone, and uses it on your behalf from then on. It is never shown again.${ev.lane === 'sandbox' ? ' <b>This is your sandbox: test keys live here, in its own vault. Live has its own connections.</b>' : ''} ${explainLink('connections', 'How connected accounts work')}</p>
       ${ev.connNote ? `<p class="acct-card-note ev-note">${e(ev.connNote)}</p>` : ''}
       ${form}
       <p class="acct-error" id="evConnError" hidden></p>
@@ -1088,6 +1177,9 @@ export function bindEnvironmentActions(deps) {
     e.preventDefault();
     const a = btn.dataset.envAction;
     if (a === 'refresh') return void refreshAll();
+    if (a === 'lane-live') return void setLane('live');
+    if (a === 'lane-sandbox') return void setLane('sandbox');
+    if (a === 'sandbox-setup') return void setupSandbox(btn);
     if (a === 'export') return void exportEnvironment(btn);
     if (a === 'provision') return void provision();
     if (a === 'open') return void openFile(btn.dataset.name || '', btn, 'open');

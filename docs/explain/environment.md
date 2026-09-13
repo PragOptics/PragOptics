@@ -27,3 +27,13 @@ On the platform's storage in the region you signed up in, encrypted at rest, in 
 ## If the environment says PROVISIONING
 
 Something in the setup did not finish, usually a store still being created. It completes on its own within minutes; if it does not, support can finish it from their side, and nothing you have is lost.
+
+## Sandbox and live
+
+A paid environment has two lanes. **Live** is what your programs and your customers use. **Sandbox** is a second environment of your own: its own storage account, its own vault, its own connected accounts. You build and test in the sandbox with test keys, and nothing you do there touches live. When you are ready, the software pushes your work live.
+
+The owner sets the sandbox up from the Environment section with one click; its storage account takes a moment to create and finishes on its own. Once it exists, everyone on the team can switch between Live and Sandbox at the top of the section.
+
+Connected accounts never move between lanes on their own. A test key you connect in the sandbox stays in the sandbox's vault; live gets its own live keys, entered separately. That is the whole point: a test credential can never end up serving your customers.
+
+Domains serve the live site, so they show on the Live lane only.
