@@ -73,6 +73,28 @@ function bytesFmt(n) {
   if (v < 1024 ** 3) return `${(v / 1024 ** 2).toFixed(1)} MB`;
   return `${(v / 1024 ** 3).toFixed(2)} GB`;
 }
+// A file's type from its NAME. The browser's File.type is empty for .md, .csv,
+// .json, .log and most others, and Azure serves a blob with whatever type it
+// was stored under, so "open" used to download instead of show. Extension is
+// the honest signal for both the upload and the viewer.
+const MIME_BY_EXT = {
+  pdf: 'application/pdf', png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp', svg: 'image/svg+xml', bmp: 'image/bmp', avif: 'image/avif',
+  txt: 'text/plain', md: 'text/markdown', markdown: 'text/markdown', log: 'text/plain', csv: 'text/csv', tsv: 'text/tab-separated-values', json: 'application/json', xml: 'text/xml', yaml: 'text/yaml', yml: 'text/yaml',
+  html: 'text/html', htm: 'text/html', css: 'text/css', js: 'text/javascript', mjs: 'text/javascript', ts: 'text/plain', py: 'text/plain', ps1: 'text/plain', sh: 'text/plain',
+  mp3: 'audio/mpeg', wav: 'audio/wav', mp4: 'video/mp4', webm: 'video/webm',
+  zip: 'application/zip', xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+};
+function extOf(name) { const m = /\.([a-z0-9]+)$/i.exec(String(name || '')); return m ? m[1].toLowerCase() : ''; }
+function mimeFor(name, fallback = '') { return MIME_BY_EXT[extOf(name)] || fallback || 'application/octet-stream'; }
+// What the browser can show on its own in a tab. HTML is shown as TEXT on
+// purpose: a stranger's upload must not run as a page from here.
+function viewTypeFor(name) {
+  const t = mimeFor(name, '');
+  if (t === 'application/pdf' || t.startsWith('image/') || t.startsWith('audio/') || t.startsWith('video/')) return t;
+  if (t === 'text/html' || t === 'text/css' || t === 'text/javascript') return 'text/plain';
+  if (t.startsWith('text/') || t === 'application/json') return 'text/plain';
+  return '';   // not viewable: download it
+}
 function phaseOf(t) { return String(t?.phase || (t?.provisioned ? 'READY' : 'NONE')).toUpperCase(); }
 function phaseTag(phase) {
   if (phase === 'READY') return '<span class="acct-tag is-verified">provisioned</span>';
@@ -264,6 +286,9 @@ function summaryHtml(v) {
         <div class="use-track"><div class="use-fill ${cls}" style="width:${pct.toFixed(1)}%"></div></div>
       </div>
       <p class="acct-card-note ev-note">${s.unknown ? 'The bar reads what the plan carries; the figure refreshes with the next read.' : `Every value and every file counts. A write past the allowance plus ${e(gb(s.graceBytes || Math.ceil(limit * 0.1)))} of grace is refused, and nothing is ever deleted to make room.`}</p>
+      ${s.kind ? `<p class="acct-card-note ev-note ev-where">${s.kind === 'dedicated'
+        ? `<span class="acct-tag is-verified">your own storage</span> This environment lives in its own Azure storage account${s.account ? `, <code class="ev-prefix">${e(s.account)}</code>` : ''}: nothing shared with any other customer.`
+        : `<span class="acct-tag">shared storage</span> This environment lives in a private partition of the platform's storage account.`}</p>` : ''}
       ${phase === 'SUSPENDED' ? `<p class="acct-error ev-note">This environment is paused${t.suspendReason === 'closed' ? ' because the account was closed' : ' because the subscription ended'}. Everything in it can still be read and downloaded, nothing new can be written.${t.keepUntil ? ` It is kept until ${e(D.fmtDate(t.keepUntil))}, then removed.` : ''}${t.suspendReason === 'closed' ? '' : ' Restore a paid plan on Billing and it resumes exactly as it was.'}</p>` : ''}
       ${(me.role === 'owner' || me.role === 'admin') ? `<div class="acct-actions-row ev-export-row"><button class="btn btn-sm" type="button" data-env-action="export" title="Everything in this environment as one file: data, file links, domains, keys, members">Download everything</button><span class="ev-status" id="evExportStatus" aria-live="polite"></span></div><p class="acct-error" id="evExportError" hidden></p>` : ''}` : ''}
       ${stalled ? `
@@ -295,6 +320,7 @@ function filesHtml() {
                 <td class="cell-tight adm-muted">${e(f.contentType || '')}</td>
                 <td class="cell-tight adm-muted">${e(D.fmtDate(f.lastModified))}</td>
                 <td class="cell-tight ev-actions-cell">
+                  ${viewTypeFor(f.name) ? `<button class="btn btn-sm" type="button" data-env-action="open" data-name="${e(f.name)}" title="Show it in a new tab">Open</button>` : ''}
                   <button class="btn btn-sm" type="button" data-env-action="download" data-name="${e(f.name)}">Download</button>
                   ${write ? `<button class="btn btn-sm" type="button" data-env-action="delete" data-name="${e(f.name)}">Delete</button>` : ''}
                 </td>
@@ -836,7 +862,9 @@ async function uploadFiles(fileList) {
   try {
     for (const [i, f] of files.entries()) {
       setStatus(`Uploading ${i + 1} of ${files.length}: ${f.name}…`);
-      const link = await post(`${ENV_URL}/files/upload-url`, { name: f.name, size: f.size, contentType: f.type || 'application/octet-stream' });
+      // Type by NAME: the browser leaves File.type empty for .md, .csv, .json
+      // and most others, and a blob stored as octet-stream can only download.
+      const link = await post(`${ENV_URL}/files/upload-url`, { name: f.name, size: f.size, contentType: mimeFor(f.name, f.type) });
       const put = await fetch(link.url, { method: link.method || 'PUT', headers: link.headers || {}, body: f });
       if (!put.ok) throw Object.assign(new Error(`The storage service refused the upload (${put.status}).`), { status: put.status });
       await post(`${ENV_URL}/files/commit`, { name: link.name || f.name });
@@ -862,19 +890,42 @@ async function uploadFiles(fileList) {
   if (ev.filesNote) setStatus(ev.filesNote);
 }
 
-async function download(name, btn) {
+// Open shows the file; Download saves it. Both fetch the bytes through the
+// ten-minute link the API mints (the page's CSP and the account's CORS allow
+// the tenant's own blob host), then hand the browser a blob typed by the
+// file's NAME, so a .md or .csv shows as text and a PDF opens in the viewer
+// no matter what type Azure stored it under. A kind the browser cannot show
+// is downloaded instead, with its real filename.
+async function openFile(name, btn, mode = 'open') {
   D.showError('evFileError', '');
-  const orig = btn.textContent; btn.disabled = true; btn.textContent = 'Opening…';
+  const orig = btn.textContent; btn.disabled = true; btn.textContent = mode === 'open' ? 'Opening…' : 'Fetching…';
+  let objectUrl = '';
   try {
     const d = await post(`${ENV_URL}/files/download-url`, { name });
-    const w = window.open(d.url, '_blank', 'noopener');
-    if (!w) {
-      // A popup blocker: give the link itself, it lives ten minutes.
-      const host = document.getElementById('evFileError');
-      if (host) { host.innerHTML = `The browser blocked the new tab. <a class="acct-inline-link" href="${D.escapeHtml(d.url)}" target="_blank" rel="noopener noreferrer">Open ${D.escapeHtml(name)}</a> (the link lives ten minutes).`; host.hidden = false; }
+    const res = await fetch(d.url);
+    if (!res.ok) throw Object.assign(new Error(`The file could not be read (${res.status}).`), { status: res.status });
+    const bytes = await res.blob();
+    const viewType = mode === 'open' ? viewTypeFor(name) : '';
+    const blob = new Blob([bytes], { type: viewType || mimeFor(name, bytes.type) });
+    objectUrl = URL.createObjectURL(blob);
+    if (viewType) {
+      const w = window.open(objectUrl, '_blank', 'noopener');
+      if (!w) {
+        const host = document.getElementById('evFileError');
+        if (host) { host.innerHTML = `The browser blocked the new tab. <a class="acct-inline-link" href="${D.escapeHtml(objectUrl)}" target="_blank" rel="noopener noreferrer">Open ${D.escapeHtml(name)}</a>`; host.hidden = false; }
+      }
+    } else {
+      const a = document.createElement('a');
+      a.href = objectUrl; a.download = name; a.rel = 'noopener';
+      document.body.appendChild(a); a.click(); a.remove();
+      if (mode === 'open') { const s = document.getElementById('evUpStatus'); if (s) s.textContent = `${name} is not a kind the browser can show, so it was downloaded.`; }
     }
-  } catch (ex) { D.showError('evFileError', errText(ex, 'Could not open that file.')); }
-  finally { btn.disabled = false; btn.textContent = orig; }
+  } catch (ex) { D.showError('evFileError', errText(ex, mode === 'open' ? 'Could not open that file.' : 'Could not download that file.')); }
+  finally {
+    btn.disabled = false; btn.textContent = orig;
+    // The blob lives long enough for the tab or the save to take it.
+    if (objectUrl) setTimeout(() => URL.revokeObjectURL(objectUrl), 120000);
+  }
 }
 
 async function del(name) {
@@ -1100,7 +1151,8 @@ export function bindEnvironmentActions(deps) {
     if (a === 'export') return void exportEnvironment(btn);
     if (a === 'provision') return void provision();
     if (a === 'upload') { document.getElementById('evFile')?.click(); return; }
-    if (a === 'download') return void download(btn.dataset.name || '', btn);
+    if (a === 'open') return void openFile(btn.dataset.name || '', btn, 'open');
+    if (a === 'download') return void openFile(btn.dataset.name || '', btn, 'download');
     if (a === 'delete') return void del(btn.dataset.name || '');
     if (a === 'key-make') return void makeKey(btn);
     if (a === 'key-copy') return void copyKey(btn);
