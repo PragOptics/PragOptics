@@ -46,7 +46,7 @@ const ev = { lane: laneChoice(), teamId: '', view: null, files: null, filesTrunc
   // What survives a failed Connect: the name and the NON-secret identifiers
   // (an Account SID, a tenant id), so a typo in the token does not mean
   // re-typing everything. Secret fields are never kept.
-  connDraft: {} };
+  connDraft: {}, connArm: '' };
 let D = null;
 
 // The registration flow's own state (round 3b-2): a quote, the registrant
@@ -123,7 +123,7 @@ function canManageConnections() { return (myRole() === 'owner' || myRole() === '
 export async function renderEnvironment(main, deps) {
   D = deps;
   ev.madeKey = null; ev.filesNote = ''; ev.files = null; ev.keys = null; ev.domains = null; ev.domainNote = ''; ev.checking = ''; ev.registrations = []; ev.reg = freshReg();
-  ev.connections = null; ev.connProviders = []; ev.connNote = ''; ev.connPick = ''; ev.connBusy = false; ev.connResult = ''; ev.connTesting = ''; ev.connDraft = {};
+  ev.connections = null; ev.connProviders = []; ev.connNote = ''; ev.connPick = ''; ev.connBusy = false; ev.connResult = ''; ev.connTesting = ''; ev.connDraft = {}; ev.connArm = '';
   main.innerHTML = `
     <header class="acct-sec-head has-explain"><h2 class="acct-sec-title">Environment</h2>${explainLink('environment', 'How your environment works')}</header>
     <p class="acct-error" id="evError" hidden></p>
@@ -806,9 +806,11 @@ function connectionsHtml() {
                 <td class="cell-tight"><code class="ev-prefix">••••${e(c.hint || '')}</code></td>
                 <td class="cell-tight">${connStatusTag(c)}</td>
                 <td class="cell-tight adm-muted">${c.verifiedAt ? e(D.fmtDate(c.verifiedAt)) : 'never'}</td>
-                <td class="cell-tight ev-actions-cell">${manage ? `
+                <td class="cell-tight ev-actions-cell">${manage ? (ev.connArm === c.id ? `
+                  <button class="btn btn-sm is-danger" type="button" data-env-action="conn-remove" data-id="${e(c.id)}" data-label="${e(c.label)}" title="The credential is deleted from the vault and anything using it stops on its next call">Remove for sure?</button>
+                  <button class="btn btn-sm" type="button" data-env-action="conn-remove-cancel">Cancel</button>` : `
                   <button class="btn btn-sm" type="button" data-env-action="conn-test" data-id="${e(c.id)}" ${testing ? 'disabled' : ''}>${testing ? 'Checking…' : 'Test'}</button>
-                  <button class="btn btn-sm" type="button" data-env-action="conn-remove" data-id="${e(c.id)}" data-label="${e(c.label)}">Remove</button>` : ''}</td>
+                  <button class="btn btn-sm" type="button" data-env-action="conn-remove" data-id="${e(c.id)}" data-label="${e(c.label)}">Remove</button>`) : ''}</td>
               </tr>`; }).join('')}
           </tbody>
         </table>
@@ -1144,9 +1146,18 @@ async function testConnection(id) {
   await loadConnections();
 }
 
+let connArmTimer = null;
 async function removeConnection(id, label) {
   if (!id) return;
-  if (!window.confirm(`Remove ${label}? The credential is deleted from the vault and anything using it stops on its next call.`)) return;
+  // First click arms the row (no native dialog: embedded browsers swallow
+  // those and the click looked dead). Second click within six seconds removes.
+  if (ev.connArm !== id) {
+    ev.connArm = id; ev.connResult = ''; paintConnections();
+    clearTimeout(connArmTimer);
+    connArmTimer = setTimeout(() => { if (ev.connArm === id) { ev.connArm = ''; paintConnections(); } }, 6000);
+    return;
+  }
+  clearTimeout(connArmTimer); ev.connArm = '';
   D.showError('evConnError', '');
   try { await post(`${ENV_URL}/connections/remove`, { id }); ev.connResult = `${label} removed.`; await loadConnections(); }
   catch (ex) { D.showError('evConnError', errText(ex, 'Could not remove that connection.')); }
@@ -1201,6 +1212,7 @@ export function bindEnvironmentActions(deps) {
     if (a === 'conn-add') return void addConnection(btn);
     if (a === 'conn-test') return void testConnection(btn.dataset.id || '');
     if (a === 'conn-remove') return void removeConnection(btn.dataset.id || '', btn.dataset.label || 'this connection');
+    if (a === 'conn-remove-cancel') { clearTimeout(connArmTimer); ev.connArm = ''; paintConnections(); return; }
   });
 
   document.addEventListener('change', (e) => {
