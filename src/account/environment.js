@@ -495,7 +495,7 @@ function domainHtml(d) {
     const r = d.registrar;
     const owner = myRole() === 'owner';
     body += `
-      <p class="acct-card-note ev-dom-note">Registered through PragOptics${r.expiresAt ? `, current term ends ${e(D.fmtDate(r.expiresAt))}` : ''}. ${r.autoRenew ? 'Renews yearly at Azure’s price that day, charged to your account a month ahead.' : 'Renewal is off: the name expires at the end of its term unless you turn renewal back on.'}</p>
+      <p class="acct-card-note ev-dom-note">Registered through PragOptics${r.expiresAt ? `, current term ends ${e(D.fmtDate(r.expiresAt))}` : ''}. ${r.autoRenew ? 'Renews yearly at the registrar’s price that day, charged to your account a month ahead.' : 'Renewal is off: the name expires at the end of its term unless you turn renewal back on.'}</p>
       ${owner ? `
       <label class="ev-agree ev-renew"><input type="checkbox" data-env-toggle="domain-renew" data-host="${e(d.host)}" ${r.autoRenew ? 'checked' : ''} /> <span>Renew automatically each year</span></label>` : ''}`;
   }

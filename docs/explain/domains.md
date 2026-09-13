@@ -38,11 +38,11 @@ A name registered through PragOptics needs none of this by hand: the platform ho
 
 ## Registering a new one here
 
-If you do not have a domain yet, the card can register one for you. Type the name you want; the card says whether it is free and what it costs for the first year. The price is Azure's own price for a domain, read from Azure's price list at the moment you check, passed through with no markup, and it is an ordinary order on your account with a receipt.
+If you do not have a domain yet, the card can register one for you. Type the name you want; the card says whether it is free and what it costs for the first year. The price is the registrar's own price for a domain, passed through with no markup, and it is an ordinary order on your account with a receipt.
 
 The registry records a contact for every domain: a name, an email, a phone number and a mailing address. That is the same at every registrar. Privacy protection is on, so the public record shows the registrar's proxy instead of your details.
 
-Registration takes a few minutes. The domain then appears on the card as verified, with its DNS living in Azure DNS under your account, so nothing needs pointing anywhere. It renews yearly at the same price unless you turn renewal off. If the registry cannot complete a registration, nothing is registered, you get an email, and support refunds the charge in full.
+Registration takes a few minutes. The domain then appears on the card as verified, with its DNS held by the platform at the registrar under your account, so nothing needs pointing anywhere. It renews yearly at the same price unless you turn renewal off. If the registry cannot complete a registration, nothing is registered, you get an email, and support refunds the charge in full.
 
 ## What it costs
 
