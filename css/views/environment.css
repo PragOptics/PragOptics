@@ -40,9 +40,24 @@
 .ev-key, .ev-prefix { font-family: ui-monospace, "Cascadia Code", Consolas, monospace; font-size: .8rem; }
 .ev-count { margin: 12px 0 6px; }
 
+/* connected accounts: a provider picker, then that provider's own fields */
+.ev-conn-add { margin-top: 4px; }
+.ev-conn-add .ev-key-row .acct-select { flex: 1 1 260px; }
+.ev-conn-fields { display: grid; gap: 10px 14px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); margin-top: 12px; }
+.ev-conn-field { display: grid; gap: 5px; min-width: 0; }
+.ev-conn-field-label { font-size: .78rem; font-weight: 600; letter-spacing: .02em; text-transform: uppercase; color: var(--muted); }
+.ev-conn-field .acct-input { width: 100%; min-width: 0; }
+.ev-conn-result {
+  margin-top: 12px; padding: 10px 14px; border-radius: var(--radius-ctl);
+  border: 1px solid color-mix(in srgb, var(--brand-600) 32%, transparent);
+  background: color-mix(in srgb, var(--brand-600) 8%, transparent);
+  color: var(--card-title);
+}
+
 @media (max-width: 640px) {
   .ev-key-row .acct-input { flex-basis: 100%; }
   .ev-actions-cell .btn + .btn { margin-left: 0; margin-top: 4px; }
+  .ev-conn-fields { grid-template-columns: 1fr; }
 }
 
 /* domains */

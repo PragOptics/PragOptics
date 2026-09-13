@@ -8,6 +8,7 @@
 //   POST v1/environment/provision      the owner finishes a setup that stalled
 //   GET  v1/environment/files          list; upload-url, commit, download-url, delete
 //   GET  v1/environment/keys           list; POST makes one, POST keys/revoke
+//   GET  v1/environment/connections    list + the provider catalog; POST connects one, POST connections/test, POST connections/remove
 //
 // The section follows the Team section's choice of team (the same
 // sessionStorage key), so a person on two teams sees the environment of the
@@ -36,7 +37,10 @@ const TEAM_KEY = 'pragoptics_team_id';   // written by team.js; read here so bot
 const SEAT_ROLES = new Set(['owner', 'admin', 'developer', 'member']);
 const DOMAIN_ROLES = new Set(['owner', 'admin', 'developer']);   // who connects, verifies and removes a domain
 
-const ev = { teamId: '', view: null, files: null, filesTruncated: false, keys: null, madeKey: null, filesNote: '', uploading: false, domains: null, domainLimit: 0, cnameTarget: null, serving: null, binding: '', domainNote: '', checking: '', registrations: [], reg: null };
+const ev = { teamId: '', view: null, files: null, filesTruncated: false, keys: null, madeKey: null, filesNote: '', uploading: false, domains: null, domainLimit: 0, cnameTarget: null, serving: null, binding: '', domainNote: '', checking: '', registrations: [], reg: null,
+  // Connected accounts (the connection broker): the list, the provider
+  // catalog the form renders from, the picked provider, and the last outcome.
+  connections: null, connProviders: [], connLimit: 0, connNote: '', connPick: '', connBusy: false, connResult: '', connTesting: '' };
 let D = null;
 
 // The registration flow's own state (round 3b-2): a quote, the registrant
@@ -77,6 +81,7 @@ function paused() { return phaseOf(ev.view?.tenant) === 'SUSPENDED'; }
 function canWrite() { return SEAT_ROLES.has(myRole()) && !paused(); }
 function canManageKeys() { return myRole() === 'owner' || myRole() === 'admin'; }
 function canManageDomains() { return DOMAIN_ROLES.has(myRole()) && !paused(); }
+function canManageConnections() { return (myRole() === 'owner' || myRole() === 'admin') && !paused(); }   // credentials are settings: owner and admin
 
 /* ================================================================
    render
@@ -85,6 +90,7 @@ function canManageDomains() { return DOMAIN_ROLES.has(myRole()) && !paused(); }
 export async function renderEnvironment(main, deps) {
   D = deps;
   ev.madeKey = null; ev.filesNote = ''; ev.files = null; ev.keys = null; ev.domains = null; ev.domainNote = ''; ev.checking = ''; ev.registrations = []; ev.reg = freshReg();
+  ev.connections = null; ev.connProviders = []; ev.connNote = ''; ev.connPick = ''; ev.connBusy = false; ev.connResult = ''; ev.connTesting = '';
   main.innerHTML = `
     <header class="acct-sec-head has-explain"><h2 class="acct-sec-title">Environment</h2>${explainLink('environment', 'How your environment works')}</header>
     <p class="acct-error" id="evError" hidden></p>
@@ -111,7 +117,7 @@ async function load() {
     ev.view = await fetchView();
     if (!ev.view.tenant) { host.innerHTML = emptyHtml(ev.view); return; }
     paint();
-    if (['READY', 'SUSPENDED'].includes(phaseOf(ev.view.tenant))) await Promise.all([loadFiles(), loadDomains(), loadKeys()]);
+    if (['READY', 'SUSPENDED'].includes(phaseOf(ev.view.tenant))) await Promise.all([loadFiles(), loadDomains(), loadKeys(), loadConnections()]);
   } catch (ex) {
     host.innerHTML = '';
     if (ex?.status === 404 && !ex?.data?.needsTenant) {
@@ -162,6 +168,23 @@ async function loadKeys() {
   paintKeys();
 }
 
+async function loadConnections() {
+  try {
+    const d = await D.apiFetch(url(`${ENV_URL}/connections`));
+    ev.connections = d.connections || [];
+    ev.connProviders = d.providers || [];
+    ev.connLimit = Number(d.limit || 0);
+    ev.connNote = '';
+  } catch (ex) {
+    ev.connections = [];
+    if (ex?.status === 404) ev.connNote = 'The connection routes are not on this lane yet.';
+    else if (ex?.data?.code === 'UPGRADE_REQUIRED') ev.connNote = ex.data.error;
+    else if (ex?.data?.code === 'CONNECTIONS_NOT_CONFIGURED') ev.connNote = 'Connected accounts are not switched on for this lane yet.';
+    else ev.connNote = errText(ex, 'Could not list the connected accounts.');
+  }
+  paintConnections();
+}
+
 function paint() {
   const host = document.getElementById('evBody');
   if (!host || !ev.view?.tenant) return;
@@ -169,12 +192,13 @@ function paint() {
   const ready = phase === 'READY' || phase === 'SUSPENDED';   // paused: the cards show, reads work, writes are refused by the routes
   host.innerHTML = `
     ${summaryHtml(ev.view)}
-    ${ready ? `<div id="evFiles">${filesHtml()}</div><div id="evDomains">${domainsHtml()}</div><div id="evKeys">${keysHtml()}</div>` : ''}
+    ${ready ? `<div id="evFiles">${filesHtml()}</div><div id="evConnections">${connectionsHtml()}</div><div id="evDomains">${domainsHtml()}</div><div id="evKeys">${keysHtml()}</div>` : ''}
   `;
 }
 function paintFiles() { const h = document.getElementById('evFiles'); if (h) h.innerHTML = filesHtml(); }
 function paintDomains() { const h = document.getElementById('evDomains'); if (h) h.innerHTML = domainsHtml(); }
 function paintKeys() { const h = document.getElementById('evKeys'); if (h) h.innerHTML = keysHtml(); }
+function paintConnections() { const h = document.getElementById('evConnections'); if (h) h.innerHTML = connectionsHtml(); }
 
 function emptyHtml(view) {
   if (view.needsSubscription) {
@@ -605,6 +629,106 @@ async function pollRegistration(host) {
 
 /* ---------- keys ---------- */
 
+/* ---------- connected accounts ---------- */
+
+const PROVIDER_ICON = { twilio: 'SMS', shippo: 'Ship', stripe: 'Pay', github: 'Git', microsoft: '365' };
+
+function providerOf(id) { return (ev.connProviders || []).find(p => p.id === id) || null; }
+
+/** The non-secret identity of a connection for the row: the provider says
+ *  which field or detail names the account (never a secret). */
+function connIdentity(c) {
+  const e = D.escapeHtml;
+  const d = c.detail || {}, f = c.fields || {};
+  if (c.provider === 'twilio') return e(d.friendlyName || f.accountSid || '');
+  if (c.provider === 'stripe') return e([d.accountId, d.mode].filter(Boolean).join(' · '));
+  if (c.provider === 'shippo') return e(d.mode ? `${d.mode} token` : '');
+  if (c.provider === 'github') return e(d.login ? `@${d.login}` : '');
+  if (c.provider === 'microsoft') return e(d.org || f.tenantId || '');
+  return e(Object.values(f)[0] || '');
+}
+
+function connStatusTag(c) {
+  if (c.status === 'REJECTED') return `<span class="acct-tag is-bad" title="${D.escapeHtml(c.lastError || '')}">rejected</span>`;
+  return '<span class="acct-tag is-verified">verified</span>';
+}
+
+function connFieldsHtml(p) {
+  const e = D.escapeHtml;
+  if (!p) return '';
+  return `
+    <div class="ev-conn-fields">
+      ${p.fields.map(f => `
+        <label class="ev-conn-field">
+          <span class="ev-conn-field-label">${e(f.label)}</span>
+          <input class="acct-input" type="${f.secret ? 'password' : 'text'}" data-conn-field="${e(f.key)}" ${f.secret ? 'autocomplete="new-password"' : 'autocomplete="off"'} spellcheck="false" placeholder="${e(f.hint || '')}" />
+        </label>`).join('')}
+      <label class="ev-conn-field">
+        <span class="ev-conn-field-label">Name this connection</span>
+        <input class="acct-input" type="text" id="evConnLabel" maxlength="60" placeholder="e.g. Shop SMS" autocomplete="off" spellcheck="false" />
+      </label>
+    </div>
+    <p class="acct-card-note ev-note">${e(p.what)} The credential is checked with ${e(p.label)} before it is stored, then kept in your environment's own vault and never shown again.</p>`;
+}
+
+function connectionsHtml() {
+  const e = D.escapeHtml;
+  const manage = canManageConnections();
+  const rows = ev.connections;
+  const list = rows == null ? '<p class="acct-loading">Loading connected accounts…</p>'
+    : !rows.length ? `<p class="acct-empty">${manage ? 'Nothing connected yet.' : 'Nothing connected yet. The owner or an admin connects accounts.'}</p>`
+    : `
+      <div class="adm-table-scroll">
+        <table class="adm-table adm-table--wrap ev-table">
+          <thead><tr><th>Account</th><th>Name</th><th>Identity</th><th>Credential</th><th>Status</th><th>Checked</th><th></th></tr></thead>
+          <tbody>
+            ${rows.map(c => {
+              const p = providerOf(c.provider);
+              const testing = ev.connTesting === c.id;
+              return `
+              <tr class="${c.status === 'REJECTED' ? 'ev-muted-row' : ''}">
+                <td class="cell-tight"><span class="acct-tag is-primary" title="${e(p?.label || c.provider)}">${e(PROVIDER_ICON[c.provider] || c.provider)}</span> ${e(p?.label || cap(c.provider))}</td>
+                <td class="cell-ellip" title="${e(c.label)}">${e(c.label)}</td>
+                <td class="cell-ellip adm-muted">${connIdentity(c)}</td>
+                <td class="cell-tight"><code class="ev-prefix">••••${e(c.hint || '')}</code></td>
+                <td class="cell-tight">${connStatusTag(c)}</td>
+                <td class="cell-tight adm-muted">${c.verifiedAt ? e(D.fmtDate(c.verifiedAt)) : 'never'}</td>
+                <td class="cell-tight ev-actions-cell">${manage ? `
+                  <button class="btn btn-sm" type="button" data-env-action="conn-test" data-id="${e(c.id)}" ${testing ? 'disabled' : ''}>${testing ? 'Checking…' : 'Test'}</button>
+                  <button class="btn btn-sm" type="button" data-env-action="conn-remove" data-id="${e(c.id)}" data-label="${e(c.label)}">Remove</button>` : ''}</td>
+              </tr>`; }).join('')}
+          </tbody>
+        </table>
+      </div>`;
+
+  const picked = providerOf(ev.connPick);
+  const atLimit = ev.connLimit > 0 && (rows || []).length >= ev.connLimit;
+  const form = !manage ? '' : ev.connNote ? '' : `
+      <div class="ev-conn-add">
+        <div class="ev-key-row">
+          <select class="acct-input acct-select" id="evConnProvider" aria-label="Which account to connect" ${atLimit ? 'disabled' : ''}>
+            <option value="">Connect an account…</option>
+            ${(ev.connProviders || []).map(p => `<option value="${e(p.id)}" ${ev.connPick === p.id ? 'selected' : ''}>${e(p.label)}</option>`).join('')}
+          </select>
+          ${picked ? `<button class="btn" type="button" data-env-action="conn-add" ${ev.connBusy ? 'disabled' : ''}>${ev.connBusy ? 'Checking with ' + e(picked.label) + '…' : 'Connect'}</button>` : ''}
+        </div>
+        ${picked ? connFieldsHtml(picked) : ''}
+        ${atLimit ? `<p class="acct-card-note ev-note">This environment holds ${ev.connLimit} connections, the most it can carry. Remove one to connect another.</p>` : ''}
+      </div>`;
+
+  return `
+    <section class="acct-card">
+      <h3 class="acct-card-h">Connected accounts</h3>
+      <p class="acct-card-note">The accounts your environment acts through: text messages, shipping labels, payments, code, mail. You hand over a credential once; the platform proves it with the provider, locks it in a vault that belongs to this environment alone, and uses it on your behalf from then on. It is never shown again. ${explainLink('connections', 'How connected accounts work')}</p>
+      ${ev.connNote ? `<p class="acct-card-note ev-note">${e(ev.connNote)}</p>` : ''}
+      ${form}
+      <p class="acct-error" id="evConnError" hidden></p>
+      ${ev.connResult ? `<p class="acct-card-note ev-note ev-conn-result" aria-live="polite">${e(ev.connResult)}</p>` : ''}
+      ${rows && rows.length ? `<p class="acct-card-note ev-count">${rows.length} connected${ev.connLimit ? ` of ${ev.connLimit}` : ''}.</p>` : ''}
+      ${list}
+    </section>`;
+}
+
 function keysHtml() {
   const e = D.escapeHtml;
   const me = ev.view?.membership || {};
@@ -889,6 +1013,56 @@ async function exportEnvironment(btn) {
   } finally { btn.disabled = false; }
 }
 
+/* ---------- connected accounts ---------- */
+
+// The credential leaves this form once, over the session, to the API, which
+// proves it with the provider and vaults it. The inputs are cleared on every
+// outcome so a rejected paste is not left sitting in the page.
+async function addConnection(btn) {
+  const p = providerOf(ev.connPick);
+  if (!p || ev.connBusy) return;
+  D.showError('evConnError', '');
+  const fields = {};
+  for (const f of p.fields) fields[f.key] = document.querySelector(`[data-conn-field="${f.key}"]`)?.value?.trim() || '';
+  const label = document.getElementById('evConnLabel')?.value?.trim() || '';
+  const missing = p.fields.find(f => !fields[f.key]);
+  if (missing) { D.showError('evConnError', `${missing.label} is required.`); document.querySelector(`[data-conn-field="${missing.key}"]`)?.focus(); return; }
+  ev.connBusy = true; ev.connResult = ''; paintConnections();
+  try {
+    const d = await post(`${ENV_URL}/connections`, { provider: p.id, label, fields });
+    ev.connPick = ''; ev.connResult = d.note || `${d.connection?.label || p.label} is connected and verified.`;
+    await loadConnections();
+  } catch (ex) {
+    ev.connBusy = false; paintConnections();
+    // The provider's own sentence when it rejected the credential; the field
+    // that was malformed gets focus.
+    D.showError('evConnError', errText(ex, `Could not connect ${p.label}.`));
+    if (ex?.data?.field) document.querySelector(`[data-conn-field="${ex.data.field}"]`)?.focus();
+    return;
+  }
+  ev.connBusy = false; paintConnections();
+}
+
+async function testConnection(id) {
+  if (!id || ev.connTesting) return;
+  D.showError('evConnError', '');
+  ev.connTesting = id; ev.connResult = ''; paintConnections();
+  try {
+    const d = await post(`${ENV_URL}/connections/test`, { id });
+    ev.connResult = d.connection?.message || (d.connection?.checked ? 'The provider accepted the credential.' : 'The provider rejected the credential.');
+  } catch (ex) { D.showError('evConnError', errText(ex, 'Could not check that connection.')); }
+  ev.connTesting = '';
+  await loadConnections();
+}
+
+async function removeConnection(id, label) {
+  if (!id) return;
+  if (!window.confirm(`Remove ${label}? The credential is deleted from the vault and anything using it stops on its next call.`)) return;
+  D.showError('evConnError', '');
+  try { await post(`${ENV_URL}/connections/remove`, { id }); ev.connResult = `${label} removed.`; await loadConnections(); }
+  catch (ex) { D.showError('evConnError', errText(ex, 'Could not remove that connection.')); }
+}
+
 async function setRenewal(host, autoRenew, input) {
   D.showError('evDomainError', '');
   input.disabled = true;
@@ -933,16 +1107,22 @@ export function bindEnvironmentActions(deps) {
     if (a === 'domain-reg-pay') return void regPay();
     if (a === 'domain-reg-confirm') return void regConfirm();
     if (a === 'domain-reg-cancel') { ev.reg = freshReg(); paintDomains(); return; }
+    if (a === 'conn-add') return void addConnection(btn);
+    if (a === 'conn-test') return void testConnection(btn.dataset.id || '');
+    if (a === 'conn-remove') return void removeConnection(btn.dataset.id || '', btn.dataset.label || 'this connection');
   });
 
   document.addEventListener('change', (e) => {
     if (e.target.id === 'evFile') uploadFiles(e.target.files);
     const t = e.target.closest?.('[data-env-toggle="domain-renew"]');
     if (t) setRenewal(t.dataset.host || '', !!t.checked, t);
+    // Picking a provider redraws the form with that provider's own fields.
+    if (e.target.id === 'evConnProvider') { ev.connPick = e.target.value || ''; ev.connResult = ''; paintConnections(); document.querySelector('[data-conn-field]')?.focus(); }
   });
 
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && e.target.id === 'evKeyLabel') { e.preventDefault(); document.querySelector('[data-env-action="key-make"]')?.click(); }
+    if (e.key === 'Enter' && (e.target.id === 'evConnLabel' || e.target.matches?.('[data-conn-field]'))) { e.preventDefault(); document.querySelector('[data-env-action="conn-add"]')?.click(); }
     if (e.key === 'Enter' && e.target.id === 'evDomainHost') { e.preventDefault(); document.querySelector('[data-env-action="domain-add"]')?.click(); }
     if (e.key === 'Enter' && e.target.id === 'evRegHost') { e.preventDefault(); document.querySelector('[data-env-action="domain-reg-check"]')?.click(); }
   });
