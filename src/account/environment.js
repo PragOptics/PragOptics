@@ -40,7 +40,11 @@ const DOMAIN_ROLES = new Set(['owner', 'admin', 'developer']);   // who connects
 const ev = { teamId: '', view: null, files: null, filesTruncated: false, keys: null, madeKey: null, filesNote: '', uploading: false, domains: null, domainLimit: 0, cnameTarget: null, serving: null, binding: '', domainNote: '', checking: '', registrations: [], reg: null,
   // Connected accounts (the connection broker): the list, the provider
   // catalog the form renders from, the picked provider, and the last outcome.
-  connections: null, connProviders: [], connLimit: 0, connNote: '', connPick: '', connBusy: false, connResult: '', connTesting: '' };
+  connections: null, connProviders: [], connLimit: 0, connNote: '', connPick: '', connBusy: false, connResult: '', connTesting: '',
+  // What survives a failed Connect: the name and the NON-secret identifiers
+  // (an Account SID, a tenant id), so a typo in the token does not mean
+  // re-typing everything. Secret fields are never kept.
+  connDraft: {} };
 let D = null;
 
 // The registration flow's own state (round 3b-2): a quote, the registrant
@@ -90,7 +94,7 @@ function canManageConnections() { return (myRole() === 'owner' || myRole() === '
 export async function renderEnvironment(main, deps) {
   D = deps;
   ev.madeKey = null; ev.filesNote = ''; ev.files = null; ev.keys = null; ev.domains = null; ev.domainNote = ''; ev.checking = ''; ev.registrations = []; ev.reg = freshReg();
-  ev.connections = null; ev.connProviders = []; ev.connNote = ''; ev.connPick = ''; ev.connBusy = false; ev.connResult = ''; ev.connTesting = '';
+  ev.connections = null; ev.connProviders = []; ev.connNote = ''; ev.connPick = ''; ev.connBusy = false; ev.connResult = ''; ev.connTesting = ''; ev.connDraft = {};
   main.innerHTML = `
     <header class="acct-sec-head has-explain"><h2 class="acct-sec-title">Environment</h2>${explainLink('environment', 'How your environment works')}</header>
     <p class="acct-error" id="evError" hidden></p>
@@ -661,11 +665,11 @@ function connFieldsHtml(p) {
       ${p.fields.map(f => `
         <label class="ev-conn-field">
           <span class="ev-conn-field-label">${e(f.label)}</span>
-          <input class="acct-input" type="${f.secret ? 'password' : 'text'}" data-conn-field="${e(f.key)}" ${f.secret ? 'autocomplete="new-password"' : 'autocomplete="off"'} spellcheck="false" placeholder="${e(f.hint || '')}" />
+          <input class="acct-input" type="${f.secret ? 'password' : 'text'}" data-conn-field="${e(f.key)}" ${f.secret ? 'autocomplete="new-password"' : 'autocomplete="off"'} spellcheck="false" placeholder="${e(f.hint || '')}" value="${f.secret ? '' : e(ev.connDraft[f.key] || '')}" />
         </label>`).join('')}
       <label class="ev-conn-field">
         <span class="ev-conn-field-label">Name this connection</span>
-        <input class="acct-input" type="text" id="evConnLabel" maxlength="60" placeholder="e.g. Shop SMS" autocomplete="off" spellcheck="false" />
+        <input class="acct-input" type="text" id="evConnLabel" maxlength="60" placeholder="e.g. Shop SMS" autocomplete="off" spellcheck="false" value="${e(ev.connDraft.label || '')}" />
       </label>
     </div>
     <p class="acct-card-note ev-note">${e(p.what)} The credential is checked with ${e(p.label)} before it is stored, then kept in your environment's own vault and never shown again.</p>`;
@@ -676,6 +680,7 @@ function connectionsHtml() {
   const manage = canManageConnections();
   const rows = ev.connections;
   const list = rows == null ? '<p class="acct-loading">Loading connected accounts…</p>'
+    : ev.connNote ? ''   // the note above already says why there is nothing to list
     : !rows.length ? `<p class="acct-empty">${manage ? 'Nothing connected yet.' : 'Nothing connected yet. The owner or an admin connects accounts.'}</p>`
     : `
       <div class="adm-table-scroll">
@@ -1025,12 +1030,16 @@ async function addConnection(btn) {
   const fields = {};
   for (const f of p.fields) fields[f.key] = document.querySelector(`[data-conn-field="${f.key}"]`)?.value?.trim() || '';
   const label = document.getElementById('evConnLabel')?.value?.trim() || '';
+  // Keep the name and the non-secret identifiers through a failed attempt;
+  // secrets are never held in state.
+  ev.connDraft = { label };
+  for (const f of p.fields) if (!f.secret) ev.connDraft[f.key] = fields[f.key];
   const missing = p.fields.find(f => !fields[f.key]);
   if (missing) { D.showError('evConnError', `${missing.label} is required.`); document.querySelector(`[data-conn-field="${missing.key}"]`)?.focus(); return; }
   ev.connBusy = true; ev.connResult = ''; paintConnections();
   try {
     const d = await post(`${ENV_URL}/connections`, { provider: p.id, label, fields });
-    ev.connPick = ''; ev.connResult = d.note || `${d.connection?.label || p.label} is connected and verified.`;
+    ev.connPick = ''; ev.connDraft = {}; ev.connResult = d.note || `${d.connection?.label || p.label} is connected and verified.`;
     await loadConnections();
   } catch (ex) {
     ev.connBusy = false; paintConnections();
