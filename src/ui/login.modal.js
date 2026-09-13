@@ -206,8 +206,11 @@ function bindLoginModal(modal) {
       setEnabled(email, false);
       setEnabled(phoneInput, false);
 
-      // nudge focus to password for next step
-      requestAnimationFrame(() => pwd?.focus());
+      // Put the cursor in the verification-code box: the code just went out and
+      // that is the next thing to type. This runs in a rAF and used to focus the
+      // password field, which stole focus back from the code input after a
+      // request, so the cursor always jumped past the code box.
+      requestAnimationFrame(() => codeInput?.focus());
     }
   }
 
@@ -250,7 +253,11 @@ function bindLoginModal(modal) {
   }
 
   function passwordsMatch() {
-    if (!pwd2.value) return true;
+    // Strict: an empty confirm field is NOT a match. The live-input handlers
+    // below guard on pwd2.value first so this does not nag before the person
+    // has started typing the confirm; the submit gate needs the honest answer,
+    // because an empty confirm used to return true here and let a signup
+    // through on the first field's password alone.
     return pwd.value === pwd2.value;
   }
 
@@ -408,7 +415,7 @@ function bindLoginModal(modal) {
   });
 
   pwd2.addEventListener("input", () => {
-    if (!passwordsMatch()) {
+    if (pwd2.value && !passwordsMatch()) {
       showError("Passwords do not match.");
     } else {
       clearError();
@@ -465,6 +472,13 @@ function bindLoginModal(modal) {
       e.preventDefault();
       showError("Password does not meet security requirements.");
       pwd.focus();
+      return;
+    }
+
+    if (!pwd2.value) {
+      e.preventDefault();
+      showError("Re-enter your password in the confirm field.");
+      pwd2.focus();
       return;
     }
 
