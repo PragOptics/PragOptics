@@ -72,7 +72,12 @@ select.acct-select, select.acct-input, .acct-modal select {
   background-position: calc(100% - 18px) 55%, calc(100% - 12px) 55%;
   background-size: 6px 6px;
 }
-select option { background: var(--panel-deep-a); color: var(--ink); }
+/* The open <option> list is left to the root color-scheme (set per theme in
+   tokens.css: dark on dark, light on light), which the native control honors
+   with correct hover contrast. Hard-setting option background/color here used
+   to break exactly that: an explicit dark ink stayed on the highlighted row
+   while the highlight bar painted dark, so in light theme the hovered state and
+   country option was dark text on a dark bar, unreadable. */
 
 /* Keyboard users jump past the header to the page. Visible only while focused. */
 .skip-link { position: absolute; left: 12px; top: -48px; z-index: 20000; padding: 8px 12px; border-radius: var(--radius-btn-sm); background: var(--brand-600); color: var(--on-brand, #fff); font-weight: 700; text-decoration: none; }
