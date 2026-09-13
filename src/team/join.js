@@ -206,13 +206,14 @@ function bind() {
       return;
     }
     if (a === 'create-account') {
-      // The agreement gates account creation, then signup. The masked address
-      // cannot prefill the form; the person types the address the invite
-      // names, and accept checks it is theirs.
+      // The agreement gates account creation, then signup. Both are overlay
+      // modals, so they open OVER the invitation page; we do NOT bounce to the
+      // landing page. The masked address cannot prefill the form; the person
+      // types the address the invite names, and accept checks it is theirs.
+      // After signup the return-to=join hook brings them back here to Accept.
       stash(state.token);
       try { sessionStorage.setItem(RETURN_KEY, 'join'); } catch { /* fine */ }
-      window.setAppMode?.('landing');
-      setTimeout(() => { window.openAgreementModal?.(); }, 250);
+      window.openAgreementModal?.();
       return;
     }
     if (a === 'switch') {
