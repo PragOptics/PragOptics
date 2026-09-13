@@ -1,6 +1,14 @@
 # Connecting a domain
 
-A domain you own can serve what you build here. Connecting it is two short steps at your registrar, and the platform never needs your registrar login.
+A domain you own can serve what you build here. There are three ways in, and the same proof of ownership stands behind each.
+
+## Three ways in
+
+Connect a domain you already own, wherever it is. You add one TXT record at your registrar and the platform reads it back. The platform never needs your registrar login, and you keep managing the domain's records yourself.
+
+Link the registrar account that holds the domain. If your domain is at Spaceship, connect that account once under Connected accounts, then link the name on the Domains card. The platform checks the name is really in that account, writes the proof record itself, and from then on writes every record the name needs: the ones that serve your site, and later the ones that carry your mail. Nothing to paste.
+
+Register a new name here. If you do not have a domain yet, the card registers one for you at the registrar's own price, with its records kept by the platform.
 
 ## How it goes
 
@@ -34,7 +42,17 @@ Binding puts the name on the software and asks Azure for a certificate. The card
 
 If a record is missing, Azure says so and the card shows the sentence. Fix the record, give DNS a few minutes, and press Try again. Unbind takes the name off the software and keeps it connected and verified, so Bind puts it back any time.
 
-A name registered through PragOptics needs none of this by hand: the platform holds its DNS, writes the records itself and binds it within a day, or at once when you press Bind.
+A name registered through PragOptics, or linked through your registrar account, needs none of this by hand: the platform writes the records itself and binds the name within a day, or at once when you press Bind.
+
+## Linking your registrar
+
+Linking is for a domain you hold at a registrar the platform can manage: Spaceship today. Connect the Spaceship account under Connected accounts with an API key and secret from Spaceship's API manager. The key is checked with Spaceship and kept in your own vault; it is never shown again.
+
+On the Domains card, pick that account, type the name and press Link. The platform asks Spaceship whether the name is in the account and whether Spaceship serves its DNS. A name that points at nameservers elsewhere cannot take records from Spaceship; the card names them, and you either point the name back at Spaceship's own nameservers or connect it with a TXT record instead.
+
+The platform then writes the proof record itself and reads it back. Usually the name reads verified at once; if DNS needs a moment, press Verify in a minute or leave it, the platform checks daily. A name you connected earlier by TXT can be linked the same way and keeps its place.
+
+Unlink hands the records back to you. The name stays connected and verified, and nothing at Spaceship is changed. If the connected account is removed, the card says so; link the name through another account or unlink it and manage its records yourself.
 
 ## Registering a new one here
 

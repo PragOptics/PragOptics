@@ -122,7 +122,7 @@ function canManageConnections() { return (myRole() === 'owner' || myRole() === '
 
 export async function renderEnvironment(main, deps) {
   D = deps;
-  ev.madeKey = null; ev.filesNote = ''; ev.files = null; ev.keys = null; ev.domains = null; ev.domainNote = ''; ev.checking = ''; ev.registrations = []; ev.reg = freshReg();
+  ev.madeKey = null; ev.filesNote = ''; ev.files = null; ev.keys = null; ev.domains = null; ev.domainNote = ''; ev.linkNote = ''; ev.domArm = ''; ev.keyArm = ''; ev.checking = ''; ev.registrations = []; ev.reg = freshReg();
   ev.connections = null; ev.connProviders = []; ev.connNote = ''; ev.connPick = ''; ev.connBusy = false; ev.connResult = ''; ev.connTesting = ''; ev.connDraft = {}; ev.connArm = '';
   main.innerHTML = `
     <header class="acct-sec-head has-explain"><h2 class="acct-sec-title">Environment</h2>${explainLink('environment', 'How your environment works')}</header>
@@ -219,6 +219,7 @@ async function loadConnections() {
     else ev.connNote = errText(ex, 'Could not list the connected accounts.');
   }
   paintConnections();
+  paintDomains();
 }
 
 function paint() {
@@ -451,6 +452,13 @@ function recordHtml(label, rec) {
     </dl>`;
 }
 
+/** Connected accounts that can manage DNS (the catalog says which providers can). */
+function dnsConnections() {
+  const ids = new Set((ev.connProviders || []).filter(p => (p.capabilities || []).includes('dns')).map(p => p.id));
+  return (ev.connections || []).filter(c => ids.has(c.provider));
+}
+function providerLabel(id) { return (ev.connProviders || []).find(p => p.id === id)?.label || (id === 'spaceship' ? 'Spaceship' : id === 'azure' ? 'Azure' : String(id || 'the registrar')); }
+
 function domainHtml(d) {
   const e = D.escapeHtml;
   const manage = canManageDomains();
@@ -460,9 +468,21 @@ function domainHtml(d) {
   const b = d.binding || {};
   const bs = b.status || 'UNBOUND';
   const busy = ev.binding === d.host;
+  // Who manages this name's DNS: the customer (connect), a linked registrar
+  // account (link), or the platform's own account (register).
+  const dnsm = d.dns?.managed || (d.registrar ? 'platform' : 'self');
+  const linked = dnsm === 'connection';
+  const platformWrites = dnsm !== 'self';
+  const conn = linked ? (ev.connections || []).find(c => c.id === d.dns.connectionId) : null;
+  const prov = providerLabel(d.dns?.provider || d.registrar?.provider || '');
+  const via = linked ? (conn ? `your ${e(prov)} account ${e(conn.label)}` : 'a registrar account that has since been removed') : '';
+  const writesLine = linked ? `The platform writes this name’s records at ${e(prov)} through ${via}` : 'The platform holds this name’s DNS';
   let body = '';
   if (!verified) {
-    body = `
+    body = linked ? `
+      <p class="acct-card-note ev-dom-note">${conn ? `The platform wrote the proof record at ${e(prov)} through ${via}. DNS needs a moment to show it; press Verify, or leave it, the platform checks daily.` : 'The registrar account this name was linked through was removed. Link the name again, or add the record below yourself and press Verify.'}${d.status === 'FAILED' ? ' The record was found before and is missing now.' : ''}</p>
+      ${conn ? '' : recordHtml('The verification record', d.verifyRecord)}
+      ${d.lastCheckedAt ? `<p class="acct-card-note ev-dom-note"><span class="adm-muted">Last checked ${e(D.fmtDate(d.lastCheckedAt))}.</span> ${e(d.lastCheckError || '')}</p>` : ''}` : `
       <p class="acct-card-note ev-dom-note">Add this record where you manage the domain's DNS, then press Verify.${d.status === 'FAILED' ? ' The record was found before and is missing now; put it back to keep the domain.' : ''}</p>
       ${recordHtml('The verification record', d.verifyRecord)}
       ${d.lastCheckedAt ? `<p class="acct-card-note ev-dom-note"><span class="adm-muted">Last checked ${e(D.fmtDate(d.lastCheckedAt))}.</span> ${e(d.lastCheckError || '')}</p>` : ''}`;
@@ -475,12 +495,12 @@ function domainHtml(d) {
     } else if (bs === 'BIND_FAILED') {
       body = `
       <p class="acct-error ev-dom-note">Binding did not complete: ${e(b.error || 'Azure did not say why.')}</p>
-      <p class="acct-card-note ev-dom-note">${d.registrar ? 'The platform holds this name’s DNS and has written the records; DNS can take up to an hour to show. It tries again nightly, or now with Try again.' : 'Check the two records below, give DNS a few minutes, then press Try again.'}</p>
+      <p class="acct-card-note ev-dom-note">${platformWrites ? `${writesLine} and has written the records; DNS can take up to an hour to show. It tries again nightly, or now with Try again.` : 'Check the two records below, give DNS a few minutes, then press Try again.'}</p>
       ${recs}`;
     } else {
       body = `
-      <p class="acct-card-note ev-dom-note">Proven ${e(D.fmtDate(d.verifiedAt))}. ${d.registrar ? 'The platform holds this name’s DNS and points it at the software on its own: binding starts within a day, or now with Bind.' : 'Create these two records where you manage the domain’s DNS, then press Bind. The software then serves your site at this name, with a certificate Azure issues and renews.'}</p>
-      ${recs}`;
+      <p class="acct-card-note ev-dom-note">Proven ${e(D.fmtDate(d.verifiedAt))}. ${platformWrites ? `${writesLine} and points it at the software on its own: binding starts within a day, or now with Bind.` : 'Create these two records where you manage the domain’s DNS, then press Bind. The software then serves your site at this name, with a certificate Azure issues and renews.'}</p>
+      ${platformWrites ? '' : recs}`;
     }
   } else if (d.cname) {
     body = `
@@ -499,11 +519,22 @@ function domainHtml(d) {
       ${owner ? `
       <label class="ev-agree ev-renew"><input type="checkbox" data-env-toggle="domain-renew" data-host="${e(d.host)}" ${r.autoRenew ? 'checked' : ''} /> <span>Renew automatically each year</span></label>` : ''}`;
   }
+  // A linked name says so, and a link whose account is gone says that.
+  if (linked) {
+    body += conn
+      ? `<p class="acct-card-note ev-dom-note ev-dom-dns">DNS managed by the platform through ${via}. Unlink to manage the records yourself again; nothing at the registrar changes.</p>`
+      : `<p class="acct-error ev-dom-note">The registrar account this name was linked through was removed. Link it again under a connected account, or Unlink and manage its records yourself.</p>`;
+  }
+  const armed = (k) => ev.domArm === `${k}:${d.host}`;
+  const twoStep = (k, label, sure) => armed(k)
+    ? `<button class="btn btn-sm is-danger" type="button" data-env-action="domain-${k}" data-host="${e(d.host)}">${sure}</button><button class="btn btn-sm" type="button" data-env-action="domain-arm-cancel">Cancel</button>`
+    : `<button class="btn btn-sm" type="button" data-env-action="domain-${k}" data-host="${e(d.host)}">${label}</button>`;
   return `
     <div class="ev-dom">
       <div class="ev-dom-head">
         <span class="ev-dom-host">${e(d.host)}</span>
         ${domainTag(d)}
+        ${linked ? '<span class="acct-tag">linked</span>' : d.registrar ? '<span class="acct-tag">registered here</span>' : ''}
         ${d.addedBy ? `<span class="ev-dom-when">connected by ${e(d.addedBy)} ${e(D.fmtDate(d.addedAt))}</span>` : ''}
       </div>
       ${body}
@@ -511,11 +542,29 @@ function domainHtml(d) {
       <div class="ev-dom-actions">
         ${verified ? '' : `<button class="btn btn-sm" type="button" data-env-action="domain-verify" data-host="${e(d.host)}" ${checking ? 'disabled' : ''}>${checking ? 'Checking…' : 'Verify'}</button>`}
         ${verified && hosted ? (bs === 'BOUND'
-          ? `<button class="btn btn-sm" type="button" data-env-action="domain-unbind" data-host="${e(d.host)}">Unbind</button>`
+          ? twoStep('unbind', 'Unbind', 'Stop serving here?')
           : `<button class="btn btn-sm" type="button" data-env-action="domain-bind" data-host="${e(d.host)}" ${busy ? 'disabled' : ''}>${busy ? 'Working…' : bs === 'BINDING' ? 'Check' : bs === 'BIND_FAILED' ? 'Try again' : 'Bind'}</button>`) : ''}
-        <button class="btn btn-sm" type="button" data-env-action="domain-remove" data-host="${e(d.host)}">Remove</button>
+        ${linked ? `<button class="btn btn-sm" type="button" data-env-action="domain-unlink" data-host="${e(d.host)}">Unlink</button>` : ''}
+        ${twoStep('remove', 'Remove', 'Remove for sure?')}
       </div>` : ''}
     </div>`;
+}
+
+/** The link door: a name held at a registrar account connected under Connected accounts. */
+function linkDoorHtml(full) {
+  const e = D.escapeHtml;
+  const conns = dnsConnections();
+  if (!conns.length) {
+    return `<p class="acct-card-note ev-dom-door">Hold the name at Spaceship? Connect that account under Connected accounts, then link the name here: the platform writes the proof and serving records itself. Nothing to paste.</p>`;
+  }
+  return `
+    <div class="ev-dom-row ev-dom-link">
+      <select class="acct-select" id="evLinkConn" aria-label="Registrar account">${conns.map(c => `<option value="${e(c.id)}">${e(c.label)} (${e(providerLabel(c.provider))})</option>`).join('')}</select>
+      <input class="acct-input" type="text" id="evLinkHost" maxlength="253" placeholder="www.example.com" autocomplete="off" spellcheck="false" autocapitalize="off" ${full ? 'disabled' : ''} />
+      <button class="btn" type="button" data-env-action="domain-link" ${full ? 'disabled' : ''}>Link</button>
+    </div>
+    <p class="acct-card-note ev-dom-door">A name you hold in that account. The platform checks it is there, writes the proof record itself and manages the name’s records from then on. Nothing to paste.</p>
+    ${ev.linkNote ? `<p class="acct-card-note">${e(ev.linkNote)}</p>` : ''}`;
 }
 
 function domainsHtml() {
@@ -530,13 +579,14 @@ function domainsHtml() {
   return `
     <section class="acct-card">
       <h3 class="acct-card-h">Domains</h3>
-      <p class="acct-card-note">Connect a domain you own. One TXT record at your registrar proves it is yours; the platform never needs your registrar login. ${explainLink('domains', 'How domains work')}</p>
+      <p class="acct-card-note">Bring a domain in by the door that fits. Connect one you own anywhere: one TXT record proves it is yours, and the platform never needs your registrar login. Link the registrar account that holds it, and the platform writes the records for you. Or register a new name here. ${explainLink('domains', 'How domains work')}</p>
       ${manage ? `
       <div class="ev-dom-row">
         <input class="acct-input" type="text" id="evDomainHost" maxlength="253" placeholder="www.example.com" autocomplete="off" spellcheck="false" autocapitalize="off" ${full ? 'disabled' : ''} />
         <button class="btn" type="button" data-env-action="domain-add" ${full ? 'disabled' : ''}>Connect</button>
       </div>
-      ${limit ? `<p class="acct-card-note ev-count">${e(String((rows || []).length))} of ${e(String(limit))} on this plan.${full ? ' Remove one to connect another, or move up a plan.' : ''}</p>` : ''}` : `<p class="acct-card-note">The owner, an admin or a developer connects domains; everyone on the team sees them here.</p>`}
+      ${limit ? `<p class="acct-card-note ev-count">${e(String((rows || []).length))} of ${e(String(limit))} on this plan.${full ? ' Remove one to connect another, or move up a plan.' : ''}</p>` : ''}
+      ${linkDoorHtml(full)}` : `<p class="acct-card-note">The owner, an admin or a developer connects domains; everyone on the team sees them here.</p>`}
       <p class="acct-error" id="evDomainError" hidden></p>
       ${ev.domainNote ? `<p class="acct-card-note">${e(ev.domainNote)}</p>` : ''}
       ${registrationsHtml()}
@@ -874,7 +924,7 @@ function keysHtml() {
                 <td class="cell-ellip adm-cell-email" title="${e(k.createdByEmail)}">${e(k.createdByEmail || '')}${mine ? ' <span class="adm-muted">(you)</span>' : ''}</td>
                 <td class="cell-tight adm-muted">${k.lastUsedAt ? e(D.fmtDate(k.lastUsedAt)) : 'never'}</td>
                 <td class="cell-tight"><span class="acct-tag ${k.status === 'ACTIVE' ? 'is-verified' : ''}">${e(String(k.status).toLowerCase())}</span></td>
-                <td class="cell-tight ev-actions-cell">${revocable ? `<button class="btn btn-sm" type="button" data-env-action="key-revoke" data-key="${e(k.keyId)}" data-label="${e(k.label || k.prefix)}">Revoke</button>` : ''}</td>
+                <td class="cell-tight ev-actions-cell">${revocable ? `${ev.keyArm === k.keyId ? `<button class="btn btn-sm is-danger" type="button" data-env-action="key-revoke" data-key="${e(k.keyId)}" data-label="${e(k.label || k.prefix)}" title="Every call with it stops on the next request">Revoke for sure?</button><button class="btn btn-sm" type="button" data-env-action="key-arm-cancel">Cancel</button>` : `<button class="btn btn-sm" type="button" data-env-action="key-revoke" data-key="${e(k.keyId)}" data-label="${e(k.label || k.prefix)}">Revoke</button>`}` : ''}</td>
               </tr>`; }).join('')}
           </tbody>
         </table>
@@ -991,8 +1041,16 @@ async function makeKey(btn) {
   }
 }
 
+let keyArmTimer = null;
 async function revokeKey(keyId, label) {
-  if (!window.confirm(`Revoke ${label}? Every call with it stops on the next request.`)) return;
+  // First click arms the row, the second within six seconds revokes; no native dialog.
+  if (ev.keyArm !== keyId) {
+    ev.keyArm = keyId; paintKeys();
+    clearTimeout(keyArmTimer);
+    keyArmTimer = setTimeout(() => { if (ev.keyArm === keyId) { ev.keyArm = ''; paintKeys(); } }, 6000);
+    return;
+  }
+  clearTimeout(keyArmTimer); ev.keyArm = '';
   D.showError('evKeyError', '');
   try {
     await post(`${ENV_URL}/keys/revoke`, { keyId });
@@ -1056,18 +1114,56 @@ async function bindDomain(host) {
   }
 }
 
+// No native confirm() on the domain card either: embedded browsers swallow
+// those and the click looked dead. First click arms the button, the second
+// within six seconds acts; it disarms itself otherwise.
+let domArmTimer = null;
+function armDomain(key) {
+  ev.domArm = key; paintDomains();
+  clearTimeout(domArmTimer);
+  domArmTimer = setTimeout(() => { if (ev.domArm === key) { ev.domArm = ''; paintDomains(); } }, 6000);
+}
+function disarmDomain() { clearTimeout(domArmTimer); ev.domArm = ''; }
+
 async function unbindDomain(host) {
-  if (!window.confirm(`Stop serving at ${host}? The name stays connected and verified; Bind puts it back.`)) return;
+  if (ev.domArm !== `unbind:${host}`) return armDomain(`unbind:${host}`);
+  disarmDomain();
   D.showError('evDomainError', '');
   try { await post(`${ENV_URL}/domains/unbind`, { host }); await loadDomains(); }
-  catch (ex) { D.showError('evDomainError', errText(ex, 'Could not unbind that domain.')); }
+  catch (ex) { paintDomains(); D.showError('evDomainError', errText(ex, 'Could not unbind that domain.')); }
 }
 
 async function removeDomain(host) {
-  if (!window.confirm(`Remove ${host}? It stops serving anything from here and can be connected again later.`)) return;
+  if (ev.domArm !== `remove:${host}`) return armDomain(`remove:${host}`);
+  disarmDomain();
   D.showError('evDomainError', '');
   try { await post(`${ENV_URL}/domains/remove`, { host }); await loadDomains(); }
-  catch (ex) { D.showError('evDomainError', errText(ex, 'Could not remove that domain.')); }
+  catch (ex) { paintDomains(); D.showError('evDomainError', errText(ex, 'Could not remove that domain.')); }
+}
+
+// The link door: the name is checked in the linked account, the proof record
+// planted there by the platform and read back; the note says how far it got.
+async function linkDomain(btn) {
+  D.showError('evDomainError', '');
+  const host = (document.getElementById('evLinkHost')?.value || '').trim();
+  const connectionId = document.getElementById('evLinkConn')?.value || '';
+  if (!host) { D.showError('evDomainError', 'Enter the domain to link, e.g. www.example.com.'); return; }
+  if (!connectionId) { D.showError('evDomainError', 'Pick the registrar account that holds the name.'); return; }
+  btn.disabled = true;
+  try {
+    const r = await post(`${ENV_URL}/domains/link`, { host, connectionId });
+    ev.linkNote = r.note || '';
+    await loadDomains();
+  } catch (ex) {
+    btn.disabled = false;
+    D.showError('evDomainError', errText(ex, 'That domain could not be linked.'));
+  }
+}
+
+async function unlinkDomain(host) {
+  D.showError('evDomainError', '');
+  try { const r = await post(`${ENV_URL}/domains/unlink`, { host }); ev.linkNote = r.note || ''; await loadDomains(); }
+  catch (ex) { D.showError('evDomainError', errText(ex, 'Could not unlink that domain.')); }
 }
 
 // The export: one JSON file with everything, fetched with the session and
@@ -1198,12 +1294,16 @@ export function bindEnvironmentActions(deps) {
     if (a === 'key-make') return void makeKey(btn);
     if (a === 'key-copy') return void copyKey(btn);
     if (a === 'key-revoke') return void revokeKey(btn.dataset.key || '', btn.dataset.label || 'this key');
+    if (a === 'key-arm-cancel') { clearTimeout(keyArmTimer); ev.keyArm = ''; paintKeys(); return; }
     if (a === 'domain-add') return void addDomain(btn);
     if (a === 'domain-verify') return void verifyDomain(btn.dataset.host || '');
     if (a === 'domain-remove') return void removeDomain(btn.dataset.host || '');
     if (a === 'domain-bind') return void bindDomain(btn.dataset.host || '');
     if (a === 'domain-unbind') return void unbindDomain(btn.dataset.host || '');
     if (a === 'domain-copy') return void copyText(btn.dataset.text || '', btn);
+    if (a === 'domain-link') return void linkDomain(btn);
+    if (a === 'domain-unlink') return void unlinkDomain(btn.dataset.host || '');
+    if (a === 'domain-arm-cancel') { disarmDomain(); paintDomains(); return; }
     if (a === 'domain-reg-check') return void regCheck();
     if (a === 'domain-reg-continue') { ev.reg.step = 'contact'; ev.reg.error = ''; paintDomains(); document.getElementById('evRegFirst')?.focus(); return; }
     if (a === 'domain-reg-pay') return void regPay();
@@ -1227,5 +1327,6 @@ export function bindEnvironmentActions(deps) {
     if (e.key === 'Enter' && (e.target.id === 'evConnLabel' || e.target.matches?.('[data-conn-field]'))) { e.preventDefault(); document.querySelector('[data-env-action="conn-add"]')?.click(); }
     if (e.key === 'Enter' && e.target.id === 'evDomainHost') { e.preventDefault(); document.querySelector('[data-env-action="domain-add"]')?.click(); }
     if (e.key === 'Enter' && e.target.id === 'evRegHost') { e.preventDefault(); document.querySelector('[data-env-action="domain-reg-check"]')?.click(); }
+    if (e.key === 'Enter' && e.target.id === 'evLinkHost') { e.preventDefault(); document.querySelector('[data-env-action="domain-link"]')?.click(); }
   });
 }
