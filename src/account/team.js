@@ -378,12 +378,39 @@ async function copyText(text, btn) {
   setTimeout(() => { btn.textContent = orig; }, 1600);
 }
 
+// No native confirm() anywhere here: embedded browsers (the app's own pane)
+// swallow it and the click looks dead. The first click arms the button in
+// place ("… for sure?" beside a Cancel), the second within six seconds acts;
+// it disarms itself otherwise. armed(btn, label) answers true on the second click.
+let armTimer = null, armedBtn = null;
+function disarm() {
+  clearTimeout(armTimer);
+  const b = armedBtn; armedBtn = null;
+  if (!b) return;
+  b.classList.remove('is-danger');
+  if (b.dataset.armLabel != null) b.textContent = b.dataset.armLabel;
+  delete b.dataset.armed; delete b.dataset.armLabel;
+  const c = b.nextElementSibling;
+  if (c && c.hasAttribute('data-arm-cancel')) c.remove();
+}
+function armed(btn, label) {
+  if (btn.dataset.armed === '1') { disarm(); return true; }
+  disarm();
+  armedBtn = btn; btn.dataset.armed = '1'; btn.dataset.armLabel = btn.textContent; btn.textContent = label; btn.classList.add('is-danger');
+  const c = document.createElement('button');
+  c.type = 'button'; c.className = 'btn btn-sm'; c.textContent = 'Cancel'; c.setAttribute('data-arm-cancel', '1');
+  btn.after(c);
+  armTimer = setTimeout(disarm, 6000);
+  return false;
+}
+
 export function bindTeamActions(deps) {
   if (bindTeamActions._bound) return;
   bindTeamActions._bound = true;
   D = D || deps;
 
   document.addEventListener('click', (e) => {
+    if (e.target.closest('[data-arm-cancel]')) { e.preventDefault(); disarm(); return; }
     const tb = e.target.closest('[data-tenant-action]');
     if (tb) { e.preventDefault(); if (tb.dataset.tenantAction === 'repair') repairTenant(tb); return; }
     const btn = e.target.closest('[data-team-action]');
@@ -401,7 +428,7 @@ export function bindTeamActions(deps) {
     }
     if (a === 'leave') {
       const name = tm.view?.tenant?.organizationName || 'this team';
-      if (!window.confirm(`Leave ${name}? You will need a new invite to come back.`)) return;
+      if (!armed(btn, 'Leave for sure?')) return;
       return void act(async () => { await post(`${TENANT_URL}/leave`, {}); tm.teamId = ''; remember(); });
     }
     if (a === 'invite') {
@@ -416,16 +443,16 @@ export function bindTeamActions(deps) {
     }
     if (a === 'copy-link') return void copyText(btn.dataset.link || '', btn);
     if (a === 'revoke') {
-      if (!window.confirm(`Withdraw the invite to ${who}? The link stops working.`)) return;
+      if (!armed(btn, 'Withdraw for sure?')) return;
       return void act(async () => { await post(`${TENANT_URL}/invites/revoke`, { inviteId: btn.dataset.invite }); if (tm.lastInvite?.invite?.inviteId === btn.dataset.invite) tm.lastInvite = null; });
     }
     if (a === 'suspend') {
-      if (!window.confirm(`Suspend ${who}? They keep their seat and cannot get in until restored.`)) return;
+      if (!armed(btn, 'Suspend for sure?')) return;
       return void act(() => post(`${TENANT_URL}/members/patch`, { userId, status: 'SUSPENDED' }));
     }
     if (a === 'restore') return void act(() => post(`${TENANT_URL}/members/patch`, { userId, status: 'ACTIVE' }));
     if (a === 'remove') {
-      if (!window.confirm(`Remove ${who} from the team? Their seat frees up. They can be invited again later.`)) return;
+      if (!armed(btn, 'Remove for sure?')) return;
       return void act(() => post(`${TENANT_URL}/members/remove`, { userId }));
     }
     if (a === 'allow-edit') { tm.editing = userId; paint(); document.getElementById('tmAllowCalls')?.focus(); return; }
@@ -491,7 +518,7 @@ function repairable(t) {
 }
 async function repairTenant(btn) {
   const name = btn.dataset.name || 'this team';
-  if (!window.confirm(`Run provisioning for ${name}? It creates whatever is missing and changes nothing that exists.`)) return;
+  if (!armed(btn, 'Run for sure?')) return;
   D.showError('tnError', '');
   btn.disabled = true; btn.textContent = 'Running…';
   try {
