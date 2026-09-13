@@ -105,6 +105,10 @@ export async function requestNativeCode({ email, purpose, smsOptIn, phone, chann
     smsOptIn: !!smsOptIn,
     phone: String(phone || "").trim()
   };
+  // A team invite the person arrived with (the join page stashes it). Live
+  // ignores it; the dev sandbox opens the signup code only for exactly the
+  // address a pending invite names, so the stranger path can be tested there.
+  try { const t = sessionStorage.getItem("pragoptics_join_token"); if (t) body.inviteToken = String(t); } catch { /* fine */ }
   return postJson("/auth/request-code", body);
 }
 
