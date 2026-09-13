@@ -307,7 +307,7 @@ function filesHtml() {
   const write = canWrite();
   const rows = ev.files;
   const list = rows == null ? '<p class="acct-loading">Loading files…</p>'
-    : !rows.length ? `<p class="acct-empty">No files yet. Builds, images and exports the software and your programs store land here, and anything you upload.</p>`
+    : !rows.length ? `<p class="acct-empty">No files yet. Builds, images and exports the software and your programs store will land here.</p>`
     : `
       <div class="adm-table-scroll">
         <table class="adm-table adm-table--wrap ev-table">
@@ -322,7 +322,6 @@ function filesHtml() {
                 <td class="cell-tight ev-actions-cell">
                   ${viewTypeFor(f.name) ? `<button class="btn btn-sm" type="button" data-env-action="open" data-name="${e(f.name)}" title="Show it in a new tab">Open</button>` : ''}
                   <button class="btn btn-sm" type="button" data-env-action="download" data-name="${e(f.name)}">Download</button>
-                  ${write ? `<button class="btn btn-sm" type="button" data-env-action="delete" data-name="${e(f.name)}">Delete</button>` : ''}
                 </td>
               </tr>`).join('')}
           </tbody>
@@ -332,15 +331,9 @@ function filesHtml() {
   return `
     <section class="acct-card">
       <h3 class="acct-card-h">Files</h3>
-      <p class="acct-card-note">${write
-        ? 'Uploads go straight from your browser to your container through a link that lives ten minutes; the platform never holds the bytes in between. One file at a time up to 5 GB.'
-        : 'You are a viewer on this team: download what is here. Seat members upload and delete.'}</p>
-      ${write ? `
-      <div class="ev-upload-row">
-        <input class="ev-file" type="file" id="evFile" multiple aria-label="Choose files to upload" />
-        <button class="btn" type="button" data-env-action="upload" ${ev.uploading ? 'disabled' : ''}>${ev.uploading ? 'Uploading…' : 'Upload files'}</button>
-        <span class="ev-status" id="evUpStatus" aria-live="polite">${e(ev.filesNote)}</span>
-      </div>` : (ev.filesNote ? `<p class="acct-error">${e(ev.filesNote)}</p>` : '')}
+      <p class="acct-card-note">What is in this environment's file store, by name and size. Files get here through the software: its galleries, builds and exports. Open shows one in a new tab; Download saves it. Adding and removing files is done in the software, not here.</p>
+      ${ev.filesNote ? `<p class="acct-error">${e(ev.filesNote)}</p>` : ''}
+      <span class="ev-status" id="evUpStatus" aria-live="polite"></span>
       <p class="acct-error" id="evFileError" hidden></p>
       ${list}
     </section>`;
@@ -850,46 +843,6 @@ async function provision() {
   }
 }
 
-function setStatus(text) { const s = document.getElementById('evUpStatus'); if (s) s.textContent = text; }
-
-async function uploadFiles(fileList) {
-  const files = Array.from(fileList || []);
-  if (!files.length) return;
-  ev.uploading = true; ev.filesNote = '';
-  D.showError('evFileError', '');
-  paintFiles();
-  let done = 0;
-  try {
-    for (const [i, f] of files.entries()) {
-      setStatus(`Uploading ${i + 1} of ${files.length}: ${f.name}…`);
-      // Type by NAME: the browser leaves File.type empty for .md, .csv, .json
-      // and most others, and a blob stored as octet-stream can only download.
-      const link = await post(`${ENV_URL}/files/upload-url`, { name: f.name, size: f.size, contentType: mimeFor(f.name, f.type) });
-      const put = await fetch(link.url, { method: link.method || 'PUT', headers: link.headers || {}, body: f });
-      if (!put.ok) throw Object.assign(new Error(`The storage service refused the upload (${put.status}).`), { status: put.status });
-      await post(`${ENV_URL}/files/commit`, { name: link.name || f.name });
-      done += 1;
-    }
-    ev.filesNote = done === 1 ? `Uploaded ${files[0].name} (${bytesFmt(files[0].size)}).` : `Uploaded ${done} files.`;
-  } catch (ex) {
-    const over = ex?.status === 402;
-    ev.filesNote = done ? `Uploaded ${done} of ${files.length}.` : '';
-    D.showError('evFileError', over
-      ? `${ex?.data?.error || 'That upload does not fit the storage allowance.'} More storage is on the Billing section.`
-      : (ex instanceof TypeError ? 'The browser could not reach the storage service. Check that you are online; if it persists, the storage account needs a CORS rule for this site.' : errText(ex, 'The upload did not finish.')));
-  } finally {
-    ev.uploading = false;
-    const input = document.getElementById('evFile');
-    if (input) input.value = '';
-  }
-  // The bar and the list both moved.
-  try { ev.view = await fetchView(); } catch { /* keep the old figures */ }
-  const summary = document.querySelector('.ev-summary');
-  if (summary && ev.view?.tenant) summary.outerHTML = summaryHtml(ev.view);
-  await loadFiles();
-  if (ev.filesNote) setStatus(ev.filesNote);
-}
-
 // Open shows the file; Download saves it. Both fetch the bytes through the
 // ten-minute link the API mints (the page's CSP and the account's CORS allow
 // the tenant's own blob host), then hand the browser a blob typed by the
@@ -926,19 +879,6 @@ async function openFile(name, btn, mode = 'open') {
     // The blob lives long enough for the tab or the save to take it.
     if (objectUrl) setTimeout(() => URL.revokeObjectURL(objectUrl), 120000);
   }
-}
-
-async function del(name) {
-  if (!window.confirm(`Delete ${name}? Its bytes go back to your allowance. This cannot be undone.`)) return;
-  D.showError('evFileError', '');
-  try {
-    const r = await post(`${ENV_URL}/files/delete`, { name });
-    ev.filesNote = r.deleted ? `Deleted ${name}.` : `${name} was already gone.`;
-    try { ev.view = await fetchView(); } catch { /* keep */ }
-    const summary = document.querySelector('.ev-summary');
-    if (summary && ev.view?.tenant) summary.outerHTML = summaryHtml(ev.view);
-    await loadFiles();
-  } catch (ex) { D.showError('evFileError', errText(ex, 'Could not delete that file.')); }
 }
 
 async function makeKey(btn) {
@@ -1150,10 +1090,8 @@ export function bindEnvironmentActions(deps) {
     if (a === 'refresh') return void refreshAll();
     if (a === 'export') return void exportEnvironment(btn);
     if (a === 'provision') return void provision();
-    if (a === 'upload') { document.getElementById('evFile')?.click(); return; }
     if (a === 'open') return void openFile(btn.dataset.name || '', btn, 'open');
     if (a === 'download') return void openFile(btn.dataset.name || '', btn, 'download');
-    if (a === 'delete') return void del(btn.dataset.name || '');
     if (a === 'key-make') return void makeKey(btn);
     if (a === 'key-copy') return void copyKey(btn);
     if (a === 'key-revoke') return void revokeKey(btn.dataset.key || '', btn.dataset.label || 'this key');
@@ -1174,7 +1112,6 @@ export function bindEnvironmentActions(deps) {
   });
 
   document.addEventListener('change', (e) => {
-    if (e.target.id === 'evFile') uploadFiles(e.target.files);
     const t = e.target.closest?.('[data-env-toggle="domain-renew"]');
     if (t) setRenewal(t.dataset.host || '', !!t.checked, t);
     // Picking a provider redraws the form with that provider's own fields.
