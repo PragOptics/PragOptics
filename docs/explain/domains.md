@@ -56,9 +56,9 @@ Unlink hands the records back to you. The name stays connected and verified, and
 
 ## Registering a new one here
 
-If you do not have a domain yet, the card can register one for you. Type the name you want; the card says whether it is free and what it costs for the first year. The price is the registrar's own price for a domain, passed through with no markup, and it is an ordinary order on your account with a receipt.
+If you do not have a domain yet, the card registers one for you through GoDaddy. Type the name you want; the card says whether it is free, what GoDaddy charges for the first year and what it renews at. That price is passed through with no markup: you pay what GoDaddy charges, plus any sales tax, as an ordinary order on your account with a receipt.
 
-The registry records a contact for every domain: a name, an email, a phone number and a mailing address. That is the same at every registrar. Privacy protection is on, so the public record shows the registrar's proxy instead of your details.
+The registry records a contact for every domain: a name, an email, a phone number and a mailing address. The card takes those from the billing details you already gave, and you can edit them if the domain should be registered to someone else. The domain is registered in your name, not ours. Privacy protection is on, so the public record shows the registrar's proxy instead of your details.
 
 Registration takes a few minutes. The domain then appears on the card as verified, with its DNS held by the platform at the registrar under your account, so nothing needs pointing anywhere. It renews yearly at the same price unless you turn renewal off. If the registry cannot complete a registration, nothing is registered, you get an email, and support refunds the charge in full.
 

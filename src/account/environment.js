@@ -51,7 +51,24 @@ let D = null;
 
 // The registration flow's own state (round 3b-2): a quote, the registrant
 // contact, an order with its payment element, then the wait for the registry.
-function freshReg() { return { host: '', quote: null, step: 'idle', error: '', busy: false, contact: {}, order: null, stripe: null, elements: null, polls: 0, retryOrderId: '' }; }
+function freshReg() { return { host: '', quote: null, step: 'idle', error: '', busy: false, contact: {}, order: null, stripe: null, elements: null, polls: 0, retryOrderId: '', editContact: false }; }
+
+/** The registrant from the billing profile the customer already gave at subscription; nothing is asked twice. */
+function contactFromBilling() {
+  const p = D.cachedPing?.() || {};
+  const b = p.billingProfile || {};
+  const name = String(b.customerName || '').trim();
+  const sp = name.indexOf(' ');
+  return {
+    nameFirst: sp > 0 ? name.slice(0, sp) : name, nameLast: sp > 0 ? name.slice(sp + 1) : '', organization: '',
+    email: String(b.primaryEmail || p.user?.email || ''), phone: String(b.phone || ''),
+    address1: String(b.addressLine1 || ''), address2: String(b.addressLine2 || ''), city: String(b.city || ''), state: String(b.state || ''),
+    postalCode: String(b.postalCode || ''), country: String(b.country || 'US').toUpperCase()
+  };
+}
+function contactComplete(c) {
+  return !!(c.nameFirst && c.nameLast && c.email && c.phone && c.address1 && c.city && c.postalCode && c.country && (c.country !== 'US' || c.state));
+}
 ev.reg = freshReg();
 
 function teamId() { try { return sessionStorage.getItem(TEAM_KEY) || ''; } catch { return ''; } }
@@ -647,7 +664,7 @@ function registerHtml() {
   if (r.step === 'idle' || r.step === 'checking') {
     return `
       ${head}
-      <p class="acct-card-note">Do not have one yet? Type the name you want. The price is the registrar's, passed through with no markup, and the domain is yours.</p>
+      <p class="acct-card-note">Do not have one yet? Register it here through GoDaddy. Type the name you want: the price is GoDaddy's, passed through with no markup, and the domain is yours, in your name.</p>
       <div class="ev-dom-row">
         <input class="acct-input" type="text" id="evRegHost" maxlength="253" placeholder="yourname.com" autocomplete="off" spellcheck="false" autocapitalize="off" value="${e(r.host)}" ${r.busy ? 'disabled' : ''} />
         <button class="btn" type="button" data-env-action="domain-reg-check" ${r.busy ? 'disabled' : ''}>${r.busy ? 'Checking…' : 'Check'}</button>
@@ -675,11 +692,35 @@ function registerHtml() {
   }
   if (r.step === 'contact') {
     const f = (id, label, val, extra = '') => `<label class="acct-label" for="${id}">${label}</label><input class="acct-input" type="text" id="${id}" value="${e(val || '')}" ${extra} />`;
+    // The registrant is what the customer already gave at subscription; the form opens only on Edit or when a field is missing.
+    if (!r.contact || !Object.keys(r.contact).some(k => r.contact[k])) r.contact = contactFromBilling();
+    const c2 = r.contact;
+    const showForm = r.editContact || !contactComplete(c2);
+    if (!showForm) {
+      const line = [c2.address1, c2.address2, [c2.city, c2.state].filter(Boolean).join(' '), c2.postalCode, c2.country].filter(Boolean).join(', ');
+      return `
+      ${head}
+      ${r.retryOrderId
+        ? `<p class="acct-card-note"><b>${e(q.host)}</b> is paid on order ${e(String(r.retryOrderId).slice(0, 8))} and the registry refused the contact. Correct it and try again; nothing is charged again.</p>`
+        : `<p class="acct-card-note"><b>${e(q.host)}</b> at GoDaddy, ${e(money(q.priceCents))} for the first year, plus any sales tax due at your address. The registry records a contact for every domain; privacy protection is on, so the public record shows the registrar's proxy, not you.</p>`}
+      <dl class="ev-record ev-registrant" aria-label="Registrant">
+        <dt>Registrant</dt><dd>${e([c2.nameFirst, c2.nameLast].filter(Boolean).join(' '))}${c2.organization ? `, ${e(c2.organization)}` : ''}</dd><dd><button class="btn btn-sm" type="button" data-env-action="domain-reg-edit-contact">Edit</button></dd>
+        <dt>Address</dt><dd>${e(line)}</dd><dd></dd>
+        <dt>Contact</dt><dd>${e(c2.email)}, ${e(c2.phone)}</dd><dd></dd>
+      </dl>
+      <p class="acct-card-note ev-dom-note">Taken from your billing details. Edit if the domain should be registered to someone else.</p>
+      ${r.retryOrderId ? '' : `<label class="ev-agree"><input type="checkbox" id="evRegAgree" ${r.agree ? 'checked' : ''} /> <span>I accept the registrar agreements: ${(q.agreements || []).map(a => a.url ? `<a class="acct-inline-link" href="${e(a.url)}" target="_blank" rel="noopener noreferrer">${e(a.title || a.key)}</a>` : e(a.title || a.key)).join(', ')}.</span></label>`}
+      <p class="acct-error" id="evRegError" ${r.error ? '' : 'hidden'}>${e(r.error)}</p>
+      <div class="ev-dom-actions">
+        <button class="btn" type="button" data-env-action="domain-reg-pay" ${r.busy ? 'disabled' : ''}>${r.busy ? (r.retryOrderId ? 'Trying…' : 'Starting…') : r.retryOrderId ? 'Save and try again' : `Pay ${e(money(q.priceCents))} and register`}</button>
+        <button class="btn btn-sm" type="button" data-env-action="domain-reg-cancel">Cancel</button>
+      </div>`;
+    }
     return `
       ${head}
       ${r.retryOrderId
         ? `<p class="acct-card-note"><b>${e(q.host)}</b> is paid on order ${e(String(r.retryOrderId).slice(0, 8))} and the registry refused the contact. Correct it below and try again; nothing is charged again.</p>`
-        : `<p class="acct-card-note"><b>${e(q.host)}</b>, ${e(money(q.priceCents))} for the first year, plus any sales tax due at your address. The registry records a contact for every domain; privacy protection is on, so the public record shows the registrar's proxy, not you.</p>`}
+        : `<p class="acct-card-note"><b>${e(q.host)}</b> at GoDaddy, ${e(money(q.priceCents))} for the first year, plus any sales tax due at your address. The registry records a contact for every domain; privacy protection is on, so the public record shows the registrar's proxy, not you.</p>`}
       <div class="ev-reg-form">
         ${f('evRegFirst', 'First name', c.nameFirst, 'autocomplete="given-name"')}
         ${f('evRegLast', 'Last name', c.nameLast, 'autocomplete="family-name"')}
@@ -721,7 +762,8 @@ function registerHtml() {
 }
 
 function readContact() {
-  const v = (id) => (document.getElementById(id)?.value || '').trim();
+  const c = ev.reg?.contact || {};
+  const v = (id) => { const el = document.getElementById(id); return el ? String(el.value || '').trim() : String(c[{ evRegFirst: 'nameFirst', evRegLast: 'nameLast', evRegOrg: 'organization', evRegEmail: 'email', evRegPhone: 'phone', evRegAddr1: 'address1', evRegAddr2: 'address2', evRegCity: 'city', evRegState: 'state', evRegZip: 'postalCode', evRegCountry: 'country' }[id]] || '').trim(); };
   return {
     nameFirst: v('evRegFirst'), nameLast: v('evRegLast'), organization: v('evRegOrg'), email: v('evRegEmail'), phone: v('evRegPhone'),
     address1: v('evRegAddr1'), address2: v('evRegAddr2'), city: v('evRegCity'), state: v('evRegState'), postalCode: v('evRegZip'), country: v('evRegCountry').toUpperCase()
@@ -826,7 +868,7 @@ function fixRegistrationContact(orderId, host) {
   const c = reg.contact || {};
   const a = c.addressMailing || {};
   ev.reg = {
-    ...freshReg(), step: 'contact', retryOrderId: orderId,
+    ...freshReg(), step: 'contact', retryOrderId: orderId, editContact: true,
     quote: { host: host || reg.host, priceCents: null, agreements: [], contact: { email: c.email || '' } },
     contact: {
       nameFirst: c.nameFirst || '', nameLast: c.nameLast || '', organization: c.organization || '', email: c.email || '', phone: c.phone || '',
@@ -1396,6 +1438,7 @@ export function bindEnvironmentActions(deps) {
     if (a === 'domain-reg-confirm') return void regConfirm();
     if (a === 'domain-reg-retry') return void retryRegistration(btn.dataset.order || '', btn.dataset.host || 'the name');
     if (a === 'domain-reg-fix') return void fixRegistrationContact(btn.dataset.order || '', btn.dataset.host || '');
+    if (a === 'domain-reg-edit-contact') { ev.reg.contact = readContact(); ev.reg.editContact = true; paintDomains(); document.getElementById('evRegFirst')?.focus(); return; }
     if (a === 'domain-reg-cancel') { ev.reg = freshReg(); paintDomains(); return; }
     if (a === 'conn-add') return void addConnection(btn);
     if (a === 'conn-test') return void testConnection(btn.dataset.id || '');

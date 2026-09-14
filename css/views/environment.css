@@ -93,6 +93,7 @@ html[data-theme="dark"] .btn.is-danger, :root:not([data-theme="light"]) .btn.is-
 .ev-dom-link .acct-select { flex: 0 1 240px; min-width: 0; }
 .ev-dom-door { margin-top: 6px; }
 .ev-dom-dns { color: var(--muted); }
+.ev-registrant { margin-top: 10px; }
 @media (max-width: 640px) {
   .ev-record { grid-template-columns: 1fr; gap: 2px; }
   .ev-record dt { margin-top: 6px; }
