@@ -661,6 +661,10 @@ function registerHtml() {
     if (!q.available) {
       return `${head}<p class="acct-card-note"><b>${e(q.host)}</b> is taken. If it is yours, connect it above instead.</p><div class="ev-dom-actions"><button class="btn btn-sm" type="button" data-env-action="domain-reg-cancel">Try another</button></div>`;
     }
+    if (q.quoteError) {
+      // The registrar would not price the name: its own words, and nothing to buy at a price it will not honor.
+      return `${head}<p class="acct-error"><b>${e(q.host)}</b> is available, but the registrar could not price it right now: ${e(q.quoteError.message || q.quoteError.code || 'no reason given')}</p><div class="ev-dom-actions"><button class="btn btn-sm" type="button" data-env-action="domain-reg-check">Check again</button><button class="btn btn-sm" type="button" data-env-action="domain-reg-cancel">Try another</button></div>`;
+    }
     return `
       ${head}
       <p class="acct-card-note"><b>${e(q.host)}</b> is available: <b>${e(money(q.priceCents))}</b> for the first year${q.priceSource === 'azure-live' ? ', Azure’s current price read just now' : q.priceSource === 'godaddy-quote' ? ', GoDaddy’s price right now' : ''}. ${e(q.note || '')}</p>
@@ -726,7 +730,9 @@ function readContact() {
 
 async function regCheck() {
   const r = ev.reg;
-  r.host = (document.getElementById('evRegHost')?.value || '').trim();
+  // Check again from the quoted step has no input on screen: the name it quoted stands.
+  const typed = document.getElementById('evRegHost');
+  r.host = String(typed ? typed.value : (r.host || '')).trim();
   r.error = '';
   if (!r.host) { r.error = 'Type the name you want, e.g. yourname.com.'; paintDomains(); return; }
   r.busy = true; paintDomains();
