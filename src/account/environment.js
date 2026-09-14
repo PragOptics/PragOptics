@@ -51,7 +51,7 @@ let D = null;
 
 // The registration flow's own state (round 3b-2): a quote, the registrant
 // contact, an order with its payment element, then the wait for the registry.
-function freshReg() { return { host: '', quote: null, step: 'idle', error: '', busy: false, contact: {}, order: null, stripe: null, elements: null, polls: 0 }; }
+function freshReg() { return { host: '', quote: null, step: 'idle', error: '', busy: false, contact: {}, order: null, stripe: null, elements: null, polls: 0, retryOrderId: '' }; }
 ev.reg = freshReg();
 
 function teamId() { try { return sessionStorage.getItem(TEAM_KEY) || ''; } catch { return ''; } }
@@ -632,6 +632,7 @@ function registrationsHtml() {
           ${r.status === 'FAILED' && myRole() === 'owner' ? `
           <div class="ev-dom-actions">
             <button class="btn btn-sm" type="button" data-env-action="domain-reg-retry" data-order="${e(r.orderId)}" data-host="${e(r.host)}" ${ev.regRetrying === r.orderId ? 'disabled' : ''}>${ev.regRetrying === r.orderId ? 'Trying…' : 'Try again'}</button>
+            ${r.contact ? `<button class="btn btn-sm" type="button" data-env-action="domain-reg-fix" data-order="${e(r.orderId)}" data-host="${e(r.host)}">Fix the contact</button>` : ''}
           </div>` : ''}
         </div>`).join('')}
     </div>`;
@@ -672,7 +673,9 @@ function registerHtml() {
     const f = (id, label, val, extra = '') => `<label class="acct-label" for="${id}">${label}</label><input class="acct-input" type="text" id="${id}" value="${e(val || '')}" ${extra} />`;
     return `
       ${head}
-      <p class="acct-card-note"><b>${e(q.host)}</b>, ${e(money(q.priceCents))} for the first year, plus any sales tax due at your address. The registry records a contact for every domain; privacy protection is on, so the public record shows the registrar's proxy, not you.</p>
+      ${r.retryOrderId
+        ? `<p class="acct-card-note"><b>${e(q.host)}</b> is paid on order ${e(String(r.retryOrderId).slice(0, 8))} and the registry refused the contact. Correct it below and try again; nothing is charged again.</p>`
+        : `<p class="acct-card-note"><b>${e(q.host)}</b>, ${e(money(q.priceCents))} for the first year, plus any sales tax due at your address. The registry records a contact for every domain; privacy protection is on, so the public record shows the registrar's proxy, not you.</p>`}
       <div class="ev-reg-form">
         ${f('evRegFirst', 'First name', c.nameFirst, 'autocomplete="given-name"')}
         ${f('evRegLast', 'Last name', c.nameLast, 'autocomplete="family-name"')}
@@ -686,10 +689,10 @@ function registerHtml() {
         ${f('evRegZip', 'Postal code', c.postalCode, 'autocomplete="postal-code"')}
         ${f('evRegCountry', 'Country (two letters)', c.country || 'US', 'autocomplete="country" maxlength="2"')}
       </div>
-      <label class="ev-agree"><input type="checkbox" id="evRegAgree" ${r.agree ? 'checked' : ''} /> <span>I accept the registrar agreements: ${(q.agreements || []).map(a => a.url ? `<a class="acct-inline-link" href="${e(a.url)}" target="_blank" rel="noopener noreferrer">${e(a.title || a.key)}</a>` : e(a.title || a.key)).join(', ')}.</span></label>
+      ${r.retryOrderId ? '' : `<label class="ev-agree"><input type="checkbox" id="evRegAgree" ${r.agree ? 'checked' : ''} /> <span>I accept the registrar agreements: ${(q.agreements || []).map(a => a.url ? `<a class="acct-inline-link" href="${e(a.url)}" target="_blank" rel="noopener noreferrer">${e(a.title || a.key)}</a>` : e(a.title || a.key)).join(', ')}.</span></label>`}
       <p class="acct-error" id="evRegError" ${r.error ? '' : 'hidden'}>${e(r.error)}</p>
       <div class="ev-dom-actions">
-        <button class="btn" type="button" data-env-action="domain-reg-pay" ${r.busy ? 'disabled' : ''}>${r.busy ? 'Starting…' : `Pay ${e(money(q.priceCents))} and register`}</button>
+        <button class="btn" type="button" data-env-action="domain-reg-pay" ${r.busy ? 'disabled' : ''}>${r.busy ? (r.retryOrderId ? 'Trying…' : 'Starting…') : r.retryOrderId ? 'Save and try again' : `Pay ${e(money(q.priceCents))} and register`}</button>
         <button class="btn btn-sm" type="button" data-env-action="domain-reg-cancel">Cancel</button>
       </div>`;
   }
@@ -740,6 +743,24 @@ async function regCheck() {
 async function regPay() {
   const r = ev.reg;
   r.contact = readContact();
+  if (r.retryOrderId) {
+    // The paid order is retried with the corrected contact; the agreements were accepted at checkout.
+    r.error = ''; r.busy = true; paintDomains();
+    const orderId = r.retryOrderId, host = r.quote?.host || 'the name';
+    try {
+      const res = await post(`${ENV_URL}/domains/register/retry`, { orderId, contact: r.contact });
+      ev.domainNote = res.outcome === 'registered' ? `${host} is registered and on the list.`
+        : res.outcome === 'registering' ? `${host} is being registered; the card updates on its own.`
+        : res.outcome === 'failed' ? `${host} failed again: ${res.error || 'the registry did not say why'}.`
+        : '';
+      ev.reg = freshReg();
+      await loadDomains();
+    } catch (ex) {
+      r.busy = false; r.error = errText(ex, 'The retry did not run.');
+      paintDomains();
+    }
+    return;
+  }
   r.agree = !!document.getElementById('evRegAgree')?.checked;
   r.error = '';
   if (!r.agree) { r.error = 'Accept the registrar agreements to continue.'; paintDomains(); return; }
@@ -789,6 +810,27 @@ async function retryRegistration(orderId, host) {
     ev.regRetrying = ''; paintDomains();
     D.showError('evDomainError', errText(ex, 'The retry did not run.'));
   }
+}
+
+// Fix the contact: the registrant form again, prefilled from the contact the
+// registry refused, on the same paid order.
+function fixRegistrationContact(orderId, host) {
+  const reg = (ev.registrations || []).find(x => x.orderId === orderId);
+  if (!reg) return;
+  const c = reg.contact || {};
+  const a = c.addressMailing || {};
+  ev.reg = {
+    ...freshReg(), step: 'contact', retryOrderId: orderId,
+    quote: { host: host || reg.host, priceCents: null, agreements: [], contact: { email: c.email || '' } },
+    contact: {
+      nameFirst: c.nameFirst || '', nameLast: c.nameLast || '', organization: c.organization || '', email: c.email || '', phone: c.phone || '',
+      address1: c.address1 || a.address1 || '', address2: c.address2 || a.address2 || '', city: c.city || a.city || '', state: c.state || a.state || '',
+      postalCode: c.postalCode || a.postalCode || '', country: c.country || a.country || 'US'
+    }
+  };
+  ev.domainNote = '';
+  paintDomains();
+  document.getElementById('evRegFirst')?.scrollIntoView({ block: 'center' });
 }
 
 async function regConfirm() {
@@ -1347,6 +1389,7 @@ export function bindEnvironmentActions(deps) {
     if (a === 'domain-reg-pay') return void regPay();
     if (a === 'domain-reg-confirm') return void regConfirm();
     if (a === 'domain-reg-retry') return void retryRegistration(btn.dataset.order || '', btn.dataset.host || 'the name');
+    if (a === 'domain-reg-fix') return void fixRegistrationContact(btn.dataset.order || '', btn.dataset.host || '');
     if (a === 'domain-reg-cancel') { ev.reg = freshReg(); paintDomains(); return; }
     if (a === 'conn-add') return void addConnection(btn);
     if (a === 'conn-test') return void testConnection(btn.dataset.id || '');
