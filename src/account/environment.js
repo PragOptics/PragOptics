@@ -676,7 +676,14 @@ function registerHtml() {
       return `${head}<p class="acct-card-note"><b>${e(q.host)}</b>: ${e(q.reason || 'not offered here.')}</p><div class="ev-dom-actions"><button class="btn btn-sm" type="button" data-env-action="domain-reg-cancel">Try another</button></div>`;
     }
     if (!q.available) {
-      return `${head}<p class="acct-card-note"><b>${e(q.host)}</b> is taken. If it is yours, connect it above instead.</p><div class="ev-dom-actions"><button class="btn btn-sm" type="button" data-env-action="domain-reg-cancel">Try another</button></div>`;
+      // Taken: the registrar's own alternatives, available with prices, one click each.
+      const sug = Array.isArray(q.suggestions) ? q.suggestions : [];
+      const options = sug.length ? `
+      <p class="acct-card-note ev-dom-note">Available instead:</p>
+      <div class="ev-suggest">
+        ${sug.map(x => `<button class="btn btn-sm ev-suggest-btn" type="button" data-env-action="domain-reg-suggest" data-host="${e(x.domain)}"><span class="ev-suggest-name">${e(x.domain)}</span><span class="ev-suggest-price">${Number.isInteger(x.priceCents) ? e(money(x.priceCents)) : ''}</span></button>`).join('')}
+      </div>` : '';
+      return `${head}<p class="acct-card-note"><b>${e(q.host)}</b> is taken. If it is yours, connect it above instead.</p>${options}<div class="ev-dom-actions"><button class="btn btn-sm" type="button" data-env-action="domain-reg-cancel">Try another</button></div>`;
     }
     if (q.quoteError) {
       // The registrar would not price the name: its own words, and nothing to buy at a price it will not honor.
@@ -1438,6 +1445,7 @@ export function bindEnvironmentActions(deps) {
     if (a === 'domain-reg-confirm') return void regConfirm();
     if (a === 'domain-reg-retry') return void retryRegistration(btn.dataset.order || '', btn.dataset.host || 'the name');
     if (a === 'domain-reg-fix') return void fixRegistrationContact(btn.dataset.order || '', btn.dataset.host || '');
+    if (a === 'domain-reg-suggest') { const r = ev.reg; r.host = btn.dataset.host || ''; r.step = 'idle'; r.quote = null; r.error = ''; paintDomains(); const i = document.getElementById('evRegHost'); if (i) i.value = r.host; regCheck(); return; }
     if (a === 'domain-reg-edit-contact') { ev.reg.contact = readContact(); ev.reg.editContact = true; paintDomains(); document.getElementById('evRegFirst')?.focus(); return; }
     if (a === 'domain-reg-cancel') { ev.reg = freshReg(); paintDomains(); return; }
     if (a === 'conn-add') return void addConnection(btn);

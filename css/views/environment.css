@@ -94,6 +94,11 @@ html[data-theme="dark"] .btn.is-danger, :root:not([data-theme="light"]) .btn.is-
 .ev-dom-door { margin-top: 6px; }
 .ev-dom-dns { color: var(--muted); }
 .ev-registrant { margin-top: 10px; }
+/* A taken name's alternatives: one button per name, the price beside it. */
+.ev-suggest { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 10px; }
+.ev-suggest-btn { display: inline-flex; align-items: baseline; gap: 8px; }
+.ev-suggest-name { font-family: ui-monospace, "Cascadia Code", Consolas, monospace; }
+.ev-suggest-price { color: var(--muted); font-size: .82rem; font-weight: 500; }
 @media (max-width: 640px) {
   .ev-record { grid-template-columns: 1fr; gap: 2px; }
   .ev-record dt { margin-top: 6px; }
