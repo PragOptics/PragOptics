@@ -93,13 +93,6 @@ html[data-theme="dark"] .btn.is-danger, :root:not([data-theme="light"]) .btn.is-
 .ev-dom-link .acct-select { flex: 0 1 240px; min-width: 0; }
 .ev-dom-door { margin-top: 6px; }
 .ev-dom-dns { color: var(--muted); }
-/* The Register door with more than one registrar: one row per offer, the picked one lit. */
-.ev-offers { display: grid; gap: 8px; margin: 10px 0 12px; }
-.ev-offer { display: grid; grid-template-columns: auto auto 1fr; gap: 10px; align-items: center; padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--radius-ctl); background: var(--surface-3); cursor: pointer; }
-.ev-offer.is-on { border-color: color-mix(in srgb, var(--brand-600) 55%, transparent); background: color-mix(in srgb, var(--brand-600) 10%, transparent); }
-.ev-offer.is-off { opacity: .6; cursor: default; }
-.ev-offer-name { font-weight: 700; color: var(--card-title); }
-.ev-offer-price { color: var(--muted); font-size: .88rem; }
 @media (max-width: 640px) {
   .ev-record { grid-template-columns: 1fr; gap: 2px; }
   .ev-record dt { margin-top: 6px; }
