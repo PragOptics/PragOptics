@@ -51,7 +51,14 @@ let D = null;
 
 // The registration flow's own state (round 3b-2): a quote, the registrant
 // contact, an order with its payment element, then the wait for the registry.
-function freshReg() { return { host: '', quote: null, step: 'idle', error: '', busy: false, contact: {}, order: null, stripe: null, elements: null, polls: 0, retryOrderId: '' }; }
+function freshReg() { return { host: '', quote: null, step: 'idle', error: '', busy: false, contact: {}, order: null, stripe: null, elements: null, polls: 0, retryOrderId: '', registrar: '' }; }
+
+/** The offer the customer picked (or the one the check led with) becomes the quote's own fields. */
+function applyOffer(q, registrar) {
+  const o = (q.offers || []).find(x => x.registrar === registrar);
+  if (!o) return q;
+  return { ...q, registrar: o.registrar, registrarLabel: o.label, available: o.available, domainType: o.domainType, priceCents: o.priceCents, renewalCents: o.renewalCents, priceSource: o.priceSource, agreements: o.agreements, quoteError: o.quoteError, offeredNow: o.offeredNow, note: o.note };
+}
 ev.reg = freshReg();
 
 function teamId() { try { return sessionStorage.getItem(TEAM_KEY) || ''; } catch { return ''; } }
@@ -661,13 +668,25 @@ function registerHtml() {
     if (!q.available) {
       return `${head}<p class="acct-card-note"><b>${e(q.host)}</b> is taken. If it is yours, connect it above instead.</p><div class="ev-dom-actions"><button class="btn btn-sm" type="button" data-env-action="domain-reg-cancel">Try another</button></div>`;
     }
+    // More than one registrar: each one's price, the picked one leads. One registrar: the sentence as before.
+    const offers = Array.isArray(q.offers) ? q.offers : [];
+    const picker = offers.length > 1 ? `
+      <div class="ev-offers" role="radiogroup" aria-label="Where to register">
+        ${offers.map(o => `
+        <label class="ev-offer ${o.registrar === q.registrar ? 'is-on' : ''} ${o.offeredNow ? '' : 'is-off'}">
+          <input type="radio" name="evRegRegistrar" value="${e(o.registrar)}" ${o.registrar === q.registrar ? 'checked' : ''} ${o.offeredNow ? '' : 'disabled'} data-env-action="domain-reg-pick" data-registrar="${e(o.registrar)}" />
+          <span class="ev-offer-name">${e(o.label)}</span>
+          <span class="ev-offer-price">${o.offeredNow ? `${e(money(o.priceCents))} first year${Number.isInteger(o.renewalCents) ? `, renews at ${e(money(o.renewalCents))}` : ''}` : o.available === false ? 'not available there' : e((o.quoteError && (o.quoteError.message || o.quoteError.code)) || 'could not price it right now')}</span>
+        </label>`).join('')}
+      </div>` : '';
     if (q.quoteError) {
       // The registrar would not price the name: its own words, and nothing to buy at a price it will not honor.
-      return `${head}<p class="acct-error"><b>${e(q.host)}</b> is available, but the registrar could not price it right now: ${e(q.quoteError.message || q.quoteError.code || 'no reason given')}</p><div class="ev-dom-actions"><button class="btn btn-sm" type="button" data-env-action="domain-reg-check">Check again</button><button class="btn btn-sm" type="button" data-env-action="domain-reg-cancel">Try another</button></div>`;
+      return `${head}${picker}<p class="acct-error"><b>${e(q.host)}</b> is available, but ${e(q.registrarLabel || 'the registrar')} could not price it right now: ${e(q.quoteError.message || q.quoteError.code || 'no reason given')}</p><div class="ev-dom-actions"><button class="btn btn-sm" type="button" data-env-action="domain-reg-check">Check again</button><button class="btn btn-sm" type="button" data-env-action="domain-reg-cancel">Try another</button></div>`;
     }
     return `
       ${head}
-      <p class="acct-card-note"><b>${e(q.host)}</b> is available: <b>${e(money(q.priceCents))}</b> for the first year${q.priceSource === 'azure-live' ? ', Azure’s current price read just now' : /^godaddy-/.test(q.priceSource || '') ? ', GoDaddy’s price right now' : ''}. ${e(q.note || '')}</p>
+      ${picker}
+      <p class="acct-card-note"><b>${e(q.host)}</b> is available at ${e(q.registrarLabel || 'the registrar')}: <b>${e(money(q.priceCents))}</b> for the first year${q.priceSource === 'azure-live' ? ', Azure’s current price read just now' : /-(availability|quote)$/.test(q.priceSource || '') ? `, ${e(q.registrarLabel || 'the registrar')}’s price right now` : ''}. ${e(q.note || '')}</p>
       <div class="ev-dom-actions">
         <button class="btn" type="button" data-env-action="domain-reg-continue">Continue</button>
         <button class="btn btn-sm" type="button" data-env-action="domain-reg-cancel">Try another</button>
@@ -679,7 +698,7 @@ function registerHtml() {
       ${head}
       ${r.retryOrderId
         ? `<p class="acct-card-note"><b>${e(q.host)}</b> is paid on order ${e(String(r.retryOrderId).slice(0, 8))} and the registry refused the contact. Correct it below and try again; nothing is charged again.</p>`
-        : `<p class="acct-card-note"><b>${e(q.host)}</b>, ${e(money(q.priceCents))} for the first year, plus any sales tax due at your address. The registry records a contact for every domain; privacy protection is on, so the public record shows the registrar's proxy, not you.</p>`}
+        : `<p class="acct-card-note"><b>${e(q.host)}</b> at ${e(q.registrarLabel || 'the registrar')}, ${e(money(q.priceCents))} for the first year, plus any sales tax due at your address. The registry records a contact for every domain; privacy protection is on, so the public record shows the registrar's proxy, not you.</p>`}
       <div class="ev-reg-form">
         ${f('evRegFirst', 'First name', c.nameFirst, 'autocomplete="given-name"')}
         ${f('evRegLast', 'Last name', c.nameLast, 'autocomplete="family-name"')}
@@ -738,6 +757,7 @@ async function regCheck() {
   r.busy = true; paintDomains();
   try {
     r.quote = await post(`${ENV_URL}/domains/register/check`, { host: r.host });
+    r.registrar = r.quote?.registrar || '';
     r.step = 'quoted';
   } catch (ex) {
     r.error = errText(ex, 'Could not check that name.');
@@ -778,7 +798,7 @@ async function regPay() {
       body: JSON.stringify({
         email: r.contact.email || me.email || '',
         name: `${r.contact.nameFirst} ${r.contact.nameLast}`.trim(),
-        lines: [{ productId: r.quote.sku, qty: 1, domain: { host: r.quote.host, environmentId: ev.view?.tenant?.environmentId, contact: r.contact, agreementKeys: (r.quote.agreements || []).map(a => a.key) } }]
+        lines: [{ productId: r.quote.sku, qty: 1, domain: { host: r.quote.host, environmentId: ev.view?.tenant?.environmentId, contact: r.contact, agreementKeys: (r.quote.agreements || []).map(a => a.key), registrar: r.registrar || r.quote.registrar || '' } }]
       })
     });
     r.order = data;
@@ -1396,6 +1416,7 @@ export function bindEnvironmentActions(deps) {
     if (a === 'domain-reg-confirm') return void regConfirm();
     if (a === 'domain-reg-retry') return void retryRegistration(btn.dataset.order || '', btn.dataset.host || 'the name');
     if (a === 'domain-reg-fix') return void fixRegistrationContact(btn.dataset.order || '', btn.dataset.host || '');
+    if (a === 'domain-reg-pick') { const r = ev.reg; if (r?.quote && btn.dataset.registrar) { r.registrar = btn.dataset.registrar; r.quote = applyOffer(r.quote, r.registrar); paintDomains(); } return; }
     if (a === 'domain-reg-cancel') { ev.reg = freshReg(); paintDomains(); return; }
     if (a === 'conn-add') return void addConnection(btn);
     if (a === 'conn-test') return void testConnection(btn.dataset.id || '');
