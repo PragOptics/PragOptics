@@ -627,7 +627,7 @@ function registrationsHtml() {
             ${r.status === 'FAILED' ? '<span class="acct-tag is-bad">registration failed</span>' : '<span class="acct-tag is-pending">registering</span>'}
           </div>
           <p class="acct-card-note ev-dom-note">${r.status === 'FAILED'
-            ? `The registry did not complete it${r.error ? `: ${e(String(r.error).replace(/.$/, ''))}` : ''}. Nothing was registered and nothing was charged by the registrar. Try again once the cause is fixed, or support refunds order ${e(String(r.orderId).slice(0, 8))} in full.`
+            ? `The registry did not complete it${r.error ? `: ${e(String(r.error).replace(/\.$/, ''))}` : ''}. Nothing was registered and nothing was charged by the registrar. Try again once the cause is fixed, or support refunds order ${e(String(r.orderId).slice(0, 8))} in full.`
             : `Paid on order ${e(String(r.orderId).slice(0, 8))}. The registry usually finishes within a few minutes; this card updates on its own.`}</p>
           ${r.status === 'FAILED' && myRole() === 'owner' ? `
           <div class="ev-dom-actions">
