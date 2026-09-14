@@ -627,8 +627,12 @@ function registrationsHtml() {
             ${r.status === 'FAILED' ? '<span class="acct-tag is-bad">registration failed</span>' : '<span class="acct-tag is-pending">registering</span>'}
           </div>
           <p class="acct-card-note ev-dom-note">${r.status === 'FAILED'
-            ? `The registry did not complete it${r.error ? `: ${e(r.error)}` : ''}. Nothing was registered; support refunds order ${e(String(r.orderId).slice(0, 8))} in full.`
+            ? `The registry did not complete it${r.error ? `: ${e(r.error)}` : ''}. Nothing was registered and nothing was charged by the registrar. Try again once the cause is fixed, or support refunds order ${e(String(r.orderId).slice(0, 8))} in full.`
             : `Paid on order ${e(String(r.orderId).slice(0, 8))}. The registry usually finishes within a few minutes; this card updates on its own.`}</p>
+          ${r.status === 'FAILED' && myRole() === 'owner' ? `
+          <div class="ev-dom-actions">
+            <button class="btn btn-sm" type="button" data-env-action="domain-reg-retry" data-order="${e(r.orderId)}" data-host="${e(r.host)}" ${ev.regRetrying === r.orderId ? 'disabled' : ''}>${ev.regRetrying === r.orderId ? 'Trying…' : 'Try again'}</button>
+          </div>` : ''}
         </div>`).join('')}
     </div>`;
 }
@@ -764,6 +768,26 @@ async function regPay() {
     r.error = errText(ex, 'Could not start the order.');
     if (r.step === 'paying') r.step = 'contact';
     paintDomains();
+  }
+}
+
+// A failed registration tried again: the order goes back to ORDERED and is
+// fulfilled now; the card reads the outcome from the list.
+async function retryRegistration(orderId, host) {
+  if (!orderId) return;
+  D.showError('evDomainError', '');
+  ev.regRetrying = orderId; paintDomains();
+  try {
+    const r = await post(`${ENV_URL}/domains/register/retry`, { orderId });
+    ev.regRetrying = '';
+    ev.domainNote = r.outcome === 'registered' ? `${host} is registered and on the list.`
+      : r.outcome === 'registering' ? `${host} is being registered; the card updates on its own.`
+      : r.outcome === 'failed' ? `${host} failed again: ${r.error || 'the registry did not say why'}.`
+      : '';
+    await loadDomains();
+  } catch (ex) {
+    ev.regRetrying = ''; paintDomains();
+    D.showError('evDomainError', errText(ex, 'The retry did not run.'));
   }
 }
 
@@ -1322,6 +1346,7 @@ export function bindEnvironmentActions(deps) {
     if (a === 'domain-reg-continue') { ev.reg.step = 'contact'; ev.reg.error = ''; paintDomains(); document.getElementById('evRegFirst')?.focus(); return; }
     if (a === 'domain-reg-pay') return void regPay();
     if (a === 'domain-reg-confirm') return void regConfirm();
+    if (a === 'domain-reg-retry') return void retryRegistration(btn.dataset.order || '', btn.dataset.host || 'the name');
     if (a === 'domain-reg-cancel') { ev.reg = freshReg(); paintDomains(); return; }
     if (a === 'conn-add') return void addConnection(btn);
     if (a === 'conn-test') return void testConnection(btn.dataset.id || '');
