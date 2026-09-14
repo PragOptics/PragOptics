@@ -529,7 +529,7 @@ function domainHtml(d) {
     const r = d.registrar;
     const owner = myRole() === 'owner';
     body += `
-      <p class="acct-card-note ev-dom-note">Registered through PragOptics${r.expiresAt ? `, current term ends ${e(D.fmtDate(r.expiresAt))}` : ''}. ${r.autoRenew ? 'Renews yearly at the registrar’s price that day, charged to your account a month ahead.' : 'Renewal is off: the name expires at the end of its term unless you turn renewal back on.'}</p>
+      <p class="acct-card-note ev-dom-note">Registered through PragOptics${r.expiresAt ? `, current term ends ${e(D.fmtDate(r.expiresAt))}` : ''}. ${r.autoRenew ? (Number.isInteger(r.renewalCents) ? `Renews yearly at ${e(money(r.renewalCents))}, the registrar’s renewal price passed through, charged to your account a month ahead.` : 'Renews yearly at the registrar’s price that day, charged to your account a month ahead.') : 'Renewal is off: the name expires at the end of its term unless you turn renewal back on.'}</p>
       ${owner ? `
       <label class="ev-agree ev-renew"><input type="checkbox" data-env-toggle="domain-renew" data-host="${e(d.host)}" ${r.autoRenew ? 'checked' : ''} /> <span>Renew automatically each year</span></label>` : ''}`;
   }
@@ -663,7 +663,7 @@ function registerHtml() {
     }
     return `
       ${head}
-      <p class="acct-card-note"><b>${e(q.host)}</b> is available: <b>${e(money(q.priceCents))}</b> for the first year${q.priceSource === 'azure-live' ? ', Azure’s current price read just now' : ''}. ${e(q.note || '')}</p>
+      <p class="acct-card-note"><b>${e(q.host)}</b> is available: <b>${e(money(q.priceCents))}</b> for the first year${q.priceSource === 'azure-live' ? ', Azure’s current price read just now' : q.priceSource === 'godaddy-quote' ? ', GoDaddy’s price right now' : ''}. ${e(q.note || '')}</p>
       <div class="ev-dom-actions">
         <button class="btn" type="button" data-env-action="domain-reg-continue">Continue</button>
         <button class="btn btn-sm" type="button" data-env-action="domain-reg-cancel">Try another</button>
