@@ -309,7 +309,21 @@ async function setupSandbox(btn) {
   }
 }
 function paintFiles() { const h = document.getElementById('evFiles'); if (h) h.innerHTML = filesHtml(); }
-function paintDomains() { const h = document.getElementById('evDomains'); if (h) h.innerHTML = domainsHtml(); }
+function paintDomains() {
+  const h = document.getElementById('evDomains');
+  if (!h) return;
+  h.innerHTML = domainsHtml();
+  // At the paying step the Stripe payment box lives in this card; a repaint
+  // replaces its container, so the one payment element is mounted again
+  // (Stripe allows a single payment element per group, never a second create).
+  const r = ev.reg;
+  if (r?.step === 'paying' && r.elements) {
+    try {
+      const pe = r.elements.getElement('payment');
+      if (pe) { try { pe.unmount(); } catch { /* not mounted */ } pe.mount('#evRegPayEl'); }
+    } catch { /* the box comes back on the next repaint */ }
+  }
+}
 function paintKeys() { const h = document.getElementById('evKeys'); if (h) h.innerHTML = keysHtml(); }
 function paintConnections() { const h = document.getElementById('evConnections'); if (h) h.innerHTML = connectionsHtml(); }
 
@@ -771,10 +785,10 @@ async function regConfirm() {
     paintDomains();
     pollRegistration(r.quote.host);
   } catch (ex) {
+    // A declined card: the error shows, the box stays mounted (paintDomains
+    // re-mounts it), and Confirm payment works again with another card.
     r.busy = false; r.error = ex?.message || 'Payment failed.';
     paintDomains();
-    // The element was unmounted by the repaint; mount it again for another try.
-    if (r.elements) { try { r.elements.create('payment').mount('#evRegPayEl'); } catch { /* fine */ } }
   }
 }
 
