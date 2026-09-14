@@ -12,6 +12,11 @@
   animation: fvStarFade 3.7s ease forwards;
 }
 
+/* Switched off on the Profile section (remembered on the account) or in
+   this browser: the canvas is gone, not just faded, and the draw loop in
+   src/components/starfield.js stops. */
+html[data-starfield="off"] #bg-stars{ display:none; animation:none; }
+
 .bg{
   position:fixed;
   inset:0;

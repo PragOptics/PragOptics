@@ -22,8 +22,9 @@ import { openReportAnomaly, installErrorCapture } from './report.js';
 import { renderTeam, renderTenants, bindTeamActions } from './team.js';
 import { renderEnvironment, bindEnvironmentActions } from './environment.js';
 import { explainLink } from '../components/explainer.js';
-import { applyTheme, getTheme } from '../runtime/theme.js';
-import { syncUserTheme, rememberUserTheme } from '../runtime/userTheme.js';
+import { applyTheme, getTheme, applyStarfield, getStarfield } from '../runtime/theme.js';
+import { sunSvg, moonSvg, LIGHT_LABEL, DARK_LABEL } from '../components/themeMarks.js';
+import { syncUserTheme, rememberUserTheme, rememberUserPreference } from '../runtime/userTheme.js';
 
 // Report Anomaly attaches the last few console errors to a report, so the
 // collector starts with the panel module, not with the first click.
@@ -423,15 +424,36 @@ async function setThemePreference(theme) {
   }
 }
 
+// The starfield switch, remembered on the account beside the theme; the
+// canvas goes at once, the save follows, a failed save says so and leaves
+// the choice applied here.
+async function setStarfieldPreference(value) {
+  const v = value === 'off' ? 'off' : 'on';
+  applyStarfield(v);
+  document.querySelectorAll('[data-acct-action="starfield-set"]').forEach(b => b.setAttribute('aria-pressed', b.dataset.starfield === v ? 'true' : 'false'));
+  showError('acctThemeError', '');
+  try {
+    await apiFetch(`${PRAG_API_BASE}/account/preferences`, { method: 'POST', body: JSON.stringify({ starfield: v }) });
+    rememberUserPreference('starfield', v);
+  } catch (ex) {
+    if (ex?.status === 404 || ex?.status === 400) { showError('acctThemeError', 'Applied here. This lane does not remember the stars choice yet.'); return; }
+    showError('acctThemeError', friendlyError(ex, 'Applied here, but the choice could not be saved to your account.'));
+  }
+}
+
 async function renderProfile(main) {
   main.innerHTML = `
     <header class="acct-sec-head"><h2 class="acct-sec-title">Profile</h2></header>
     <section class="acct-card">
       <h3 class="acct-card-h">Appearance</h3>
-      <p class="acct-card-note">Dark or light, remembered on your account, so the site looks the same wherever you sign in.</p>
+      <p class="acct-card-note">Dark or light, and whether the stars draw behind the page. Both are remembered on your account, so the site looks the same wherever you sign in.</p>
       <div class="acct-seg" role="group" aria-label="Theme">
-        <button class="btn btn-sm" type="button" data-acct-action="theme-set" data-theme="dark" aria-pressed="${getTheme() === 'dark' ? 'true' : 'false'}">Dark</button>
-        <button class="btn btn-sm" type="button" data-acct-action="theme-set" data-theme="light" aria-pressed="${getTheme() === 'light' ? 'true' : 'false'}">Light</button>
+        <button class="btn btn-sm acct-theme-btn" type="button" data-acct-action="theme-set" data-theme="dark" aria-pressed="${getTheme() === 'dark' ? 'true' : 'false'}">${DARK_LABEL}${moonSvg('acct-theme-ico')}</button>
+        <button class="btn btn-sm acct-theme-btn" type="button" data-acct-action="theme-set" data-theme="light" aria-pressed="${getTheme() === 'light' ? 'true' : 'false'}">${LIGHT_LABEL}${sunSvg('acct-theme-ico')}</button>
+      </div>
+      <div class="acct-seg" role="group" aria-label="Starfield">
+        <button class="btn btn-sm" type="button" data-acct-action="starfield-set" data-starfield="on" aria-pressed="${getStarfield() === 'on' ? 'true' : 'false'}">Stars on</button>
+        <button class="btn btn-sm" type="button" data-acct-action="starfield-set" data-starfield="off" aria-pressed="${getStarfield() === 'off' ? 'true' : 'false'}">Stars off</button>
       </div>
       <p class="acct-error" id="acctThemeError" hidden></p>
     </section>
@@ -3990,6 +4012,7 @@ function bindOnce() {
       if (a === 'report-anomaly') return void reportAnomaly();
       if (a === 'notify-save') return void saveNotifyPrefs(act);
       if (a === 'theme-set') return void setThemePreference(act.dataset.theme);
+      if (a === 'starfield-set') return void setStarfieldPreference(act.dataset.starfield);
       if (a === 'close-account') return void closeAccount();
       if (a === 'add-alias') return void addAlias();
       if (a === 'change-password') return void changePassword();

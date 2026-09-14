@@ -36,7 +36,15 @@ export function initStarfield({ canvasId = "bg-stars", starCount = 160 } = {}) {
     starRGB = isLight() ? "76,29,149" : "255,255,255";
   });
 
+  // Off means off: no frames drawn, no CPU spent. The Appearance card and
+  // theme.js announce every switch; the loop resumes on "on".
+  const isOff = () => document.documentElement.getAttribute("data-starfield") === "off";
+  let running = false;
+  addEventListener("pragoptics:starfieldchange", () => { if (!isOff() && !running) { running = true; animate(); } });
+
   function animate() {
+    if (isOff()) { running = false; ctx.clearRect(0, 0, canvas.width, canvas.height); return; }
+    running = true;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     for (const s of stars) {

@@ -10,7 +10,7 @@
 //   syncUserTheme()  call after any write of the cached ping, and on the
 //                    account panel's entry; safe to call often
 
-import { applyTheme, getTheme } from './theme.js';
+import { applyTheme, getTheme, applyStarfield, getStarfield } from './theme.js';
 
 function cachedPing() {
   try { return JSON.parse(sessionStorage.getItem('pragoptics_ping') || 'null'); }
@@ -39,14 +39,18 @@ export function syncUserTheme() {
   const signedIn = hasSession();
   try { document.body.classList.toggle('has-session', signedIn); } catch { /* no body yet */ }
   if (!signedIn) return;
-  const theme = String(cachedPing()?.user?.theme || '');
+  const u = cachedPing()?.user || {};
+  const theme = String(u.theme || '');
   if ((theme === 'light' || theme === 'dark') && theme !== getTheme()) applyTheme(theme);
+  const stars = String(u.starfield || '');
+  if ((stars === 'on' || stars === 'off') && stars !== getStarfield()) applyStarfield(stars);
 }
 
 /** The Profile section saved a choice: keep the cached ping honest so a re-sync does not undo it. */
-export function rememberUserTheme(theme) {
+export function rememberUserPreference(key, value) {
   try {
     const p = cachedPing();
-    if (p && p.user) { p.user.theme = theme; sessionStorage.setItem('pragoptics_ping', JSON.stringify(p)); }
+    if (p && p.user) { p.user[key] = value; sessionStorage.setItem('pragoptics_ping', JSON.stringify(p)); }
   } catch { /* fine */ }
 }
+export function rememberUserTheme(theme) { rememberUserPreference('theme', theme); }

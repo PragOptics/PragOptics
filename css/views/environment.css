@@ -42,7 +42,7 @@
 
 /* lanes: Live | Sandbox, a pill switch on the summary card */
 .ev-lanes { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 14px 0 4px; }
-.ev-lane { padding: 6px 14px; border-radius: var(--radius-pill); border: 1px solid color-mix(in srgb, var(--ink) 18%, transparent); background: transparent; color: var(--muted); font: inherit; font-size: .86rem; font-weight: 600; cursor: pointer; transition: background 140ms ease, color 140ms ease, border-color 140ms ease; }
+.ev-lane { padding: 6px 14px; border-radius: var(--radius-btn-sm); border: 1px solid color-mix(in srgb, var(--ink) 18%, transparent); background: transparent; color: var(--muted); font: inherit; font-size: .86rem; font-weight: 600; cursor: pointer; transition: background 140ms ease, color 140ms ease, border-color 140ms ease; }
 .ev-lane:hover { border-color: color-mix(in srgb, var(--brand-600) 60%, transparent); color: var(--card-title); }
 .ev-lane.is-on { background: var(--brand-600); border-color: var(--brand-600); color: var(--on-brand, #fff); }
 .ev-lane:focus-visible { outline: 2px solid var(--brand-600); outline-offset: 2px; }

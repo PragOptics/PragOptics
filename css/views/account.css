@@ -283,3 +283,12 @@ select.acct-input { background-color: var(--surface-deep); }
   border-color: color-mix(in srgb, var(--brand-600) 55%, transparent);
   background: color-mix(in srgb, var(--brand-600) 12%, transparent);
 }
+.acct-seg + .acct-seg { margin-top: 10px; }
+/* The theme's marks (components/themeMarks.js), the footer's own look: the
+   primary, one fill, a soft glow; the phrase and the mark sit on one line. */
+.acct-theme-btn { display: inline-flex; align-items: center; gap: 6px; }
+.acct-theme-ico {
+  width: 1.05em; height: 1.05em; flex: none; display: block;
+  color: var(--brand-600);
+  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--brand-600) 45%, transparent));
+}

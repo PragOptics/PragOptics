@@ -32,6 +32,31 @@ export function applyTheme(theme) {
   } catch { /* CustomEvent unsupported: CSS still applied above */ }
 }
 
+// The starfield behind the page (src/components/starfield.js) can be switched
+// off. Same shape as the theme: per-browser (localStorage), stamped on <html>
+// before first paint by themeBoot.js, remembered on the account for a
+// signed-in person (src/runtime/userTheme.js). On is the default; anything
+// but a stored "off" resolves to on.
+const STARS_KEY = 'pragoptics_starfield';
+
+/** 'on' | 'off' */
+export function getStarfield() {
+  try { return localStorage.getItem(STARS_KEY) === 'off' ? 'off' : 'on'; }
+  catch { return 'on'; }
+}
+
+/** Apply the starfield choice to <html>, persist it, and announce the change. */
+export function applyStarfield(value) {
+  const off = value === 'off';
+  const root = document.documentElement;
+  if (off) root.setAttribute('data-starfield', 'off');
+  else root.removeAttribute('data-starfield');
+  try { localStorage.setItem(STARS_KEY, off ? 'off' : 'on'); } catch { /* blocked */ }
+  try {
+    window.dispatchEvent(new CustomEvent('pragoptics:starfieldchange', { detail: { starfield: off ? 'off' : 'on' } }));
+  } catch { /* CustomEvent unsupported: CSS hides the canvas anyway */ }
+}
+
 /** Flip the theme and return the new value. */
 export function toggleTheme() {
   const next = getTheme() === 'light' ? 'dark' : 'light';

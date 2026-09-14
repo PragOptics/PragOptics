@@ -10,5 +10,9 @@
     if (localStorage.getItem("pragoptics_theme") === "light") {
       document.documentElement.setAttribute("data-theme", "light");
     }
+    // The starfield switched off stays off from the first frame (theme.js).
+    if (localStorage.getItem("pragoptics_starfield") === "off") {
+      document.documentElement.setAttribute("data-starfield", "off");
+    }
   } catch (e) { /* storage blocked: dark */ }
 })();
