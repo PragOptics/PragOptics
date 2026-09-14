@@ -559,7 +559,7 @@ function linkDoorHtml(full) {
   }
   return `
     <div class="ev-dom-row ev-dom-link">
-      <select class="acct-select" id="evLinkConn" aria-label="Registrar account">${conns.map(c => `<option value="${e(c.id)}">${e(c.label)} (${e(providerLabel(c.provider))})</option>`).join('')}</select>
+      <select class="acct-input acct-select" id="evLinkConn" aria-label="Registrar account">${conns.map(c => `<option value="${e(c.id)}">${e(c.label)} (${e(providerLabel(c.provider))})</option>`).join('')}</select>
       <input class="acct-input" type="text" id="evLinkHost" maxlength="253" placeholder="www.example.com" autocomplete="off" spellcheck="false" autocapitalize="off" ${full ? 'disabled' : ''} />
       <button class="btn" type="button" data-env-action="domain-link" ${full ? 'disabled' : ''}>Link</button>
     </div>

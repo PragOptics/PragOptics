@@ -41,7 +41,7 @@
 
 .tm-seats { margin-top: 16px; }
 .tm-bar {
-  position: relative; height: 10px; border-radius: 999px; overflow: hidden;
+  position: relative; height: 10px; border-radius: var(--radius-pill); overflow: hidden;
   background: color-mix(in srgb, var(--ink) 8%, transparent);
   border: 1px solid var(--border);
   display: flex;
