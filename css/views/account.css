@@ -35,7 +35,7 @@
 .acct-signout { width: 100%; }
 
 /* main */
-.acct-main { padding: 22px 24px 26px; min-width: 0; min-height: 70vh; }   /* a section loading in never shrinks the panel, so the rail and the header stay put */
+.acct-main { padding: 22px 24px 26px; min-width: 0; }
 
 /* billing manager */
 .acct-card-warn { border-color: color-mix(in srgb, var(--gold-soft) 45%, transparent); }

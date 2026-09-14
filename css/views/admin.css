@@ -642,7 +642,9 @@ select.adm-select option:checked, select.adm-input option:checked {
 
 /* ---------- responsive: sidebar becomes a top rail ---------- */
 @media (max-width: 46rem) {
-  .adm-shell { grid-template-columns: minmax(0, 1fr); }
+  /* One column, two rows: the rail on top, the section below. The rows are sized, so the rail never
+     stretches to fill the shell's minimum height while a section is still loading. */
+  .adm-shell { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); align-content: start; }
   .adm-side { flex-direction: row; align-items: center; border-right: 0; border-bottom: 1px solid var(--border); padding: 10px; gap: 4px; overflow-x: auto; }
   .adm-side-brand, .adm-side-foot, .adm-side-report { display: none; }
   .adm-nav { flex-direction: row; }
