@@ -569,7 +569,7 @@ function linkDoorHtml(full) {
   const e = D.escapeHtml;
   const conns = dnsConnections();
   if (!conns.length) {
-    return `<p class="acct-card-note ev-dom-door">Hold the name at Spaceship? Connect that account under Connected accounts, then link the name here: the platform writes the proof and serving records itself. Nothing to paste.</p>`;
+    return `<p class="acct-card-note ev-dom-door">Hold the name at GoDaddy? Connect that account under Connected accounts, then link the name here: the platform writes the proof and serving records itself. Nothing to paste.</p>`;
   }
   return `
     <div class="ev-dom-row ev-dom-link">
