@@ -2092,6 +2092,8 @@ async function renderOverview(main) {
       <div class="adm-actions-row">
         <button class="btn" type="button" data-adm-action="wh-stripe"
           title="Creates or updates this lane's Stripe webhook endpoint to the canonical event list">Sync Stripe webhooks</button>
+        <button class="btn" type="button" data-adm-action="wh-stripe-connect"
+          title="Creates or updates this lane's Stripe Connect webhook endpoint (events from connected accounts: account.updated, account.application.deauthorized); a new endpoint's signing secret is shown once for STRIPE_CONNECT_WEBHOOK_SECRET">Sync Stripe Connect webhook</button>
         <button class="btn" type="button" data-adm-action="wh-shippo"
           title="Registers this lane's Shippo webhooks (labels, transactions, tracking)">Sync Shippo webhooks</button>
       </div>
@@ -3441,16 +3443,16 @@ async function loadLabelsAndQueue() {
   }
 }
 
-async function runWebhookSync(btn, url, label) {
+async function runWebhookSync(btn, url, label, body = {}) {
   btn.disabled = true;
   const orig = btn.textContent;
   btn.textContent = 'Syncing…';
   const out = document.getElementById('admIntegrationsResult');
   try {
-    const res = await apiFetch(url, { method: 'POST', body: '{}' });
-    let text = `${label}: ${res.action || 'ok'}`;
+    const res = await apiFetch(url, { method: 'POST', body: JSON.stringify(body) });
+    let text = `${label}: ${res.action || 'ok'}${res.url ? ` (${res.url})` : ''}`;
     if (res.action === 'created' && res.secret) {
-      text += `. NEW SIGNING SECRET (shown once, set it as the app setting now): ${res.secret}`;
+      text += `. NEW SIGNING SECRET (shown once, set it as ${res.setting || 'the app setting'} on this lane now): ${res.secret}`;
     }
     if (Array.isArray(res.created) && res.created.length) text += `. Registered: ${res.created.join(', ')}`;
     if (Array.isArray(res.missingBefore) && res.missingBefore.length) text += `. Added events: ${res.missingBefore.join(', ')}`;
@@ -4056,6 +4058,7 @@ function bindOnce() {
       if (admAct.dataset.admAction === 'cost-refresh') loadAdminCosts(true);
       if (admAct.dataset.admAction === 'user-manage') openUserManage(admAct.dataset.user, admAct.dataset.email);
       if (admAct.dataset.admAction === 'wh-stripe') runWebhookSync(admAct, STRIPE_WH_SYNC_URL, 'Stripe');
+      if (admAct.dataset.admAction === 'wh-stripe-connect') runWebhookSync(admAct, STRIPE_WH_SYNC_URL, 'Stripe Connect', { kind: 'connect' });
       if (admAct.dataset.admAction === 'wh-shippo') runWebhookSync(admAct, SHIPPO_WH_SYNC_URL, 'Shippo');
       if (admAct.dataset.admAction === 'billing-reconcile-dry') runBillingReconcile(admAct, true);
       if (admAct.dataset.admAction === 'billing-reconcile') runBillingReconcile(admAct, false);
