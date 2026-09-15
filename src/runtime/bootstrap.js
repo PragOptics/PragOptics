@@ -210,15 +210,19 @@
       return lastPing;
     }
 
-    // The console branch of applyPostLoginResolution, shared so the Free
-    // path enters the console exactly the way an active subscriber does.
+    // The signed-in landing, shared by every resolved sign-in (an active
+    // subscriber, a Free owner who continued): the account panel on Profile
+    // (Cameron, 2026-09-15; it was the API console before). The console is
+    // authenticated in the same breath, so it is ready when the user goes
+    // there from the menu. The past-due bar renders on any view.
     function enterConsole(banner = null) {
-      setAppMode("console");
       const flow = document.getElementById("platformFlow");
       if (flow) {
         flow.style.display = "none";
       }
       window.setConsoleAuthenticated?.();
+      presetAccountSection("profile");
+      setAppMode("account");
       renderConsoleBanner(banner);
     }
 
@@ -563,6 +567,15 @@ function applyPostLoginResolution({ ping, force = false }) {
       window.dispatchEvent(new CustomEvent("pragoptics:join-resume"));
       return;
     }
+    // A provider sent the customer back (Stripe's setup) while the session had
+    // lapsed: the sign-in lands on the Environment section, where the card
+    // reads the stashed return and catches up.
+    if (back === "environment") {
+      clearBillingLandingOnly();
+      presetAccountSection("environment");
+      setAppMode("account");
+      return;
+    }
   }
 
   // Always start by cleaning secondary UI
@@ -754,7 +767,28 @@ window.applyPostLoginResolution = applyPostLoginResolution;
       else if (/^#join/i.test(String(location.hash || ""))) { setAppMode("join"); setTimeout(() => window.pragJoin?.(), 50); }
       // Guest order tracking short link (the confirmation email): /#track
       else if (/^#track/i.test(String(location.hash || ""))) { setAppMode("checkout"); setTimeout(() => window.pragTrackOrder?.(), 50); }
+      // The account panel: /#account (and a provider's return, /?connect=stripe&id=...#account).
+      // Signed in, it opens the panel; signed out, the sign-in modal opens and the
+      // sign-in lands on the section the return needs.
+      else if (/^#account/i.test(String(location.hash || ""))) routeToAccountOnLoad();
     })();
+
+    function routeToAccountOnLoad() {
+      let provider = "", id = "";
+      // The return rides in the hash (/#account?connect=stripe&id=...): the site strips a query string on load and keeps the hash.
+      try { const q = new URLSearchParams(String(location.hash || "").split("?")[1] || ""); provider = q.get("connect") || ""; id = q.get("id") || ""; } catch { /* no params */ }
+      const fromProvider = provider === "stripe";
+      if (fromProvider && id) { try { sessionStorage.setItem("pragoptics_stripe_connect", id); } catch { /* the query still carries it */ } }
+      if (isSessionActive()) {
+        presetAccountSection(fromProvider ? "environment" : "profile");
+        setAppMode("account");
+        return;
+      }
+      if (fromProvider) {
+        try { sessionStorage.setItem("pragoptics_return_to", "environment"); } catch { /* falls back to Profile after sign-in */ }
+        setTimeout(() => { openLoginModal("login"); }, 50);
+      }
+    }
 
     // A SEAMLESS lane switch just landed: redeem the one-time handoff token for
     // a fresh session on THIS lane - no password. Falls back to sign-in if the

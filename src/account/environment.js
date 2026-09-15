@@ -1434,8 +1434,9 @@ async function handleStripeReturn() {
   stripeReturnSeen = true;
   let id = '', outcome = '';
   try {
-    const q = new URLSearchParams(window.location.search);
-    if (q.get('connect') === 'stripe') { id = q.get('id') || ''; outcome = q.get('outcome') || 'return'; history.replaceState(null, '', window.location.pathname + window.location.hash); }
+    // The return rides in the hash: /#account?connect=stripe&id=...&outcome=...; the hash is cleaned back to #account.
+    const q = new URLSearchParams(String(window.location.hash || '').split('?')[1] || '');
+    if (q.get('connect') === 'stripe') { id = q.get('id') || ''; outcome = q.get('outcome') || 'return'; history.replaceState(null, '', window.location.pathname + '#account'); }
   } catch { /* no query to read */ }
   if (!id) { try { id = sessionStorage.getItem('pragoptics_stripe_connect') || ''; } catch { /* nothing kept */ } if (!id) return; outcome = outcome || 'return'; }
   try { sessionStorage.removeItem('pragoptics_stripe_connect'); } catch { /* nothing to clear */ }
