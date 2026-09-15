@@ -947,17 +947,77 @@ function connIdentity(c) {
 }
 
 function connStatusTag(c) {
-  if (c.status === 'REJECTED') return `<span class="acct-tag is-bad" title="${D.escapeHtml(c.lastError || '')}">rejected</span>`;
+  const e = D.escapeHtml;
+  if (c.status === 'REJECTED') return `<span class="acct-tag is-bad" title="${e(c.lastError || '')}">rejected</span>`;
   if (isManagedStripe(c)) {
-    const d = c.detail || {};
-    if (d.chargesEnabled && d.payoutsEnabled) return '<span class="acct-tag is-verified">active</span>';
-    if (d.detailsSubmitted) return '<span class="acct-tag is-pending" title="Stripe has your details and is reviewing them.">in review</span>';
-    return '<span class="acct-tag is-pending" title="Stripe still needs some details from you.">setup incomplete</span>';
+    const s = stripeState(c.detail);
+    if (s.kind === 'active') return `<span class="acct-tag is-verified" title="${e(s.text)}">active</span>`;
+    if (s.kind === 'payments') return `<span class="acct-tag is-verified" title="${e(s.text)}">payments on</span>`;
+    if (s.kind === 'action') return `<span class="acct-tag is-bad" title="${e(s.text)}">action needed</span>`;
+    if (s.kind === 'review') return `<span class="acct-tag is-pending" title="${e(s.text)}">in review</span>`;
+    return `<span class="acct-tag is-pending" title="${e(s.text)}">setup incomplete</span>`;
   }
   return '<span class="acct-tag is-verified">verified</span>';
 }
 /** A Stripe account the platform opened for this environment (Stripe Connect): no credential on the card, Stripe's own state instead. */
 function isManagedStripe(c) { return c?.provider === 'stripe' && c?.detail?.managed === 'stripe-connect'; }
+
+/** A Stripe requirement key in the customer's words (the same table the API uses). */
+function stripeRequirementWords(key) {
+  const k = String(key || '');
+  const tail = k.replace(/^(person_[A-Za-z0-9]+|individual|representative|company|owners?|directors?|executives?)\./, '');
+  if (k === 'external_account') return 'a bank account for payouts';
+  if (/^tos_acceptance\./.test(k)) return "acceptance of Stripe's terms";
+  if (k === 'business_type') return 'the business type';
+  if (k === 'business_profile.url') return 'the business website';
+  if (k === 'business_profile.mcc') return 'the business category';
+  if (k === 'business_profile.product_description') return 'a description of what you sell';
+  if (/^business_profile\.support_/.test(k)) return 'customer support details';
+  if (/verification\.additional_document$/.test(tail)) return 'a proof of address document';
+  if (/verification\.document$/.test(tail)) return k.startsWith('company.') ? 'a business registration document' : 'an identity document';
+  if (/^(id_number|ssn_last_4)$/.test(tail)) return 'a personal ID number';
+  if (/^dob\./.test(tail)) return 'a date of birth';
+  if (/^address\./.test(tail)) return 'an address';
+  if (/^(first_name|last_name)$/.test(tail)) return 'a legal name';
+  if (tail === 'tax_id' || tail === 'vat_id') return 'a business tax ID';
+  if (tail === 'name') return 'the legal business name';
+  if (tail === 'phone') return 'a phone number';
+  if (tail === 'email') return 'an email address';
+  if (/_provided$/.test(tail)) return 'business owners and executives';
+  if (/statement_descriptor/.test(k)) return 'a statement descriptor';
+  return k.replace(/[._]/g, ' ');
+}
+function stripeWords(list) { return [...new Set((list || []).map(stripeRequirementWords))]; }
+function joinWords(xs) { return xs.length <= 1 ? xs.join('') : xs.slice(0, -1).join(', ') + ' and ' + xs[xs.length - 1]; }
+
+/**
+ * Stripe's state of a managed account, from the row's detail (the API's shape of the account object's
+ * requirements hash: due, pastDue, pendingVerification, errors, deadline; older rows carry only the count).
+ * kind: active | payments | action | review | incomplete; text: one sentence; needs: what Stripe wants, in words.
+ */
+function stripeState(d = {}) {
+  const pastDue = d.pastDue || [], due = d.due || [], pending = d.pendingVerification || [], errors = d.errors || [];
+  const needs = stripeWords([...pastDue, ...due]);
+  const count = needs.length || Number(d.currentlyDue || 0);
+  const failed = errors.map(x => x.reason).filter(Boolean);
+  const deadline = d.deadline ? ` by ${D.fmtDate(d.deadline)}` : '';
+  if (d.chargesEnabled && d.payoutsEnabled) return { kind: 'active', text: 'This account can take payments and receive payouts.', needs: [] };
+  if (d.chargesEnabled) return { kind: 'payments', text: needs.length ? `Payments are on. Payouts wait on ${joinWords(needs)}.` : "Payments are on. Payouts wait on Stripe's review.", needs };
+  if (failed.length) return { kind: 'action', text: `Stripe could not verify what was given: ${failed.join(' ')}`, needs: needs.length ? needs : ['what Stripe could not verify'] };
+  if (pastDue.length || d.disabledReason === 'requirements.past_due') return { kind: 'action', text: needs.length ? `Stripe disabled the account until it has ${joinWords(needs)}.` : 'Stripe disabled the account until it has what is past due.', needs: needs.length ? needs : ['what Stripe asked for'] };
+  if (due.length || count > 0) return { kind: 'action', text: needs.length ? `Stripe needs ${joinWords(needs)}${deadline}.` : `Stripe needs ${count} more ${count === 1 ? 'item' : 'items'}${deadline}.`, needs: needs.length ? needs : [`${count} more ${count === 1 ? 'item' : 'items'}`] };
+  if (pending.length) return { kind: 'review', text: `Stripe is verifying ${joinWords(stripeWords(pending))}. Nothing to do until it answers.`, needs: [] };
+  if (d.detailsSubmitted) return { kind: 'review', text: 'Stripe has the details and is reviewing them.', needs: [] };
+  return { kind: 'incomplete', text: 'Stripe still needs details. Continue the setup.', needs: [] };
+}
+/** The line under a managed row: what Stripe wants, or what it is doing, in the customer's words. */
+function stripeNeedsHtml(c) {
+  if (!isManagedStripe(c) || c.status === 'REJECTED') return '';
+  const d = c.detail || {}, s = stripeState(d), e = D.escapeHtml;
+  if (s.kind === 'active') return '';
+  const test = d.mode === 'test' && s.kind !== 'incomplete' ? ' <span class="adm-muted">Test account: Stripe verifies only its test values here (date of birth 1901-01-01, ID number 000000000, business tax ID 000000000).</span>' : '';
+  return `<div class="ev-conn-needs">${e(s.text)}${test}</div>`;
+}
 
 function connFieldsHtml(p) {
   const e = D.escapeHtml;
@@ -996,14 +1056,14 @@ function connectionsHtml() {
               <tr class="${c.status === 'REJECTED' ? 'ev-muted-row' : ''}">
                 <td class="cell-tight"><span class="acct-tag is-primary" title="${e(p?.label || c.provider)}">${e(PROVIDER_ICON[c.provider] || c.provider)}</span> ${e(p?.label || cap(c.provider))}</td>
                 <td class="cell-ellip" title="${e(c.label)}">${e(c.label)}</td>
-                <td class="cell-ellip adm-muted">${connIdentity(c)}</td>
+                <td class="cell-ellip adm-muted">${connIdentity(c)}${stripeNeedsHtml(c)}</td>
                 <td class="cell-tight">${isManagedStripe(c) ? '<span class="acct-tag is-primary" title="Opened by the platform; no credential is stored. Stripe acts on the account id.">via PragOptics</span>' : `<code class="ev-prefix">••••${e(c.hint || '')}</code>`}</td>
                 <td class="cell-tight">${connStatusTag(c)}</td>
                 <td class="cell-tight adm-muted">${c.verifiedAt ? e(D.fmtDate(c.verifiedAt)) : 'never'}</td>
                 <td class="cell-tight ev-actions-cell">${manage ? (ev.connArm === c.id ? `
                   <button class="btn btn-sm is-danger" type="button" data-env-action="conn-remove" data-id="${e(c.id)}" data-label="${e(c.label)}" title="The credential is deleted from the vault and anything using it stops on its next call">Remove for sure?</button>
                   <button class="btn btn-sm" type="button" data-env-action="conn-remove-cancel">Cancel</button>` : `
-                  ${isManagedStripe(c) && !(c.detail?.chargesEnabled && c.detail?.payoutsEnabled) ? `<button class="btn btn-sm" type="button" data-env-action="conn-stripe-continue" data-id="${e(c.id)}" ${ev.connBusy ? 'disabled' : ''}>Continue setup</button>` : ''}
+                  ${isManagedStripe(c) && (() => { const s = stripeState(c.detail); return s.kind === 'action' || s.kind === 'incomplete' || (s.kind === 'payments' && s.needs.length > 0); })() ? `<button class="btn btn-sm" type="button" data-env-action="conn-stripe-continue" data-id="${e(c.id)}" ${ev.connBusy ? 'disabled' : ''} title="Stripe's own pages for what it still needs">Continue setup</button>` : ''}
                   <button class="btn btn-sm" type="button" data-env-action="${isManagedStripe(c) ? 'conn-stripe-refresh' : 'conn-test'}" data-id="${e(c.id)}" ${testing ? 'disabled' : ''}>${testing ? 'Checking…' : isManagedStripe(c) ? 'Check status' : 'Test'}</button>
                   <button class="btn btn-sm" type="button" data-env-action="conn-remove" data-id="${e(c.id)}" data-label="${e(c.label)}">Remove</button>`) : ''}</td>
               </tr>`; }).join('')}

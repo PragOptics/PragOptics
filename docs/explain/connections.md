@@ -29,11 +29,11 @@ The owner and admins connect, test and remove. Everyone on the team can see what
 
 ## A Stripe account set up through PragOptics
 
-If you do not have a Stripe account, the card opens one for you. Press Set up Stripe through PragOptics, add your business name if you like, and you are handed to Stripe's own setup pages: your details, your bank account, Stripe's terms. When you come back, the card reads the account's state from Stripe: setup incomplete, in review, or active.
+If you do not have a Stripe account, the card opens one for you. Press Set up Stripe through PragOptics, add your business name if you like, and you are handed to Stripe's own setup pages: your details, your bank account, Stripe's terms. When you come back, the card reads the account's state from Stripe and says it in plain words: setup incomplete (Stripe has not received your details yet), action needed (Stripe wants something, and the row names it, with the deadline when Stripe gives one), in review (Stripe is verifying what you gave, nothing to do until it answers), payments on (you can take payments while payouts wait on one more thing), or active (payments and payouts both on). Active means Stripe has verified you; the card never says it before Stripe does.
 
 The account is yours. You sign in to it at dashboard.stripe.com like any Stripe account, you pay Stripe's fees, Stripe collects your details and bears the risk on payments, and the platform is never in your money. No credential is stored for it: the platform acts on it through Stripe's platform program with the account's id, and only for what you ask from the software. Remove takes the connection off this environment and leaves the account with you.
 
-Continue setup opens a fresh Stripe setup page whenever Stripe still needs something from you; the link it uses is single use and expires in minutes, so it is never emailed. Check status asks Stripe for the account's state again.
+Continue setup shows only while Stripe still needs something from you and opens a fresh Stripe setup page for exactly that; the link it uses is single use and expires in minutes, so it is never emailed. Check status asks Stripe for the account's state again. Stripe's own messages come through as Stripe wrote them when a verification fails, so you see the same reason Stripe would show you in its Dashboard.
 
 ## What is not here yet
 
