@@ -664,7 +664,7 @@ function registerHtml() {
   if (r.step === 'idle' || r.step === 'checking') {
     return `
       ${head}
-      <p class="acct-card-note">Do not have one yet? Register it here through GoDaddy. Type the name you want: the price is GoDaddy's, passed through with no markup, and the domain is yours, in your name.</p>
+      <p class="acct-card-note">Do not have one yet? Register it here. Type the name you want: the price is the registrar's, passed through with no markup, and the domain is yours, in your name.</p>
       <div class="ev-dom-row">
         <input class="acct-input" type="text" id="evRegHost" maxlength="253" placeholder="yourname.com" autocomplete="off" spellcheck="false" autocapitalize="off" value="${e(r.host)}" ${r.busy ? 'disabled' : ''} />
         <button class="btn" type="button" data-env-action="domain-reg-check" ${r.busy ? 'disabled' : ''}>${r.busy ? 'Checking…' : 'Check'}</button>
@@ -709,7 +709,7 @@ function registerHtml() {
       ${head}
       ${r.retryOrderId
         ? `<p class="acct-card-note"><b>${e(q.host)}</b> is paid on order ${e(String(r.retryOrderId).slice(0, 8))} and the registry refused the contact. Correct it and try again; nothing is charged again.</p>`
-        : `<p class="acct-card-note"><b>${e(q.host)}</b> at GoDaddy, ${e(money(q.priceCents))} for the first year, plus any sales tax due at your address. The registry records a contact for every domain; privacy protection is on, so the public record shows the registrar's proxy, not you.</p>`}
+        : `<p class="acct-card-note"><b>${e(q.host)}</b>, ${e(money(q.priceCents))} for the first year, plus any sales tax due at your address. The registry records a contact for every domain; privacy protection is on, so the public record shows the registrar's proxy, not you.</p>`}
       <dl class="ev-record ev-registrant" aria-label="Registrant">
         <dt>Registrant</dt><dd>${e([c2.nameFirst, c2.nameLast].filter(Boolean).join(' '))}${c2.organization ? `, ${e(c2.organization)}` : ''}</dd><dd><button class="btn btn-sm" type="button" data-env-action="domain-reg-edit-contact">Edit</button></dd>
         <dt>Address</dt><dd>${e(line)}</dd><dd></dd>
@@ -727,7 +727,7 @@ function registerHtml() {
       ${head}
       ${r.retryOrderId
         ? `<p class="acct-card-note"><b>${e(q.host)}</b> is paid on order ${e(String(r.retryOrderId).slice(0, 8))} and the registry refused the contact. Correct it below and try again; nothing is charged again.</p>`
-        : `<p class="acct-card-note"><b>${e(q.host)}</b> at GoDaddy, ${e(money(q.priceCents))} for the first year, plus any sales tax due at your address. The registry records a contact for every domain; privacy protection is on, so the public record shows the registrar's proxy, not you.</p>`}
+        : `<p class="acct-card-note"><b>${e(q.host)}</b>, ${e(money(q.priceCents))} for the first year, plus any sales tax due at your address. The registry records a contact for every domain; privacy protection is on, so the public record shows the registrar's proxy, not you.</p>`}
       <div class="ev-reg-form">
         ${f('evRegFirst', 'First name', c.nameFirst, 'autocomplete="given-name"')}
         ${f('evRegLast', 'Last name', c.nameLast, 'autocomplete="family-name"')}

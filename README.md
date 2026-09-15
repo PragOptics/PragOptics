@@ -40,7 +40,9 @@ It covers the whole customer-facing surface:
 - Warranty registration, replacement redemption, and transfer
 - Sign-in, signup, two-factor enrollment and verification
 - The account console: profile, emails, phone, subscription and billing,
-  usage meters, orders, builds
+  usage meters, orders, builds, the team, and the environment: storage,
+  files, domains (connect, link a registrar account, or register), API keys,
+  connected accounts
 - The operator (Internal) console: users, orders desk, warranty codes, usage
   and Azure cost, integrations
 
@@ -277,16 +279,17 @@ Industrial.
 
 ## Status
 
-Updated 2026-09-11. Landed since 2026-09-08: the Team section in the profile
-panel, the invite join page and the operator's Tenants desk (all behind
-`TEAM_LIVE`); extra seats in the plan editor and the wizard; the carrier's
-latest status on the guest track page and the Orders section; the sliding
-session; the How it works explainers; the platform's own social preview; the
-Environment section (storage bar, files, domains, API keys) and the Tenants
-desk's storage column and Repair door; mobile close buttons, the hero scenes on the
-light theme, the footer trim, the Privacy Teams section.
+Updated 2026-09-14. Landed since 2026-09-11: the Environment section's
+Domains card with three doors (connect a domain you manage yourself, link a
+registrar account so the platform writes the records, or register a new
+name through the platform at the registrar's price with no markup); a taken
+name shows available alternatives with prices; the registrant is taken from
+the billing profile; the Appearance card with the starfield preference; the
+account panel's icon rail holds still while a section loads; the How it
+works explainer for domains.
 
-Next on this repo (round 3, in order): the serving record once the software
-is hosted, domain registration pass-through, then the front end closeout
-list. PragOptics is actively evolving; this repository is the current
+Next on this repo: the registrar decision for the register door (the
+platform's Azure path is the recommendation on record), then the customer's
+own Stripe and Twilio accounts through the providers' Connect models, then
+mail. PragOptics is actively evolving; this repository is the current
 state of that evolution.
