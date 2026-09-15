@@ -228,6 +228,7 @@ async function loadConnections() {
     ev.connProviders = d.providers || [];
     ev.connLimit = Number(d.limit || 0);
     ev.connNote = '';
+    setTimeout(() => { handleStripeReturn(); }, 0);
   } catch (ex) {
     ev.connections = [];
     if (ex?.status === 404) ev.connNote = 'The connection routes are not on this lane yet.';
@@ -938,7 +939,7 @@ function connIdentity(c) {
   const e = D.escapeHtml;
   const d = c.detail || {}, f = c.fields || {};
   if (c.provider === 'twilio') return e(d.friendlyName || f.accountSid || '');
-  if (c.provider === 'stripe') return e([d.accountId, d.mode].filter(Boolean).join(' · '));
+  if (c.provider === 'stripe') return e([d.accountId, d.mode, isManagedStripe(c) ? d.businessName : ''].filter(Boolean).join(' · '));
   if (c.provider === 'shippo') return e(d.mode ? `${d.mode} token` : '');
   if (c.provider === 'github') return e(d.login ? `@${d.login}` : '');
   if (c.provider === 'microsoft') return e(d.org || f.tenantId || '');
@@ -947,8 +948,16 @@ function connIdentity(c) {
 
 function connStatusTag(c) {
   if (c.status === 'REJECTED') return `<span class="acct-tag is-bad" title="${D.escapeHtml(c.lastError || '')}">rejected</span>`;
+  if (isManagedStripe(c)) {
+    const d = c.detail || {};
+    if (d.chargesEnabled && d.payoutsEnabled) return '<span class="acct-tag is-verified">active</span>';
+    if (d.detailsSubmitted) return '<span class="acct-tag is-pending" title="Stripe has your details and is reviewing them.">in review</span>';
+    return '<span class="acct-tag is-pending" title="Stripe still needs some details from you.">setup incomplete</span>';
+  }
   return '<span class="acct-tag is-verified">verified</span>';
 }
+/** A Stripe account the platform opened for this environment (Stripe Connect): no credential on the card, Stripe's own state instead. */
+function isManagedStripe(c) { return c?.provider === 'stripe' && c?.detail?.managed === 'stripe-connect'; }
 
 function connFieldsHtml(p) {
   const e = D.escapeHtml;
@@ -988,13 +997,14 @@ function connectionsHtml() {
                 <td class="cell-tight"><span class="acct-tag is-primary" title="${e(p?.label || c.provider)}">${e(PROVIDER_ICON[c.provider] || c.provider)}</span> ${e(p?.label || cap(c.provider))}</td>
                 <td class="cell-ellip" title="${e(c.label)}">${e(c.label)}</td>
                 <td class="cell-ellip adm-muted">${connIdentity(c)}</td>
-                <td class="cell-tight"><code class="ev-prefix">••••${e(c.hint || '')}</code></td>
+                <td class="cell-tight">${isManagedStripe(c) ? '<span class="acct-tag is-primary" title="Opened by the platform; no credential is stored. Stripe acts on the account id.">via PragOptics</span>' : `<code class="ev-prefix">••••${e(c.hint || '')}</code>`}</td>
                 <td class="cell-tight">${connStatusTag(c)}</td>
                 <td class="cell-tight adm-muted">${c.verifiedAt ? e(D.fmtDate(c.verifiedAt)) : 'never'}</td>
                 <td class="cell-tight ev-actions-cell">${manage ? (ev.connArm === c.id ? `
                   <button class="btn btn-sm is-danger" type="button" data-env-action="conn-remove" data-id="${e(c.id)}" data-label="${e(c.label)}" title="The credential is deleted from the vault and anything using it stops on its next call">Remove for sure?</button>
                   <button class="btn btn-sm" type="button" data-env-action="conn-remove-cancel">Cancel</button>` : `
-                  <button class="btn btn-sm" type="button" data-env-action="conn-test" data-id="${e(c.id)}" ${testing ? 'disabled' : ''}>${testing ? 'Checking…' : 'Test'}</button>
+                  ${isManagedStripe(c) && !(c.detail?.chargesEnabled && c.detail?.payoutsEnabled) ? `<button class="btn btn-sm" type="button" data-env-action="conn-stripe-continue" data-id="${e(c.id)}" ${ev.connBusy ? 'disabled' : ''}>Continue setup</button>` : ''}
+                  <button class="btn btn-sm" type="button" data-env-action="${isManagedStripe(c) ? 'conn-stripe-refresh' : 'conn-test'}" data-id="${e(c.id)}" ${testing ? 'disabled' : ''}>${testing ? 'Checking…' : isManagedStripe(c) ? 'Check status' : 'Test'}</button>
                   <button class="btn btn-sm" type="button" data-env-action="conn-remove" data-id="${e(c.id)}" data-label="${e(c.label)}">Remove</button>`) : ''}</td>
               </tr>`; }).join('')}
           </tbody>
@@ -1014,6 +1024,14 @@ function connectionsHtml() {
         </div>
         ${picked ? connFieldsHtml(picked) : ''}
         ${atLimit ? `<p class="acct-card-note ev-note">This environment holds ${ev.connLimit} connections, the most it can carry. Remove one to connect another.</p>` : ''}
+        ${(!picked || picked.id === 'stripe') && !atLimit && !(rows || []).some(isManagedStripe) ? `
+        <div class="ev-conn-managed">
+          <p class="acct-card-note ev-dom-note">No Stripe account yet? The platform opens one in your name and Stripe walks you through its setup. It is your account: the full Stripe Dashboard, Stripe's fees paid by you, the platform never in your money.</p>
+          <div class="ev-key-row">
+            <input class="acct-input" type="text" id="evStripeBiz" maxlength="120" placeholder="Your business name (optional)" autocomplete="organization" value="${e(ev.connDraft?.stripeBusiness || '')}" />
+            <button class="btn" type="button" data-env-action="conn-stripe-start" ${ev.connBusy ? 'disabled' : ''}>${ev.connBusy ? 'Opening with Stripe…' : 'Set up Stripe through PragOptics'}</button>
+          </div>
+        </div>` : ''}
       </div>`;
 
   return `
@@ -1377,6 +1395,56 @@ async function testConnection(id) {
   await loadConnections();
 }
 
+/** The platform opens the Stripe account and hands the customer to Stripe's setup. The single-use URL is used at once, never shown. */
+async function startStripeConnect(id = '') {
+  if (ev.connBusy) return;
+  D.showError('evConnError', '');
+  const businessName = document.getElementById('evStripeBiz')?.value?.trim() || '';
+  ev.connDraft = { ...(ev.connDraft || {}), stripeBusiness: businessName };
+  ev.connBusy = true; ev.connResult = ''; paintConnections();
+  try {
+    const d = await post(`${ENV_URL}/connections/stripe/start`, { ...(id ? { id } : {}), ...(businessName ? { businessName } : {}) });
+    if (!d?.url) throw new Error('Stripe did not answer with a setup link.');
+    try { sessionStorage.setItem('pragoptics_stripe_connect', String(d.connection?.id || id || '')); } catch { /* the return still carries the id */ }
+    window.location.assign(d.url);
+    return;
+  } catch (ex) {
+    ev.connBusy = false; paintConnections();
+    D.showError('evConnError', errText(ex, 'Could not open a Stripe account right now.'));
+  }
+}
+
+/** Stripe's latest word on a managed account, stamped on the row. */
+async function refreshStripeConnect(id, quiet = false) {
+  if (!id || ev.connTesting) return;
+  if (!quiet) D.showError('evConnError', '');
+  ev.connTesting = id; paintConnections();
+  try {
+    const d = await post(`${ENV_URL}/connections/stripe/refresh`, { id });
+    ev.connResult = d.connection?.message || 'Stripe answered for the account.';
+  } catch (ex) { if (!quiet) D.showError('evConnError', errText(ex, 'Could not check that Stripe account.')); }
+  ev.connTesting = '';
+  await loadConnections();
+}
+
+/** Back from Stripe's hosted setup: the return carries the connection id; the card re-reads Stripe once and cleans the address bar. */
+let stripeReturnSeen = false;
+async function handleStripeReturn() {
+  if (stripeReturnSeen) return;
+  stripeReturnSeen = true;
+  let id = '', outcome = '';
+  try {
+    const q = new URLSearchParams(window.location.search);
+    if (q.get('connect') === 'stripe') { id = q.get('id') || ''; outcome = q.get('outcome') || 'return'; history.replaceState(null, '', window.location.pathname + window.location.hash); }
+  } catch { /* no query to read */ }
+  if (!id) { try { id = sessionStorage.getItem('pragoptics_stripe_connect') || ''; } catch { /* nothing kept */ } if (!id) return; outcome = outcome || 'return'; }
+  try { sessionStorage.removeItem('pragoptics_stripe_connect'); } catch { /* nothing to clear */ }
+  if (!(ev.connections || []).some(c => c.id === id)) return;
+  ev.connResult = outcome === 'refresh' ? 'The Stripe setup link had expired. Press Continue setup for a fresh one.' : 'Back from Stripe. Checking the account…';
+  paintConnections();
+  await refreshStripeConnect(id, true);
+}
+
 let connArmTimer = null;
 async function removeConnection(id, label) {
   if (!id) return;
@@ -1390,7 +1458,8 @@ async function removeConnection(id, label) {
   }
   clearTimeout(connArmTimer); ev.connArm = '';
   D.showError('evConnError', '');
-  try { await post(`${ENV_URL}/connections/remove`, { id }); ev.connResult = `${label} removed.`; await loadConnections(); }
+  const managed = (ev.connections || []).some(c => c.id === id && isManagedStripe(c));
+  try { await post(`${ENV_URL}/connections/remove`, { id }); ev.connResult = managed ? `${label} removed from this environment. The Stripe account is still yours at dashboard.stripe.com.` : `${label} removed.`; await loadConnections(); }
   catch (ex) { D.showError('evConnError', errText(ex, 'Could not remove that connection.')); }
 }
 
@@ -1452,6 +1521,9 @@ export function bindEnvironmentActions(deps) {
     if (a === 'conn-test') return void testConnection(btn.dataset.id || '');
     if (a === 'conn-remove') return void removeConnection(btn.dataset.id || '', btn.dataset.label || 'this connection');
     if (a === 'conn-remove-cancel') { clearTimeout(connArmTimer); ev.connArm = ''; paintConnections(); return; }
+    if (a === 'conn-stripe-start') return void startStripeConnect('');
+    if (a === 'conn-stripe-continue') return void startStripeConnect(btn.dataset.id || '');
+    if (a === 'conn-stripe-refresh') return void refreshStripeConnect(btn.dataset.id || '');
   });
 
   document.addEventListener('change', (e) => {

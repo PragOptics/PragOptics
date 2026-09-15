@@ -114,3 +114,6 @@ html[data-theme="dark"] .btn.is-danger, :root:not([data-theme="light"]) .btn.is-
 .ev-pay { margin: 12px 0; }
 @media (max-width: 640px) { .ev-reg-form { grid-template-columns: 1fr; } }
 .ev-renew { margin-top: 8px; }
+/* The second door on the Connected accounts card: a Stripe account the platform opens for the customer. */
+.ev-conn-managed { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line, rgba(127,127,127,.25)); }
+.ev-conn-managed .ev-key-row { margin-top: 6px; }
