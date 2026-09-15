@@ -1,6 +1,6 @@
 # PragOptics™ Platform Agreement
 
-**Version:** 2026-09.5  
+**Version:** 2026-09.6  
 **Effective Date:** Upon electronic acceptance (“I Agree”)
 
 ---
@@ -130,11 +130,30 @@ A **seat** is one named person who signs in to a Participant's environment. Ever
 
 Additional seats may be added to a Partner or Super subscription at the per-seat price shown at checkout or in the Billing section (reference: $7.50 per seat per month), billed with the subscription at the same cadence. Adding a seat takes effect immediately and is charged for the remainder of the current period in the same way as an upgrade (Section 5.3); removing a seat takes effect at the end of the current paid period with no credit (Section 5.4). Seats are managed from the PragOptics software.
 
-### 4.6 Mailboxes and Domains
+### 4.6 Mailboxes and Connected Domains
 
 Each seat may, at the seat holder's request, be provisioned with one hosted mailbox on a domain the Participant has connected. The mailbox is included in the seat price. It is not provisioned automatically; it is set up from the PragOptics software after the domain is connected. Shared mailboxes and aliases on a connected domain do not consume a seat. The mailbox feature set and included storage track the underlying hosted-mail provider plan and may change with reasonable notice under Section 14.
 
-Where BI registers or renews a domain on a Participant's behalf, the registrar's charge is passed through at cost and is not part of the subscription price. Connecting a domain the Participant already owns carries no charge. Domain and mailbox services are not available on the Free tier.
+A Participant may connect a domain they already own in either of two ways. They may prove ownership by publishing a verification record in the domain's DNS themselves, in which case BI never touches the domain's records. Or they may connect the account at the registrar that holds the domain, in which case BI publishes the verification record and the records the Platform needs (for serving, and for mail where a mailbox is provisioned) through that account, on the Participant's instruction, reading the existing records before writing. Unlinking the account leaves every record in place; nothing at the registrar is deleted. Connecting a domain the Participant already owns carries no charge. Domain and mailbox services are not available on the Free tier.
+
+### 4.7 Domains Registered Through BI
+
+A Participant may register a new domain from the Platform. The following terms apply to every such registration.
+
+- **The Participant is the registrant of record.** The name, postal address, email address, and phone number the Participant supplies at purchase are recorded with the registrar and the registry as the domain's contacts, as ICANN and the registry require. That is what makes the domain the Participant's. Where the ending supports it, privacy protection is on, so the public record shows the registrar's proxy details instead of the Participant's.
+- **The registration is held in BI's cloud account and managed by the Platform on the Participant's instruction.** The registrar of record is named on the Domains card at purchase. The Participant does not need an account at the registrar, and the registrar may contact the Participant directly at the contact email, for example to verify the registrant's email address as ICANN requires.
+- **Price and consent.** The price shown at purchase is the registrar's current price for the ending, passed through with no markup, plus any sales tax due at the Participant's address. At purchase the Participant accepts the registrar's own agreements presented on the card (a domain registration agreement and, where privacy protection applies, a proxy agreement). BI records the acceptance, the time, and the network address it came from, because the registrar and the registry require that record. A domain is registered only after the registry accepts it; if the registry declines, BI refunds the purchase in full. Once the registry has accepted a registration, the registrar's fee is not refundable.
+- **Renewal.** A registration lasts one year. Renewal is on by default and is charged, about thirty days before the term ends, at the registrar's renewal price at that time, passed through with no markup, as a line on the Participant's subscription. The Participant may turn renewal off for any domain from the Domains card, in which case the domain expires at the end of its term. BI sends renewal and expiry notices to the Participant's email. A domain that has expired may be recoverable for a limited period at the registrar's redemption fee, where the registry offers one.
+- **Leaving with the domain.** The domain is the Participant's. At any time after the registry's initial lock period (sixty days for most endings), the Participant may ask BI to release the domain for transfer to a registrar of their choice, and BI does so without charge. On transfer-out the domain leaves BI's account and this Section no longer applies to it.
+- **Cancellation and closure.** Ending a subscription or closing an account does not delete a registered domain; the domain remains registered until the end of its current term. Renewal requires an active subscription to bill; without one, renewal is turned off and the domain expires at term unless the Participant transfers it out first. A Participant who wants to keep a domain after leaving should request transfer-out before closing the account.
+
+### 4.8 Connected Accounts and Provider Terms
+
+The Platform can act on accounts the Participant holds at other providers (for example a payment processor, a messaging provider, a shipping provider, a source-control host, a productivity suite, or a domain registrar). Those accounts are the Participant's, under that provider's own terms, and BI is not a party to the Participant's agreement with the provider.
+
+- **Authorization.** The Participant authorizes the Platform to act on such an account by supplying a credential the provider issued to them, or by completing the provider's own connection flow. BI verifies the credential with the provider once, stores it in a vault that belongs to the Participant's tenant alone, never displays it again, and uses it only for the actions the Participant instructs from the Platform. The Participant may remove a connection at any time; removal deletes the stored credential.
+- **Charges.** Charges the provider makes for usage on the Participant's account are the Participant's, billed by the provider under the provider's terms, and are not part of the subscription price unless this Agreement or the checkout says otherwise.
+- **Accounts the Platform creates for the Participant.** Where offered, the Platform may create an account for the Participant at a provider through that provider's platform or connect program, so that the Participant does not have to open it themselves. Such an account is the Participant's, opened under the provider's account agreement, which the Participant accepts during the provider's onboarding. The Platform acts on it as the provider's connected platform, on the Participant's instruction, and the Participant may disconnect the Platform from it under the provider's rules. Unless stated at purchase, BI is not in the money path of such an account and receives no part of its transactions.
 
 ---
 
@@ -174,7 +193,9 @@ BI may change subscription or add-on prices. A price change is communicated at l
 
 ### 5.8 Third-Party Costs and Pass-Through
 
-PragOptics operates on top of third-party infrastructure and services, including cloud compute, identity providers, networking, storage, and payment processors.
+PragOptics operates on top of third-party infrastructure and services, including cloud compute, identity providers, networking, storage, payment processors, and domain registrars.
+
+Domain registrations and renewals under Section 4.7 are passed through at the registrar's price with no markup. Sales tax on them follows Section 5.2.
 
 On the standard tiers, usage beyond an allowance plus its grace margin results in limiting as described in Section 6. Usage beyond included allowances may also result in metered, pass-through, or administrative charges (for example for API execution, storage, workflow execution, identity events, network traffic, or provider-level metered services) where disclosed at checkout, in an Order Form, in a Pricing Schedule, in a written agreement, or at billing time. Such charges may be billed to the Participant directly or allocated to a controlling account depending on role configuration and subscription structure.
 
@@ -329,6 +350,8 @@ Participants are responsible for safeguarding credentials, API keys, and authori
 
 Your email address is your identity on the Platform. A phone number is an optional channel for receiving verification codes and is never used as an identity. BI may require a phone number to be verified again at any time, for example after a period of inactivity, a change in carrier records, or when the number is verified on another account; until it is verified again, codes are delivered by email only. Verifying a phone number on an account makes it that account's number. Phone number changes are rate limited and may be paused for review.
 
+When a Participant registers a domain through BI (Section 4.7), the contact details they supply for it are shared with the registrar and the registry as the domain's registrant contacts, and the Participant's acceptance of the registrar's agreements is recorded with the time and network address. The Participant is responsible for keeping those contact details current, because the registrar sends verification and renewal notices to them and an unverified registrant email can suspend a domain under ICANN rules.
+
 ---
 
 ## 12. Availability, Maintenance & Dependencies
@@ -341,7 +364,7 @@ BI does not guarantee uninterrupted or error-free service.
 
 ### 12.2 Third-Party Dependencies
 
-Platform operation depends on third-party providers (including cloud infrastructure, identity providers, and payment processors). Outages or changes in those services may impact PragOptics.
+Platform operation depends on third-party providers (including cloud infrastructure, identity providers, payment processors, domain registrars and registries, and the providers behind connected accounts). Outages or changes in those services may impact PragOptics. A registrar or registry may decline or delay a registration, renewal, or transfer under its own rules; BI passes the provider's answer to the Participant and refunds any registration the registry did not accept.
 
 ---
 
@@ -368,6 +391,8 @@ Termination does not relieve responsibility for accrued charges.
 A Participant may close their account at any time from the account's Profile section. Closure is permanent and takes effect immediately: sign-in credentials are deleted, any active subscription ends at once with no refund for the remainder of the paid period (Section 5.6), and access to provisioned resources ends. A Participant who wants service through the end of a paid period should cancel the subscription first (Section 5.5) and close the account after the period ends.
 
 Participants are responsible for exporting any data they wish to keep, using the PragOptics software, before closing. BI retains order, billing, and audit records as required for accounting, tax, and legal purposes.
+
+Closing an account does not delete a domain registered through BI; Section 4.7 governs what happens to it, and a Participant who wants to keep the domain should request transfer-out before closing. Closing an account deletes every stored credential for connected accounts (Section 4.8); the accounts themselves remain the Participant's at their providers.
 
 BI may close an account for the reasons listed in Section 13.1, with the same effect.
 
