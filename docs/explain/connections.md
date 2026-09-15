@@ -33,7 +33,7 @@ If you do not have a Stripe account, the card opens one for you. Press Set up St
 
 The account is yours. You sign in to it at dashboard.stripe.com like any Stripe account, you pay Stripe's fees, Stripe collects your details and bears the risk on payments, and the platform is never in your money. No credential is stored for it: the platform acts on it through Stripe's platform program with the account's id, and only for what you ask from the software. Remove takes the connection off this environment and leaves the account with you.
 
-Continue setup shows only while Stripe still needs something from you and opens a fresh Stripe setup page for exactly that; the link it uses is single use and expires in minutes, so it is never emailed. Check status asks Stripe for the account's state again. Stripe's own messages come through as Stripe wrote them when a verification fails, so you see the same reason Stripe would show you in its Dashboard.
+Continue setup shows only while Stripe still needs something from you and opens a fresh Stripe setup page for exactly that; the link it uses is single use and expires in minutes, so it is never emailed. Check status asks Stripe for the account's state again, and Stripe also tells the platform on its own whenever the account changes, so a review that takes days shows up on the row when Stripe decides, without you pressing anything. If you disconnect PragOptics from inside your Stripe Dashboard, the row says so; Remove clears it, and the account stays yours. Stripe's own messages come through as Stripe wrote them when a verification fails, so you see the same reason Stripe would show you in its Dashboard.
 
 ## What is not here yet
 

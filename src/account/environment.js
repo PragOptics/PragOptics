@@ -948,6 +948,7 @@ function connIdentity(c) {
 
 function connStatusTag(c) {
   const e = D.escapeHtml;
+  if (c.status === 'REJECTED' && c.detail?.disconnected) return `<span class="acct-tag is-bad" title="${e(c.lastError || '')}">disconnected</span>`;
   if (c.status === 'REJECTED') return `<span class="acct-tag is-bad" title="${e(c.lastError || '')}">rejected</span>`;
   if (isManagedStripe(c)) {
     const s = stripeState(c.detail);
@@ -1012,8 +1013,10 @@ function stripeState(d = {}) {
 }
 /** The line under a managed row: what Stripe wants, or what it is doing, in the customer's words. */
 function stripeNeedsHtml(c) {
+  const e = D.escapeHtml;
+  if (isManagedStripe(c) && c.detail?.disconnected) return `<div class="ev-conn-needs">${e(c.lastError || 'PragOptics was disconnected from this Stripe account.')}</div>`;
   if (!isManagedStripe(c) || c.status === 'REJECTED') return '';
-  const d = c.detail || {}, s = stripeState(d), e = D.escapeHtml;
+  const d = c.detail || {}, s = stripeState(d);
   if (s.kind === 'active') return '';
   const test = d.mode === 'test' && s.kind !== 'incomplete' ? ' <span class="adm-muted">Test account: Stripe verifies only its test values here (date of birth 1901-01-01, ID number 000000000, business tax ID 000000000).</span>' : '';
   return `<div class="ev-conn-needs">${e(s.text)}${test}</div>`;
