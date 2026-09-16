@@ -573,6 +573,15 @@ function applyPostLoginResolution({ ping, force = false }) {
     // A card link (2026-09-16) or a provider's return: the sign-in lands on the
     // account section it named; the card itself is kept in pragoptics_open_card
     // and consumed once that section renders.
+    // The software (2026-09-16): a sign-in that started from it goes straight to it when the lane hosts it.
+    if (back === "software") {
+      const url = String(ping?.software?.url || "");
+      if (/^https:\/\//i.test(url)) { location.assign(url); return; }
+      clearBillingLandingOnly();
+      presetAccountSection("environment");
+      setAppMode("account");
+      return;
+    }
     if (["profile", "products", "subscription", "team", "environment", "orders", "builds"].includes(back)) {
       clearBillingLandingOnly();
       presetAccountSection(back);
@@ -774,7 +783,18 @@ window.applyPostLoginResolution = applyPostLoginResolution;
       // Signed in, it opens the panel; signed out, the sign-in modal opens and the
       // sign-in lands on the section the return needs.
       else if (/^#account/i.test(String(location.hash || ""))) routeToAccountOnLoad();
+      // The software (2026-09-16): /#software sends a signed-in account straight to it once it is hosted (ping.software.url); signed out, the sign-in lands there.
+      else if (/^#software/i.test(String(location.hash || ""))) routeToSoftwareOnLoad();
     })();
+
+    function routeToSoftwareOnLoad() {
+      let url = "";
+      try { url = JSON.parse(sessionStorage.getItem("pragoptics_ping") || "null")?.software?.url || ""; } catch { url = ""; }
+      if (isSessionActive() && /^https:\/\//i.test(url)) { location.assign(url); return; }
+      if (isSessionActive()) { presetAccountSection("environment"); setAppMode("account"); return; }
+      try { sessionStorage.setItem("pragoptics_return_to", "software"); } catch { /* falls back to the Environment section */ }
+      setTimeout(() => { openLoginModal("login"); }, 50);
+    }
 
     function routeToAccountOnLoad() {
       let provider = "", id = "", section = "", card = "", row = "";
