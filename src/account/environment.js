@@ -941,6 +941,7 @@ function connIdentity(c) {
   if (c.provider === 'twilio') return e(d.friendlyName || f.accountSid || '');
   if (c.provider === 'stripe') return e([d.accountId, d.mode, isManagedStripe(c) ? (d.accountName || d.businessName) : ''].filter(Boolean).join(' · '));
   if (isManagedTwilio(c)) return e([d.friendlyName, d.accountSid, d.type ? `${String(d.type).toLowerCase()} account` : ''].filter(Boolean).join(' · ') || 'not yet authorized');
+  if (isManagedShippo(c)) return e(c.status === 'ACTIVE' ? `${d.carrierAccounts || 0} carrier ${d.carrierAccounts === 1 ? 'account' : 'accounts'}${(d.carriers || []).length ? ' · ' + d.carriers.join(', ') : ''}` : 'not yet authorized');
   if (c.provider === 'shippo') return e(d.mode ? `${d.mode} token` : '');
   if (c.provider === 'github') return e(d.login ? `@${d.login}` : '');
   if (c.provider === 'microsoft') return e(d.org || f.tenantId || '');
@@ -951,6 +952,13 @@ function connStatusTag(c) {
   const e = D.escapeHtml;
   if (c.status === 'REJECTED' && c.detail?.disconnected) return `<span class="acct-tag is-bad" title="${e(c.lastError || '')}">disconnected</span>`;
   if (c.status === 'REJECTED') return `<span class="acct-tag is-bad" title="${e(c.lastError || '')}">rejected</span>`;
+  if (isManagedShippo(c)) {
+    const d = c.detail || {};
+    if (c.status === 'ACTIVE') return '<span class="acct-tag is-verified" title="Shippo bills you directly for labels; the platform acts with an access token Shippo issued for PragOptics.">connected</span>';
+    if (c.status === 'REJECTED') return `<span class="acct-tag is-bad" title="${e(c.lastError || '')}">disconnected</span>`;
+    if (d.declined) return `<span class="acct-tag is-pending" title="${e(c.lastError || '')}">declined</span>`;
+    return `<span class="acct-tag is-pending" title="${e(c.lastError || 'Waiting for you to sign in or sign up at Shippo and approve PragOptics.')}">not authorized</span>`;
+  }
   if (isManagedTwilio(c)) {
     const d = c.detail || {};
     if (c.status === 'ACTIVE') return `<span class="acct-tag is-verified" title="${e(d.type === 'Trial' ? 'A trial account: Twilio limits what it can do until it is upgraded.' : 'Twilio bills you directly; the platform acts on a subaccount inside your account.')}">connected</span>`;
@@ -973,7 +981,9 @@ function connStatusTag(c) {
 function isManagedStripe(c) { return c?.provider === 'stripe' && c?.detail?.managed === 'stripe-connect'; }
 /** A Twilio account the customer authorized through PragOptics (Twilio Connect): no credential on the card, Twilio's own state instead. */
 function isManagedTwilio(c) { return c?.provider === 'twilio' && c?.detail?.managed === 'twilio-connect'; }
-function isManaged(c) { return isManagedStripe(c) || isManagedTwilio(c); }
+/** A Shippo account the customer connected through PragOptics (Shippo OAuth): the token sits in the vault, Shippo's own state on the row. */
+function isManagedShippo(c) { return c?.provider === 'shippo' && c?.detail?.managed === 'shippo-connect'; }
+function isManaged(c) { return isManagedStripe(c) || isManagedTwilio(c) || isManagedShippo(c); }
 
 /** A Stripe requirement key in the customer's words (the same table the API uses). */
 function stripeRequirementWords(key) {
@@ -1028,6 +1038,7 @@ function stripeNeedsHtml(c) {
   const e = D.escapeHtml;
   if (isManagedStripe(c) && c.detail?.disconnected) return `<div class="ev-conn-needs">${e(c.lastError || 'PragOptics was disconnected from this Stripe account.')}</div>`;
   if (isManagedTwilio(c)) return c.status === 'ACTIVE' ? '' : `<div class="ev-conn-needs">${e(c.lastError || 'Waiting for you to authorize PragOptics at Twilio.')}</div>`;
+  if (isManagedShippo(c)) return c.status === 'ACTIVE' ? '' : `<div class="ev-conn-needs">${e(c.lastError || 'Waiting for you to sign in or sign up at Shippo and approve PragOptics.')}</div>`;
   if (!isManagedStripe(c) || c.status === 'REJECTED') return '';
   const d = c.detail || {}, s = stripeState(d);
   if (s.kind === 'active') return '';
@@ -1073,7 +1084,7 @@ function connectionsHtml() {
                 <td class="cell-tight"><span class="acct-tag is-primary" title="${e(p?.label || c.provider)}">${e(PROVIDER_ICON[c.provider] || c.provider)}</span> ${e(p?.label || cap(c.provider))}</td>
                 <td class="cell-ellip" title="${e(c.label)}">${e(c.label)}</td>
                 <td class="cell-ellip adm-muted">${connIdentity(c)}${stripeNeedsHtml(c)}</td>
-                <td class="cell-tight">${isManagedStripe(c) ? '<span class="acct-tag is-primary" title="Opened by the platform; no credential is stored. Stripe acts on the account id.">via PragOptics</span>' : isManagedTwilio(c) ? '<span class="acct-tag is-primary" title="Authorized at Twilio; no token is stored. The platform acts on the subaccount with its own token.">via PragOptics</span>' : `<code class="ev-prefix">••••${e(c.hint || '')}</code>`}</td>
+                <td class="cell-tight">${isManagedStripe(c) ? '<span class="acct-tag is-primary" title="Opened by the platform; no credential is stored. Stripe acts on the account id.">via PragOptics</span>' : isManagedTwilio(c) ? '<span class="acct-tag is-primary" title="Authorized at Twilio; no token is stored. The platform acts on the subaccount with its own token.">via PragOptics</span>' : isManagedShippo(c) ? '<span class="acct-tag is-primary" title="Authorized at Shippo; the access token Shippo issued for PragOptics sits in this environment\'s vault, never shown.">via PragOptics</span>' : `<code class="ev-prefix">••••${e(c.hint || '')}</code>`}</td>
                 <td class="cell-tight">${connStatusTag(c)}</td>
                 <td class="cell-tight adm-muted">${c.verifiedAt ? e(D.fmtDate(c.verifiedAt)) : 'never'}</td>
                 <td class="cell-tight ev-actions-cell">${manage ? (ev.connArm === c.id ? `
@@ -1081,7 +1092,8 @@ function connectionsHtml() {
                   <button class="btn btn-sm" type="button" data-env-action="conn-remove-cancel">Cancel</button>` : `
                   ${isManagedStripe(c) && (() => { const s = stripeState(c.detail); return s.kind === 'action' || s.kind === 'incomplete' || (s.kind === 'payments' && s.needs.length > 0); })() ? `<button class="btn btn-sm" type="button" data-env-action="conn-stripe-continue" data-id="${e(c.id)}" ${ev.connBusy ? 'disabled' : ''} title="Stripe's own pages for what it still needs">Continue setup</button>` : ''}
                   ${isManagedTwilio(c) && c.status !== 'ACTIVE' ? `<button class="btn btn-sm" type="button" data-env-action="conn-twilio-start" data-id="${e(c.id)}" ${ev.connBusy ? 'disabled' : ''} title="Twilio's authorization page for PragOptics, on your own Twilio account">${c.detail?.disconnected || c.detail?.declined ? 'Connect again' : 'Authorize at Twilio'}</button>` : ''}
-                  <button class="btn btn-sm" type="button" data-env-action="${isManagedStripe(c) ? 'conn-stripe-refresh' : isManagedTwilio(c) ? 'conn-twilio-refresh' : 'conn-test'}" data-id="${e(c.id)}" ${testing ? 'disabled' : ''}>${testing ? 'Checking…' : isManaged(c) ? 'Check status' : 'Test'}</button>
+                  ${isManagedShippo(c) && c.status !== 'ACTIVE' ? `<button class="btn btn-sm" type="button" data-env-action="conn-shippo-start" data-id="${e(c.id)}" ${ev.connBusy ? 'disabled' : ''} title="Shippo's authorization page for PragOptics; sign in or create your Shippo account there">${c.detail?.disconnected || c.detail?.declined ? 'Connect again' : 'Authorize at Shippo'}</button>` : ''}
+                  <button class="btn btn-sm" type="button" data-env-action="${isManagedStripe(c) ? 'conn-stripe-refresh' : isManagedTwilio(c) ? 'conn-twilio-refresh' : isManagedShippo(c) ? 'conn-shippo-refresh' : 'conn-test'}" data-id="${e(c.id)}" ${testing ? 'disabled' : ''}>${testing ? 'Checking…' : isManaged(c) ? 'Check status' : 'Test'}</button>
                   <button class="btn btn-sm" type="button" data-env-action="conn-remove" data-id="${e(c.id)}" data-label="${e(c.label)}">Remove</button>`) : ''}</td>
               </tr>`; }).join('')}
           </tbody>
@@ -1101,6 +1113,13 @@ function connectionsHtml() {
         </div>
         ${picked ? connFieldsHtml(picked) : ''}
         ${atLimit ? `<p class="acct-card-note ev-note">This environment holds ${ev.connLimit} connections, the most it can carry. Remove one to connect another.</p>` : ''}
+        ${(!picked || picked.id === 'shippo') && !atLimit && !(rows || []).some(isManagedShippo) ? `
+        <div class="ev-conn-managed">
+          <p class="acct-card-note ev-dom-note">Ship with your own Shippo account. Press the button and Shippo signs you in, or creates your Shippo account right there if you have none, and asks you to approve PragOptics. Labels are bought on your account and Shippo bills you directly. No API token to copy.</p>
+          <div class="ev-key-row">
+            <button class="btn" type="button" data-env-action="conn-shippo-start" ${ev.connBusy ? 'disabled' : ''}>${ev.connBusy ? 'Opening with Shippo…' : 'Connect your Shippo account'}</button>
+          </div>
+        </div>` : ''}
         ${(!picked || picked.id === 'twilio') && !atLimit && !(rows || []).some(isManagedTwilio) ? `
         <div class="ev-conn-managed">
           <p class="acct-card-note ev-dom-note">Have a Twilio account? Connect it instead of handing over a token. Twilio shows you PragOptics's authorization page on your own account, creates a subaccount inside it for the platform, and bills you directly. Twilio requires an upgraded account for this.</p>
@@ -1480,6 +1499,33 @@ async function testConnection(id) {
 }
 
 /** The platform opens the Stripe account and hands the customer to Stripe's setup. The single-use URL is used at once, never shown. */
+async function startShippoConnect() {
+  if (ev.connBusy) return;
+  D.showError('evConnError', '');
+  ev.connBusy = true; ev.connResult = ''; paintConnections();
+  try {
+    const d = await post(`${ENV_URL}/connections/shippo/start`, {});
+    if (!d?.url) throw new Error('Shippo did not answer with an authorization link.');
+    try { sessionStorage.setItem('pragoptics_connect_return', JSON.stringify({ provider: 'shippo', id: String(d.connection?.id || '') })); } catch { /* the return still carries the id */ }
+    window.location.assign(d.url);
+    return;
+  } catch (ex) {
+    ev.connBusy = false; paintConnections();
+    D.showError('evConnError', errText(ex, 'Could not start the Shippo authorization right now.'));
+  }
+}
+async function refreshShippoConnect(id, quiet = false) {
+  if (!id || ev.connTesting) return;
+  if (!quiet) D.showError('evConnError', '');
+  ev.connTesting = id; paintConnections();
+  try {
+    const d = await post(`${ENV_URL}/connections/shippo/refresh`, { id });
+    ev.connResult = d.connection?.message || 'Shippo answered for the account.';
+  } catch (ex) { if (!quiet) D.showError('evConnError', errText(ex, 'Could not check that Shippo account.')); }
+  ev.connTesting = '';
+  await loadConnections();
+}
+
 async function startTwilioConnect() {
   if (ev.connBusy) return;
   D.showError('evConnError', '');
@@ -1547,7 +1593,7 @@ async function handleProviderReturn() {
   try {
     // The return rides in the hash: /#account?connect=stripe|twilio&id=...&outcome=...; the hash is cleaned back to #account.
     const q = new URLSearchParams(String(window.location.hash || '').split('?')[1] || '');
-    if (q.get('connect') === 'stripe' || q.get('connect') === 'twilio') { provider = q.get('connect'); id = q.get('id') || ''; outcome = q.get('outcome') || 'return'; history.replaceState(null, '', window.location.pathname + '#account'); }
+    if (['stripe', 'twilio', 'shippo'].includes(q.get('connect'))) { provider = q.get('connect'); id = q.get('id') || ''; outcome = q.get('outcome') || 'return'; history.replaceState(null, '', window.location.pathname + '#account'); }
   } catch { /* no query to read */ }
   if (!id) {
     try {
@@ -1563,6 +1609,12 @@ async function handleProviderReturn() {
     ev.connResult = outcome === 'declined' ? 'You declined the authorization at Twilio. Nothing was connected.' : outcome === 'failed' ? 'Twilio named an account the platform could not read. Try connecting again.' : 'Back from Twilio. Checking the account…';
     paintConnections();
     await refreshTwilioConnect(id, true);
+    return;
+  }
+  if (provider === 'shippo') {
+    ev.connResult = outcome === 'declined' ? 'You declined the authorization at Shippo. Nothing was connected.' : outcome === 'failed' ? 'Shippo did not hand the platform a working authorization. Try connecting again.' : 'Back from Shippo. Checking the account…';
+    paintConnections();
+    await refreshShippoConnect(id, true);
     return;
   }
   ev.connResult = outcome === 'refresh' ? 'The Stripe setup link had expired. Press Continue setup for a fresh one.' : 'Back from Stripe. Checking the account…';
@@ -1651,6 +1703,8 @@ export function bindEnvironmentActions(deps) {
     if (a === 'conn-stripe-refresh') return void refreshStripeConnect(btn.dataset.id || '');
     if (a === 'conn-twilio-start') return void startTwilioConnect();
     if (a === 'conn-twilio-refresh') return void refreshTwilioConnect(btn.dataset.id || '');
+    if (a === 'conn-shippo-start') return void startShippoConnect();
+    if (a === 'conn-shippo-refresh') return void refreshShippoConnect(btn.dataset.id || '');
   });
 
   document.addEventListener('change', (e) => {

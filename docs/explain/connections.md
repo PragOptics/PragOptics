@@ -39,6 +39,10 @@ Twilio works the other way round from Stripe: the platform does not open a Twili
 
 The row reads connected, not authorized, declined, suspended or disconnected, in Twilio's words. Check status asks Twilio again. Revoke the authorization in your Twilio Console at any time; Twilio tells the platform, the row reads disconnected, and Remove clears it. Connect again reopens Twilio's page.
 
+## Shippo: your own account, created or signed into at Shippo
+
+Shippo works like Stripe. Press Connect your Shippo account and Shippo's own page signs you in, or creates your Shippo account right there if you have none, takes your billing details, and asks you to approve PragOptics. You come back with the account connected. The platform holds an access token Shippo issued for PragOptics, in this environment's vault, never shown, and buys labels on your account with it. Shippo bills you directly for every label, and the account is yours in Shippo's dashboard. Check status asks Shippo again; if Shippo no longer accepts the platform's access, the row reads disconnected, and Remove clears it.
+
 Continue setup shows only while Stripe still needs something from you and opens a fresh Stripe setup page for exactly that; the link it uses is single use and expires in minutes, so it is never emailed. Check status asks Stripe for the account's state again, and Stripe also tells the platform on its own whenever the account changes, so a review that takes days shows up on the row when Stripe decides, without you pressing anything. If you disconnect PragOptics from inside your Stripe Dashboard, the row says so; Remove clears it, and the account stays yours. Stripe's own messages come through as Stripe wrote them when a verification fails, so you see the same reason Stripe would show you in its Dashboard.
 
 ## What is not here yet
