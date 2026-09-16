@@ -394,7 +394,7 @@ function summaryHtml(v) {
           <p class="acct-card-note ev-owner">Owner ${e(t.ownerEmail || '')}. The private space where the software, your programs and your team keep data and files.</p>
         </div>
         <div class="ev-actions">
-          ${phase === 'READY' && t.software?.url ? `<a class="btn btn-sm" href="${e(t.software.url)}" target="_blank" rel="noopener" title="The software, in a new tab, signed in with this account">Open the software</a>` : ''}
+          ${phase === 'READY' && t.software?.url ? `<button class="btn btn-sm" type="button" data-env-action="open-software" data-url="${e(t.software.url)}" title="The software, in a new tab, signed in with this account">Open the software</button>` : ''}
           <button class="btn btn-sm" type="button" data-env-action="refresh" title="Read the figures again">Refresh</button>
           ${isOwner ? `<button class="btn btn-sm" type="button" data-acct-section="subscription" title="Storage grows with the plan, and with the storage add-on on the User plan">More storage</button>` : ''}
         </div>
@@ -1587,6 +1587,30 @@ async function unlinkDomain(host) {
   catch (ex) { D.showError('evDomainError', errText(ex, 'Could not unlink that domain.')); }
 }
 
+// Open the software (2026-09-16): the studio lives on its own origin, so the
+// session here does not exist there. The platform mints a one-time code (60
+// seconds, one use) and the studio redeems it on load for a session of its
+// own; the session token itself never rides in a URL. The tab is opened on
+// the click (a later open is a blocked pop-up), then pointed at the address
+// once the code exists; blocked, the same tab goes.
+async function openSoftware(btn) {
+  const plain = String(btn?.dataset?.url || '');
+  if (!plain) return;
+  let w = null;
+  try { w = window.open('about:blank', '_blank'); if (w) w.opener = null; } catch { w = null; }
+  btn.disabled = true;
+  let target = plain;
+  try {
+    const token = JSON.parse(sessionStorage.getItem('pragoptics_tokens') || 'null')?.access_token || '';
+    const res = await fetch(`${PRAG_API_BASE}/auth/software/handoff`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
+    const d = res.ok ? await res.json() : null;
+    if (d?.url) target = d.url;
+  } catch { /* the plain address: the studio asks for a sign-in */ }
+  btn.disabled = false;
+  if (w) { try { w.location.replace(target); return; } catch { /* fall through */ } }
+  location.assign(target);
+}
+
 // The export: one JSON file with everything, fetched with the session and
 // handed to the browser as a download. Big environments take a moment.
 async function exportEnvironment(btn) {
@@ -1834,6 +1858,7 @@ export function bindEnvironmentActions(deps) {
     if (a === 'lane-sandbox') return void setLane('sandbox');
     if (a === 'sandbox-setup') return void setupSandbox(btn);
     if (a === 'export') return void exportEnvironment(btn);
+    if (a === 'open-software') return void openSoftware(btn);
     if (a === 'provision') return void provision();
     if (a === 'open') return void openFile(btn.dataset.name || '', btn, 'open');
     if (a === 'download') return void openFile(btn.dataset.name || '', btn, 'download');

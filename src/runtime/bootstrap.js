@@ -576,7 +576,7 @@ function applyPostLoginResolution({ ping, force = false }) {
     // The software (2026-09-16): a sign-in that started from it goes straight to it when the lane hosts it.
     if (back === "software") {
       const url = String(ping?.software?.url || "");
-      if (/^https:\/\//i.test(url)) { location.assign(url); return; }
+      if (/^https:\/\//i.test(url)) { (window.pragGoToSoftware || location.assign.bind(location))(url); return; }
       clearBillingLandingOnly();
       presetAccountSection("environment");
       setAppMode("account");
@@ -787,10 +787,23 @@ window.applyPostLoginResolution = applyPostLoginResolution;
       else if (/^#software/i.test(String(location.hash || ""))) routeToSoftwareOnLoad();
     })();
 
+    // The session carried into the studio's origin by a one-time code (auth/softwareHandoff.js); the plain address when the mint fails.
+    async function goToSoftware(url) {
+      let target = url;
+      try {
+        const token = JSON.parse(sessionStorage.getItem("pragoptics_tokens") || "null")?.access_token || "";
+        const res = await fetch(`${PRAG_API_BASE}/auth/software/handoff`, { method: "POST", headers: { Authorization: `Bearer ${token}` } });
+        const d = res.ok ? await res.json() : null;
+        if (d?.url) target = d.url;
+      } catch { /* the plain address */ }
+      location.assign(target);
+    }
+    window.pragGoToSoftware = goToSoftware;
+
     function routeToSoftwareOnLoad() {
       let url = "";
       try { url = JSON.parse(sessionStorage.getItem("pragoptics_ping") || "null")?.software?.url || ""; } catch { url = ""; }
-      if (isSessionActive() && /^https:\/\//i.test(url)) { location.assign(url); return; }
+      if (isSessionActive() && /^https:\/\//i.test(url)) { goToSoftware(url); return; }
       if (isSessionActive()) { presetAccountSection("environment"); setAppMode("account"); return; }
       try { sessionStorage.setItem("pragoptics_return_to", "software"); } catch { /* falls back to the Environment section */ }
       setTimeout(() => { openLoginModal("login"); }, 50);
