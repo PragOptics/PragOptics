@@ -83,6 +83,10 @@
 }
 .account .acct-sec-title { margin: 0; font-size: 1.3rem; font-weight: 700; letter-spacing: -.015em; color: var(--ink); }
 
+/* The card a link landed on (2026-09-16): one soft flash, then gone. */
+.is-flash { animation: acctFlash 2.4s ease-out 1; }
+@keyframes acctFlash { 0% { box-shadow: 0 0 0 3px var(--accent, #2f9e8a); } 100% { box-shadow: 0 0 0 0 transparent; } }
+@media (prefers-reduced-motion: reduce) { .is-flash { animation: none; outline: 2px solid var(--accent, #2f9e8a); } }
 .acct-card { border: 1px solid var(--border); border-radius: 12px; background: color-mix(in srgb, var(--ink) 1.5%, transparent); padding: 18px 20px 20px; }
 .account .acct-card-h { margin: 0 0 4px; font-size: 1rem; font-weight: 700; color: var(--ink); }
 .acct-card-note { margin: 0 0 16px; color: var(--muted); font-size: .86rem; line-height: 1.5; max-width: 76ch; }

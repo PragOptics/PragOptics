@@ -3955,6 +3955,7 @@ function showSection(id) {
   });
   const main = document.getElementById('acctMain');
   if (!main) return;
+  consumeOpenCard(id);
   if (id === 'profile')      return void renderProfile(main);
   if (id === 'products')     return void renderProducts(main);
   if (id === 'subscription') return void renderSubscription(main);
@@ -4135,6 +4136,41 @@ function bindOnce() {
 
 /** Deep-link target for the next panel entry (e.g. the old admin route lands
  *  on Overview; the warranty success screen lands on My Products). */
+/* A card link (2026-09-16): the software's "one button" lands here with
+ * { section, card, row } kept in sessionStorage by routeToAccountOnLoad. Once
+ * the section has rendered, the card scrolls into view and flashes once;
+ * cards paint after their loads, so this looks for the element for a few
+ * seconds and gives up quietly. */
+const CARD_IDS = {
+  environment: { environment: 'evBody', storage: 'evBody', lanes: 'evBody', files: 'evFiles', connections: 'evConnections', domains: 'evDomains', keys: 'evKeys' },
+  subscription: { plan: 'acctPricing', payment: 'acctPmActions' },
+  profile: { passkeys: 'acctPasskeyList', password: 'acctPasswordError', phone: 'acctPhoneState', email: 'acctAliasList' },
+  team: {}
+};
+function consumeOpenCard(sectionId) {
+  let want = null;
+  try { want = JSON.parse(sessionStorage.getItem('pragoptics_open_card') || 'null'); } catch { want = null; }
+  if (!want || (want.section && want.section !== sectionId)) return;
+  try { sessionStorage.removeItem('pragoptics_open_card'); } catch { /* fine */ }
+  const id = (CARD_IDS[sectionId] || {})[String(want.card || '')] || '';
+  if (!id) return;
+  let tries = 0;
+  const tick = () => {
+    const el = document.getElementById(id);
+    const target = el && (el.closest('.acct-card') || el);
+    if (target) {
+      let focus = target;
+      if (want.row) { const r = target.querySelector(`[data-row="${CSS.escape(String(want.row))}"]`); if (r) focus = r; }
+      focus.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      focus.classList.add('is-flash');
+      setTimeout(() => focus.classList.remove('is-flash'), 2600);
+      return;
+    }
+    if (++tries < 24) setTimeout(tick, 250);
+  };
+  setTimeout(tick, 150);
+}
+
 export function presetAccountSection(id) {
   const all = [...customerSections(), ...internalSections()];
   if (!all.some(s => s.id === id)) return;

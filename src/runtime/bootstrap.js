@@ -774,10 +774,18 @@ window.applyPostLoginResolution = applyPostLoginResolution;
     })();
 
     function routeToAccountOnLoad() {
-      let provider = "", id = "";
+      let provider = "", id = "", section = "", card = "", row = "";
       // The return rides in the hash (/#account?connect=stripe&id=...): the site strips a query string on load and keeps the hash.
-      try { const q = new URLSearchParams(String(location.hash || "").split("?")[1] || ""); provider = q.get("connect") || ""; id = q.get("id") || ""; } catch { /* no params */ }
+      // A card link (2026-09-16, the software's "one button"): /#account?section=environment&card=domains&row=stripe opens that section and scrolls to that card.
+      try { const q = new URLSearchParams(String(location.hash || "").split("?")[1] || ""); provider = q.get("connect") || ""; id = q.get("id") || ""; section = q.get("section") || ""; card = q.get("card") || ""; row = q.get("row") || ""; } catch { /* no params */ }
       const fromProvider = provider === "stripe" || provider === "twilio" || provider === "shippo";
+      if (section || card) {
+        try { sessionStorage.setItem("pragoptics_open_card", JSON.stringify({ section, card, row })); } catch { /* the section still opens */ }
+        if (isSessionActive()) { presetAccountSection(section || "profile"); setAppMode("account"); return; }
+        try { sessionStorage.setItem("pragoptics_return_to", section || "profile"); } catch { /* falls back to Profile after sign-in */ }
+        setTimeout(() => { openLoginModal("login"); }, 50);
+        return;
+      }
       if (fromProvider && id) { try { sessionStorage.setItem("pragoptics_connect_return", JSON.stringify({ provider, id, outcome: (new URLSearchParams(String(location.hash || "").split("?")[1] || "")).get("outcome") || "return" })); } catch { /* the query still carries it */ } }
       if (isSessionActive()) {
         presetAccountSection(fromProvider ? "environment" : "profile");
