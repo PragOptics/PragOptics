@@ -138,6 +138,14 @@ function paint() {
 
 function emptyHtml(view) {
   const e = D.escapeHtml;
+  if (view.provisioning) {
+    return `
+      <section class="acct-card">
+        <h3 class="acct-card-h">Your environment is being set up.</h3>
+        <p class="acct-card-note">Your team shows here the moment it exists, usually within a moment of signing in. Press Refresh.</p>
+        <div class="acct-actions-row"><button class="btn btn-sm" type="button" data-acct-section="team">Refresh</button></div>
+      </section>`;
+  }
   if (view.needsSubscription) {
     return `
       <section class="acct-card">

@@ -11,7 +11,7 @@ Free | Every owner. Warranty registration, all the software, the docs and print 
 
 ## The honest version of each
 
-**Free** is a real plan, not a trial. If you own the hardware, everything about owning it is free forever: registering it, transferring it, running the software, downloading what other people have built. You never enter a card.
+**Free** is a real plan, not a trial. If you own the hardware, everything about owning it is free forever: registering it, transferring it, running the software, downloading what other people have built. You get an environment the moment you sign in, on shared storage with the Free allowance, so the software has somewhere to keep your things from day one. You never enter a card.
 
 **User** is where the platform becomes yours. You get an environment provisioned the moment the subscription settles, with storage behind it, keys for your own programs, and the option to connect a domain you own. One seat. If you outgrow the storage or the API allowance, the two add-ons raise them.
 

@@ -1,6 +1,6 @@
 # Your environment and storage
 
-Your environment is the private space the platform sets up for your account the moment a paid subscription settles. Nothing to configure, nothing to click. If a team existed before the subscription, the environment is that team, with the same members.
+Your environment is the private space the platform sets up for your account the moment you sign in for the first time. Nothing to configure, nothing to click. On Free it lives in a private partition of the platform's shared storage, with the Free allowance. On a paid plan it moves to storage of its own the moment the subscription settles, and if a team existed before the subscription, the environment is that team, with the same members.
 
 ## What is in it
 

@@ -346,12 +346,15 @@ function paintKeys() { const h = document.getElementById('evKeys'); if (h) h.inn
 function paintConnections() { const h = document.getElementById('evConnections'); if (h) h.innerHTML = connectionsHtml(); }
 
 function emptyHtml(view) {
-  if (view.needsSubscription) {
+  // Every owner gets an environment (2026-09-16): pooled storage on Free, the
+  // plan's own storage on a paid plan. A missing one is being set up.
+  if (view.provisioning || view.needsSubscription) {
     return `
       <section class="acct-card">
-        <h3 class="acct-card-h">Storage comes with a plan.</h3>
-        <p class="acct-card-note">Free has the console and the software. A paid plan sets up a private environment for your account the moment the first invoice settles: tables for your data, a container for your files, keys for your programs, and the allowance the plan carries.</p>
-        <div class="acct-actions-row"><button class="btn" type="button" data-acct-action="subscribe">See plans</button></div>
+        <h3 class="acct-card-h">Your environment is being set up.</h3>
+        <p class="acct-card-note">It happens on its own within a moment of signing in: a place for your data, your files and your keys, with the allowance your plan carries. Press Refresh, or set it up now.</p>
+        <div class="acct-actions-row"><button class="btn" type="button" data-env-action="provision">Set it up now</button><button class="btn btn-sm" type="button" data-env-action="refresh">Refresh</button></div>
+        <p class="acct-error" id="evProvError" hidden></p>
       </section>`;
   }
   return `
