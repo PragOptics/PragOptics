@@ -34,6 +34,16 @@ The name is already connected to another environment. One environment holds a na
 
 A verified domain whose record later disappears is marked failed after three daily checks. Put the record back and press Verify.
 
+## Letting PragOptics manage the domain's settings
+
+The fourth way in, for a domain you already own anywhere. Type it and press Manage its DNS here. The platform looks the domain up, copies every record it can find (its own lookups, the DNS host's scan, a zone file you paste, names you add), and shows you the copy as plain rows: Website, Email, Verification, Other. Nothing has changed for the domain at this point.
+
+When you press Switch, the platform points the domain at its own DNS. For a name registered through PragOptics at Spaceship, or held in a Spaceship account you connected, it does that itself. Otherwise it shows you two lines to paste where your registrar says nameservers, and you press I did it. The card reads Checking until the internet answers from PragOptics, usually minutes, sometimes up to a day, and everything keeps working while you wait. Then it reads DNS managed here, and email, your website and the software's address are set from the card from then on. The domain itself stays where you bought it; nothing is transferred and nothing is charged.
+
+A domain bought through Microsoft 365 cannot be moved: Microsoft does not allow its nameservers to change. The card says so, and the platform keeps giving you the records to add there.
+
+Hand DNS back any time. The platform refuses while the domain still answers from it, so nothing breaks: set the old nameservers again first (the card shows them), wait for the change, then hand it back. The copy at the platform's DNS host is removed.
+
 ## Serving your site at the name
 
 Once the software is hosted, a verified name gets two more records on the card: a TXT record at asuid.your-name that proves the name to Azure, and a record that points the name at the software: a CNAME for a name like www.example.com, an A record for example.com itself. Add both where you manage the DNS, then press Bind.

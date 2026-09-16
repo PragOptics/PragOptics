@@ -510,7 +510,9 @@ function domainHtml(d) {
   const via = linked ? (conn ? `your ${e(prov)} account ${e(conn.label)}` : 'a registrar account that has since been removed') : '';
   const writesLine = linked ? `The platform writes this name’s records at ${e(prov)} through ${via}` : 'The platform holds this name’s DNS';
   let body = '';
-  if (!verified) {
+  if (d.hosted) {
+    body = hostedBodyHtml(d);
+  } else if (!verified) {
     body = linked ? `
       <p class="acct-card-note ev-dom-note">${conn ? `The platform wrote the proof record at ${e(prov)} through ${via}. DNS needs a moment to show it; press Verify, or leave it, the platform checks daily.` : 'The registrar account this name was linked through was removed. Link the name again, or add the record below yourself and press Verify.'}${d.status === 'FAILED' ? ' The record was found before and is missing now.' : ''}</p>
       ${conn ? '' : recordHtml('The verification record', d.verifyRecord)}
@@ -565,17 +567,18 @@ function domainHtml(d) {
     <div class="ev-dom">
       <div class="ev-dom-head">
         <span class="ev-dom-host">${e(d.host)}</span>
-        ${domainTag(d)}
+        ${d.hosted ? hostedTag(d.hosted) : domainTag(d)}
         ${linked ? '<span class="acct-tag">linked</span>' : d.registrar ? '<span class="acct-tag">registered here</span>' : ''}
         ${d.addedBy ? `<span class="ev-dom-when">connected by ${e(d.addedBy)} ${e(D.fmtDate(d.addedAt))}</span>` : ''}
       </div>
       ${body}
       ${manage ? `
       <div class="ev-dom-actions">
-        ${verified ? '' : `<button class="btn btn-sm" type="button" data-env-action="domain-verify" data-host="${e(d.host)}" ${checking ? 'disabled' : ''}>${checking ? 'Checking…' : 'Verify'}</button>`}
+        ${verified || (d.hosted && d.hosted.phase !== 'MANAGED') ? '' : `<button class="btn btn-sm" type="button" data-env-action="domain-verify" data-host="${e(d.host)}" ${checking ? 'disabled' : ''}>${checking ? 'Checking…' : 'Verify'}</button>`}
         ${verified && hosted ? (bs === 'BOUND'
           ? twoStep('unbind', 'Unbind', 'Stop serving here?')
           : `<button class="btn btn-sm" type="button" data-env-action="domain-bind" data-host="${e(d.host)}" ${busy ? 'disabled' : ''}>${busy ? 'Working…' : bs === 'BINDING' ? 'Check' : bs === 'BIND_FAILED' ? 'Try again' : 'Bind'}</button>`) : ''}
+        ${d.hosted ? twoStep('dns-cancel', 'Hand DNS back', 'Hand it back for sure?') : ''}
         ${linked ? `<button class="btn btn-sm" type="button" data-env-action="domain-unlink" data-host="${e(d.host)}">Unlink</button>` : ''}
         ${twoStep('remove', 'Remove', 'Remove for sure?')}
       </div>` : ''}
@@ -599,6 +602,96 @@ function linkDoorHtml(full) {
     ${ev.linkNote ? `<p class="acct-card-note">${e(ev.linkNote)}</p>` : ''}`;
 }
 
+/** The DNS door (2026-09-16): a domain from anywhere, its settings managed by the platform from one button. */
+function dnsDoorHtml(full) {
+  const e = D.escapeHtml;
+  const s = ev.dnsDoor || {};
+  return `
+    <div class="ev-dom-row ev-dom-host-door">
+      <input class="acct-input" type="text" id="evDnsHost" maxlength="253" placeholder="example.com" autocomplete="off" spellcheck="false" autocapitalize="off" ${full || s.busy ? 'disabled' : ''} />
+      <button class="btn" type="button" data-env-action="domain-dns-start" ${full || s.busy ? 'disabled' : ''}>${s.busy ? 'Looking it up…' : 'Manage its DNS here'}</button>
+    </div>
+    <p class="acct-card-note ev-dom-door">Your domain stays where you bought it. PragOptics only takes over its settings, so email, your website and the software can be set up here with a button. Nothing changes until you say so, and you can hand it back any time.</p>
+    ${s.note ? `<p class="acct-card-note">${e(s.note)}</p>` : ''}`;
+}
+/** The tag on a row the DNS door touched. */
+function hostedTag(h) {
+  const p = String(h?.phase || '').toUpperCase();
+  if (p === 'MANAGED') return '<span class="acct-tag is-verified">DNS managed here</span>';
+  if (p === 'SWITCHING') return '<span class="acct-tag is-pending">switching DNS</span>';
+  if (p === 'MOVED') return '<span class="acct-tag is-bad">DNS moved away</span>';
+  return '<span class="acct-tag is-pending">DNS copied, not switched</span>';
+}
+/** The records the platform holds for a domain, as plain rows. */
+function hostedRecordsHtml(host) {
+  const e = D.escapeHtml;
+  const r = (ev.dnsRecs || {})[host];
+  if (!r) return '';
+  const label = { website: 'Website', email: 'Email', verification: 'Verification', other: 'Other' };
+  const rows = (r.records || []).map(x => `<tr><td>${e(label[x.kind] || 'Other')}</td><td><code>${e(x.name)}</code></td><td><code>${e(x.type)}</code></td><td class="cell-ellip" title="${e(x.content || '')}"><code>${e(x.type === 'MX' ? `${x.priority ?? ''} ${x.content}` : x.content || '')}</code></td></tr>`).join('');
+  return `
+    <div class="adm-table-scroll ev-dom-recs">
+      <table class="adm-table adm-table--wrap">
+        <thead><tr><th>Row</th><th>Name</th><th>Type</th><th>Value</th></tr></thead>
+        <tbody>${rows || '<tr><td colspan="4">No records yet.</td></tr>'}</tbody>
+      </table>
+    </div>`;
+}
+/** What a row the DNS door touched says, by phase. */
+function hostedBodyHtml(d) {
+  const e = D.escapeHtml;
+  const h = d.hosted || {};
+  const phase = String(h.phase || 'REVIEW').toUpperCase();
+  const busy = ev.dnsBusy === d.host;
+  const shown = !!(ev.dnsRecs || {})[d.host];
+  const note = (ev.dnsNote || {})[d.host] || '';
+  const ns = (h.nameServers || []).map(n => `<li><code>${e(n)}</code> <button class="btn btn-sm" type="button" data-env-action="domain-copy" data-text="${e(n)}">Copy</button></li>`).join('');
+  const recordsBtn = `<button class="btn btn-sm" type="button" data-env-action="domain-dns-records" data-host="${e(d.host)}">${shown ? 'Hide records' : 'Show records'}</button>`;
+  const more = phase === 'REVIEW' || phase === 'SWITCHING' ? `
+      <details class="ev-dom-more"><summary>Add records we did not find</summary>
+        <p class="acct-card-note ev-dom-note">Paste a zone file exported from where the domain lives today, or type names we should look up, one per line (for example <code>intranet</code>).</p>
+        <textarea class="acct-input ev-dom-zonefile" id="evDnsFile-${e(d.host)}" rows="4" placeholder="Zone file (optional)"></textarea>
+        <textarea class="acct-input ev-dom-names" id="evDnsNames-${e(d.host)}" rows="2" placeholder="Names, one per line (optional)"></textarea>
+        <div class="ev-dom-actions"><button class="btn btn-sm" type="button" data-env-action="domain-dns-add" data-host="${e(d.host)}" ${busy ? 'disabled' : ''}>Add</button></div>
+      </details>` : '';
+  let body = '';
+  if (phase === 'REVIEW') {
+    body = `
+      <p class="acct-card-note ev-dom-note">Copied ${e(String(h.recordCount || 0))} record${h.recordCount === 1 ? '' : 's'} from ${e(h.dnsHost || 'the current host')}${h.registrar ? `, a domain bought at ${e(h.registrar)}` : ''}. <b>Nothing has changed for ${e(d.host)} yet.</b> Look the records over, then switch.</p>
+      ${h.lastError ? `<p class="acct-error ev-dom-note">${e(h.lastError)}</p>` : ''}
+      ${hostedRecordsHtml(d.host)}
+      ${more}
+      <div class="ev-dom-actions">${recordsBtn}<button class="btn" type="button" data-env-action="domain-dns-switch" data-host="${e(d.host)}" ${busy ? 'disabled' : ''}>${busy ? 'Working…' : 'Switch to PragOptics'}</button></div>`;
+  } else if (phase === 'SWITCHING') {
+    const byPlatform = String(h.switchedBy || '').startsWith('platform:') || String(h.switchedBy || '').startsWith('connection:');
+    body = byPlatform ? `
+      <p class="acct-card-note ev-dom-note">The nameservers were set at ${e(h.registrar || 'your registrar')}. <b>Checking.</b> This usually takes a few minutes and can take up to a day. Everything keeps working while we wait.</p>
+      ${hostedRecordsHtml(d.host)}
+      <div class="ev-dom-actions">${recordsBtn}<button class="btn btn-sm" type="button" data-env-action="domain-dns-check" data-host="${e(d.host)}" ${busy ? 'disabled' : ''}>${busy ? 'Checking…' : 'Check now'}</button></div>` : `
+      <p class="acct-card-note ev-dom-note">Sign in at ${e(h.registrar || 'your registrar')} and paste these two lines where it says <b>nameservers</b>, replacing what is there. Then press I did it.</p>
+      <ul class="ev-dom-ns">${ns}</ul>
+      ${h.lastError ? `<p class="acct-error ev-dom-note">${e(h.lastError)}</p>` : ''}
+      ${hostedRecordsHtml(d.host)}
+      ${more}
+      <div class="ev-dom-actions">${recordsBtn}<button class="btn" type="button" data-env-action="domain-dns-check" data-host="${e(d.host)}" ${busy ? 'disabled' : ''}>${busy ? 'Checking…' : 'I did it'}</button></div>`;
+  } else if (phase === 'MANAGED') {
+    body = `
+      <p class="acct-card-note ev-dom-note">Managed by PragOptics${h.managedAt ? ` since ${e(D.fmtDate(h.managedAt))}` : ''}. Email, your website and the software's address are set here from now on; the domain itself stays at ${e(h.registrar || 'your registrar')}.</p>
+      ${hostedRecordsHtml(d.host)}
+      <div class="ev-dom-actions">${recordsBtn}</div>`;
+  } else {
+    body = `
+      <p class="acct-error ev-dom-note">${e(h.lastError || `${d.host} no longer answers from PragOptics.`)}</p>
+      <p class="acct-card-note ev-dom-note">Point it back at these two nameservers to keep it managed here, or hand it back.</p>
+      <ul class="ev-dom-ns">${ns}</ul>
+      ${hostedRecordsHtml(d.host)}
+      <div class="ev-dom-actions">${recordsBtn}<button class="btn btn-sm" type="button" data-env-action="domain-dns-check" data-host="${e(d.host)}" ${busy ? 'disabled' : ''}>${busy ? 'Checking…' : 'Check now'}</button></div>`;
+  }
+  if (note) body += `<p class="acct-card-note ev-dom-note">${e(note)}</p>`;
+  if ((ev.dnsBack || {})[d.host]) body += `<p class="acct-card-note ev-dom-note">To hand it back, first set these nameservers at ${e(h.registrar || 'your registrar')} again, wait for the change to show, then press Hand DNS back once more.</p><ul class="ev-dom-ns">${(ev.dnsBack[d.host] || []).map(n => `<li><code>${e(n)}</code> <button class="btn btn-sm" type="button" data-env-action="domain-copy" data-text="${e(n)}">Copy</button></li>`).join('')}</ul>`;
+  return body;
+}
+
 function domainsHtml() {
   const e = D.escapeHtml;
   const manage = canManageDomains();
@@ -618,7 +711,8 @@ function domainsHtml() {
         <button class="btn" type="button" data-env-action="domain-add" ${full ? 'disabled' : ''}>Connect</button>
       </div>
       ${limit ? `<p class="acct-card-note ev-count">${e(String((rows || []).length))} of ${e(String(limit))} on this plan.${full ? ' Remove one to connect another, or move up a plan.' : ''}</p>` : ''}
-      ${linkDoorHtml(full)}` : `<p class="acct-card-note">The owner, an admin or a developer connects domains; everyone on the team sees them here.</p>`}
+      ${linkDoorHtml(full)}
+      ${dnsDoorHtml(full)}` : `<p class="acct-card-note">The owner, an admin or a developer connects domains; everyone on the team sees them here.</p>`}
       <p class="acct-error" id="evDomainError" hidden></p>
       ${ev.domainNote ? `<p class="acct-card-note">${e(ev.domainNote)}</p>` : ''}
       ${registrationsHtml()}
@@ -1416,6 +1510,74 @@ async function linkDomain(btn) {
   }
 }
 
+/* ---------- the DNS door ---------- */
+
+async function startDnsDoor(btn) {
+  D.showError('evDomainError', '');
+  const host = (document.getElementById('evDnsHost')?.value || '').trim();
+  if (!host) { D.showError('evDomainError', 'Enter the domain, e.g. example.com.'); return; }
+  ev.dnsDoor = { busy: true, note: '' }; paintDomains();
+  try {
+    const r = await post(`${ENV_URL}/domains/dns/start`, { host });
+    ev.dnsDoor = { busy: false, note: r.note || '' };
+    ev.dnsRecs = ev.dnsRecs || {}; ev.dnsRecs[r.domain?.host || host] = { records: r.records || [], counts: r.counts || {} };
+    await loadDomains();
+  } catch (ex) {
+    ev.dnsDoor = { busy: false, note: '' }; paintDomains();
+    D.showError('evDomainError', ex?.data?.code === 'DNS_MICROSOFT_365' ? ex.data.error : errText(ex, 'Could not look that domain up.'));
+    const input = document.getElementById('evDnsHost'); if (input) input.value = host;
+  }
+}
+function setDnsNote(host, note) { ev.dnsNote = ev.dnsNote || {}; ev.dnsNote[host] = note || ''; }
+async function dnsRecords(host) {
+  ev.dnsRecs = ev.dnsRecs || {};
+  if (ev.dnsRecs[host]) { delete ev.dnsRecs[host]; paintDomains(); return; }
+  try { const r = await post(`${ENV_URL}/domains/dns/records`, { host }); ev.dnsRecs[host] = { records: r.records || [], counts: r.counts || {} }; paintDomains(); }
+  catch (ex) { D.showError('evDomainError', errText(ex, 'Could not read the records.')); }
+}
+async function dnsAdd(host) {
+  D.showError('evDomainError', '');
+  const zoneFile = document.getElementById(`evDnsFile-${host}`)?.value || '';
+  const names = (document.getElementById(`evDnsNames-${host}`)?.value || '').split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+  if (!zoneFile.trim() && !names.length) { D.showError('evDomainError', 'Paste a zone file or type a name first.'); return; }
+  ev.dnsBusy = host; paintDomains();
+  try {
+    const r = await post(`${ENV_URL}/domains/dns/add`, { host, zoneFile, names });
+    ev.dnsRecs = ev.dnsRecs || {}; ev.dnsRecs[host] = { records: r.records || [], counts: r.counts || {} };
+    setDnsNote(host, `Added ${(r.found?.file || 0) + (r.found?.lookups || 0)} record${(r.found?.file || 0) + (r.found?.lookups || 0) === 1 ? '' : 's'}. ${r.found?.total || 0} in all.`);
+  } catch (ex) { D.showError('evDomainError', errText(ex, 'Could not add those records.')); }
+  ev.dnsBusy = ''; await loadDomains();
+}
+async function dnsSwitch(host) {
+  D.showError('evDomainError', '');
+  ev.dnsBusy = host; paintDomains();
+  try { const r = await post(`${ENV_URL}/domains/dns/switch`, { host }); setDnsNote(host, r.note || ''); }
+  catch (ex) { D.showError('evDomainError', errText(ex, 'Could not switch the nameservers.')); }
+  ev.dnsBusy = ''; await loadDomains();
+}
+async function dnsCheck(host) {
+  D.showError('evDomainError', '');
+  ev.dnsBusy = host; paintDomains();
+  try { const r = await post(`${ENV_URL}/domains/dns/check`, { host }); setDnsNote(host, r.note || ''); }
+  catch (ex) { D.showError('evDomainError', errText(ex, 'Could not check the domain.')); }
+  ev.dnsBusy = ''; await loadDomains();
+}
+async function dnsCancel(host) {
+  D.showError('evDomainError', '');
+  if (ev.domArm !== `dns-cancel:${host}`) { ev.domArm = `dns-cancel:${host}`; paintDomains(); return; }
+  ev.domArm = ''; ev.dnsBusy = host; paintDomains();
+  try {
+    const r = await post(`${ENV_URL}/domains/dns/cancel`, { host });
+    ev.dnsBack = ev.dnsBack || {}; delete ev.dnsBack[host];
+    if (ev.dnsRecs) delete ev.dnsRecs[host];
+    setDnsNote(host, r.note || '');
+  } catch (ex) {
+    if (ex?.data?.code === 'STILL_POINTED_HERE') { ev.dnsBack = ev.dnsBack || {}; ev.dnsBack[host] = ex.data.originalNameServers || []; setDnsNote(host, ''); }
+    else D.showError('evDomainError', errText(ex, 'Could not hand the domain back.'));
+  }
+  ev.dnsBusy = ''; await loadDomains();
+}
+
 async function unlinkDomain(host) {
   D.showError('evDomainError', '');
   try { const r = await post(`${ENV_URL}/domains/unlink`, { host }); ev.linkNote = r.note || ''; await loadDomains(); }
@@ -1684,6 +1846,12 @@ export function bindEnvironmentActions(deps) {
     if (a === 'domain-copy') return void copyText(btn.dataset.text || '', btn);
     if (a === 'domain-link') return void linkDomain(btn);
     if (a === 'domain-unlink') return void unlinkDomain(btn.dataset.host || '');
+    if (a === 'domain-dns-start') return void startDnsDoor(btn);
+    if (a === 'domain-dns-records') return void dnsRecords(btn.dataset.host || '');
+    if (a === 'domain-dns-add') return void dnsAdd(btn.dataset.host || '');
+    if (a === 'domain-dns-switch') return void dnsSwitch(btn.dataset.host || '');
+    if (a === 'domain-dns-check') return void dnsCheck(btn.dataset.host || '');
+    if (a === 'domain-dns-cancel') return void dnsCancel(btn.dataset.host || '');
     if (a === 'domain-arm-cancel') { disarmDomain(); paintDomains(); return; }
     if (a === 'domain-reg-check') return void regCheck();
     if (a === 'domain-reg-continue') { ev.reg.step = 'contact'; ev.reg.error = ''; paintDomains(); document.getElementById('evRegFirst')?.focus(); return; }
