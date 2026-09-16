@@ -671,7 +671,7 @@ function hostedBodyHtml(d) {
       <p class="acct-card-note ev-dom-note">The nameservers were set at ${e(h.registrar || 'your registrar')}. <b>Checking.</b> This usually takes a few minutes and can take up to a day. Everything keeps working while we wait.</p>
       ${hostedRecordsHtml(d.host)}
       <div class="ev-dom-actions">${recordsBtn}<button class="btn btn-sm" type="button" data-env-action="domain-dns-check" data-host="${e(d.host)}" ${busy ? 'disabled' : ''}>${busy ? 'Checking…' : 'Check now'}</button></div>` : `
-      <p class="acct-card-note ev-dom-note">Sign in at ${e(h.registrar || 'your registrar')} and paste these two lines where it says <b>nameservers</b>, replacing what is there. Then press I did it.</p>
+      <p class="acct-card-note ev-dom-note">Sign in at ${e(h.registrar || 'your registrar')} and paste these lines where it says <b>nameservers</b>, replacing what is there. Then press I did it.</p>
       <ul class="ev-dom-ns">${ns}</ul>
       ${h.lastError ? `<p class="acct-error ev-dom-note">${e(h.lastError)}</p>` : ''}
       ${hostedRecordsHtml(d.host)}
@@ -685,7 +685,7 @@ function hostedBodyHtml(d) {
   } else {
     body = `
       <p class="acct-error ev-dom-note">${e(h.lastError || `${d.host} no longer answers from PragOptics.`)}</p>
-      <p class="acct-card-note ev-dom-note">Point it back at these two nameservers to keep it managed here, or hand it back.</p>
+      <p class="acct-card-note ev-dom-note">Point it back at these nameservers to keep it managed here, or hand it back.</p>
       <ul class="ev-dom-ns">${ns}</ul>
       ${hostedRecordsHtml(d.host)}
       <div class="ev-dom-actions">${recordsBtn}<button class="btn btn-sm" type="button" data-env-action="domain-dns-check" data-host="${e(d.host)}" ${busy ? 'disabled' : ''}>${busy ? 'Checking…' : 'Check now'}</button></div>`;

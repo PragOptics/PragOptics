@@ -4148,6 +4148,7 @@ const CARD_IDS = {
   team: {}
 };
 function consumeOpenCard(sectionId) {
+  if (!hasLiveSession()) return;   // signed out, the card waits for the sign-in that lands here
   let want = null;
   try { want = JSON.parse(sessionStorage.getItem('pragoptics_open_card') || 'null'); } catch { want = null; }
   if (!want || (want.section && want.section !== sectionId)) return;

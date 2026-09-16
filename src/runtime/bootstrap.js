@@ -570,9 +570,12 @@ function applyPostLoginResolution({ ping, force = false }) {
     // A provider sent the customer back (Stripe's setup) while the session had
     // lapsed: the sign-in lands on the Environment section, where the card
     // reads the stashed return and catches up.
-    if (back === "environment") {
+    // A card link (2026-09-16) or a provider's return: the sign-in lands on the
+    // account section it named; the card itself is kept in pragoptics_open_card
+    // and consumed once that section renders.
+    if (["profile", "products", "subscription", "team", "environment", "orders", "builds"].includes(back)) {
       clearBillingLandingOnly();
-      presetAccountSection("environment");
+      presetAccountSection(back);
       setAppMode("account");
       return;
     }
