@@ -228,7 +228,7 @@ async function loadConnections() {
     ev.connProviders = d.providers || [];
     ev.connLimit = Number(d.limit || 0);
     ev.connNote = '';
-    setTimeout(() => { handleStripeReturn(); }, 0);
+    setTimeout(() => { handleProviderReturn(); }, 0);
   } catch (ex) {
     ev.connections = [];
     if (ex?.status === 404) ev.connNote = 'The connection routes are not on this lane yet.';
@@ -939,7 +939,8 @@ function connIdentity(c) {
   const e = D.escapeHtml;
   const d = c.detail || {}, f = c.fields || {};
   if (c.provider === 'twilio') return e(d.friendlyName || f.accountSid || '');
-  if (c.provider === 'stripe') return e([d.accountId, d.mode, isManagedStripe(c) ? d.businessName : ''].filter(Boolean).join(' · '));
+  if (c.provider === 'stripe') return e([d.accountId, d.mode, isManagedStripe(c) ? (d.accountName || d.businessName) : ''].filter(Boolean).join(' · '));
+  if (isManagedTwilio(c)) return e([d.friendlyName, d.accountSid, d.type ? `${String(d.type).toLowerCase()} account` : ''].filter(Boolean).join(' · ') || 'not yet authorized');
   if (c.provider === 'shippo') return e(d.mode ? `${d.mode} token` : '');
   if (c.provider === 'github') return e(d.login ? `@${d.login}` : '');
   if (c.provider === 'microsoft') return e(d.org || f.tenantId || '');
@@ -950,6 +951,14 @@ function connStatusTag(c) {
   const e = D.escapeHtml;
   if (c.status === 'REJECTED' && c.detail?.disconnected) return `<span class="acct-tag is-bad" title="${e(c.lastError || '')}">disconnected</span>`;
   if (c.status === 'REJECTED') return `<span class="acct-tag is-bad" title="${e(c.lastError || '')}">rejected</span>`;
+  if (isManagedTwilio(c)) {
+    const d = c.detail || {};
+    if (c.status === 'ACTIVE') return `<span class="acct-tag is-verified" title="${e(d.type === 'Trial' ? 'A trial account: Twilio limits what it can do until it is upgraded.' : 'Twilio bills you directly; the platform acts on a subaccount inside your account.')}">connected</span>`;
+    if (c.status === 'REJECTED') return `<span class="acct-tag is-bad" title="${e(c.lastError || '')}">disconnected</span>`;
+    if (d.status === 'suspended') return `<span class="acct-tag is-bad" title="${e(c.lastError || '')}">suspended</span>`;
+    if (d.declined) return `<span class="acct-tag is-pending" title="${e(c.lastError || '')}">declined</span>`;
+    return `<span class="acct-tag is-pending" title="${e(c.lastError || 'Waiting for you to authorize PragOptics at Twilio.')}">not authorized</span>`;
+  }
   if (isManagedStripe(c)) {
     const s = stripeState(c.detail);
     if (s.kind === 'active') return `<span class="acct-tag is-verified" title="${e(s.text)}">active</span>`;
@@ -962,6 +971,9 @@ function connStatusTag(c) {
 }
 /** A Stripe account the platform opened for this environment (Stripe Connect): no credential on the card, Stripe's own state instead. */
 function isManagedStripe(c) { return c?.provider === 'stripe' && c?.detail?.managed === 'stripe-connect'; }
+/** A Twilio account the customer authorized through PragOptics (Twilio Connect): no credential on the card, Twilio's own state instead. */
+function isManagedTwilio(c) { return c?.provider === 'twilio' && c?.detail?.managed === 'twilio-connect'; }
+function isManaged(c) { return isManagedStripe(c) || isManagedTwilio(c); }
 
 /** A Stripe requirement key in the customer's words (the same table the API uses). */
 function stripeRequirementWords(key) {
@@ -1015,6 +1027,7 @@ function stripeState(d = {}) {
 function stripeNeedsHtml(c) {
   const e = D.escapeHtml;
   if (isManagedStripe(c) && c.detail?.disconnected) return `<div class="ev-conn-needs">${e(c.lastError || 'PragOptics was disconnected from this Stripe account.')}</div>`;
+  if (isManagedTwilio(c)) return c.status === 'ACTIVE' ? '' : `<div class="ev-conn-needs">${e(c.lastError || 'Waiting for you to authorize PragOptics at Twilio.')}</div>`;
   if (!isManagedStripe(c) || c.status === 'REJECTED') return '';
   const d = c.detail || {}, s = stripeState(d);
   if (s.kind === 'active') return '';
@@ -1060,14 +1073,15 @@ function connectionsHtml() {
                 <td class="cell-tight"><span class="acct-tag is-primary" title="${e(p?.label || c.provider)}">${e(PROVIDER_ICON[c.provider] || c.provider)}</span> ${e(p?.label || cap(c.provider))}</td>
                 <td class="cell-ellip" title="${e(c.label)}">${e(c.label)}</td>
                 <td class="cell-ellip adm-muted">${connIdentity(c)}${stripeNeedsHtml(c)}</td>
-                <td class="cell-tight">${isManagedStripe(c) ? '<span class="acct-tag is-primary" title="Opened by the platform; no credential is stored. Stripe acts on the account id.">via PragOptics</span>' : `<code class="ev-prefix">••••${e(c.hint || '')}</code>`}</td>
+                <td class="cell-tight">${isManagedStripe(c) ? '<span class="acct-tag is-primary" title="Opened by the platform; no credential is stored. Stripe acts on the account id.">via PragOptics</span>' : isManagedTwilio(c) ? '<span class="acct-tag is-primary" title="Authorized at Twilio; no token is stored. The platform acts on the subaccount with its own token.">via PragOptics</span>' : `<code class="ev-prefix">••••${e(c.hint || '')}</code>`}</td>
                 <td class="cell-tight">${connStatusTag(c)}</td>
                 <td class="cell-tight adm-muted">${c.verifiedAt ? e(D.fmtDate(c.verifiedAt)) : 'never'}</td>
                 <td class="cell-tight ev-actions-cell">${manage ? (ev.connArm === c.id ? `
                   <button class="btn btn-sm is-danger" type="button" data-env-action="conn-remove" data-id="${e(c.id)}" data-label="${e(c.label)}" title="The credential is deleted from the vault and anything using it stops on its next call">Remove for sure?</button>
                   <button class="btn btn-sm" type="button" data-env-action="conn-remove-cancel">Cancel</button>` : `
                   ${isManagedStripe(c) && (() => { const s = stripeState(c.detail); return s.kind === 'action' || s.kind === 'incomplete' || (s.kind === 'payments' && s.needs.length > 0); })() ? `<button class="btn btn-sm" type="button" data-env-action="conn-stripe-continue" data-id="${e(c.id)}" ${ev.connBusy ? 'disabled' : ''} title="Stripe's own pages for what it still needs">Continue setup</button>` : ''}
-                  <button class="btn btn-sm" type="button" data-env-action="${isManagedStripe(c) ? 'conn-stripe-refresh' : 'conn-test'}" data-id="${e(c.id)}" ${testing ? 'disabled' : ''}>${testing ? 'Checking…' : isManagedStripe(c) ? 'Check status' : 'Test'}</button>
+                  ${isManagedTwilio(c) && c.status !== 'ACTIVE' ? `<button class="btn btn-sm" type="button" data-env-action="conn-twilio-start" data-id="${e(c.id)}" ${ev.connBusy ? 'disabled' : ''} title="Twilio's authorization page for PragOptics, on your own Twilio account">${c.detail?.disconnected || c.detail?.declined ? 'Connect again' : 'Authorize at Twilio'}</button>` : ''}
+                  <button class="btn btn-sm" type="button" data-env-action="${isManagedStripe(c) ? 'conn-stripe-refresh' : isManagedTwilio(c) ? 'conn-twilio-refresh' : 'conn-test'}" data-id="${e(c.id)}" ${testing ? 'disabled' : ''}>${testing ? 'Checking…' : isManaged(c) ? 'Check status' : 'Test'}</button>
                   <button class="btn btn-sm" type="button" data-env-action="conn-remove" data-id="${e(c.id)}" data-label="${e(c.label)}">Remove</button>`) : ''}</td>
               </tr>`; }).join('')}
           </tbody>
@@ -1087,6 +1101,13 @@ function connectionsHtml() {
         </div>
         ${picked ? connFieldsHtml(picked) : ''}
         ${atLimit ? `<p class="acct-card-note ev-note">This environment holds ${ev.connLimit} connections, the most it can carry. Remove one to connect another.</p>` : ''}
+        ${(!picked || picked.id === 'twilio') && !atLimit && !(rows || []).some(isManagedTwilio) ? `
+        <div class="ev-conn-managed">
+          <p class="acct-card-note ev-dom-note">Have a Twilio account? Connect it instead of handing over a token. Twilio shows you PragOptics's authorization page on your own account, creates a subaccount inside it for the platform, and bills you directly. Twilio requires an upgraded account for this.</p>
+          <div class="ev-key-row">
+            <button class="btn" type="button" data-env-action="conn-twilio-start" ${ev.connBusy ? 'disabled' : ''}>${ev.connBusy ? 'Opening with Twilio…' : 'Connect your Twilio account'}</button>
+          </div>
+        </div>` : ''}
         ${(!picked || picked.id === 'stripe') && !atLimit && !(rows || []).some(isManagedStripe) ? `
         <div class="ev-conn-managed">
           <p class="acct-card-note ev-dom-note">No Stripe account yet? The platform opens one in your name and Stripe walks you through its setup. It is your account: the full Stripe Dashboard, Stripe's fees paid by you, the platform never in your money.</p>
@@ -1459,6 +1480,33 @@ async function testConnection(id) {
 }
 
 /** The platform opens the Stripe account and hands the customer to Stripe's setup. The single-use URL is used at once, never shown. */
+async function startTwilioConnect() {
+  if (ev.connBusy) return;
+  D.showError('evConnError', '');
+  ev.connBusy = true; ev.connResult = ''; paintConnections();
+  try {
+    const d = await post(`${ENV_URL}/connections/twilio/start`, {});
+    if (!d?.url) throw new Error('Twilio did not answer with an authorization link.');
+    try { sessionStorage.setItem('pragoptics_connect_return', JSON.stringify({ provider: 'twilio', id: String(d.connection?.id || '') })); } catch { /* the return still carries the id */ }
+    window.location.assign(d.url);
+    return;
+  } catch (ex) {
+    ev.connBusy = false; paintConnections();
+    D.showError('evConnError', errText(ex, 'Could not start the Twilio authorization right now.'));
+  }
+}
+async function refreshTwilioConnect(id, quiet = false) {
+  if (!id || ev.connTesting) return;
+  if (!quiet) D.showError('evConnError', '');
+  ev.connTesting = id; paintConnections();
+  try {
+    const d = await post(`${ENV_URL}/connections/twilio/refresh`, { id });
+    ev.connResult = d.connection?.message || 'Twilio answered for the account.';
+  } catch (ex) { if (!quiet) D.showError('evConnError', errText(ex, 'Could not check that Twilio account.')); }
+  ev.connTesting = '';
+  await loadConnections();
+}
+
 async function startStripeConnect(id = '') {
   if (ev.connBusy) return;
   D.showError('evConnError', '');
@@ -1490,20 +1538,33 @@ async function refreshStripeConnect(id, quiet = false) {
   await loadConnections();
 }
 
-/** Back from Stripe's hosted setup: the return carries the connection id; the card re-reads Stripe once and cleans the address bar. */
-let stripeReturnSeen = false;
-async function handleStripeReturn() {
-  if (stripeReturnSeen) return;
-  stripeReturnSeen = true;
-  let id = '', outcome = '';
+/** Back from a provider (Stripe's hosted setup, Twilio's authorization): the return carries the provider and the connection id; the card re-reads the provider once and cleans the address bar. */
+let providerReturnSeen = false;
+async function handleProviderReturn() {
+  if (providerReturnSeen) return;
+  providerReturnSeen = true;
+  let provider = '', id = '', outcome = '';
   try {
-    // The return rides in the hash: /#account?connect=stripe&id=...&outcome=...; the hash is cleaned back to #account.
+    // The return rides in the hash: /#account?connect=stripe|twilio&id=...&outcome=...; the hash is cleaned back to #account.
     const q = new URLSearchParams(String(window.location.hash || '').split('?')[1] || '');
-    if (q.get('connect') === 'stripe') { id = q.get('id') || ''; outcome = q.get('outcome') || 'return'; history.replaceState(null, '', window.location.pathname + '#account'); }
+    if (q.get('connect') === 'stripe' || q.get('connect') === 'twilio') { provider = q.get('connect'); id = q.get('id') || ''; outcome = q.get('outcome') || 'return'; history.replaceState(null, '', window.location.pathname + '#account'); }
   } catch { /* no query to read */ }
-  if (!id) { try { id = sessionStorage.getItem('pragoptics_stripe_connect') || ''; } catch { /* nothing kept */ } if (!id) return; outcome = outcome || 'return'; }
-  try { sessionStorage.removeItem('pragoptics_stripe_connect'); } catch { /* nothing to clear */ }
+  if (!id) {
+    try {
+      const kept = JSON.parse(sessionStorage.getItem('pragoptics_connect_return') || 'null');
+      if (kept?.id) { provider = kept.provider || provider; id = kept.id; outcome = kept.outcome || outcome || 'return'; }
+      else { id = sessionStorage.getItem('pragoptics_stripe_connect') || ''; provider = id ? 'stripe' : provider; }
+    } catch { /* nothing kept */ }
+    if (!id) return; outcome = outcome || 'return';
+  }
+  try { sessionStorage.removeItem('pragoptics_connect_return'); sessionStorage.removeItem('pragoptics_stripe_connect'); } catch { /* nothing to clear */ }
   if (!(ev.connections || []).some(c => c.id === id)) return;
+  if (provider === 'twilio') {
+    ev.connResult = outcome === 'declined' ? 'You declined the authorization at Twilio. Nothing was connected.' : outcome === 'failed' ? 'Twilio named an account the platform could not read. Try connecting again.' : 'Back from Twilio. Checking the account…';
+    paintConnections();
+    await refreshTwilioConnect(id, true);
+    return;
+  }
   ev.connResult = outcome === 'refresh' ? 'The Stripe setup link had expired. Press Continue setup for a fresh one.' : 'Back from Stripe. Checking the account…';
   paintConnections();
   await refreshStripeConnect(id, true);
@@ -1522,7 +1583,7 @@ async function removeConnection(id, label) {
   }
   clearTimeout(connArmTimer); ev.connArm = '';
   D.showError('evConnError', '');
-  const managed = (ev.connections || []).some(c => c.id === id && isManagedStripe(c));
+  const managed = (ev.connections || []).some(c => c.id === id && isManaged(c));
   try { await post(`${ENV_URL}/connections/remove`, { id }); ev.connResult = managed ? `${label} removed from this environment. The Stripe account is still yours at dashboard.stripe.com.` : `${label} removed.`; await loadConnections(); }
   catch (ex) { D.showError('evConnError', errText(ex, 'Could not remove that connection.')); }
 }
@@ -1588,6 +1649,8 @@ export function bindEnvironmentActions(deps) {
     if (a === 'conn-stripe-start') return void startStripeConnect('');
     if (a === 'conn-stripe-continue') return void startStripeConnect(btn.dataset.id || '');
     if (a === 'conn-stripe-refresh') return void refreshStripeConnect(btn.dataset.id || '');
+    if (a === 'conn-twilio-start') return void startTwilioConnect();
+    if (a === 'conn-twilio-refresh') return void refreshTwilioConnect(btn.dataset.id || '');
   });
 
   document.addEventListener('change', (e) => {

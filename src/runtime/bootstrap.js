@@ -777,8 +777,8 @@ window.applyPostLoginResolution = applyPostLoginResolution;
       let provider = "", id = "";
       // The return rides in the hash (/#account?connect=stripe&id=...): the site strips a query string on load and keeps the hash.
       try { const q = new URLSearchParams(String(location.hash || "").split("?")[1] || ""); provider = q.get("connect") || ""; id = q.get("id") || ""; } catch { /* no params */ }
-      const fromProvider = provider === "stripe";
-      if (fromProvider && id) { try { sessionStorage.setItem("pragoptics_stripe_connect", id); } catch { /* the query still carries it */ } }
+      const fromProvider = provider === "stripe" || provider === "twilio";
+      if (fromProvider && id) { try { sessionStorage.setItem("pragoptics_connect_return", JSON.stringify({ provider, id, outcome: (new URLSearchParams(String(location.hash || "").split("?")[1] || "")).get("outcome") || "return" })); } catch { /* the query still carries it */ } }
       if (isSessionActive()) {
         presetAccountSection(fromProvider ? "environment" : "profile");
         setAppMode("account");

@@ -33,6 +33,12 @@ If you do not have a Stripe account, the card opens one for you. Press Set up St
 
 The account is yours. You sign in to it at dashboard.stripe.com like any Stripe account, you pay Stripe's fees, Stripe collects your details and bears the risk on payments, and the platform is never in your money. No credential is stored for it: the platform acts on it through Stripe's platform program with the account's id, and only for what you ask from the software. Remove takes the connection off this environment and leaves the account with you.
 
+## Twilio: your own account, authorized to the platform
+
+Twilio works the other way round from Stripe: the platform does not open a Twilio account for you. Twilio's rule is that you connect an account you already have, and it must be an upgraded one. Press Connect your Twilio account, sign in at Twilio, and approve PragOptics on Twilio's own authorization page. Twilio then creates a subaccount for the platform inside your account and sends you back here. The platform sends messages and buys numbers on that subaccount with its own credentials, never yours, and Twilio bills you directly for what it does. Your token is never handed over.
+
+The row reads connected, not authorized, declined, suspended or disconnected, in Twilio's words. Check status asks Twilio again. Revoke the authorization in your Twilio Console at any time; Twilio tells the platform, the row reads disconnected, and Remove clears it. Connect again reopens Twilio's page.
+
 Continue setup shows only while Stripe still needs something from you and opens a fresh Stripe setup page for exactly that; the link it uses is single use and expires in minutes, so it is never emailed. Check status asks Stripe for the account's state again, and Stripe also tells the platform on its own whenever the account changes, so a review that takes days shows up on the row when Stripe decides, without you pressing anything. If you disconnect PragOptics from inside your Stripe Dashboard, the row says so; Remove clears it, and the account stays yours. Stripe's own messages come through as Stripe wrote them when a verification fails, so you see the same reason Stripe would show you in its Dashboard.
 
 ## What is not here yet
