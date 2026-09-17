@@ -29,6 +29,7 @@ import { tierName } from '../components/tierCopy.js';
 import { explainLink } from '../components/explainer.js';
 import { stripeAppearance } from '../api/stripeAppearance.js';
 import { ensureStripeJs } from '../runtime/stripeLoader.js';
+import { ico, iconBtn, cardHtml as sharedCard, isOpen, setOpen, initCards } from './cards.js';
 
 const TENANT_URL = `${PRAG_API_BASE}/tenant`;
 const ENV_URL = `${PRAG_API_BASE}/environment`;
@@ -38,66 +39,8 @@ const SEAT_ROLES = new Set(['owner', 'admin', 'developer', 'member']);
 const DOMAIN_ROLES = new Set(['owner', 'admin', 'developer']);   // who connects, verifies and removes a domain
 
 const LANE_KEY = 'pragoptics_env_lane';   // the lane the person was looking at; survives a section re-render
-/* ================================================================
-   icons, cards (2026-09-17: one line per card until opened, an icon on
-   every action, every explanation behind How it works)
-   ================================================================ */
-const OPEN_KEY = 'pragoptics_env_open';   // which cards the person left open; survives a re-render, not a new tab
-const ICONS = {
-  refresh: '<polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>',
-  download: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>',
-  external: '<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>',
-  copy: '<rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>',
-  trash: '<polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>',
-  check: '<polyline points="20 6 9 17 4 12"/>',
-  chevron: '<polyline points="6 9 12 15 18 9"/>',
-  x: '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>',
-  link: '<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>',
-  key: '<path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/>',
-  folder: '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>',
-  plug: '<path d="M12 22v-5"/><path d="M9 8V2"/><path d="M15 8V2"/><path d="M18 8v5a6 6 0 0 1-12 0V8z"/>',
-  globe: '<circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>',
-  database: '<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>',
-  plus: '<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>',
-  box: '<path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/>',
-  send: '<line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>'
-};
-function ico(name) { return `<svg class="ev-ico" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${ICONS[name] || ''}</svg>`; }
-/** An icon-only action: the label lives in the tooltip and for screen readers. */
-function iconBtn(action, name, label, attrs = '', cls = '') {
-  const e = D.escapeHtml;
-  return `<button class="btn btn-sm btn-ico ${cls}" type="button" data-env-action="${e(action)}" aria-label="${e(label)}" title="${e(label)}" ${attrs}>${ico(name)}</button>`;
-}
-function openState() { try { return JSON.parse(sessionStorage.getItem(OPEN_KEY) || '{}') || {}; } catch { return {}; } }
-function isOpen(key) { return !!(ev.open || (ev.open = openState()))[key]; }
-function setOpen(key, on) { ev.open = ev.open || openState(); ev.open[key] = !!on; try { sessionStorage.setItem(OPEN_KEY, JSON.stringify(ev.open)); } catch { /* fine */ } }
-function toggleCard(key) {
-  setOpen(key, !isOpen(key));
-  const sec = document.querySelector(`.ev-card[data-card="${key}"]`);
-  if (!sec) return;
-  const open = isOpen(key);
-  sec.classList.toggle('is-open', open);
-  const body = sec.querySelector('.ev-card-body'); if (body) body.hidden = !open;
-  const t = sec.querySelector('.ev-card-toggle'); if (t) t.setAttribute('aria-expanded', String(open));
-}
-/** A card: one line (icon, title, a summary) until opened; the explainer link on the line; the body below. */
-function cardHtml({ key, icon, title, summary, explain = '', body }) {
-  const e = D.escapeHtml;
-  const open = isOpen(key);
-  return `
-    <section class="acct-card ev-card ${open ? 'is-open' : ''}" data-card="${e(key)}">
-      <div class="ev-card-head">
-        <button class="ev-card-toggle" type="button" data-env-action="card-toggle" data-card="${e(key)}" aria-expanded="${open}" aria-controls="evCard-${e(key)}">
-          <span class="ev-card-ico">${ico(icon)}</span>
-          <span class="ev-card-title">${e(title)}</span>
-          <span class="ev-card-sum">${summary}</span>
-          <span class="ev-card-chev">${ico('chevron')}</span>
-        </button>
-        ${explain ? `<span class="ev-card-explain">${explain}</span>` : ''}
-      </div>
-      <div class="ev-card-body" id="evCard-${e(key)}" ${open ? '' : 'hidden'}>${body}</div>
-    </section>`;
-}
+function cardHtml(o) { return sharedCard({ ...o, key: `environment:${o.key}` }); }
+function openState() { return {}; }
 function countWord(n, one, many) { return `${n} ${n === 1 ? one : many}`; }
 
 function laneChoice() { try { return sessionStorage.getItem(LANE_KEY) === 'sandbox' ? 'sandbox' : 'live'; } catch { return 'live'; } }
@@ -203,9 +146,9 @@ export async function renderEnvironment(main, deps) {
   D = deps;
   ev.madeKey = null; ev.filesNote = ''; ev.files = null; ev.keys = null; ev.domains = null; ev.domainNote = ''; ev.linkNote = ''; ev.domArm = ''; ev.keyArm = ''; ev.checking = ''; ev.registrations = []; ev.reg = freshReg();
   ev.connections = null; ev.connProviders = []; ev.connNote = ''; ev.connPick = ''; ev.connBusy = false; ev.connResult = ''; ev.connTesting = ''; ev.connDraft = {}; ev.connArm = ''; ev.shopifyShop = ''; ev.shopifyLink = ''; ev.connSyncing = '';
-  ev.domTab = ev.domTab || 'connect'; ev.open = openState();
+  ev.domTab = ev.domTab || 'connect'; initCards();
   // A link that names a card (/#account?section=environment&card=connections) opens that card; account.js scrolls to it.
-  try { const want = JSON.parse(sessionStorage.getItem('pragoptics_open_card') || 'null'); const card = { files: 'files', connections: 'connections', domains: 'domains', keys: 'keys' }[String(want?.card || '')]; if (card) setOpen(card, true); } catch { /* fine */ }
+  try { const want = JSON.parse(sessionStorage.getItem('pragoptics_open_card') || 'null'); const card = { files: 'files', connections: 'connections', domains: 'domains', keys: 'keys' }[String(want?.card || '')]; if (card) setOpen(`environment:${card}`, true); } catch { /* fine */ }
   main.innerHTML = `
     <header class="acct-sec-head has-explain"><h2 class="acct-sec-title">Environment</h2>${explainLink('environment', 'How your environment works')}</header>
     <p class="acct-error" id="evError" hidden></p>
@@ -1982,7 +1925,6 @@ export function bindEnvironmentActions(deps) {
     if (!btn) return;
     e.preventDefault();
     const a = btn.dataset.envAction;
-    if (a === 'card-toggle') return void toggleCard(btn.dataset.card || '');
     if (a === 'dom-tab') { ev.domTab = btn.dataset.tab || 'connect'; paintDomains(); return; }
     if (a === 'refresh') return void refreshAll();
     if (a === 'lane-live') return void setLane('live');

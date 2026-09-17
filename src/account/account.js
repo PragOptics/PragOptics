@@ -22,6 +22,7 @@ import { openReportAnomaly, installErrorCapture } from './report.js';
 import { renderTeam, renderTenants, bindTeamActions } from './team.js';
 import { renderEnvironment, bindEnvironmentActions } from './environment.js';
 import { explainLink } from '../components/explainer.js';
+import { cardHtml, iconBtn, ico, setCardSummary, initCards, openCardOf } from './cards.js';
 import { applyTheme, getTheme, applyStarfield, getStarfield } from '../runtime/theme.js';
 import { sunSvg, moonSvg, LIGHT_LABEL, DARK_LABEL } from '../components/themeMarks.js';
 import { syncUserTheme, rememberUserTheme, rememberUserPreference } from '../runtime/userTheme.js';
@@ -447,77 +448,66 @@ async function setStarfieldPreference(value) {
 }
 
 async function renderProfile(main) {
+  const theme = getTheme(), stars = getStarfield();
   main.innerHTML = `
     <header class="acct-sec-head"><h2 class="acct-sec-title">Profile</h2></header>
-    <section class="acct-card">
-      <h3 class="acct-card-h">Appearance</h3>
-      <p class="acct-card-note">Dark or light, and whether the stars draw behind the page. Both are remembered on your account, so the site looks the same wherever you sign in.</p>
-      <div class="acct-seg" role="group" aria-label="Theme">
-        <button class="btn btn-sm acct-theme-btn" type="button" data-acct-action="theme-set" data-theme="dark" aria-pressed="${getTheme() === 'dark' ? 'true' : 'false'}">${DARK_LABEL}${moonSvg('acct-theme-ico')}</button>
-        <button class="btn btn-sm acct-theme-btn" type="button" data-acct-action="theme-set" data-theme="light" aria-pressed="${getTheme() === 'light' ? 'true' : 'false'}">${LIGHT_LABEL}${sunSvg('acct-theme-ico')}</button>
-      </div>
-      <div class="acct-seg" role="group" aria-label="Starfield">
-        <button class="btn btn-sm" type="button" data-acct-action="starfield-set" data-starfield="on" aria-pressed="${getStarfield() === 'on' ? 'true' : 'false'}">Stars on</button>
-        <button class="btn btn-sm" type="button" data-acct-action="starfield-set" data-starfield="off" aria-pressed="${getStarfield() === 'off' ? 'true' : 'false'}">Stars off</button>
-      </div>
-      <p class="acct-error" id="acctThemeError" hidden></p>
-    </section>
-    <section class="acct-card">
-      <h3 class="acct-card-h">Email addresses</h3>
-      <p class="acct-card-note">Any verified address can sign you in. Your primary address is where account and recovery mail is sent.</p>
+    <div class="acct-grid">
+    ${cardHtml({ key: 'profile:emails', icon: 'mail', title: 'Email addresses', summary: 'loading', open: true, body: `
       <ul class="acct-alias-list" id="acctAliasList"><li class="acct-loading">Loading…</li></ul>
       <div class="acct-add-row">
         <input class="acct-input" id="acctNewEmail" type="email" autocomplete="email" placeholder="add another email…" aria-label="New email address">
         <button class="cta btn-sm" type="button" data-acct-action="add-alias">Add</button>
       </div>
-      <p class="acct-error" id="acctProfileError" hidden></p>
-    </section>
-    <section class="acct-card">
-      <h3 class="acct-card-h">Mobile number</h3>
-      <p class="acct-card-note">Used for sign-in codes when you ask for them by text. A number counts only once you confirm a code sent to it.</p>
-      <div class="acct-alias-list" id="acctPhoneState"><span class="acct-loading">Loading…</span></div>
-      <div class="acct-add-row">
-        <input class="acct-input" id="acctNewPhone" type="tel" autocomplete="tel" placeholder="+1 555 123 4567" aria-label="Mobile number">
-        <button class="cta btn-sm" type="button" data-acct-action="phone-start">Send code</button>
-      </div>
-      <p class="acct-error" id="acctPhoneError" hidden></p>
-    </section>
-    <section class="acct-card">
-      <h3 class="acct-card-h">Notifications</h3>
-      <p class="acct-card-note">Order, warranty, and security email always comes to your primary address: it is your record. Add text messages per category once your mobile number is verified, and choose whether to hear news from us.</p>
-      <div id="acctNotifyPrefs"><span class="acct-loading">Loading…</span></div>
-      <div class="acct-add-row">
-        <button class="cta btn-sm" type="button" data-acct-action="notify-save">Save</button>
-      </div>
-      <p class="acct-error" id="acctNotifyError" hidden></p>
-    </section>
-    <section class="acct-card">
-      <h3 class="acct-card-h">Password</h3>
-      <p class="acct-card-note">Change your password without signing out. Doing so signs out every other device.</p>
-      <div class="acct-add-row">
-        <button class="cta btn-sm" type="button" data-acct-action="change-password">Change password</button>
-      </div>
-      <p class="acct-error" id="acctPasswordError" hidden></p>
-    </section>
-    <section class="acct-card">
-      <h3 class="acct-card-h">Two-factor authentication</h3>
-      <p class="acct-card-note">Sign-in always needs a second step. Use an authenticator app, a passkey (fingerprint, face, or PIN on a device you own), or both. Either one completes the step; you are never asked for both. Your recovery codes work whichever you use. ${explainLink('security', 'How your sign-in works')}</p>
+      <p class="acct-card-note ev-dom-door">Any verified address signs you in. The primary one gets account and recovery mail.</p>
+      <p class="acct-error" id="acctProfileError" hidden></p>` })}
+    ${cardHtml({ key: 'profile:twofactor', icon: 'shield', title: 'Two-factor', summary: 'loading', body: `
       <div class="acct-alias-list" id="acctPasskeyList"><span class="acct-loading">Loading…</span></div>
       <div class="acct-add-row">
         <button class="cta btn-sm" type="button" data-acct-action="add-passkey" title="Registers a passkey on this device. You confirm with your current password.">Add passkey</button>
         <button class="btn btn-sm" type="button" data-acct-action="reset-2fa" title="Clears the current authenticator and sets up a new one right away. Use it when you switch phones.">Reset authenticator</button>
       </div>
-      <p class="acct-error" id="acct2faError" hidden></p>
-    </section>
-    <section class="acct-card acct-card-danger">
-      <h3 class="acct-card-h">Close account</h3>
-      <p class="acct-card-note">Closing is permanent. It signs you out everywhere, removes your sign-in, and ends any subscription now. There is no refund for the rest of a paid period. If you want service until the period ends, cancel the subscription in Billing first and close later. Before you close, export anything you want to keep from the PragOptics™ software.</p>
+      <p class="acct-card-note ev-dom-door">Sign-in always needs a second step: an authenticator app, a passkey, or both. Either one completes it.</p>
+      <p class="acct-error" id="acct2faError" hidden></p>` })}
+    ${cardHtml({ key: 'profile:phone', icon: 'phone', title: 'Mobile number', summary: 'loading', body: `
+      <div class="acct-alias-list" id="acctPhoneState"><span class="acct-loading">Loading…</span></div>
+      <div class="acct-add-row">
+        <input class="acct-input" id="acctNewPhone" type="tel" autocomplete="tel" placeholder="+1 555 123 4567" aria-label="Mobile number">
+        <button class="cta btn-sm" type="button" data-acct-action="phone-start">Send code</button>
+      </div>
+      <p class="acct-card-note ev-dom-door">For sign-in codes by text. A number counts once you confirm a code sent to it.</p>
+      <p class="acct-error" id="acctPhoneError" hidden></p>` })}
+    ${cardHtml({ key: 'profile:notify', icon: 'bell', title: 'Notifications', summary: 'email to your primary address', body: `
+      <div id="acctNotifyPrefs"><span class="acct-loading">Loading…</span></div>
+      <div class="acct-add-row">
+        <button class="cta btn-sm" type="button" data-acct-action="notify-save">Save</button>
+      </div>
+      <p class="acct-card-note ev-dom-door">Order, warranty and security mail always comes to your primary address. Texts per category once your number is verified.</p>
+      <p class="acct-error" id="acctNotifyError" hidden></p>` })}
+    ${cardHtml({ key: 'profile:password', icon: 'lock', title: 'Password', summary: 'change it any time', body: `
+      <div class="acct-add-row">
+        <button class="cta btn-sm" type="button" data-acct-action="change-password">Change password</button>
+      </div>
+      <p class="acct-card-note ev-dom-door">Changing it signs out every other device.</p>
+      <p class="acct-error" id="acctPasswordError" hidden></p>` })}
+    ${cardHtml({ key: 'profile:appearance', icon: 'sun', title: 'Appearance', summary: `${escapeHtml(theme)} · stars ${escapeHtml(stars)}`, body: `
+      <div class="acct-seg" role="group" aria-label="Theme">
+        <button class="btn btn-sm acct-theme-btn" type="button" data-acct-action="theme-set" data-theme="dark" aria-pressed="${theme === 'dark' ? 'true' : 'false'}">${DARK_LABEL}${moonSvg('acct-theme-ico')}</button>
+        <button class="btn btn-sm acct-theme-btn" type="button" data-acct-action="theme-set" data-theme="light" aria-pressed="${theme === 'light' ? 'true' : 'false'}">${LIGHT_LABEL}${sunSvg('acct-theme-ico')}</button>
+      </div>
+      <div class="acct-seg" role="group" aria-label="Starfield">
+        <button class="btn btn-sm" type="button" data-acct-action="starfield-set" data-starfield="on" aria-pressed="${stars === 'on' ? 'true' : 'false'}">Stars on</button>
+        <button class="btn btn-sm" type="button" data-acct-action="starfield-set" data-starfield="off" aria-pressed="${stars === 'off' ? 'true' : 'false'}">Stars off</button>
+      </div>
+      <p class="acct-card-note ev-dom-door">Remembered on your account, so the site looks the same wherever you sign in.</p>
+      <p class="acct-error" id="acctThemeError" hidden></p>` })}
+    ${cardHtml({ key: 'profile:close', icon: 'alert', title: 'Close account', summary: 'permanent', danger: true, body: `
+      <p class="acct-card-note ev-dom-door">Closing is permanent: it signs you out everywhere, removes your sign-in, and ends any subscription now, with no refund for the rest of a paid period. To keep service until the period ends, cancel on Billing instead.</p>
       <div class="acct-add-row">
         <button class="btn btn-sm btn-danger" type="button" data-acct-action="close-account"
           title="Opens a confirmation step. Nothing changes until you confirm there.">Close my account</button>
       </div>
-      <p class="acct-error" id="acctCloseError" hidden></p>
-    </section>
+      <p class="acct-error" id="acctCloseError" hidden></p>` })}
+    </div>
     ${platformLaneCardHtml()}
   `;
   await loadAliases();
@@ -680,6 +670,7 @@ async function loadPhone() {
     const data = await apiFetch(ALIASES_URL);
     const reverifyDue = data.phoneReverifyRequired === true;
     host.innerHTML = phoneStateHtml({ phone: data.phone || '', phoneVerified: data.phoneVerified === true, reverifyDue });
+    setCardSummary('profile:phone', escapeHtml(!data.phone ? 'none yet' : reverifyDue ? `${data.phone} · confirm again` : data.phoneVerified === true ? `${data.phone} · verified` : `${data.phone} · not confirmed`));
     // No number left to re-send to: the note explains, the input is where the
     // next step happens.
     if (reverifyDue && !data.phone) document.getElementById('acctNewPhone')?.focus();
@@ -836,6 +827,7 @@ async function loadAliases() {
     // honest for the next step-up in this page session.
     const primaryRow = list.find(a => a.isPrimary || a.primary);
     knownPrimary = primaryRow ? (primaryRow.displayEmail || primaryRow.email || primaryRow.value || '') : '';
+    setCardSummary('profile:emails', escapeHtml(list.length <= 1 ? (currentEmail() || '1 address') : `${list.length} addresses`));
     if (!list.length) {
       // Fall back to the ping's primary so the section is never empty.
       host.innerHTML = aliasRowHtml({ displayEmail: currentEmail(), isPrimary: true, state: 'VERIFIED' });
@@ -1044,6 +1036,7 @@ async function loadPasskeys() {
     }
     if (!list.length) rows.push(`<li class="acct-alias"><span class="muted">No passkeys yet. Add one to sign in with your fingerprint, face, or PIN.</span></li>`);
     host.innerHTML = `<ul class="acct-alias-list">${rows.join('')}</ul>`;
+    setCardSummary('profile:twofactor', escapeHtml(`authenticator ${totp ? 'on' : 'off'} · ${list.length} passkey${list.length === 1 ? '' : 's'}`));
   } catch (ex) {
     host.innerHTML = '';
     showError('acct2faError', friendlyError(ex, 'Could not load your second-factor settings.'));
@@ -1275,16 +1268,18 @@ function productItemHtml(it) {
 async function renderProducts(main) {
   main.innerHTML = `
     <header class="acct-sec-head"><h2 class="acct-sec-title">My Products</h2></header>
-    <section class="acct-card">
-      <p class="acct-card-note">Devices registered to your account. Lifetime case coverage; one redemption per year, per device.</p>
+    <div class="ev-cards">
+    ${cardHtml({ key: 'products:list', icon: 'box', title: 'Registered devices', summary: 'loading', open: true, body: `
       <ul class="acct-product-list" id="acctProductList"><li class="acct-loading">Loading…</li></ul>
-      <p class="acct-error" id="acctProductsError" hidden></p>
-    </section>
+      <p class="acct-card-note ev-dom-door">Lifetime case coverage; one redemption per year, per device.</p>
+      <p class="acct-error" id="acctProductsError" hidden></p>` })}
+    </div>
   `;
   const host = document.getElementById('acctProductList');
   try {
     const data = await apiFetch(`${MINE_URL}`);
     const items = Array.isArray(data.items) ? data.items : [];
+    setCardSummary('products:list', escapeHtml(items.length ? `${items.length} device${items.length === 1 ? '' : 's'}` : 'none yet'));
     if (!items.length) {
       host.innerHTML = `<li class="acct-empty">No registered products yet. Register a device at
         <a href="#" data-acct-action="go-register">the warranty page</a>, and it will appear here.</li>`;
@@ -1955,22 +1950,19 @@ async function renderOrders(main) {
   const showClaim = (LANE !== 'live') || ORDERS_CLAIM_LIVE;
   main.innerHTML = `
     <header class="acct-sec-head has-explain"><h2 class="acct-sec-title">Orders</h2>${explainLink('orders')}</header>
-    <section class="acct-card">
-      <p class="acct-card-note">Orders linked to this account.${showClaim ? ' A guest order stays on its receipt email until you link it below.' : ' Guest orders stay on their receipt email.'}</p>
+    <div class="ev-cards">
+    ${cardHtml({ key: 'orders:list', icon: 'cart', title: 'Orders', summary: 'loading', open: true, body: `
       <p class="acct-error" id="acctOrdersError" hidden></p>
-      <div id="acctOrdersBody"><p class="acct-loading">Loading…</p></div>
-    </section>
-    ${showClaim ? `
-    <section class="acct-card">
-      <h3 class="acct-card-h">Link a guest order</h3>
-      <p class="acct-card-note">Ordered as a guest? Enter the order number from your confirmation email to add it here. The order must have been placed with an email verified on this account.</p>
+      <div id="acctOrdersBody"><p class="acct-loading">Loading…</p></div>` })}
+    ${showClaim ? cardHtml({ key: 'orders:claim', icon: 'link', title: 'Link a guest order', summary: 'by order number', body: `
       <div class="acct-add-row">
         <input class="acct-input" type="text" id="acctClaimOrderId" placeholder="Order number" spellcheck="false" autocomplete="off" />
         <button class="btn" type="button" id="acctClaimBtn">Link order</button>
       </div>
+      <p class="acct-card-note ev-dom-door">The order number from your confirmation email. It must have been placed with an email verified on this account.</p>
       <p class="acct-error" id="acctClaimError" hidden></p>
-      <p class="acct-card-note" id="acctClaimOk" hidden></p>
-    </section>` : ''}
+      <p class="acct-card-note" id="acctClaimOk" hidden></p>` }) : ''}
+    </div>
   `;
 
   await loadMyOrders();
@@ -2025,6 +2017,7 @@ async function loadMyOrders() {
   try {
     const data = await apiFetch(ORDERS_MINE_URL);
     const orders = data.orders || [];
+    setCardSummary('orders:list', escapeHtml(orders.length ? `${orders.length} order${orders.length === 1 ? '' : 's'}` : 'none yet'));
     if (!orders.length) {
       host.innerHTML = `<p class="acct-empty">No orders on this account yet.</p>`;
       return;
@@ -3991,6 +3984,7 @@ function bindOnce() {
   bindOnce._bound = true;
   bindTeamActions(teamDeps());
   bindEnvironmentActions(teamDeps());
+  initCards();
 
   document.addEventListener('click', (e) => {
     const nav = e.target.closest('[data-acct-section]');
@@ -4165,6 +4159,7 @@ function consumeOpenCard(sectionId) {
     const el = document.getElementById(id);
     const target = el && (el.closest('.acct-card') || el);
     if (target) {
+      openCardOf(target);
       let focus = target;
       if (want.row) { const r = target.querySelector(`[data-row="${CSS.escape(String(want.row))}"]`); if (r) focus = r; }
       focus.scrollIntoView({ behavior: 'smooth', block: 'center' });

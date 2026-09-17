@@ -17,6 +17,7 @@
 import { PRAG_API_BASE } from '../runtime/config.js';
 import { tierName } from '../components/tierCopy.js';
 import { explainLink } from '../components/explainer.js';
+import { cardHtml, iconBtn } from './cards.js';
 
 const TENANT_URL = `${PRAG_API_BASE}/tenant`;
 const ADMIN_TENANTS_URL = `${PRAG_API_BASE}/admin/tenants`;
@@ -271,17 +272,14 @@ function membersHtml(v) {
         <p class="acct-card-note tm-edit-note">A cap sits under the plan: up to ${e(num(ceiling.apiCalls))} calls and ${e(gb(ceiling.storageBytes))}. Blank means the plan limit.</p>
       </td></tr>` : ''}`;
   };
-  return `
-    <section class="acct-card">
-      <h3 class="acct-card-h">Members</h3>
-      <p class="acct-card-note">${manage ? 'Change a role from the list, cap a member under the plan, suspend or remove. The owner is never changed here.' : 'Everyone on the team and what they do.'}</p>
+  return cardHtml({ key: 'team:members', icon: 'users', title: 'Members', summary: e(`${rows.length} ${rows.length === 1 ? 'person' : 'people'}`), open: true, body: `
       <div class="adm-table-scroll">
         <table class="adm-table adm-table--wrap tm-table">
           <thead><tr><th>Person</th><th>Role</th><th>Status</th><th>Allowance</th><th></th></tr></thead>
           <tbody>${rows.map(rowHtml).join('')}</tbody>
         </table>
       </div>
-    </section>`;
+      ${manage ? '<p class="acct-card-note ev-dom-door">Change a role from the list, cap a member under the plan, suspend or remove. The owner is never changed here.</p>' : ''}` });
 }
 
 function inviteHtml(v) {
@@ -290,9 +288,8 @@ function inviteHtml(v) {
   const open = Math.max(0, Number(s.available) || 0);
   const pending = tm.invites.filter(i => i.status === 'PENDING');
   const recent = tm.invites.filter(i => i.status !== 'PENDING').slice(0, 5);
-  return `
-    <section class="acct-card">
-      <h3 class="acct-card-h">Invite someone</h3>
+  return cardHtml({ key: 'team:invite', icon: 'userPlus', title: 'Invite someone', summary: e(open ? `${open} seat${open === 1 ? '' : 's'} open${pending.length ? ` · ${pending.length} pending` : ''}` : (pending.length ? `no seats open · ${pending.length} pending` : 'no seats open')), body: `
+    <section class="tm-invite-card">
       <p class="acct-card-note">They get an email with a one-time link that works for seven days, and they must sign in with the address you invite. ${open ? `${e(String(open))} seat${open === 1 ? '' : 's'} open.` : 'No seats open: invite as a viewer, free a seat, or add seats.'}</p>
       <div class="acct-add-row tm-invite-row">
         <input class="acct-input" type="email" id="tmInviteEmail" placeholder="name@company.com" autocomplete="off" spellcheck="false" />
@@ -315,7 +312,7 @@ function inviteHtml(v) {
             </li>`).join('')}
         </ul>` : `<p class="acct-empty">No pending invites.</p>`}
       ${recent.length ? `<p class="acct-card-note tm-recent">Recent: ${recent.map(i => `${e(i.email)} (${e(i.status.toLowerCase())})`).join(', ')}.</p>` : ''}
-    </section>`;
+    </section>` });
 }
 
 function inviteResultHtml(r) {
@@ -344,9 +341,8 @@ function detailLabel(ev) {
 function activityHtml() {
   const e = D.escapeHtml;
   if (!tm.audit.length) return '';
-  return `
-    <section class="acct-card">
-      <h3 class="acct-card-h">Activity</h3>
+  return cardHtml({ key: 'team:activity', icon: 'activity', title: 'Activity', summary: e(`${tm.audit.length} recent`), body: `
+    <section class="tm-activity-card">
       <ul class="tm-activity">
         ${tm.audit.map(ev => `
           <li>
@@ -354,7 +350,7 @@ function activityHtml() {
             <span class="tm-act-what"><b>${e(ACTION_LABEL[ev.action] || ev.action)}</b> ${e(ev.actor || '')}${ev.target && ev.target !== ev.actor ? ` <span class="adm-muted">to</span> ${e(ev.target)}` : ''} <span class="adm-muted">${e(detailLabel(ev))}</span></span>
           </li>`).join('')}
       </ul>
-    </section>`;
+    </section>` });
 }
 
 /* ---------- actions ---------- */
