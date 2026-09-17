@@ -1,11 +1,12 @@
 // src/account/cards.js
 //
-// The account panel's card language (2026-09-17): a card is one line until
-// opened (an icon, a title, a summary, a chevron), the explainer link sits on
-// that line, and every action is an icon with a tooltip and a label for
-// screen readers. Words stay only on a decision ("Remove for sure?"). Which
-// cards a person left open is remembered for the tab (sessionStorage), so a
-// re-render or a section switch does not fold what they were looking at.
+// The account panel's card language (2026-09-17): every card is open and
+// readable without a click; its head line carries an icon, the title, the
+// (i) that explains it, a summary, and a chevron that folds it away for a
+// person who wants a shorter page. Every action is an icon with a styled
+// tooltip (css/components/tooltip.css) and a label for screen readers; words
+// stay only on a decision ("Remove for sure?"). Which cards a person folded
+// is remembered for the tab (sessionStorage).
 //
 // Used by environment.js, team.js and account.js; every section's cards look
 // and behave the same.
@@ -22,6 +23,7 @@ export const ICONS = {
   check: '<polyline points="20 6 9 17 4 12"/>',
   chevron: '<polyline points="6 9 12 15 18 9"/>',
   x: '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>',
+  info: '<circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>',
   link: '<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>',
   key: '<path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/>',
   folder: '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>',
@@ -51,23 +53,24 @@ export function ico(name, size = 16) {
   return `<svg class="ev-ico" viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${ICONS[name] || ''}</svg>`;
 }
 
-/** An icon-only action. `action` is the data-* attribute the section listens on: { env: 'download' } or { acct: 'add-alias' } or { team: 'remove' }. */
+/** An icon-only action with a styled tooltip. `action` is the data-* attribute the section listens on: 'download' (env), { acct: 'add-alias' }, { team: 'remove' }. */
 export function iconBtn(action, name, label, attrs = '', cls = '') {
   const [attr, value] = typeof action === 'string' ? ['data-env-action', action] : Object.entries(action).map(([k, v]) => [`data-${k}-action`, v])[0];
-  return `<button class="btn btn-sm btn-ico ${cls}" type="button" ${attr}="${esc(value)}" aria-label="${esc(label)}" title="${esc(label)}" ${attrs}>${ico(name)}</button>`;
+  return `<button class="btn btn-sm btn-ico ${cls}" type="button" ${attr}="${esc(value)}" aria-label="${esc(label)}" data-tip="${esc(label)}" ${attrs}>${ico(name)}</button>`;
 }
 
 function state() { try { return JSON.parse(sessionStorage.getItem(OPEN_KEY) || '{}') || {}; } catch { return {}; } }
-export function isOpen(key, fallback = false) { const s = state(); return key in s ? !!s[key] : !!fallback; }
+export function isOpen(key, fallback = true) { const s = state(); return key in s ? !!s[key] : !!fallback; }
 export function setOpen(key, on) { const s = state(); s[key] = !!on; try { sessionStorage.setItem(OPEN_KEY, JSON.stringify(s)); } catch { /* fine */ } }
 function apply(sec, open) {
   sec.classList.toggle('is-open', open);
   const body = sec.querySelector(':scope > .ev-card-body'); if (body) body.hidden = !open;
-  const t = sec.querySelector(':scope > .ev-card-head .ev-card-toggle'); if (t) t.setAttribute('aria-expanded', String(open));
+  const t = sec.querySelector(':scope > .ev-card-head .ev-card-toggle');
+  if (t) { t.setAttribute('aria-expanded', String(open)); const label = open ? 'Fold this card away' : 'Open this card'; t.setAttribute('aria-label', label); t.setAttribute('data-tip', label); }
 }
 export function toggleCard(key) {
   const sec = document.querySelector(`.ev-card[data-card="${CSS.escape(key)}"]`);
-  const open = !isOpen(key, sec ? sec.dataset.open === '1' : false);
+  const open = !isOpen(key, sec ? sec.dataset.open !== '0' : true);
   setOpen(key, open);
   if (sec) apply(sec, open);
 }
@@ -85,36 +88,38 @@ export function setCardSummary(key, html) {
 }
 
 /**
- * A card. `summary` is HTML (escape what needs escaping); `body` is HTML.
- * `open` is the default when the person has not chosen; `danger` colors the
- * frame; `explain` is the explainer link for the card's line.
+ * A card, open by default. `summary` is HTML (escape what needs escaping);
+ * `body` is HTML; `explain` is the (i) for the card's line, placed right
+ * after the title; `danger` colors the frame.
  */
-export function cardHtml({ key, icon, title, summary = '', explain = '', body = '', open = false, danger = false, cls = '' }) {
+export function cardHtml({ key, icon, title, summary = '', explain = '', body = '', open = true, danger = false, cls = '' }) {
   const on = isOpen(key, open);
+  const id = `card-${esc(key).replace(/[^a-z0-9_-]/gi, '-')}`;
+  const tip = on ? 'Fold this card away' : 'Open this card';
   return `
     <section class="acct-card ev-card ${on ? 'is-open' : ''} ${danger ? 'acct-card-danger' : ''} ${cls}" data-card="${esc(key)}" data-open="${open ? '1' : '0'}">
-      <div class="ev-card-head">
-        <button class="ev-card-toggle" type="button" data-card-toggle="${esc(key)}" aria-expanded="${on}" aria-controls="card-${esc(key).replace(/[^a-z0-9_-]/gi, '-')}">
-          <span class="ev-card-ico ${danger ? 'is-danger' : ''}">${ico(icon)}</span>
-          <span class="ev-card-title">${esc(title)}</span>
-          <span class="ev-card-sum">${summary}</span>
-          <span class="ev-card-chev">${ico('chevron')}</span>
-        </button>
-        ${explain ? `<span class="ev-card-explain">${explain}</span>` : ''}
+      <div class="ev-card-head" data-card-head="${esc(key)}">
+        <span class="ev-card-ico ${danger ? 'is-danger' : ''}">${ico(icon)}</span>
+        <h3 class="ev-card-title">${esc(title)}</h3>
+        ${explain}
+        <span class="ev-card-sum">${summary}</span>
+        <button class="ev-card-toggle" type="button" data-card-toggle="${esc(key)}" aria-expanded="${on}" aria-controls="${id}" aria-label="${tip}" data-tip="${tip}">${ico('chevron')}</button>
       </div>
-      <div class="ev-card-body" id="card-${esc(key).replace(/[^a-z0-9_-]/gi, '-')}" ${on ? '' : 'hidden'}>${body}</div>
+      <div class="ev-card-body" id="${id}" ${on ? '' : 'hidden'}>${body}</div>
     </section>`;
 }
 
 let bound = false;
-/** One listener for every card's toggle, on the document, once. */
+/** One listener for every card's head, on the document, once. A click on the head folds or opens; a click on anything interactive inside it (the (i), a button) is that thing's own. */
 export function initCards() {
   if (bound) return;
   bound = true;
   document.addEventListener('click', (e) => {
     const t = e.target.closest?.('[data-card-toggle]');
-    if (!t) return;
-    e.preventDefault();
-    toggleCard(t.dataset.cardToggle || '');
+    if (t) { e.preventDefault(); toggleCard(t.dataset.cardToggle || ''); return; }
+    const head = e.target.closest?.('[data-card-head]');
+    if (!head) return;
+    if (e.target.closest('button, a, input, select, label, [data-explain]')) return;
+    toggleCard(head.dataset.cardHead || '');
   });
 }

@@ -1,0 +1,59 @@
+/* css/components/tooltip.css
+   One styled tooltip for the whole site, the API console's bubble made
+   general: any element carrying data-tip shows it above itself on hover and
+   on keyboard focus. Glass fill, hairline border, a small arrow, tokens only
+   so both themes hold. Icon buttons and the (i) explainers use it instead of
+   the browser's own title bubble. */
+
+[data-tip] { position: relative; }
+
+[data-tip]::after {
+  content: attr(data-tip);
+  position: absolute;
+  bottom: calc(100% + 9px);
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  padding: 6px 10px;
+  border-radius: 7px;
+  font: 500 .75rem/1.25 var(--font, inherit);
+  font-family: inherit;
+  letter-spacing: 0;
+  text-transform: none;
+  white-space: nowrap;
+  max-width: min(28rem, 80vw);
+  color: var(--ink);
+  background: color-mix(in srgb, var(--glass) 70%, var(--surface-deep, transparent));
+  border: 1px solid color-mix(in srgb, var(--border) 85%, transparent);
+  box-shadow: var(--bg-deep);
+  -webkit-backdrop-filter: blur(10px) saturate(140%);
+  backdrop-filter: blur(10px) saturate(140%);
+  display: none;
+  pointer-events: none;
+  z-index: 30;
+}
+[data-tip]::before {
+  content: "";
+  position: absolute;
+  bottom: calc(100% + 5px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: 8px;
+  height: 8px;
+  background: color-mix(in srgb, var(--glass) 70%, var(--surface-deep, transparent));
+  border-left: 1px solid color-mix(in srgb, var(--border) 85%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 85%, transparent);
+  rotate: -45deg;
+  display: none;
+  pointer-events: none;
+  z-index: 31;
+}
+/* Shown only on hover or focus: a hidden tip must not exist in layout, or its width would give a narrow page a sideways scroll. */
+[data-tip]:hover::after, [data-tip]:focus-visible::after { display: block; transform: translateX(-50%) translateY(0); }
+[data-tip]:hover::before, [data-tip]:focus-visible::before { display: block; }
+/* A tip that would run off the left or right edge of a narrow screen: pin it to that edge. */
+[data-tip].tip-left:hover::after, [data-tip].tip-left:focus-visible::after { left: 0; transform: none; }
+[data-tip].tip-right:hover::after, [data-tip].tip-right:focus-visible::after { left: auto; right: 0; transform: none; }
+/* Long tips wrap. */
+[data-tip].tip-wrap::after { white-space: normal; width: max-content; }
+/* Touch screens have no hover: the label is still read by assistive tech through aria-label. */
+@media (hover: none) { [data-tip]::after, [data-tip]::before { display: none; } }

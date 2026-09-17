@@ -250,10 +250,10 @@ function membersHtml(v) {
     const suspended = String(m.status).toUpperCase() === 'SUSPENDED';
     return `
       <tr>
-        <td class="cell-ellip" title="${e(m.email)}">${e(m.email)}${self ? ' <span class="adm-muted">(you)</span>' : ''}</td>
-        <td class="cell-tight">${roleCell}</td>
-        <td class="cell-tight">${statusTag(m.status)}${m.seat ? '' : ' <span class="adm-muted">no seat</span>'}</td>
-        <td class="cell-tight">${e(allowanceText(m))}${act && m.role !== 'owner' ? ` <button class="btn btn-sm" type="button" data-team-action="allow-edit" data-user="${e(m.userId)}">Edit</button>` : ''}</td>
+        <td class="cell-ellip" data-th="Person" title="${e(m.email)}">${e(m.email)}${self ? ' <span class="adm-muted">(you)</span>' : ''}</td>
+        <td class="cell-tight" data-th="Role">${roleCell}</td>
+        <td class="cell-tight" data-th="Status">${statusTag(m.status)}${m.seat ? '' : ' <span class="adm-muted">no seat</span>'}</td>
+        <td class="cell-tight" data-th="Allowance">${e(allowanceText(m))}${act && m.role !== 'owner' ? ` <button class="btn btn-sm" type="button" data-team-action="allow-edit" data-user="${e(m.userId)}">Edit</button>` : ''}</td>
         <td class="cell-tight tm-actions">${act ? `
           <button class="btn btn-sm" type="button" data-team-action="${suspended ? 'restore' : 'suspend'}" data-user="${e(m.userId)}" data-email="${e(m.email)}">${suspended ? 'Restore' : 'Suspend'}</button>
           <button class="btn btn-sm" type="button" data-team-action="remove" data-user="${e(m.userId)}" data-email="${e(m.email)}">Remove</button>` : ''}</td>

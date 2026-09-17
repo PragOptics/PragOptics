@@ -32,6 +32,17 @@ const DOCS = {
   domains:     { title: 'Connecting a domain' }
 };
 const KICKER = 'How it works';
+const COPY_SVG = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+const CHECK_SVG = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><polyline points="20 6 9 17 4 12"/></svg>';
+let currentMd = '';
+/** The text of what is open, to the clipboard; the icon reads as a check for a moment. */
+export async function copyMarkdown(btn, text) {
+  if (!btn) return;
+  const orig = btn.innerHTML, label = btn.getAttribute('aria-label') || '';
+  const say = (ok) => { btn.innerHTML = ok ? CHECK_SVG : orig; const t = ok ? 'Copied' : 'Could not copy'; btn.setAttribute('data-tip', t); btn.setAttribute('aria-label', t); };
+  try { await navigator.clipboard.writeText(String(text || '')); say(true); } catch { say(false); }
+  setTimeout(() => { btn.innerHTML = orig; btn.setAttribute('data-tip', label); btn.setAttribute('aria-label', label); }, 1600);
+}
 const BASE = '/docs/explain/';
 
 let els = null;
@@ -96,7 +107,7 @@ function ensureDom() {
         <article id="explainContent" class="md-view legal-content explain-content" aria-live="polite"></article>
       </div>
       <div class="legal-foot explain-foot">
-        <a id="explainOpenRaw" class="footer-link" href="#" target="_blank" rel="noopener noreferrer">Open as a page</a>
+        <button id="explainCopyRaw" class="btn btn-sm btn-ico" type="button" data-explain-action="copy" aria-label="Copy this text, to paste into an assistant" data-tip="Copy this text, to paste into an assistant">${COPY_SVG}</button>
       </div>
     </div>`;
   document.body.append(mask, panel);
@@ -106,7 +117,7 @@ function ensureDom() {
     title: panel.querySelector('#explainTitle'),
     loading: panel.querySelector('#explainLoading'),
     content: panel.querySelector('#explainContent'),
-    raw: panel.querySelector('#explainOpenRaw')
+    copy: panel.querySelector('#explainCopyRaw')
   };
   return els;
 }
@@ -143,7 +154,7 @@ export async function openExplainer(key, trigger = null) {
   lastTrigger = trigger;
   const url = `${BASE}${key}.md`;
   d.title.textContent = doc.title;
-  d.raw.href = url;
+  currentMd = '';
   d.content.innerHTML = '';
   d.loading.style.display = 'block';
   open();
@@ -155,6 +166,7 @@ export async function openExplainer(key, trigger = null) {
       md = await res.text();
       cache.set(key, md);
     }
+    currentMd = md;
     d.content.innerHTML = renderExplainer(md);
     d.content.scrollTop = 0;
   } catch {
@@ -164,10 +176,11 @@ export async function openExplainer(key, trigger = null) {
   }
 }
 
-/** The link that opens one. Use it inside any template. */
+const INFO_SVG = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>';
+/** The (i) that opens one, with the label as its tooltip. Sits right after the thing it explains. */
 export function explainLink(key, label = 'How this works') {
   if (!DOCS[key]) return '';
-  return `<button type="button" class="explain-link" data-explain="${esc(key)}">${esc(label)}</button>`;
+  return `<button type="button" class="explain-link explain-ico" data-explain="${esc(key)}" aria-label="${esc(label)}" data-tip="${esc(label)}">${INFO_SVG}</button>`;
 }
 
 export function initExplainer() {
@@ -175,7 +188,7 @@ export function initExplainer() {
     const a = e.target.closest('[data-explain]');
     if (a) { e.preventDefault(); openExplainer(a.dataset.explain, a); return; }
     const act = e.target.closest('[data-explain-action]');
-    if (act) { e.preventDefault(); if (act.dataset.explainAction === 'close') close(); return; }
+    if (act) { e.preventDefault(); if (act.dataset.explainAction === 'close') close(); else if (act.dataset.explainAction === 'copy') copyMarkdown(act, currentMd); return; }
     if (els && e.target === els.mask) close();
   });
   document.addEventListener('keydown', (e) => {

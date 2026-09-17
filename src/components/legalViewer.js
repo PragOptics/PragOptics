@@ -112,10 +112,20 @@ export function initLegalViewer(options = {}) {
   const $title = document.getElementById("legalTitle");
   const $loading = document.getElementById("legalLoading");
   const $content = document.getElementById("legalContent");
-  const $raw = document.getElementById("legalOpenRaw");
+  const $copy = document.getElementById("legalCopyRaw");
+  let currentMd = "";
 
   // If any are missing, the viewer can't operate
-  if (!$mask || !$panel || !$title || !$loading || !$content || !$raw) return;
+  if (!$mask || !$panel || !$title || !$loading || !$content) return;
+  // The text of what is open, to the clipboard (for an assistant, for a record); the icon reads as a check for a moment.
+  const COPY_SVG = $copy ? $copy.innerHTML : "";
+  const CHECK_SVG = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><polyline points="20 6 9 17 4 12"/></svg>';
+  if ($copy) $copy.addEventListener("click", async () => {
+    const label = $copy.getAttribute("aria-label") || "";
+    const say = (t, ok) => { $copy.innerHTML = ok ? CHECK_SVG : COPY_SVG; $copy.setAttribute("data-tip", t); $copy.setAttribute("aria-label", t); };
+    try { await navigator.clipboard.writeText(currentMd); say("Copied", true); } catch { say("Could not copy", false); }
+    setTimeout(() => { $copy.innerHTML = COPY_SVG; $copy.setAttribute("data-tip", label); $copy.setAttribute("aria-label", label); }, 1600);
+  });
 
   function open() {
     $mask.classList.add("is-open");
@@ -141,7 +151,7 @@ export function initLegalViewer(options = {}) {
     if (!url) return;
 
     $title.textContent = titles[kind] || "Document";
-    $raw.href = url;
+    currentMd = "";
 
     $loading.style.display = "block";
     $content.innerHTML = "";
@@ -152,6 +162,7 @@ export function initLegalViewer(options = {}) {
       const res = await fetch(url, { cache: "no-store" });
       if (!res.ok) throw new Error(`Failed to load ${kind}`);
       const md = await res.text();
+      currentMd = md;
       $content.innerHTML = mdToHtml(md);
     } catch (e) {
       $content.innerHTML = "<p>Unable to load document. Please try again.</p>";

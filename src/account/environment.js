@@ -407,7 +407,7 @@ function summaryHtml(v) {
           <p class="ev-owner adm-muted">${e(t.ownerEmail || '')}</p>
         </div>
         <div class="ev-actions">
-          ${phase === 'READY' && t.software?.url ? `<button class="btn btn-sm ev-btn-ico" type="button" data-env-action="open-software" data-url="${e(t.software.url)}" title="The software, in a new tab, signed in with this account">${ico('external')}<span>Open the software</span></button>` : ''}
+          ${phase === 'READY' && t.software?.url ? `<button class="btn btn-sm ev-btn-ico" type="button" data-env-action="open-software" data-url="${e(t.software.url)}" data-tip="The software, in a new tab, signed in with this account">${ico('external')}<span>Open the software</span></button>` : ''}
           ${(me.role === 'owner' || me.role === 'admin') && (phase === 'READY' || phase === 'SUSPENDED') ? iconBtn('export', 'download', 'Download everything in this environment as one file') : ''}
           ${iconBtn('refresh', 'refresh', 'Refresh')}
         </div>
@@ -417,7 +417,7 @@ function summaryHtml(v) {
       <div class="use-row ev-meter">
         <div class="use-head">
           <span class="use-name">Storage ${whereTag}</span>
-          <span class="use-val">${e(used > 0 && used < 0.05 * 1024 ** 3 ? bytesFmt(used) : gb(used))} / ${e(gb(limit))}${isOwner ? ` <button class="ev-more" type="button" data-acct-section="subscription" title="Storage grows with the plan, and with the storage add-on on the User plan">More</button>` : ''}</span>
+          <span class="use-val">${e(used > 0 && used < 0.05 * 1024 ** 3 ? bytesFmt(used) : gb(used))} / ${e(gb(limit))}</span>${isOwner ? `<button class="ev-more" type="button" data-acct-section="subscription" data-tip="Storage grows with the plan, and with the storage add-on on the User plan">More storage</button>` : ''}
         </div>
         <div class="use-track"><div class="use-fill ${cls}" style="width:${pct.toFixed(1)}%"></div></div>
       </div>
@@ -449,9 +449,9 @@ function filesHtml() {
           <tbody>
             ${rows.map(f => `
               <tr>
-                <td class="cell-ellip ev-name-cell" title="${e(f.name)}${f.contentType ? ` · ${e(f.contentType)}` : ''}">${e(f.name)}${f.committed ? '' : ' <span class="acct-tag is-pending" title="Uploaded but never confirmed. The nightly check settles it; uploading it again also does.">unconfirmed</span>'}</td>
-                <td class="adm-num cell-tight">${e(bytesFmt(f.size))}</td>
-                <td class="cell-tight adm-muted">${e(D.fmtDate(f.lastModified))}</td>
+                <td class="cell-ellip ev-name-cell" data-th="Name" title="${e(f.name)}${f.contentType ? ` · ${e(f.contentType)}` : ''}">${e(f.name)}${f.committed ? '' : ' <span class="acct-tag is-pending" title="Uploaded but never confirmed. The nightly check settles it; uploading it again also does.">unconfirmed</span>'}</td>
+                <td class="adm-num cell-tight" data-th="Size">${e(bytesFmt(f.size))}</td>
+                <td class="cell-tight adm-muted" data-th="Modified">${e(D.fmtDate(f.lastModified))}</td>
                 <td class="cell-tight ev-actions-cell">
                   ${viewTypeFor(f.name) ? iconBtn('open', 'external', 'Open in a new tab', `data-name="${e(f.name)}"`) : ''}
                   ${iconBtn('download', 'download', 'Download', `data-name="${e(f.name)}"`)}
@@ -489,8 +489,8 @@ function recordHtml(label, rec) {
   return `
     <dl class="ev-record" aria-label="${e(label)}">
       <dt>Type</dt><dd><code>${e(rec.type)}</code></dd><dd></dd>
-      <dt>Name</dt><dd><code>${e(rec.name)}</code></dd><dd><button class="btn btn-sm btn-ico" type="button" data-env-action="domain-copy" data-text="${e(rec.name)}" aria-label="Copy" title="Copy">${ico('copy')}</button></dd>
-      <dt>${rec.type === 'CNAME' ? 'Target' : 'Value'}</dt><dd><code>${e(rec.value || rec.target || '')}</code></dd><dd><button class="btn btn-sm btn-ico" type="button" data-env-action="domain-copy" data-text="${e(rec.value || rec.target || '')}" aria-label="Copy" title="Copy">${ico('copy')}</button></dd>
+      <dt>Name</dt><dd><code>${e(rec.name)}</code></dd><dd><button class="btn btn-sm btn-ico" type="button" data-env-action="domain-copy" data-text="${e(rec.name)}" aria-label="Copy" data-tip="Copy">${ico('copy')}</button></dd>
+      <dt>${rec.type === 'CNAME' ? 'Target' : 'Value'}</dt><dd><code>${e(rec.value || rec.target || '')}</code></dd><dd><button class="btn btn-sm btn-ico" type="button" data-env-action="domain-copy" data-text="${e(rec.value || rec.target || '')}" aria-label="Copy" data-tip="Copy">${ico('copy')}</button></dd>
     </dl>`;
 }
 
@@ -636,7 +636,7 @@ function hostedRecordsHtml(host) {
   const r = (ev.dnsRecs || {})[host];
   if (!r) return '';
   const label = { website: 'Website', email: 'Email', verification: 'Verification', other: 'Other' };
-  const rows = (r.records || []).map(x => `<tr><td>${e(label[x.kind] || 'Other')}</td><td><code>${e(x.name)}</code></td><td><code>${e(x.type)}</code></td><td class="cell-ellip" title="${e(x.content || '')}"><code>${e(x.type === 'MX' ? `${x.priority ?? ''} ${x.content}` : x.content || '')}</code></td></tr>`).join('');
+  const rows = (r.records || []).map(x => `<tr><td data-th="Row">${e(label[x.kind] || 'Other')}</td><td data-th="Name"><code>${e(x.name)}</code></td><td data-th="Type"><code>${e(x.type)}</code></td><td class="cell-ellip" data-th="Value" title="${e(x.content || '')}"><code>${e(x.type === 'MX' ? `${x.priority ?? ''} ${x.content}` : x.content || '')}</code></td></tr>`).join('');
   return `
     <div class="adm-table-scroll ev-dom-recs">
       <table class="adm-table adm-table--wrap">
@@ -653,7 +653,7 @@ function hostedBodyHtml(d) {
   const busy = ev.dnsBusy === d.host;
   const shown = !!(ev.dnsRecs || {})[d.host];
   const note = (ev.dnsNote || {})[d.host] || '';
-  const ns = (h.nameServers || []).map(n => `<li><code>${e(n)}</code> <button class="btn btn-sm btn-ico" type="button" data-env-action="domain-copy" data-text="${e(n)}" aria-label="Copy" title="Copy">${ico('copy')}</button></li>`).join('');
+  const ns = (h.nameServers || []).map(n => `<li><code>${e(n)}</code> <button class="btn btn-sm btn-ico" type="button" data-env-action="domain-copy" data-text="${e(n)}" aria-label="Copy" data-tip="Copy">${ico('copy')}</button></li>`).join('');
   const recordsBtn = `<button class="btn btn-sm" type="button" data-env-action="domain-dns-records" data-host="${e(d.host)}">${shown ? 'Hide records' : 'Show records'}</button>`;
   const more = phase === 'REVIEW' || phase === 'SWITCHING' ? `
       <details class="ev-dom-more"><summary>Add records we did not find</summary>
@@ -696,7 +696,7 @@ function hostedBodyHtml(d) {
       <div class="ev-dom-actions">${recordsBtn}<button class="btn btn-sm" type="button" data-env-action="domain-dns-check" data-host="${e(d.host)}" ${busy ? 'disabled' : ''}>${busy ? 'Checking…' : 'Check now'}</button></div>`;
   }
   if (note) body += `<p class="acct-card-note ev-dom-note">${e(note)}</p>`;
-  if ((ev.dnsBack || {})[d.host]) body += `<p class="acct-card-note ev-dom-note">To hand it back, first set these nameservers at ${e(h.registrar || 'your registrar')} again, wait for the change to show, then press Hand DNS back once more.</p><ul class="ev-dom-ns">${(ev.dnsBack[d.host] || []).map(n => `<li><code>${e(n)}</code> <button class="btn btn-sm btn-ico" type="button" data-env-action="domain-copy" data-text="${e(n)}" aria-label="Copy" title="Copy">${ico('copy')}</button></li>`).join('')}</ul>`;
+  if ((ev.dnsBack || {})[d.host]) body += `<p class="acct-card-note ev-dom-note">To hand it back, first set these nameservers at ${e(h.registrar || 'your registrar')} again, wait for the change to show, then press Hand DNS back once more.</p><ul class="ev-dom-ns">${(ev.dnsBack[d.host] || []).map(n => `<li><code>${e(n)}</code> <button class="btn btn-sm btn-ico" type="button" data-env-action="domain-copy" data-text="${e(n)}" aria-label="Copy" data-tip="Copy">${ico('copy')}</button></li>`).join('')}</ul>`;
   return body;
 }
 
@@ -1071,6 +1071,12 @@ function connStatusTag(c) {
   const e = D.escapeHtml;
   if (c.status === 'REJECTED' && c.detail?.disconnected) return `<span class="acct-tag is-bad" title="${e(c.lastError || '')}">disconnected</span>`;
   if (c.status === 'REJECTED') return `<span class="acct-tag is-bad" title="${e(c.lastError || '')}">rejected</span>`;
+  if (isManagedShopify(c)) {
+    const d = c.detail || {};
+    if (c.status === 'ACTIVE') return `<span class="acct-tag is-verified" data-tip="${e(d.name || d.shop || 'The supplier')} approved this environment on their store.">connected</span>`;
+    if (d.declined) return `<span class="acct-tag is-pending" data-tip="${e(c.lastError || '')}">declined</span>`;
+    return `<span class="acct-tag is-pending" data-tip="Send the supplier their link; the row reads connected once they approve.">waiting for the supplier</span>`;
+  }
   if (isManagedShippo(c)) {
     const d = c.detail || {};
     if (c.status === 'ACTIVE') return '<span class="acct-tag is-verified" title="Shippo bills you directly for labels; the platform acts with an access token Shippo issued for PragOptics.">connected</span>';
@@ -1203,10 +1209,10 @@ function connectionsHtml() {
               const refreshAction = isManagedStripe(c) ? 'conn-stripe-refresh' : isManagedTwilio(c) ? 'conn-twilio-refresh' : isManagedShippo(c) ? 'conn-shippo-refresh' : isManagedShopify(c) ? 'conn-shopify-refresh' : 'conn-test';
               return `
               <tr class="${c.status === 'REJECTED' ? 'ev-muted-row' : ''}" data-row="${e(c.provider)}">
-                <td class="cell-ellip"><span class="ev-conn-name" title="${e(c.label)}"><span class="acct-tag is-primary">${e(PROVIDER_ICON[c.provider] || c.provider)}</span> ${e(c.label)}</span><span class="ev-conn-kind adm-muted">${e(p?.label || cap(c.provider))} · ${kind}</span></td>
-                <td class="cell-ellip adm-muted">${connIdentity(c)}${stripeNeedsHtml(c)}</td>
-                <td class="cell-tight">${connStatusTag(c)}</td>
-                <td class="cell-tight adm-muted">${c.verifiedAt ? e(D.fmtDate(c.verifiedAt)) : 'never'}</td>
+                <td class="cell-ellip" data-th="Account"><span class="ev-conn-name" title="${e(c.label)}"><span class="acct-tag is-primary">${e(PROVIDER_ICON[c.provider] || c.provider)}</span> ${e(c.label)}</span><span class="ev-conn-kind adm-muted">${e(p?.label || cap(c.provider))} · ${kind}</span></td>
+                <td class="cell-ellip adm-muted" data-th="Identity">${connIdentity(c)}${stripeNeedsHtml(c)}</td>
+                <td class="cell-tight" data-th="Status">${connStatusTag(c)}</td>
+                <td class="cell-tight adm-muted" data-th="Checked">${c.verifiedAt ? e(D.fmtDate(c.verifiedAt)) : 'never'}</td>
                 <td class="cell-tight ev-actions-cell">${manage ? (ev.connArm === c.id ? `
                   <button class="btn btn-sm is-danger" type="button" data-env-action="conn-remove" data-id="${e(c.id)}" data-label="${e(c.label)}" title="The credential is deleted from the vault and anything using it stops on its next call">Remove for sure?</button>
                   ${iconBtn('conn-remove-cancel', 'x', 'Keep it')}` : `
@@ -1302,12 +1308,12 @@ function keysHtml() {
               const revocable = k.status === 'ACTIVE' && (mine || canManageKeys());
               return `
               <tr class="${k.status === 'ACTIVE' ? '' : 'ev-muted-row'}">
-                <td class="cell-ellip" title="${e(k.label)}">${e(k.label || 'Unlabelled')}</td>
-                <td class="cell-tight"><code class="ev-prefix">${e(k.prefix)}_…</code></td>
-                <td class="cell-tight">${(k.scopes || []).map(s => `<span class="acct-tag">${e(s)}</span>`).join(' ')}</td>
-                <td class="cell-ellip adm-cell-email" title="${e(k.createdByEmail)}">${e(k.createdByEmail || '')}${mine ? ' <span class="adm-muted">(you)</span>' : ''}</td>
-                <td class="cell-tight adm-muted">${k.lastUsedAt ? e(D.fmtDate(k.lastUsedAt)) : 'never'}</td>
-                <td class="cell-tight"><span class="acct-tag ${k.status === 'ACTIVE' ? 'is-verified' : ''}">${e(String(k.status).toLowerCase())}</span></td>
+                <td class="cell-ellip" data-th="Label" title="${e(k.label)}">${e(k.label || 'Unlabelled')}</td>
+                <td class="cell-tight" data-th="Key"><code class="ev-prefix">${e(k.prefix)}_…</code></td>
+                <td class="cell-tight" data-th="Scopes">${(k.scopes || []).map(s => `<span class="acct-tag">${e(s)}</span>`).join(' ')}</td>
+                <td class="cell-ellip adm-cell-email" data-th="Made by" title="${e(k.createdByEmail)}">${e(k.createdByEmail || '')}${mine ? ' <span class="adm-muted">(you)</span>' : ''}</td>
+                <td class="cell-tight adm-muted" data-th="Last used">${k.lastUsedAt ? e(D.fmtDate(k.lastUsedAt)) : 'never'}</td>
+                <td class="cell-tight" data-th="Status"><span class="acct-tag ${k.status === 'ACTIVE' ? 'is-verified' : ''}">${e(String(k.status).toLowerCase())}</span></td>
                 <td class="cell-tight ev-actions-cell">${revocable ? `${ev.keyArm === k.keyId ? `<button class="btn btn-sm is-danger" type="button" data-env-action="key-revoke" data-key="${e(k.keyId)}" data-label="${e(k.label || k.prefix)}" title="Every call with it stops on the next request">Revoke for sure?</button>${iconBtn('key-arm-cancel', 'x', 'Keep it')}` : iconBtn('key-revoke', 'trash', 'Revoke', `data-key="${e(k.keyId)}" data-label="${e(k.label || k.prefix)}"`)}` : ''}</td>
               </tr>`; }).join('')}
           </tbody>

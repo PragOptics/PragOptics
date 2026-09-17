@@ -179,3 +179,52 @@ html[data-theme="dark"] .btn.is-danger, :root:not([data-theme="light"]) .btn.is-
 .ev-cards > * { min-width: 0; }
 .ev-card, .ev-card-body { min-width: 0; max-width: 100%; }
 .ev-card-body .adm-table-scroll { max-width: 100%; }
+
+/* The account main column is a size container (admin.css .adm-main): the rules below read ITS width, so a tablet with the sidebar beside it stacks like a phone. */
+/* ---- 2026-09-17, second pass: the head line holds together at every width; tables stack on a phone; nothing touches ---- */
+.ev-card-head { display: flex; align-items: center; gap: 10px; padding: 12px 12px 12px 16px; flex-wrap: wrap; cursor: default; }
+.ev-card-head:hover { background: transparent; }
+.ev-card-title { margin: 0; font-size: .98rem; font-weight: 700; color: var(--ink); flex: none; }
+.ev-card-sum { flex: 1 1 12rem; min-width: 0; white-space: normal; overflow: visible; text-overflow: clip; }
+.ev-card-toggle { flex: none; width: 30px; height: 30px; margin-left: auto; padding: 0; display: inline-grid; place-items: center; border: 1px solid transparent; border-radius: 8px; background: transparent; color: var(--muted); cursor: pointer; }
+.ev-card-toggle:hover { border-color: var(--border); color: var(--ink); background: color-mix(in srgb, var(--ink) 4%, transparent); }
+.ev-card-toggle .ev-ico { transition: transform 160ms ease; }
+.ev-card.is-open .ev-card-toggle .ev-ico { transform: rotate(180deg); }
+.ev-card-chev { display: none; }
+.ev-card-explain { flex: none; display: inline-flex; }
+.ev-card-body { padding: 2px 16px 16px; }
+.ev-card-body > :first-child { margin-top: 10px; }
+.ev-summary .ev-head { gap: 16px; }
+.ev-summary .ev-actions { align-items: center; }
+.ev-tags { gap: 8px; }
+.ev-lanes { margin: 16px 0 8px; }
+.use-head { flex-wrap: wrap; gap: 6px 12px; }
+.use-name { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.use-name .acct-tag { margin-left: 0; }
+.ev-more { margin-left: auto; padding: 4px 10px; border: 1px solid var(--border); border-radius: var(--radius-btn-sm); font-size: .78rem; font-weight: 600; color: var(--brand-600); background: transparent; }
+.ev-more:hover { text-decoration: none; border-color: var(--brand-600); }
+.ev-summary .ev-meter { margin-top: 12px; }
+@container (max-width: 640px) {
+  .ev-card-head { padding: 12px 10px 12px 14px; }
+  .ev-card-sum { flex-basis: 100%; order: 5; padding-left: 40px; margin-top: -4px; }
+  .ev-card-toggle { margin-left: auto; }
+  .ev-summary .ev-actions { width: 100%; }
+  /* tables become stacked rows: each cell labeled by its column */
+  .account .adm-table--wrap thead { display: none; }
+  .account .adm-table--wrap, .account .adm-table--wrap tbody, .account .adm-table--wrap tr, .account .adm-table--wrap td { display: block; width: 100%; box-sizing: border-box; }
+  .account .adm-table--wrap tr { border: 1px solid var(--border); border-radius: 10px; padding: 8px 12px; margin: 8px 0; background: var(--surface-3); }
+  .account .adm-table--wrap td { border: 0; padding: 4px 0; white-space: normal; overflow: visible; text-overflow: clip; text-align: left; }
+  .account .adm-table--wrap td[data-th]::before { content: attr(data-th); display: block; font-size: .64rem; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); font-weight: 700; margin-bottom: 2px; }
+  .account .adm-table--wrap td:empty { display: none; }
+  .account .adm-table-scroll { overflow: visible; }
+  .account .ev-actions-cell, .account .tm-actions { display: flex; gap: 6px; flex-wrap: wrap; padding-top: 8px; }
+  .account .ev-actions-cell .btn + .btn { margin: 0; }
+  .ev-conn-name, .ev-conn-kind { white-space: normal; }
+}
+@container (max-width: 640px) {
+  .account .adm-table--wrap td.cell-ellip, .account .adm-table--wrap td.cell-tight { max-width: none; white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; }
+}
+@container (max-width: 640px) {
+  /* the table itself must not keep its desktop minimum once its rows stack */
+  .account .adm-table--wrap, .account .adm-table--wrap tr, .account .adm-table--wrap td { min-width: 0; max-width: 100%; }
+}

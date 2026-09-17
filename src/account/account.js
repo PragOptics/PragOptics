@@ -452,7 +452,7 @@ async function renderProfile(main) {
   main.innerHTML = `
     <header class="acct-sec-head"><h2 class="acct-sec-title">Profile</h2></header>
     <div class="acct-grid">
-    ${cardHtml({ key: 'profile:emails', icon: 'mail', title: 'Email addresses', summary: 'loading', open: true, body: `
+    ${cardHtml({ key: 'profile:emails', icon: 'mail', title: 'Email addresses', summary: 'loading', body: `
       <ul class="acct-alias-list" id="acctAliasList"><li class="acct-loading">Loading…</li></ul>
       <div class="acct-add-row">
         <input class="acct-input" id="acctNewEmail" type="email" autocomplete="email" placeholder="add another email…" aria-label="New email address">
@@ -2029,11 +2029,11 @@ async function loadMyOrders() {
           <tbody>
             ${orders.map(o => `
               <tr>
-                <td class="adm-muted cell-tight">${escapeHtml(fmtDate(o.createdAt))}</td>
-                <td class="cell-ellip" title="${escapeHtml(orderLinesLabel(o.lines))}">${escapeHtml(orderLinesLabel(o.lines))}</td>
-                <td class="adm-num cell-tight">${escapeHtml(usdCents(o.totalCents))}${Number(o.taxCents) > 0 ? `<div class="adm-muted">incl. ${escapeHtml(usdCents(o.taxCents))} tax</div>` : ''}</td>
-                <td class="cell-tight">${orderStatusPill(o.status)}</td>
-                <td class="cell-ellip" title="${escapeHtml(o.trackingNumber || '')}">${o.trackingNumber
+                <td class="adm-muted cell-tight" data-th="Date">${escapeHtml(fmtDate(o.createdAt))}</td>
+                <td class="cell-ellip" data-th="Items" title="${escapeHtml(orderLinesLabel(o.lines))}">${escapeHtml(orderLinesLabel(o.lines))}</td>
+                <td class="adm-num cell-tight" data-th="Total">${escapeHtml(usdCents(o.totalCents))}${Number(o.taxCents) > 0 ? `<div class="adm-muted">incl. ${escapeHtml(usdCents(o.taxCents))} tax</div>` : ''}</td>
+                <td class="cell-tight" data-th="Status">${orderStatusPill(o.status)}</td>
+                <td class="cell-ellip" data-th="Tracking" title="${escapeHtml(o.trackingNumber || '')}">${o.trackingNumber
                   ? (safeUrl(o.trackingUrl)
                       ? `<a class="acct-inline-link" href="${escapeHtml(safeUrl(o.trackingUrl))}" target="_blank" rel="noopener">${escapeHtml(o.trackingNumber)}</a>`
                       : `<code>${escapeHtml(o.trackingNumber)}</code>`)
