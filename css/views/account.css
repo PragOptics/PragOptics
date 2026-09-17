@@ -296,3 +296,6 @@ select.acct-input { background-color: var(--surface-deep); }
   color: var(--brand-600);
   filter: drop-shadow(0 0 6px color-mix(in srgb, var(--brand-600) 45%, transparent));
 }
+
+/* A long link on the Environment card (a supplier's invite) wraps inside its box instead of running past it (2026-09-17). */
+.ev-code { display: inline-block; max-width: 100%; overflow-wrap: anywhere; word-break: break-all; white-space: normal; vertical-align: top; }
