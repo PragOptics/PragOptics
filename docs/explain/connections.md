@@ -45,6 +45,14 @@ Shippo works like Stripe. Press Connect your Shippo account and Shippo's own pag
 
 Continue setup shows only while Stripe still needs something from you and opens a fresh Stripe setup page for exactly that; the link it uses is single use and expires in minutes, so it is never emailed. Check status asks Stripe for the account's state again, and Stripe also tells the platform on its own whenever the account changes, so a review that takes days shows up on the row when Stripe decides, without you pressing anything. If you disconnect PragOptics from inside your Stripe Dashboard, the row says so; Remove clears it, and the account stays yours. Stripe's own messages come through as Stripe wrote them when a verification fails, so you see the same reason Stripe would show you in its Dashboard.
 
+## A Shopify supplier: their store, connected to your environment
+
+Drop shipping without a middleman. Your store is here on PragOptics; your supplier already runs a Shopify store. Type their store address on the card and press Make the link for your supplier. Send them the link. They open it, see what PragOptics asks for on their own store (read products, write orders, read fulfillment), and approve. The row reads connected, and Sync products copies their catalog into this environment as plain rows, ready to put on your site.
+
+The supplier's store stays theirs and your relationship with them stays yours: their prices, their charges, their shipping and returns, agreed between you and them the way they always were. The platform is never in the money. What the platform holds is the access the supplier granted, in this environment's vault, and it uses it only to read their products and, later, to hand them your orders and bring tracking back. Remove deletes that access and the copied products. Two customers of the same supplier hold two separate approvals.
+
+Nobody needs a Shopify account on your side: not you, not PragOptics. Only the supplier is on Shopify.
+
 ## What is not here yet
 
 A database of your own (a Postgres connection string) arrives with the database adapter, once the platform can prove such a string works before storing it. Every provider on the card today is checked for real before it is saved.

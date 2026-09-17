@@ -1,6 +1,6 @@
 # PragOptics™ Platform Agreement
 
-**Version:** 2026-09.6  
+**Version:** 2026-09.7  
 **Effective Date:** Upon electronic acceptance (“I Agree”)
 
 ---
@@ -154,6 +154,10 @@ The Platform can act on accounts the Participant holds at other providers (for e
 - **Authorization.** The Participant authorizes the Platform to act on such an account by supplying a credential the provider issued to them, or by completing the provider's own connection flow. BI verifies the credential with the provider once, stores it in a vault that belongs to the Participant's tenant alone, never displays it again, and uses it only for the actions the Participant instructs from the Platform. The Participant may remove a connection at any time; removal deletes the stored credential.
 - **Charges.** Charges the provider makes for usage on the Participant's account are the Participant's, billed by the provider under the provider's terms, and are not part of the subscription price unless this Agreement or the checkout says otherwise.
 - **Accounts the Platform creates for the Participant.** Where offered, the Platform may create an account for the Participant at a provider through that provider's platform or connect program, so that the Participant does not have to open it themselves. Such an account is the Participant's, opened under the provider's account agreement, which the Participant accepts during the provider's onboarding. The Platform acts on it as the provider's connected platform, on the Participant's instruction, and the Participant may disconnect the Platform from it under the provider's rules. Unless stated at purchase, BI is not in the money path of such an account and receives no part of its transactions.
+
+### 4.9 Suppliers and Drop Shipping
+
+The Platform can connect a supplier's own store or system to the Participant's environment so that the Participant may list the supplier's products in the Participant's store and forward orders to the supplier for fulfillment. The supplier relationship is the Participant's alone: the supplier's account, prices, terms, charges, shipping, returns and refunds are agreed between the Participant and the supplier. BI is not a party to that relationship, does not hold, move or receive funds between them, and does not sell, ship, insure or warrant the supplier's goods. The Platform carries orders and fulfillment information between the two under the Participant's connection and the supplier's authorization, either of which may be withdrawn at any time; withdrawal deletes the stored credential and the copied product data.
 
 ---
 

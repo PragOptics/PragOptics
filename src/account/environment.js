@@ -140,7 +140,7 @@ function canManageConnections() { return (myRole() === 'owner' || myRole() === '
 export async function renderEnvironment(main, deps) {
   D = deps;
   ev.madeKey = null; ev.filesNote = ''; ev.files = null; ev.keys = null; ev.domains = null; ev.domainNote = ''; ev.linkNote = ''; ev.domArm = ''; ev.keyArm = ''; ev.checking = ''; ev.registrations = []; ev.reg = freshReg();
-  ev.connections = null; ev.connProviders = []; ev.connNote = ''; ev.connPick = ''; ev.connBusy = false; ev.connResult = ''; ev.connTesting = ''; ev.connDraft = {}; ev.connArm = '';
+  ev.connections = null; ev.connProviders = []; ev.connNote = ''; ev.connPick = ''; ev.connBusy = false; ev.connResult = ''; ev.connTesting = ''; ev.connDraft = {}; ev.connArm = ''; ev.shopifyShop = ''; ev.shopifyLink = ''; ev.connSyncing = '';
   main.innerHTML = `
     <header class="acct-sec-head has-explain"><h2 class="acct-sec-title">Environment</h2>${explainLink('environment', 'How your environment works')}</header>
     <p class="acct-error" id="evError" hidden></p>
@@ -1026,7 +1026,7 @@ async function pollRegistration(host) {
 
 /* ---------- connected accounts ---------- */
 
-const PROVIDER_ICON = { twilio: 'SMS', shippo: 'Ship', stripe: 'Pay', github: 'Git', microsoft: '365' };
+const PROVIDER_ICON = { twilio: 'SMS', shippo: 'Ship', stripe: 'Pay', github: 'Git', microsoft: '365', shopify: 'Shop' };
 
 function providerOf(id) { return (ev.connProviders || []).find(p => p.id === id) || null; }
 
@@ -1039,6 +1039,7 @@ function connIdentity(c) {
   if (c.provider === 'stripe') return e([d.accountId, d.mode, isManagedStripe(c) ? (d.accountName || d.businessName) : ''].filter(Boolean).join(' · '));
   if (isManagedTwilio(c)) return e([d.friendlyName, d.accountSid, d.type ? `${String(d.type).toLowerCase()} account` : ''].filter(Boolean).join(' · ') || 'not yet authorized');
   if (isManagedShippo(c)) return e(c.status === 'ACTIVE' ? `${d.carrierAccounts || 0} carrier ${d.carrierAccounts === 1 ? 'account' : 'accounts'}${(d.carriers || []).length ? ' · ' + d.carriers.join(', ') : ''}` : 'not yet authorized');
+  if (isManagedShopify(c)) return e(c.status === 'ACTIVE' ? [d.name, d.domain || d.shop, d.productCount !== undefined ? `${d.productCount} products` : ''].filter(Boolean).join(' · ') : `${d.shop || ''} · waiting for the supplier`);
   if (c.provider === 'shippo') return e(d.mode ? `${d.mode} token` : '');
   if (c.provider === 'github') return e(d.login ? `@${d.login}` : '');
   if (c.provider === 'microsoft') return e(d.org || f.tenantId || '');
@@ -1080,7 +1081,8 @@ function isManagedStripe(c) { return c?.provider === 'stripe' && c?.detail?.mana
 function isManagedTwilio(c) { return c?.provider === 'twilio' && c?.detail?.managed === 'twilio-connect'; }
 /** A Shippo account the customer connected through PragOptics (Shippo OAuth): the token sits in the vault, Shippo's own state on the row. */
 function isManagedShippo(c) { return c?.provider === 'shippo' && c?.detail?.managed === 'shippo-connect'; }
-function isManaged(c) { return isManagedStripe(c) || isManagedTwilio(c) || isManagedShippo(c); }
+function isManagedShopify(c) { return c?.provider === 'shopify' && c?.detail?.managed === 'shopify-supplier'; }
+function isManaged(c) { return isManagedStripe(c) || isManagedTwilio(c) || isManagedShippo(c) || isManagedShopify(c); }
 
 /** A Stripe requirement key in the customer's words (the same table the API uses). */
 function stripeRequirementWords(key) {
@@ -1181,7 +1183,7 @@ function connectionsHtml() {
                 <td class="cell-tight"><span class="acct-tag is-primary" title="${e(p?.label || c.provider)}">${e(PROVIDER_ICON[c.provider] || c.provider)}</span> ${e(p?.label || cap(c.provider))}</td>
                 <td class="cell-ellip" title="${e(c.label)}">${e(c.label)}</td>
                 <td class="cell-ellip adm-muted">${connIdentity(c)}${stripeNeedsHtml(c)}</td>
-                <td class="cell-tight">${isManagedStripe(c) ? '<span class="acct-tag is-primary" title="Opened by the platform; no credential is stored. Stripe acts on the account id.">via PragOptics</span>' : isManagedTwilio(c) ? '<span class="acct-tag is-primary" title="Authorized at Twilio; no token is stored. The platform acts on the subaccount with its own token.">via PragOptics</span>' : isManagedShippo(c) ? '<span class="acct-tag is-primary" title="Authorized at Shippo; the access token Shippo issued for PragOptics sits in this environment\'s vault, never shown.">via PragOptics</span>' : `<code class="ev-prefix">••••${e(c.hint || '')}</code>`}</td>
+                <td class="cell-tight">${isManagedShopify(c) ? '<span class="acct-tag is-primary" title="The supplier approved this environment on their own Shopify store; the token sits in the vault of this environment, never shown.">supplier</span>' : isManagedStripe(c) ? '<span class="acct-tag is-primary" title="Opened by the platform; no credential is stored. Stripe acts on the account id.">via PragOptics</span>' : isManagedTwilio(c) ? '<span class="acct-tag is-primary" title="Authorized at Twilio; no token is stored. The platform acts on the subaccount with its own token.">via PragOptics</span>' : isManagedShippo(c) ? '<span class="acct-tag is-primary" title="Authorized at Shippo; the access token Shippo issued for PragOptics sits in this environment\'s vault, never shown.">via PragOptics</span>' : `<code class="ev-prefix">••••${e(c.hint || '')}</code>`}</td>
                 <td class="cell-tight">${connStatusTag(c)}</td>
                 <td class="cell-tight adm-muted">${c.verifiedAt ? e(D.fmtDate(c.verifiedAt)) : 'never'}</td>
                 <td class="cell-tight ev-actions-cell">${manage ? (ev.connArm === c.id ? `
@@ -1190,7 +1192,9 @@ function connectionsHtml() {
                   ${isManagedStripe(c) && (() => { const s = stripeState(c.detail); return s.kind === 'action' || s.kind === 'incomplete' || (s.kind === 'payments' && s.needs.length > 0); })() ? `<button class="btn btn-sm" type="button" data-env-action="conn-stripe-continue" data-id="${e(c.id)}" ${ev.connBusy ? 'disabled' : ''} title="Stripe's own pages for what it still needs">Continue setup</button>` : ''}
                   ${isManagedTwilio(c) && c.status !== 'ACTIVE' ? `<button class="btn btn-sm" type="button" data-env-action="conn-twilio-start" data-id="${e(c.id)}" ${ev.connBusy ? 'disabled' : ''} title="Twilio's authorization page for PragOptics, on your own Twilio account">${c.detail?.disconnected || c.detail?.declined ? 'Connect again' : 'Authorize at Twilio'}</button>` : ''}
                   ${isManagedShippo(c) && c.status !== 'ACTIVE' ? `<button class="btn btn-sm" type="button" data-env-action="conn-shippo-start" data-id="${e(c.id)}" ${ev.connBusy ? 'disabled' : ''} title="Shippo's authorization page for PragOptics; sign in or create your Shippo account there">${c.detail?.disconnected || c.detail?.declined ? 'Connect again' : 'Authorize at Shippo'}</button>` : ''}
-                  <button class="btn btn-sm" type="button" data-env-action="${isManagedStripe(c) ? 'conn-stripe-refresh' : isManagedTwilio(c) ? 'conn-twilio-refresh' : isManagedShippo(c) ? 'conn-shippo-refresh' : 'conn-test'}" data-id="${e(c.id)}" ${testing ? 'disabled' : ''}>${testing ? 'Checking…' : isManaged(c) ? 'Check status' : 'Test'}</button>
+                  ${isManagedShopify(c) && c.status !== 'ACTIVE' ? `<button class="btn btn-sm" type="button" data-env-action="conn-shopify-link" data-id="${e(c.id)}" data-shop="${e(c.detail?.shop || '')}" ${ev.connBusy ? 'disabled' : ''} title="A fresh link for your supplier; the old one stops working">Link for the supplier</button>` : ''}
+                  ${isManagedShopify(c) && c.status === 'ACTIVE' ? `<button class="btn btn-sm" type="button" data-env-action="conn-shopify-sync" data-id="${e(c.id)}" ${ev.connSyncing === c.id ? 'disabled' : ''} title="Copy the store's products into this environment's data, table supplier_products">${ev.connSyncing === c.id ? 'Syncing…' : 'Sync products'}</button>` : ''}
+                  <button class="btn btn-sm" type="button" data-env-action="${isManagedStripe(c) ? 'conn-stripe-refresh' : isManagedTwilio(c) ? 'conn-twilio-refresh' : isManagedShippo(c) ? 'conn-shippo-refresh' : isManagedShopify(c) ? 'conn-shopify-refresh' : 'conn-test'}" data-id="${e(c.id)}" ${testing ? 'disabled' : ''}>${testing ? 'Checking…' : isManaged(c) ? 'Check status' : 'Test'}</button>
                   <button class="btn btn-sm" type="button" data-env-action="conn-remove" data-id="${e(c.id)}" data-label="${e(c.label)}">Remove</button>`) : ''}</td>
               </tr>`; }).join('')}
           </tbody>
@@ -1210,6 +1214,15 @@ function connectionsHtml() {
         </div>
         ${picked ? connFieldsHtml(picked) : ''}
         ${atLimit ? `<p class="acct-card-note ev-note">This environment holds ${ev.connLimit} connections, the most it can carry. Remove one to connect another.</p>` : ''}
+        ${!picked && !atLimit ? `
+        <div class="ev-conn-managed">
+          <p class="acct-card-note ev-dom-note">Sell a supplier's products and let them ship. If your supplier runs a Shopify store, type its address and the platform makes a link for you to send them. They open it, approve PragOptics on their own store, and their products appear in this environment for your site. They bill you the way they always have; the platform is never in the money.</p>
+          <div class="ev-key-row">
+            <input class="acct-input" id="evShopifyShop" type="text" inputmode="url" autocomplete="off" placeholder="supplier-name.myshopify.com" aria-label="Your supplier's Shopify store address" value="${e(ev.shopifyShop || '')}">
+            <button class="btn" type="button" data-env-action="conn-shopify-start" ${ev.connBusy ? 'disabled' : ''}>${ev.connBusy ? 'Making the link…' : 'Make the link for your supplier'}</button>
+          </div>
+          ${ev.shopifyLink ? `<p class="acct-card-note ev-note">Send this to your supplier: <code class="ev-code">${e(ev.shopifyLink)}</code> <button class="btn btn-sm" type="button" data-env-action="domain-copy" data-text="${e(ev.shopifyLink)}">Copy</button></p>` : ''}
+        </div>` : ''}
         ${(!picked || picked.id === 'shippo') && !atLimit && !(rows || []).some(isManagedShippo) ? `
         <div class="ev-conn-managed">
           <p class="acct-card-note ev-dom-note">Ship with your own Shippo account. Press the button and Shippo signs you in, or creates your Shippo account right there if you have none, and asks you to approve PragOptics. Labels are bought on your account and Shippo bills you directly. No API token to copy.</p>
@@ -1715,6 +1728,47 @@ async function refreshShippoConnect(id, quiet = false) {
   await loadConnections();
 }
 
+/** A Shopify supplier (2026-09-16): the platform opens a pending row for the supplier's store and hands back the invite link the customer sends them. */
+async function startShopifyConnect(id = '', shopFromRow = '') {
+  if (ev.connBusy) return;
+  D.showError('evConnError', '');
+  const shop = String(shopFromRow || document.getElementById('evShopifyShop')?.value || '').trim();
+  if (!shop) { D.showError('evConnError', 'Type your supplier\'s Shopify store address first, like supplier-name.myshopify.com.'); return; }
+  ev.shopifyShop = shop; ev.connBusy = true; ev.connResult = ''; paintConnections();
+  try {
+    const d = await post(`${ENV_URL}/connections/shopify/start`, { shop });
+    if (!d?.url) throw new Error('The platform did not answer with a link.');
+    ev.shopifyLink = d.url; ev.shopifyShop = ''; ev.connResult = d.note || 'Send the link to your supplier.';
+    ev.connBusy = false;
+    await loadConnections();
+  } catch (ex) {
+    ev.connBusy = false; paintConnections();
+    D.showError('evConnError', errText(ex, 'Could not make the link right now.'));
+  }
+}
+async function refreshShopifyConnect(id, quiet = false) {
+  if (!id || ev.connTesting) return;
+  if (!quiet) D.showError('evConnError', '');
+  ev.connTesting = id; paintConnections();
+  try {
+    const d = await post(`${ENV_URL}/connections/shopify/refresh`, { id });
+    ev.connResult = d.connection?.message || 'Shopify answered for the store.';
+  } catch (ex) { if (!quiet) D.showError('evConnError', errText(ex, 'Could not check that supplier.')); }
+  ev.connTesting = '';
+  await loadConnections();
+}
+async function syncShopifyProducts(id) {
+  if (!id || ev.connSyncing) return;
+  D.showError('evConnError', '');
+  ev.connSyncing = id; ev.connResult = ''; paintConnections();
+  try {
+    const d = await post(`${ENV_URL}/connections/shopify/sync`, { id });
+    ev.connResult = d.note || `${d.total} products copied.`;
+  } catch (ex) { D.showError('evConnError', errText(ex, 'Could not copy the products right now.')); }
+  ev.connSyncing = '';
+  await loadConnections();
+}
+
 async function startTwilioConnect() {
   if (ev.connBusy) return;
   D.showError('evConnError', '');
@@ -1782,7 +1836,7 @@ async function handleProviderReturn() {
   try {
     // The return rides in the hash: /#account?connect=stripe|twilio&id=...&outcome=...; the hash is cleaned back to #account.
     const q = new URLSearchParams(String(window.location.hash || '').split('?')[1] || '');
-    if (['stripe', 'twilio', 'shippo'].includes(q.get('connect'))) { provider = q.get('connect'); id = q.get('id') || ''; outcome = q.get('outcome') || 'return'; history.replaceState(null, '', window.location.pathname + '#account'); }
+    if (['stripe', 'twilio', 'shippo', 'shopify'].includes(q.get('connect'))) { provider = q.get('connect'); id = q.get('id') || ''; outcome = q.get('outcome') || 'return'; history.replaceState(null, '', window.location.pathname + '#account'); }
   } catch { /* no query to read */ }
   if (!id) {
     try {
@@ -1798,6 +1852,12 @@ async function handleProviderReturn() {
     ev.connResult = outcome === 'declined' ? 'You declined the authorization at Twilio. Nothing was connected.' : outcome === 'failed' ? 'Twilio named an account the platform could not read. Try connecting again.' : 'Back from Twilio. Checking the account…';
     paintConnections();
     await refreshTwilioConnect(id, true);
+    return;
+  }
+  if (provider === 'shopify') {
+    ev.connResult = 'Back from Shopify. Checking the supplier…';
+    paintConnections();
+    await refreshShopifyConnect(id, true);
     return;
   }
   if (provider === 'shippo') {
@@ -1901,6 +1961,10 @@ export function bindEnvironmentActions(deps) {
     if (a === 'conn-twilio-refresh') return void refreshTwilioConnect(btn.dataset.id || '');
     if (a === 'conn-shippo-start') return void startShippoConnect();
     if (a === 'conn-shippo-refresh') return void refreshShippoConnect(btn.dataset.id || '');
+    if (a === 'conn-shopify-start') return void startShopifyConnect();
+    if (a === 'conn-shopify-link') return void startShopifyConnect(btn.dataset.id || '', btn.dataset.shop || '');
+    if (a === 'conn-shopify-refresh') return void refreshShopifyConnect(btn.dataset.id || '');
+    if (a === 'conn-shopify-sync') return void syncShopifyProducts(btn.dataset.id || '');
   });
 
   document.addEventListener('change', (e) => {
