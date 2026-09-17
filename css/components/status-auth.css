@@ -4,7 +4,7 @@
 .po-status-modal{
   position:fixed;
   inset:0;
-  z-index:9999;
+  z-index:11002;   /* above the login modal (10001) and the cart (981), below the loader veil (12000): the one message that must be read and closed whatever else is open (2026-09-17) */
 }
 
 .po-status-modal.hidden{
