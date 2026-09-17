@@ -38,6 +38,68 @@ const SEAT_ROLES = new Set(['owner', 'admin', 'developer', 'member']);
 const DOMAIN_ROLES = new Set(['owner', 'admin', 'developer']);   // who connects, verifies and removes a domain
 
 const LANE_KEY = 'pragoptics_env_lane';   // the lane the person was looking at; survives a section re-render
+/* ================================================================
+   icons, cards (2026-09-17: one line per card until opened, an icon on
+   every action, every explanation behind How it works)
+   ================================================================ */
+const OPEN_KEY = 'pragoptics_env_open';   // which cards the person left open; survives a re-render, not a new tab
+const ICONS = {
+  refresh: '<polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>',
+  download: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>',
+  external: '<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>',
+  copy: '<rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>',
+  trash: '<polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>',
+  check: '<polyline points="20 6 9 17 4 12"/>',
+  chevron: '<polyline points="6 9 12 15 18 9"/>',
+  x: '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>',
+  link: '<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>',
+  key: '<path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/>',
+  folder: '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>',
+  plug: '<path d="M12 22v-5"/><path d="M9 8V2"/><path d="M15 8V2"/><path d="M18 8v5a6 6 0 0 1-12 0V8z"/>',
+  globe: '<circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>',
+  database: '<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>',
+  plus: '<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>',
+  box: '<path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/>',
+  send: '<line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>'
+};
+function ico(name) { return `<svg class="ev-ico" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${ICONS[name] || ''}</svg>`; }
+/** An icon-only action: the label lives in the tooltip and for screen readers. */
+function iconBtn(action, name, label, attrs = '', cls = '') {
+  const e = D.escapeHtml;
+  return `<button class="btn btn-sm btn-ico ${cls}" type="button" data-env-action="${e(action)}" aria-label="${e(label)}" title="${e(label)}" ${attrs}>${ico(name)}</button>`;
+}
+function openState() { try { return JSON.parse(sessionStorage.getItem(OPEN_KEY) || '{}') || {}; } catch { return {}; } }
+function isOpen(key) { return !!(ev.open || (ev.open = openState()))[key]; }
+function setOpen(key, on) { ev.open = ev.open || openState(); ev.open[key] = !!on; try { sessionStorage.setItem(OPEN_KEY, JSON.stringify(ev.open)); } catch { /* fine */ } }
+function toggleCard(key) {
+  setOpen(key, !isOpen(key));
+  const sec = document.querySelector(`.ev-card[data-card="${key}"]`);
+  if (!sec) return;
+  const open = isOpen(key);
+  sec.classList.toggle('is-open', open);
+  const body = sec.querySelector('.ev-card-body'); if (body) body.hidden = !open;
+  const t = sec.querySelector('.ev-card-toggle'); if (t) t.setAttribute('aria-expanded', String(open));
+}
+/** A card: one line (icon, title, a summary) until opened; the explainer link on the line; the body below. */
+function cardHtml({ key, icon, title, summary, explain = '', body }) {
+  const e = D.escapeHtml;
+  const open = isOpen(key);
+  return `
+    <section class="acct-card ev-card ${open ? 'is-open' : ''}" data-card="${e(key)}">
+      <div class="ev-card-head">
+        <button class="ev-card-toggle" type="button" data-env-action="card-toggle" data-card="${e(key)}" aria-expanded="${open}" aria-controls="evCard-${e(key)}">
+          <span class="ev-card-ico">${ico(icon)}</span>
+          <span class="ev-card-title">${e(title)}</span>
+          <span class="ev-card-sum">${summary}</span>
+          <span class="ev-card-chev">${ico('chevron')}</span>
+        </button>
+        ${explain ? `<span class="ev-card-explain">${explain}</span>` : ''}
+      </div>
+      <div class="ev-card-body" id="evCard-${e(key)}" ${open ? '' : 'hidden'}>${body}</div>
+    </section>`;
+}
+function countWord(n, one, many) { return `${n} ${n === 1 ? one : many}`; }
+
 function laneChoice() { try { return sessionStorage.getItem(LANE_KEY) === 'sandbox' ? 'sandbox' : 'live'; } catch { return 'live'; } }
 const ev = { lane: laneChoice(), teamId: '', view: null, files: null, filesTruncated: false, keys: null, madeKey: null, filesNote: '', uploading: false, domains: null, domainLimit: 0, cnameTarget: null, serving: null, binding: '', domainNote: '', checking: '', registrations: [], reg: null,
   // Connected accounts (the connection broker): the list, the provider
@@ -141,6 +203,9 @@ export async function renderEnvironment(main, deps) {
   D = deps;
   ev.madeKey = null; ev.filesNote = ''; ev.files = null; ev.keys = null; ev.domains = null; ev.domainNote = ''; ev.linkNote = ''; ev.domArm = ''; ev.keyArm = ''; ev.checking = ''; ev.registrations = []; ev.reg = freshReg();
   ev.connections = null; ev.connProviders = []; ev.connNote = ''; ev.connPick = ''; ev.connBusy = false; ev.connResult = ''; ev.connTesting = ''; ev.connDraft = {}; ev.connArm = ''; ev.shopifyShop = ''; ev.shopifyLink = ''; ev.connSyncing = '';
+  ev.domTab = ev.domTab || 'connect'; ev.open = openState();
+  // A link that names a card (/#account?section=environment&card=connections) opens that card; account.js scrolls to it.
+  try { const want = JSON.parse(sessionStorage.getItem('pragoptics_open_card') || 'null'); const card = { files: 'files', connections: 'connections', domains: 'domains', keys: 'keys' }[String(want?.card || '')]; if (card) setOpen(card, true); } catch { /* fine */ }
   main.innerHTML = `
     <header class="acct-sec-head has-explain"><h2 class="acct-sec-title">Environment</h2>${explainLink('environment', 'How your environment works')}</header>
     <p class="acct-error" id="evError" hidden></p>
@@ -252,7 +317,7 @@ function paint() {
     : `<div id="evFiles">${filesHtml()}</div><div id="evConnections">${connectionsHtml()}</div><div id="evDomains">${domainsHtml()}</div><div id="evKeys">${keysHtml()}</div>`;
   host.innerHTML = `
     ${summaryHtml(ev.view)}
-    ${ready ? cards : ''}
+    ${ready ? `<div class="ev-cards">${cards}</div>` : ''}
   `;
 }
 
@@ -265,9 +330,9 @@ function laneSwitchHtml(t) {
   const tag = sb.phase === 'READY' ? '' : sb.phase === 'PROVISIONING' ? ' <span class="acct-tag is-pending">setting up</span>' : ' <span class="acct-tag">not set up</span>';
   return `
     <div class="ev-lanes" role="tablist" aria-label="Which lane of this environment">
-      <button class="ev-lane ${ev.lane === 'live' ? 'is-on' : ''}" type="button" role="tab" aria-selected="${ev.lane === 'live'}" data-env-action="lane-live">Live</button>
-      <button class="ev-lane ${ev.lane === 'sandbox' ? 'is-on' : ''}" type="button" role="tab" aria-selected="${ev.lane === 'sandbox'}" data-env-action="lane-sandbox">Sandbox${tag}</button>
-      <span class="ev-lane-hint">${ev.lane === 'sandbox' ? 'Build and test here. Nothing touches live.' : 'What your programs and your customers use.'}</span>
+      <button class="ev-lane ${ev.lane === 'live' ? 'is-on' : ''}" type="button" role="tab" aria-selected="${ev.lane === 'live'}" data-env-action="lane-live" title="What your programs and your customers use">Live</button>
+      <button class="ev-lane ${ev.lane === 'sandbox' ? 'is-on' : ''}" type="button" role="tab" aria-selected="${ev.lane === 'sandbox'}" data-env-action="lane-sandbox" title="Build and test here. Nothing touches live.">Sandbox${tag}</button>
+
     </div>`;
 }
 
@@ -385,37 +450,37 @@ function summaryHtml(v) {
   const isOwner = me.role === 'owner';
   const name = t.organizationName || '';
   const stalled = phase !== 'READY' && phase !== 'SUSPENDED';
+  const l = lanesOf(t);
+  const w = (l && l[ev.lane] && l[ev.lane].storage) || { kind: s.kind, account: s.account };
+  const whereTag = ev.lane === 'sandbox' && sandboxState(t)?.phase !== 'READY' ? '' : w.kind === 'dedicated'
+    ? `<span class="acct-tag is-verified" title="This lane lives in its own Azure storage account${w.account ? `, ${e(w.account)}` : ''}: nothing shared with any other customer.">own storage</span>`
+    : w.kind ? '<span class="acct-tag" title="This lane lives in a private partition of the platform\'s storage account.">shared storage</span>' : '';
   return `
     <section class="acct-card ev-summary">
       <div class="ev-head">
         <div class="ev-id">
           <div class="ev-tags"><span class="acct-tag is-primary">${e(tierName(t.tier))}</span>${phaseTag(phase)}<span class="acct-tag">${e(cap(me.role || 'viewer'))}</span></div>
           <h3 class="acct-card-h ev-name">${e(name || (isOwner ? 'Your environment' : 'Team environment'))}</h3>
-          <p class="acct-card-note ev-owner">Owner ${e(t.ownerEmail || '')}. The private space where the software, your programs and your team keep data and files.</p>
+          <p class="ev-owner adm-muted">${e(t.ownerEmail || '')}</p>
         </div>
         <div class="ev-actions">
-          ${phase === 'READY' && t.software?.url ? `<button class="btn btn-sm" type="button" data-env-action="open-software" data-url="${e(t.software.url)}" title="The software, in a new tab, signed in with this account">Open the software</button>` : ''}
-          <button class="btn btn-sm" type="button" data-env-action="refresh" title="Read the figures again">Refresh</button>
-          ${isOwner ? `<button class="btn btn-sm" type="button" data-acct-section="subscription" title="Storage grows with the plan, and with the storage add-on on the User plan">More storage</button>` : ''}
+          ${phase === 'READY' && t.software?.url ? `<button class="btn btn-sm ev-btn-ico" type="button" data-env-action="open-software" data-url="${e(t.software.url)}" title="The software, in a new tab, signed in with this account">${ico('external')}<span>Open the software</span></button>` : ''}
+          ${(me.role === 'owner' || me.role === 'admin') && (phase === 'READY' || phase === 'SUSPENDED') ? iconBtn('export', 'download', 'Download everything in this environment as one file') : ''}
+          ${iconBtn('refresh', 'refresh', 'Refresh')}
         </div>
       </div>
       ${phase === 'READY' || phase === 'SUSPENDED' ? `
       ${laneSwitchHtml(t)}
       <div class="use-row ev-meter">
         <div class="use-head">
-          <span class="use-name">Storage</span>
-          <span class="use-val">${e(used > 0 && used < 0.05 * 1024 ** 3 ? bytesFmt(used) : gb(used))} / ${e(gb(limit))}</span>
+          <span class="use-name">Storage ${whereTag}</span>
+          <span class="use-val">${e(used > 0 && used < 0.05 * 1024 ** 3 ? bytesFmt(used) : gb(used))} / ${e(gb(limit))}${isOwner ? ` <button class="ev-more" type="button" data-acct-section="subscription" title="Storage grows with the plan, and with the storage add-on on the User plan">More</button>` : ''}</span>
         </div>
         <div class="use-track"><div class="use-fill ${cls}" style="width:${pct.toFixed(1)}%"></div></div>
       </div>
-      <p class="acct-card-note ev-note">${s.unknown ? 'The bar reads what the plan carries; the figure refreshes with the next read.' : `Every value and every file counts. A write past the allowance plus ${e(gb(s.graceBytes || Math.ceil(limit * 0.1)))} of grace is refused, and nothing is ever deleted to make room.`}</p>
-      ${(() => { const l = lanesOf(t); const w = (l && l[ev.lane] && l[ev.lane].storage) || { kind: s.kind, account: s.account }; const laneWord = ev.lane === 'sandbox' ? 'Your sandbox' : 'This environment';
-        if (ev.lane === 'sandbox' && (sandboxState(t)?.phase !== 'READY')) return '';
-        return w.kind ? `<p class="acct-card-note ev-note ev-where">${w.kind === 'dedicated'
-          ? `<span class="acct-tag is-verified">your own storage</span> ${laneWord} lives in its own Azure storage account${w.account ? `, <code class="ev-prefix">${e(w.account)}</code>` : ''}: nothing shared with any other customer${ev.lane === 'sandbox' ? ', and nothing shared with your live lane' : ''}.`
-          : `<span class="acct-tag">shared storage</span> ${laneWord} lives in a private partition of the platform's storage account.`}</p>` : ''; })()}
-      ${phase === 'SUSPENDED' ? `<p class="acct-error ev-note">This environment is paused${t.suspendReason === 'closed' ? ' because the account was closed' : ' because the subscription ended'}. Everything in it can still be read and downloaded, nothing new can be written.${t.keepUntil ? ` It is kept until ${e(D.fmtDate(t.keepUntil))}, then removed.` : ''}${t.suspendReason === 'closed' ? '' : ' Restore a paid plan on Billing and it resumes exactly as it was.'}</p>` : ''}
-      ${(me.role === 'owner' || me.role === 'admin') ? `<div class="acct-actions-row ev-export-row"><button class="btn btn-sm" type="button" data-env-action="export" title="Everything in this environment as one file: data, file links, domains, keys, members">Download everything</button><span class="ev-status" id="evExportStatus" aria-live="polite"></span></div><p class="acct-error" id="evExportError" hidden></p>` : ''}` : ''}
+      ${pct >= 70 ? `<p class="acct-card-note ev-note">${pct >= 95 ? 'Almost full.' : 'Filling up.'} A write past the allowance plus ${e(gb(s.graceBytes || Math.ceil(limit * 0.1)))} of grace is refused; nothing is ever deleted to make room.</p>` : ''}
+      <span class="ev-status" id="evExportStatus" aria-live="polite"></span><p class="acct-error" id="evExportError" hidden></p>
+      ${phase === 'SUSPENDED' ? `<p class="acct-error ev-note">This environment is paused${t.suspendReason === 'closed' ? ' because the account was closed' : ' because the subscription ended'}. Everything in it can still be read and downloaded, nothing new can be written.${t.keepUntil ? ` It is kept until ${e(D.fmtDate(t.keepUntil))}, then removed.` : ''}${t.suspendReason === 'closed' ? '' : ' Restore a paid plan on Billing and it resumes exactly as it was.'}</p>` : ''}` : ''}
       ${stalled ? `
       <p class="acct-card-note ev-note">${phase === 'PROVISIONING'
         ? `Setup started and did not finish${t.provisionNote ? `: ${e(t.provisionNote)}` : ''}. It completes on its own within minutes; ${isOwner ? 'you can also finish it now.' : 'the owner can also finish it now.'}`
@@ -429,39 +494,38 @@ function summaryHtml(v) {
 
 function filesHtml() {
   const e = D.escapeHtml;
-  const write = canWrite();
   const rows = ev.files;
+  const total = (rows || []).reduce((s, f) => s + Number(f.size || 0), 0);
+  const summary = rows == null ? 'loading' : !rows.length ? 'none yet' : `${countWord(rows.length, 'file', 'files')} · ${e(bytesFmt(total))}`;
   const list = rows == null ? '<p class="acct-loading">Loading files…</p>'
-    : !rows.length ? `<p class="acct-empty">No files yet. Builds, images and exports the software and your programs store will land here.</p>`
+    : !rows.length ? `<p class="acct-empty">No files yet. The software puts its builds, images and exports here.</p>`
     : `
       <div class="adm-table-scroll">
         <table class="adm-table adm-table--wrap ev-table">
-          <thead><tr><th>Name</th><th class="adm-num">Size</th><th>Type</th><th>Modified</th><th></th></tr></thead>
+          <thead><tr><th>Name</th><th class="adm-num">Size</th><th>Modified</th><th></th></tr></thead>
           <tbody>
             ${rows.map(f => `
               <tr>
-                <td class="cell-ellip ev-name-cell" title="${e(f.name)}">${e(f.name)}${f.committed ? '' : ' <span class="acct-tag is-pending" title="Uploaded but never confirmed. The nightly check settles it; uploading it again also does.">unconfirmed</span>'}</td>
+                <td class="cell-ellip ev-name-cell" title="${e(f.name)}${f.contentType ? ` · ${e(f.contentType)}` : ''}">${e(f.name)}${f.committed ? '' : ' <span class="acct-tag is-pending" title="Uploaded but never confirmed. The nightly check settles it; uploading it again also does.">unconfirmed</span>'}</td>
                 <td class="adm-num cell-tight">${e(bytesFmt(f.size))}</td>
-                <td class="cell-tight adm-muted">${e(f.contentType || '')}</td>
                 <td class="cell-tight adm-muted">${e(D.fmtDate(f.lastModified))}</td>
                 <td class="cell-tight ev-actions-cell">
-                  ${viewTypeFor(f.name) ? `<button class="btn btn-sm" type="button" data-env-action="open" data-name="${e(f.name)}" title="Show it in a new tab">Open</button>` : ''}
-                  <button class="btn btn-sm" type="button" data-env-action="download" data-name="${e(f.name)}">Download</button>
+                  ${viewTypeFor(f.name) ? iconBtn('open', 'external', 'Open in a new tab', `data-name="${e(f.name)}"`) : ''}
+                  ${iconBtn('download', 'download', 'Download', `data-name="${e(f.name)}"`)}
                 </td>
               </tr>`).join('')}
           </tbody>
         </table>
       </div>
       ${ev.filesTruncated ? `<p class="acct-card-note">Showing the first ${rows.length}. The API lists the rest by prefix.</p>` : ''}`;
-  return `
-    <section class="acct-card">
-      <h3 class="acct-card-h">Files</h3>
-      <p class="acct-card-note">What is in this environment's file store, by name and size. Files get here through the software: its galleries, builds and exports. Open shows one in a new tab; Download saves it. Adding and removing files is done in the software, not here.</p>
+  return cardHtml({
+    key: 'files', icon: 'folder', title: 'Files', summary,
+    body: `
       ${ev.filesNote ? `<p class="acct-error">${e(ev.filesNote)}</p>` : ''}
       <span class="ev-status" id="evUpStatus" aria-live="polite"></span>
       <p class="acct-error" id="evFileError" hidden></p>
-      ${list}
-    </section>`;
+      ${list}`
+  });
 }
 
 /* ---------- domains ---------- */
@@ -482,8 +546,8 @@ function recordHtml(label, rec) {
   return `
     <dl class="ev-record" aria-label="${e(label)}">
       <dt>Type</dt><dd><code>${e(rec.type)}</code></dd><dd></dd>
-      <dt>Name</dt><dd><code>${e(rec.name)}</code></dd><dd><button class="btn btn-sm" type="button" data-env-action="domain-copy" data-text="${e(rec.name)}">Copy</button></dd>
-      <dt>${rec.type === 'CNAME' ? 'Target' : 'Value'}</dt><dd><code>${e(rec.value || rec.target || '')}</code></dd><dd><button class="btn btn-sm" type="button" data-env-action="domain-copy" data-text="${e(rec.value || rec.target || '')}">Copy</button></dd>
+      <dt>Name</dt><dd><code>${e(rec.name)}</code></dd><dd><button class="btn btn-sm btn-ico" type="button" data-env-action="domain-copy" data-text="${e(rec.name)}" aria-label="Copy" title="Copy">${ico('copy')}</button></dd>
+      <dt>${rec.type === 'CNAME' ? 'Target' : 'Value'}</dt><dd><code>${e(rec.value || rec.target || '')}</code></dd><dd><button class="btn btn-sm btn-ico" type="button" data-env-action="domain-copy" data-text="${e(rec.value || rec.target || '')}" aria-label="Copy" title="Copy">${ico('copy')}</button></dd>
     </dl>`;
 }
 
@@ -592,16 +656,14 @@ function domainHtml(d) {
 function linkDoorHtml(full) {
   const e = D.escapeHtml;
   const conns = dnsConnections();
-  if (!conns.length) {
-    return `<p class="acct-card-note ev-dom-door">Hold the name at GoDaddy? Connect that account under Connected accounts, then link the name here: the platform writes the proof and serving records itself. Nothing to paste.</p>`;
-  }
+  if (!conns.length) return '';
   return `
     <div class="ev-dom-row ev-dom-link">
       <select class="acct-input acct-select" id="evLinkConn" aria-label="Registrar account">${conns.map(c => `<option value="${e(c.id)}">${e(c.label)} (${e(providerLabel(c.provider))})</option>`).join('')}</select>
       <input class="acct-input" type="text" id="evLinkHost" maxlength="253" placeholder="www.example.com" autocomplete="off" spellcheck="false" autocapitalize="off" ${full ? 'disabled' : ''} />
       <button class="btn" type="button" data-env-action="domain-link" ${full ? 'disabled' : ''}>Link</button>
     </div>
-    <p class="acct-card-note ev-dom-door">A name you hold in that account. The platform checks it is there, writes the proof record itself and manages the name’s records from then on. Nothing to paste.</p>
+    <p class="acct-card-note ev-dom-door">A name held in that registrar account. The platform writes its records itself; nothing to paste.</p>
     ${ev.linkNote ? `<p class="acct-card-note">${e(ev.linkNote)}</p>` : ''}`;
 }
 
@@ -614,7 +676,7 @@ function dnsDoorHtml(full) {
       <input class="acct-input" type="text" id="evDnsHost" maxlength="253" placeholder="example.com" autocomplete="off" spellcheck="false" autocapitalize="off" ${full || s.busy ? 'disabled' : ''} />
       <button class="btn" type="button" data-env-action="domain-dns-start" ${full || s.busy ? 'disabled' : ''}>${s.busy ? 'Looking it up…' : 'Manage its DNS here'}</button>
     </div>
-    <p class="acct-card-note ev-dom-door">Your domain stays where you bought it. PragOptics only takes over its settings, so email, your website and the software can be set up here with a button. Nothing changes until you say so, and you can hand it back any time.</p>
+    <p class="acct-card-note ev-dom-door">The domain stays where you bought it. Its settings move here, nothing changes until you say so, and you can hand it back any time.</p>
     ${s.note ? `<p class="acct-card-note">${e(s.note)}</p>` : ''}`;
 }
 /** The tag on a row the DNS door touched. */
@@ -648,7 +710,7 @@ function hostedBodyHtml(d) {
   const busy = ev.dnsBusy === d.host;
   const shown = !!(ev.dnsRecs || {})[d.host];
   const note = (ev.dnsNote || {})[d.host] || '';
-  const ns = (h.nameServers || []).map(n => `<li><code>${e(n)}</code> <button class="btn btn-sm" type="button" data-env-action="domain-copy" data-text="${e(n)}">Copy</button></li>`).join('');
+  const ns = (h.nameServers || []).map(n => `<li><code>${e(n)}</code> <button class="btn btn-sm btn-ico" type="button" data-env-action="domain-copy" data-text="${e(n)}" aria-label="Copy" title="Copy">${ico('copy')}</button></li>`).join('');
   const recordsBtn = `<button class="btn btn-sm" type="button" data-env-action="domain-dns-records" data-host="${e(d.host)}">${shown ? 'Hide records' : 'Show records'}</button>`;
   const more = phase === 'REVIEW' || phase === 'SWITCHING' ? `
       <details class="ev-dom-more"><summary>Add records we did not find</summary>
@@ -691,7 +753,7 @@ function hostedBodyHtml(d) {
       <div class="ev-dom-actions">${recordsBtn}<button class="btn btn-sm" type="button" data-env-action="domain-dns-check" data-host="${e(d.host)}" ${busy ? 'disabled' : ''}>${busy ? 'Checking…' : 'Check now'}</button></div>`;
   }
   if (note) body += `<p class="acct-card-note ev-dom-note">${e(note)}</p>`;
-  if ((ev.dnsBack || {})[d.host]) body += `<p class="acct-card-note ev-dom-note">To hand it back, first set these nameservers at ${e(h.registrar || 'your registrar')} again, wait for the change to show, then press Hand DNS back once more.</p><ul class="ev-dom-ns">${(ev.dnsBack[d.host] || []).map(n => `<li><code>${e(n)}</code> <button class="btn btn-sm" type="button" data-env-action="domain-copy" data-text="${e(n)}">Copy</button></li>`).join('')}</ul>`;
+  if ((ev.dnsBack || {})[d.host]) body += `<p class="acct-card-note ev-dom-note">To hand it back, first set these nameservers at ${e(h.registrar || 'your registrar')} again, wait for the change to show, then press Hand DNS back once more.</p><ul class="ev-dom-ns">${(ev.dnsBack[d.host] || []).map(n => `<li><code>${e(n)}</code> <button class="btn btn-sm btn-ico" type="button" data-env-action="domain-copy" data-text="${e(n)}" aria-label="Copy" title="Copy">${ico('copy')}</button></li>`).join('')}</ul>`;
   return body;
 }
 
@@ -701,27 +763,43 @@ function domainsHtml() {
   const rows = ev.domains;
   const limit = ev.domainLimit;
   const full = rows && limit && rows.length >= limit;
+  const regs = ev.registrations || [];
+  const summary = rows == null ? 'loading' : !rows.length && !regs.length ? 'none yet' : `${countWord(rows.length, 'domain', 'domains')}${limit ? ` of ${limit}` : ''}${regs.length ? ` · ${countWord(regs.length, 'registering', 'registering')}` : ''}`;
   const list = rows == null ? '<p class="acct-loading">Loading domains…</p>'
-    : !rows.length ? `<p class="acct-empty">No domain connected yet.</p>`
+    : !rows.length ? (regs.length ? '' : `<p class="acct-empty">No domain yet.</p>`)
     : `<div class="ev-domains">${rows.map(domainHtml).join('')}</div>`;
-  return `
-    <section class="acct-card">
-      <h3 class="acct-card-h">Domains</h3>
-      <p class="acct-card-note">Bring a domain in by the door that fits. Connect one you own anywhere: one TXT record proves it is yours, and the platform never needs your registrar login. Link the registrar account that holds it, and the platform writes the records for you. Or register a new name here. ${explainLink('domains', 'How domains work')}</p>
-      ${manage ? `
+  const tabs = manage ? [
+    ['connect', 'Connect'],
+    ...(dnsConnections().length ? [['link', 'Link']] : []),
+    ['dns', 'Manage DNS here'],
+    ...(myRole() === 'owner' && !ev.domainNote ? [['register', 'Register']] : [])
+  ] : [];
+  if (manage && !tabs.some(x => x[0] === ev.domTab)) ev.domTab = 'connect';
+  const tabBar = tabs.length ? `<div class="ev-tabs" role="tablist" aria-label="How to bring a domain in">${tabs.map(([k, label]) => `<button class="ev-tab ${ev.domTab === k ? 'is-on' : ''}" type="button" role="tab" aria-selected="${ev.domTab === k}" data-env-action="dom-tab" data-tab="${k}">${e(label)}</button>`).join('')}</div>` : '';
+  let door = '';
+  if (manage) {
+    if (ev.domTab === 'connect') door = `
       <div class="ev-dom-row">
         <input class="acct-input" type="text" id="evDomainHost" maxlength="253" placeholder="www.example.com" autocomplete="off" spellcheck="false" autocapitalize="off" ${full ? 'disabled' : ''} />
         <button class="btn" type="button" data-env-action="domain-add" ${full ? 'disabled' : ''}>Connect</button>
       </div>
-      ${limit ? `<p class="acct-card-note ev-count">${e(String((rows || []).length))} of ${e(String(limit))} on this plan.${full ? ' Remove one to connect another, or move up a plan.' : ''}</p>` : ''}
-      ${linkDoorHtml(full)}
-      ${dnsDoorHtml(full)}` : `<p class="acct-card-note">The owner, an admin or a developer connects domains; everyone on the team sees them here.</p>`}
+      <p class="acct-card-note ev-dom-door">A domain you already own. One TXT record proves it is yours; nothing else changes.${full ? ' This plan is full: remove one to connect another, or move up a plan.' : ''}</p>`;
+    else if (ev.domTab === 'link') door = linkDoorHtml(full);
+    else if (ev.domTab === 'dns') door = dnsDoorHtml(full);
+    else if (ev.domTab === 'register') door = registerHtml();
+  } else {
+    door = `<p class="acct-card-note">The owner, an admin or a developer connects domains; everyone on the team sees them here.</p>`;
+  }
+  return cardHtml({
+    key: 'domains', icon: 'globe', title: 'Domains', summary, explain: explainLink('domains', 'How domains work'),
+    body: `
+      ${tabBar}
+      ${door}
       <p class="acct-error" id="evDomainError" hidden></p>
       ${ev.domainNote ? `<p class="acct-card-note">${e(ev.domainNote)}</p>` : ''}
       ${registrationsHtml()}
-      ${list}
-      ${myRole() === 'owner' && !ev.domainNote ? registerHtml() : ''}
-    </section>`;
+      ${list}`
+  });
 }
 
 /* ---------- registration through PragOptics ---------- */
@@ -758,15 +836,15 @@ function registerHtml() {
   const r = ev.reg;
   const q = r.quote;
   const c = r.contact || {};
-  const head = `<h4 class="tm-sub-h">Register a new domain</h4>`;
+  const head = '';
   if (r.step === 'idle' || r.step === 'checking') {
     return `
       ${head}
-      <p class="acct-card-note">Do not have one yet? Register it here. Type the name you want: the price is the registrar's, passed through with no markup, and the domain is yours, in your name.</p>
       <div class="ev-dom-row">
         <input class="acct-input" type="text" id="evRegHost" maxlength="253" placeholder="yourname.com" autocomplete="off" spellcheck="false" autocapitalize="off" value="${e(r.host)}" ${r.busy ? 'disabled' : ''} />
         <button class="btn" type="button" data-env-action="domain-reg-check" ${r.busy ? 'disabled' : ''}>${r.busy ? 'Checking…' : 'Check'}</button>
       </div>
+      <p class="acct-card-note ev-dom-door">The registrar's price, passed through with no markup. The name is yours, in your name.</p>
       <p class="acct-error" id="evRegError" ${r.error ? '' : 'hidden'}>${e(r.error)}</p>`;
   }
   if (r.step === 'quoted') {
@@ -1160,118 +1238,115 @@ function connFieldsHtml(p) {
         <input class="acct-input" type="text" id="evConnLabel" maxlength="60" placeholder="e.g. Shop SMS" autocomplete="off" spellcheck="false" value="${e(ev.connDraft.label || '')}" />
       </label>
     </div>
-    <p class="acct-card-note ev-note">${e(p.what)} The credential is checked with ${e(p.label)} before it is stored, then kept in your environment's own vault and never shown again.</p>`;
+    <p class="acct-card-note ev-dom-door">Checked with ${e(p.label)} first, then kept in this environment's vault and never shown again.</p>`;
 }
 
 function connectionsHtml() {
   const e = D.escapeHtml;
   const manage = canManageConnections();
   const rows = ev.connections;
-  const list = rows == null ? '<p class="acct-loading">Loading connected accounts…</p>'
-    : ev.connNote ? ''   // the note above already says why there is nothing to list
+  const summary = rows == null ? (ev.connNote ? 'not on this lane' : 'loading') : !rows.length ? 'nothing connected yet' : `${rows.length} connected${ev.connLimit ? ` of ${ev.connLimit}` : ''}`;
+  const list = rows == null ? (ev.connNote ? '' : '<p class="acct-loading">Loading connected accounts…</p>')
     : !rows.length ? `<p class="acct-empty">${manage ? 'Nothing connected yet.' : 'Nothing connected yet. The owner or an admin connects accounts.'}</p>`
     : `
       <div class="adm-table-scroll">
         <table class="adm-table adm-table--wrap ev-table">
-          <thead><tr><th>Account</th><th>Name</th><th>Identity</th><th>Credential</th><th>Status</th><th>Checked</th><th></th></tr></thead>
+          <thead><tr><th>Account</th><th>Identity</th><th>Status</th><th>Checked</th><th></th></tr></thead>
           <tbody>
             ${rows.map(c => {
               const p = providerOf(c.provider);
               const testing = ev.connTesting === c.id;
+              const kind = isManagedShopify(c) ? 'supplier' : isManaged(c) ? 'via PragOptics' : `key ••••${e(c.hint || '')}`;
+              const refreshAction = isManagedStripe(c) ? 'conn-stripe-refresh' : isManagedTwilio(c) ? 'conn-twilio-refresh' : isManagedShippo(c) ? 'conn-shippo-refresh' : isManagedShopify(c) ? 'conn-shopify-refresh' : 'conn-test';
               return `
-              <tr class="${c.status === 'REJECTED' ? 'ev-muted-row' : ''}">
-                <td class="cell-tight"><span class="acct-tag is-primary" title="${e(p?.label || c.provider)}">${e(PROVIDER_ICON[c.provider] || c.provider)}</span> ${e(p?.label || cap(c.provider))}</td>
-                <td class="cell-ellip" title="${e(c.label)}">${e(c.label)}</td>
+              <tr class="${c.status === 'REJECTED' ? 'ev-muted-row' : ''}" data-row="${e(c.provider)}">
+                <td class="cell-ellip"><span class="ev-conn-name" title="${e(c.label)}"><span class="acct-tag is-primary">${e(PROVIDER_ICON[c.provider] || c.provider)}</span> ${e(c.label)}</span><span class="ev-conn-kind adm-muted">${e(p?.label || cap(c.provider))} · ${kind}</span></td>
                 <td class="cell-ellip adm-muted">${connIdentity(c)}${stripeNeedsHtml(c)}</td>
-                <td class="cell-tight">${isManagedShopify(c) ? '<span class="acct-tag is-primary" title="The supplier approved this environment on their own Shopify store; the token sits in the vault of this environment, never shown.">supplier</span>' : isManagedStripe(c) ? '<span class="acct-tag is-primary" title="Opened by the platform; no credential is stored. Stripe acts on the account id.">via PragOptics</span>' : isManagedTwilio(c) ? '<span class="acct-tag is-primary" title="Authorized at Twilio; no token is stored. The platform acts on the subaccount with its own token.">via PragOptics</span>' : isManagedShippo(c) ? '<span class="acct-tag is-primary" title="Authorized at Shippo; the access token Shippo issued for PragOptics sits in this environment\'s vault, never shown.">via PragOptics</span>' : `<code class="ev-prefix">••••${e(c.hint || '')}</code>`}</td>
                 <td class="cell-tight">${connStatusTag(c)}</td>
                 <td class="cell-tight adm-muted">${c.verifiedAt ? e(D.fmtDate(c.verifiedAt)) : 'never'}</td>
                 <td class="cell-tight ev-actions-cell">${manage ? (ev.connArm === c.id ? `
                   <button class="btn btn-sm is-danger" type="button" data-env-action="conn-remove" data-id="${e(c.id)}" data-label="${e(c.label)}" title="The credential is deleted from the vault and anything using it stops on its next call">Remove for sure?</button>
-                  <button class="btn btn-sm" type="button" data-env-action="conn-remove-cancel">Cancel</button>` : `
+                  ${iconBtn('conn-remove-cancel', 'x', 'Keep it')}` : `
                   ${isManagedStripe(c) && (() => { const s = stripeState(c.detail); return s.kind === 'action' || s.kind === 'incomplete' || (s.kind === 'payments' && s.needs.length > 0); })() ? `<button class="btn btn-sm" type="button" data-env-action="conn-stripe-continue" data-id="${e(c.id)}" ${ev.connBusy ? 'disabled' : ''} title="Stripe's own pages for what it still needs">Continue setup</button>` : ''}
                   ${isManagedTwilio(c) && c.status !== 'ACTIVE' ? `<button class="btn btn-sm" type="button" data-env-action="conn-twilio-start" data-id="${e(c.id)}" ${ev.connBusy ? 'disabled' : ''} title="Twilio's authorization page for PragOptics, on your own Twilio account">${c.detail?.disconnected || c.detail?.declined ? 'Connect again' : 'Authorize at Twilio'}</button>` : ''}
                   ${isManagedShippo(c) && c.status !== 'ACTIVE' ? `<button class="btn btn-sm" type="button" data-env-action="conn-shippo-start" data-id="${e(c.id)}" ${ev.connBusy ? 'disabled' : ''} title="Shippo's authorization page for PragOptics; sign in or create your Shippo account there">${c.detail?.disconnected || c.detail?.declined ? 'Connect again' : 'Authorize at Shippo'}</button>` : ''}
-                  ${isManagedShopify(c) && c.status !== 'ACTIVE' ? `<button class="btn btn-sm" type="button" data-env-action="conn-shopify-link" data-id="${e(c.id)}" data-shop="${e(c.detail?.shop || '')}" ${ev.connBusy ? 'disabled' : ''} title="A fresh link for your supplier; the old one stops working">Link for the supplier</button>` : ''}
-                  ${isManagedShopify(c) && c.status === 'ACTIVE' ? `<button class="btn btn-sm" type="button" data-env-action="conn-shopify-sync" data-id="${e(c.id)}" ${ev.connSyncing === c.id ? 'disabled' : ''} title="Copy the store's products into this environment's data, table supplier_products">${ev.connSyncing === c.id ? 'Syncing…' : 'Sync products'}</button>` : ''}
-                  <button class="btn btn-sm" type="button" data-env-action="${isManagedStripe(c) ? 'conn-stripe-refresh' : isManagedTwilio(c) ? 'conn-twilio-refresh' : isManagedShippo(c) ? 'conn-shippo-refresh' : isManagedShopify(c) ? 'conn-shopify-refresh' : 'conn-test'}" data-id="${e(c.id)}" ${testing ? 'disabled' : ''}>${testing ? 'Checking…' : isManaged(c) ? 'Check status' : 'Test'}</button>
-                  <button class="btn btn-sm" type="button" data-env-action="conn-remove" data-id="${e(c.id)}" data-label="${e(c.label)}">Remove</button>`) : ''}</td>
+                  ${isManagedShopify(c) && c.status !== 'ACTIVE' ? `<button class="btn btn-sm ev-btn-ico" type="button" data-env-action="conn-shopify-link" data-id="${e(c.id)}" data-shop="${e(c.detail?.shop || '')}" ${ev.connBusy ? 'disabled' : ''} title="A fresh link for your supplier; the old one stops working">${ico('send')}<span>Supplier link</span></button>` : ''}
+                  ${isManagedShopify(c) && c.status === 'ACTIVE' ? `<button class="btn btn-sm ev-btn-ico" type="button" data-env-action="conn-shopify-sync" data-id="${e(c.id)}" ${ev.connSyncing === c.id ? 'disabled' : ''} title="Copy the store's products into this environment's data, table supplier_products">${ico('refresh')}<span>${ev.connSyncing === c.id ? 'Syncing…' : 'Sync products'}</span></button>` : ''}
+                  ${iconBtn(refreshAction, testing ? 'refresh' : 'check', isManaged(c) ? 'Check status' : 'Test the credential', `data-id="${e(c.id)}" ${testing ? 'disabled' : ''}`, testing ? 'is-spinning' : '')}
+                  ${iconBtn('conn-remove', 'trash', 'Remove', `data-id="${e(c.id)}" data-label="${e(c.label)}"`)}`) : ''}</td>
               </tr>`; }).join('')}
           </tbody>
         </table>
       </div>`;
 
-  const picked = providerOf(ev.connPick);
+  const pick = String(ev.connPick || '');
+  const picked = providerOf(pick);
   const atLimit = ev.connLimit > 0 && (rows || []).length >= ev.connLimit;
-  const form = !manage ? '' : ev.connNote ? '' : `
+  const has = (fn) => (rows || []).some(fn);
+  const doors = [
+    ...(has(isManagedStripe) ? [] : [['m:stripe', 'Stripe, set up through PragOptics']]),
+    ...(has(isManagedTwilio) ? [] : [['m:twilio', 'Twilio, your account']]),
+    ...(has(isManagedShippo) ? [] : [['m:shippo', 'Shippo, your account']]),
+    ['m:shopify', 'Shopify supplier']
+  ];
+  const byo = (ev.connProviders || []).map(p => [p.id, `${p.label}, your own credential`]);
+  let form = '';
+  if (manage && !ev.connNote) {
+    let door = '';
+    if (pick === 'm:stripe') door = `
+        <div class="ev-key-row">
+          <input class="acct-input" type="text" id="evStripeBiz" maxlength="120" placeholder="Your business name (optional)" autocomplete="organization" value="${e(ev.connDraft?.stripeBusiness || '')}" />
+          <button class="btn" type="button" data-env-action="conn-stripe-start" ${ev.connBusy ? 'disabled' : ''}>${ev.connBusy ? 'Opening with Stripe…' : 'Set up Stripe'}</button>
+        </div>
+        <p class="acct-card-note ev-dom-door">The platform opens a Stripe account in your name and Stripe walks you through its setup. Your account, your Dashboard, the platform never in your money.</p>`;
+    else if (pick === 'm:twilio') door = `
+        <div class="ev-key-row"><button class="btn" type="button" data-env-action="conn-twilio-start" ${ev.connBusy ? 'disabled' : ''}>${ev.connBusy ? 'Opening with Twilio…' : 'Connect your Twilio account'}</button></div>
+        <p class="acct-card-note ev-dom-door">Approve PragOptics on your own upgraded Twilio account; Twilio bills you directly.</p>`;
+    else if (pick === 'm:shippo') door = `
+        <div class="ev-key-row"><button class="btn" type="button" data-env-action="conn-shippo-start" ${ev.connBusy ? 'disabled' : ''}>${ev.connBusy ? 'Opening with Shippo…' : 'Connect your Shippo account'}</button></div>
+        <p class="acct-card-note ev-dom-door">Sign in or create your Shippo account there and approve PragOptics; Shippo bills you directly for labels.</p>`;
+    else if (pick === 'm:shopify') door = `
+        <div class="ev-key-row">
+          <input class="acct-input" id="evShopifyShop" type="text" inputmode="url" autocomplete="off" placeholder="supplier-name.myshopify.com" aria-label="Your supplier's Shopify store address" value="${e(ev.shopifyShop || '')}">
+          <button class="btn" type="button" data-env-action="conn-shopify-start" ${ev.connBusy ? 'disabled' : ''}>${ev.connBusy ? 'Making the link…' : 'Make the link'}</button>
+        </div>
+        <p class="acct-card-note ev-dom-door">Your supplier's store address. You send them the link, they approve, and their products land here for your site. They bill you as they always have.</p>
+        ${ev.shopifyLink ? `<div class="ev-link-box"><code class="ev-code">${e(ev.shopifyLink)}</code>${iconBtn('domain-copy', 'copy', 'Copy the link', `data-text="${e(ev.shopifyLink)}"`)}</div>` : ''}`;
+    else if (picked) door = `${connFieldsHtml(picked)}<div class="ev-key-row"><button class="btn" type="button" data-env-action="conn-add" ${ev.connBusy ? 'disabled' : ''}>${ev.connBusy ? 'Checking with ' + e(picked.label) + '…' : 'Connect'}</button></div>`;
+    form = `
       <div class="ev-conn-add">
         <div class="ev-key-row">
           <select class="acct-input acct-select" id="evConnProvider" aria-label="Which account to connect" ${atLimit ? 'disabled' : ''}>
-            <option value="">Connect an account…</option>
-            ${(ev.connProviders || []).map(p => `<option value="${e(p.id)}" ${ev.connPick === p.id ? 'selected' : ''}>${e(p.label)}</option>`).join('')}
+            <option value="">Connect…</option>
+            <optgroup label="Through PragOptics">${doors.map(([v, label]) => `<option value="${e(v)}" ${pick === v ? 'selected' : ''}>${e(label)}</option>`).join('')}</optgroup>
+            <optgroup label="With a credential you paste">${byo.map(([v, label]) => `<option value="${e(v)}" ${pick === v ? 'selected' : ''}>${e(label)}</option>`).join('')}</optgroup>
           </select>
-          ${picked ? `<button class="btn" type="button" data-env-action="conn-add" ${ev.connBusy ? 'disabled' : ''}>${ev.connBusy ? 'Checking with ' + e(picked.label) + '…' : 'Connect'}</button>` : ''}
         </div>
-        ${picked ? connFieldsHtml(picked) : ''}
-        ${atLimit ? `<p class="acct-card-note ev-note">This environment holds ${ev.connLimit} connections, the most it can carry. Remove one to connect another.</p>` : ''}
-        ${!picked && !atLimit ? `
-        <div class="ev-conn-managed">
-          <p class="acct-card-note ev-dom-note">Sell a supplier's products and let them ship. If your supplier runs a Shopify store, type its address and the platform makes a link for you to send them. They open it, approve PragOptics on their own store, and their products appear in this environment for your site. They bill you the way they always have; the platform is never in the money.</p>
-          <div class="ev-key-row">
-            <input class="acct-input" id="evShopifyShop" type="text" inputmode="url" autocomplete="off" placeholder="supplier-name.myshopify.com" aria-label="Your supplier's Shopify store address" value="${e(ev.shopifyShop || '')}">
-            <button class="btn" type="button" data-env-action="conn-shopify-start" ${ev.connBusy ? 'disabled' : ''}>${ev.connBusy ? 'Making the link…' : 'Make the link for your supplier'}</button>
-          </div>
-          ${ev.shopifyLink ? `<p class="acct-card-note ev-note">Send this to your supplier: <code class="ev-code">${e(ev.shopifyLink)}</code> <button class="btn btn-sm" type="button" data-env-action="domain-copy" data-text="${e(ev.shopifyLink)}">Copy</button></p>` : ''}
-        </div>` : ''}
-        ${(!picked || picked.id === 'shippo') && !atLimit && !(rows || []).some(isManagedShippo) ? `
-        <div class="ev-conn-managed">
-          <p class="acct-card-note ev-dom-note">Ship with your own Shippo account. Press the button and Shippo signs you in, or creates your Shippo account right there if you have none, and asks you to approve PragOptics. Labels are bought on your account and Shippo bills you directly. No API token to copy.</p>
-          <div class="ev-key-row">
-            <button class="btn" type="button" data-env-action="conn-shippo-start" ${ev.connBusy ? 'disabled' : ''}>${ev.connBusy ? 'Opening with Shippo…' : 'Connect your Shippo account'}</button>
-          </div>
-        </div>` : ''}
-        ${(!picked || picked.id === 'twilio') && !atLimit && !(rows || []).some(isManagedTwilio) ? `
-        <div class="ev-conn-managed">
-          <p class="acct-card-note ev-dom-note">Have a Twilio account? Connect it instead of handing over a token. Twilio shows you PragOptics's authorization page on your own account, creates a subaccount inside it for the platform, and bills you directly. Twilio requires an upgraded account for this.</p>
-          <div class="ev-key-row">
-            <button class="btn" type="button" data-env-action="conn-twilio-start" ${ev.connBusy ? 'disabled' : ''}>${ev.connBusy ? 'Opening with Twilio…' : 'Connect your Twilio account'}</button>
-          </div>
-        </div>` : ''}
-        ${(!picked || picked.id === 'stripe') && !atLimit && !(rows || []).some(isManagedStripe) ? `
-        <div class="ev-conn-managed">
-          <p class="acct-card-note ev-dom-note">No Stripe account yet? The platform opens one in your name and Stripe walks you through its setup. It is your account: the full Stripe Dashboard, Stripe's fees paid by you, the platform never in your money.</p>
-          <div class="ev-key-row">
-            <input class="acct-input" type="text" id="evStripeBiz" maxlength="120" placeholder="Your business name (optional)" autocomplete="organization" value="${e(ev.connDraft?.stripeBusiness || '')}" />
-            <button class="btn" type="button" data-env-action="conn-stripe-start" ${ev.connBusy ? 'disabled' : ''}>${ev.connBusy ? 'Opening with Stripe…' : 'Set up Stripe through PragOptics'}</button>
-          </div>
-        </div>` : ''}
+        ${atLimit ? `<p class="acct-card-note ev-note">This environment holds ${ev.connLimit} connections, the most it can carry. Remove one to connect another.</p>` : door}
       </div>`;
-
-  return `
-    <section class="acct-card">
-      <h3 class="acct-card-h">Connected accounts</h3>
-      <p class="acct-card-note">The accounts your environment acts through: text messages, shipping labels, payments, code, mail. You hand over a credential once; the platform proves it with the provider, locks it in a vault that belongs to this environment alone, and uses it on your behalf from then on. It is never shown again.${ev.lane === 'sandbox' ? ' <b>This is your sandbox: test keys live here, in its own vault. Live has its own connections.</b>' : ''} ${explainLink('connections', 'How connected accounts work')}</p>
+  }
+  return cardHtml({
+    key: 'connections', icon: 'plug', title: 'Connected accounts', summary, explain: explainLink('connections', 'How connected accounts work'),
+    body: `
+      ${ev.lane === 'sandbox' ? '<p class="acct-card-note ev-note"><b>Sandbox:</b> test keys live here, in its own vault. Live has its own connections.</p>' : ''}
       ${ev.connNote ? `<p class="acct-card-note ev-note">${e(ev.connNote)}</p>` : ''}
       ${form}
       <p class="acct-error" id="evConnError" hidden></p>
       ${ev.connResult ? `<p class="acct-card-note ev-note ev-conn-result" aria-live="polite">${e(ev.connResult)}</p>` : ''}
-      ${rows && rows.length ? `<p class="acct-card-note ev-count">${rows.length} connected${ev.connLimit ? ` of ${ev.connLimit}` : ''}.</p>` : ''}
-      ${list}
-    </section>`;
+      ${list}`
+  });
 }
 
 function keysHtml() {
   const e = D.escapeHtml;
   const me = ev.view?.membership || {};
   if (!canWrite()) {
-    return `
-      <section class="acct-card">
-        <h3 class="acct-card-h">API keys</h3>
-        <p class="acct-card-note">Keys are made by seat members for the programs they run. As a viewer you use what the team publishes. ${explainLink('keys', 'How keys work')}</p>
-      </section>`;
+    return cardHtml({ key: 'keys', icon: 'key', title: 'API keys', summary: 'seat members only', explain: explainLink('keys', 'How keys work'),
+      body: `<p class="acct-card-note">Keys are made by seat members for the programs they run. As a viewer you use what the team publishes.</p>` });
   }
   const rows = ev.keys;
   const active = (rows || []).filter(k => k.status === 'ACTIVE');
+  const summary = rows == null ? 'loading' : !active.length ? 'none yet' : countWord(active.length, 'active key', 'active keys');
   const list = rows == null ? '<p class="acct-loading">Loading keys…</p>'
     : !rows.length ? `<p class="acct-empty">No keys yet.</p>`
     : `
@@ -1290,15 +1365,14 @@ function keysHtml() {
                 <td class="cell-ellip adm-cell-email" title="${e(k.createdByEmail)}">${e(k.createdByEmail || '')}${mine ? ' <span class="adm-muted">(you)</span>' : ''}</td>
                 <td class="cell-tight adm-muted">${k.lastUsedAt ? e(D.fmtDate(k.lastUsedAt)) : 'never'}</td>
                 <td class="cell-tight"><span class="acct-tag ${k.status === 'ACTIVE' ? 'is-verified' : ''}">${e(String(k.status).toLowerCase())}</span></td>
-                <td class="cell-tight ev-actions-cell">${revocable ? `${ev.keyArm === k.keyId ? `<button class="btn btn-sm is-danger" type="button" data-env-action="key-revoke" data-key="${e(k.keyId)}" data-label="${e(k.label || k.prefix)}" title="Every call with it stops on the next request">Revoke for sure?</button><button class="btn btn-sm" type="button" data-env-action="key-arm-cancel">Cancel</button>` : `<button class="btn btn-sm" type="button" data-env-action="key-revoke" data-key="${e(k.keyId)}" data-label="${e(k.label || k.prefix)}">Revoke</button>`}` : ''}</td>
+                <td class="cell-tight ev-actions-cell">${revocable ? `${ev.keyArm === k.keyId ? `<button class="btn btn-sm is-danger" type="button" data-env-action="key-revoke" data-key="${e(k.keyId)}" data-label="${e(k.label || k.prefix)}" title="Every call with it stops on the next request">Revoke for sure?</button>${iconBtn('key-arm-cancel', 'x', 'Keep it')}` : iconBtn('key-revoke', 'trash', 'Revoke', `data-key="${e(k.keyId)}" data-label="${e(k.label || k.prefix)}"`)}` : ''}</td>
               </tr>`; }).join('')}
           </tbody>
         </table>
       </div>`;
-  return `
-    <section class="acct-card">
-      <h3 class="acct-card-h">API keys</h3>
-      <p class="acct-card-note">A key lets a program use this environment as you, without a person signing in: your scripts, a build server, a device, your own site. It reads and writes data and files, nothing else, and it stops the moment you revoke it or leave the team. ${explainLink('keys', 'How keys work')}</p>
+  return cardHtml({
+    key: 'keys', icon: 'key', title: 'API keys', summary, explain: explainLink('keys', 'How keys work'),
+    body: `
       <div class="ev-key-row">
         <input class="acct-input" type="text" id="evKeyLabel" maxlength="60" placeholder="What will hold it, e.g. build server" autocomplete="off" spellcheck="false" />
         <div class="ev-scopes" role="group" aria-label="What the key may do">
@@ -1307,21 +1381,21 @@ function keysHtml() {
         </div>
         <button class="btn" type="button" data-env-action="key-make">Make a key</button>
       </div>
+      <p class="acct-card-note ev-dom-door">A key lets a program use this environment as you: data and files, nothing else. Each member holds up to ten.</p>
       <p class="acct-error" id="evKeyError" hidden></p>
       ${ev.madeKey ? madeKeyHtml(ev.madeKey) : ''}
-      <p class="acct-card-note ev-count">${active.length} active key${active.length === 1 ? '' : 's'}. Each member holds up to ten.</p>
-      ${list}
-    </section>`;
+      ${list}`
+  });
 }
 
 function madeKeyHtml(k) {
   const e = D.escapeHtml;
   return `
     <div class="ev-key-result">
-      <p><b>Your new key${k.label ? ` for ${e(k.label)}` : ''}.</b> Copy it now: it is shown once and kept only as a fingerprint. Send it as the <code>x-api-key</code> header.</p>
+      <p><b>Your new key${k.label ? ` for ${e(k.label)}` : ''}.</b> Copy it now: it is shown once. Send it as the <code>x-api-key</code> header.</p>
       <div class="acct-add-row">
         <input class="acct-input ev-key" type="text" id="evMadeKey" readonly value="${e(k.key || '')}" aria-label="The new API key" />
-        <button class="btn btn-sm" type="button" data-env-action="key-copy">Copy</button>
+        ${iconBtn('key-copy', 'copy', 'Copy the key')}
       </div>
     </div>`;
 }
@@ -1427,14 +1501,7 @@ async function revokeKey(keyId, label) {
 
 async function copyKey(btn) {
   const text = document.getElementById('evMadeKey')?.value || '';
-  const orig = btn.textContent;
-  try { await navigator.clipboard.writeText(text); btn.textContent = 'Copied'; }
-  catch {
-    const input = document.getElementById('evMadeKey');
-    if (input) { input.focus(); input.select(); }
-    btn.textContent = 'Select and copy';
-  }
-  setTimeout(() => { btn.textContent = orig; }, 1600);
+  await copyText(text, btn, () => { const input = document.getElementById('evMadeKey'); if (input) { input.focus(); input.select(); } });
 }
 
 async function addDomain(btn) {
@@ -1896,11 +1963,13 @@ async function setRenewal(host, autoRenew, input) {
   catch (ex) { input.disabled = false; input.checked = !autoRenew; D.showError('evDomainError', errText(ex, 'Could not change the renewal choice.')); }
 }
 
-async function copyText(text, btn) {
-  const orig = btn.textContent;
-  try { await navigator.clipboard.writeText(text); btn.textContent = 'Copied'; }
-  catch { btn.textContent = 'Select the text'; }
-  setTimeout(() => { btn.textContent = orig; }, 1600);
+async function copyText(text, btn, onFail) {
+  const iconOnly = btn.classList.contains('btn-ico');
+  const orig = btn.innerHTML, origLabel = btn.getAttribute('aria-label') || '';
+  const show = (ok) => { if (iconOnly) { btn.innerHTML = ico(ok ? 'check' : 'x'); btn.setAttribute('aria-label', ok ? 'Copied' : 'Select the text and copy it'); } else btn.textContent = ok ? 'Copied' : 'Select the text'; };
+  try { await navigator.clipboard.writeText(text); show(true); }
+  catch { show(false); if (onFail) onFail(); }
+  setTimeout(() => { btn.innerHTML = orig; if (iconOnly) btn.setAttribute('aria-label', origLabel); }, 1600);
 }
 
 export function bindEnvironmentActions(deps) {
@@ -1913,6 +1982,8 @@ export function bindEnvironmentActions(deps) {
     if (!btn) return;
     e.preventDefault();
     const a = btn.dataset.envAction;
+    if (a === 'card-toggle') return void toggleCard(btn.dataset.card || '');
+    if (a === 'dom-tab') { ev.domTab = btn.dataset.tab || 'connect'; paintDomains(); return; }
     if (a === 'refresh') return void refreshAll();
     if (a === 'lane-live') return void setLane('live');
     if (a === 'lane-sandbox') return void setLane('sandbox');
