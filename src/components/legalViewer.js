@@ -123,7 +123,7 @@ export function initLegalViewer(options = {}) {
   if ($copy) $copy.addEventListener("click", async () => {
     const label = $copy.getAttribute("aria-label") || "";
     const say = (t, ok) => { $copy.innerHTML = ok ? CHECK_SVG : COPY_SVG; $copy.setAttribute("data-tip", t); $copy.setAttribute("aria-label", t); };
-    try { await navigator.clipboard.writeText(currentMd); say("Copied", true); } catch { say("Could not copy", false); }
+    try { const { writeClipboard } = await import("./explainer.js"); await writeClipboard(currentMd); say("Copied", true); } catch { say("Could not copy", false); }
     setTimeout(() => { $copy.innerHTML = COPY_SVG; $copy.setAttribute("data-tip", label); $copy.setAttribute("aria-label", label); }, 1600);
   });
 

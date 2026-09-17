@@ -26,7 +26,7 @@
 
 import { PRAG_API_BASE } from '../runtime/config.js';
 import { tierName } from '../components/tierCopy.js';
-import { explainLink } from '../components/explainer.js';
+import { explainLink, writeClipboard } from '../components/explainer.js';
 import { stripeAppearance } from '../api/stripeAppearance.js';
 import { ensureStripeJs } from '../runtime/stripeLoader.js';
 import { ico, iconBtn, cardHtml as sharedCard, isOpen, setOpen, initCards } from './cards.js';
@@ -1916,7 +1916,7 @@ async function copyText(text, btn, onFail) {
   const iconOnly = btn.classList.contains('btn-ico');
   const orig = btn.innerHTML, origLabel = btn.getAttribute('aria-label') || '';
   const show = (ok) => { if (iconOnly) { btn.innerHTML = ico(ok ? 'check' : 'x'); btn.setAttribute('aria-label', ok ? 'Copied' : 'Select the text and copy it'); } else btn.textContent = ok ? 'Copied' : 'Select the text'; };
-  try { await navigator.clipboard.writeText(text); show(true); }
+  try { await writeClipboard(text); show(true); }
   catch { show(false); if (onFail) onFail(); }
   setTimeout(() => { btn.innerHTML = orig; if (iconOnly) btn.setAttribute('aria-label', origLabel); }, 1600);
 }
