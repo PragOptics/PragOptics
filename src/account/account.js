@@ -200,7 +200,12 @@ async function apiFetch(url, options = {}) {
     const kill = sessionKillReason(res.status, data);
     if (kill) {
       err.sessionInvalidated = true;
-      if (!sessionKillFired) {
+      // A response for a token the app no longer holds is stale (a sign-in
+      // finished while this request was in flight): it says nothing about the
+      // session the app has now, so it must not end it (2026-09-17).
+      const stale = token && accessToken() !== token;
+      try { console.warn('[session] kill', kill, 'from', String(url).replace(/\?.*$/, ''), String(data?.error || ''), stale ? '(stale response, ignored)' : ''); } catch { /* fine */ }
+      if (!stale && !sessionKillFired) {
         sessionKillFired = true;
         try { window.invalidateSession?.(kill); } catch { /* teardown is best effort */ }
       }
