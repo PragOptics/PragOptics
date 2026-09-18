@@ -28,6 +28,7 @@
     import { initCookieNotice } from '../components/cookieNotice.js';
     import { initLegalViewer } from '../components/legalViewer.js';
     import { initExplainer } from '../components/explainer.js';
+    import { initTooltips } from '../components/tooltip.js';
     import { syncUserTheme } from './userTheme.js';
     import { initBrochureViewer } from '../components/brochureViewer.js';
     import { renderHardwareGallery } from '../shop/gallery.js';
@@ -93,6 +94,10 @@
     // The "How it works" pop-outs: one text link per complex surface, a short
     // human-written explainer from /docs/explain/ in the legal viewer's frame.
     initExplainer();
+    // One smart tooltip for the whole site: a floating bubble that flips above
+    // or below by where the anchor sits and clamps to the edges, so nothing is
+    // cut off near a screen edge (src/components/tooltip.js).
+    initTooltips();
     // A page that loads with a session already in it: the account's theme
     // and the footer toggle's absence apply at once (src/runtime/userTheme.js).
     syncUserTheme();

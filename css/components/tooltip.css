@@ -3,7 +3,43 @@
    general: any element carrying data-tip shows it above itself on hover and
    on keyboard focus. Glass fill, hairline border, a small arrow, tokens only
    so both themes hold. Icon buttons and the (i) explainers use it instead of
-   the browser's own title bubble. */
+   the browser's own title bubble.
+
+   Two layers: the CSS pseudo-bubble below is the NO-JS fallback (fixed to the
+   anchor, so it can clip at a screen edge). When src/components/tooltip.js
+   runs it adds `js-tips` to <html> and takes over with a single floating
+   element (.po-tip) that flips above/below by where the anchor sits and
+   clamps to the viewport, so the fallback is suppressed to avoid a double
+   bubble. */
+
+/* ---- the smart floating tooltip (JS-positioned) ---- */
+.po-tip {
+  position: fixed; left: 0; top: 0; z-index: 12050;
+  max-width: min(28rem, 90vw);
+  padding: 6px 10px; border-radius: 7px;
+  font: 500 .75rem/1.3 inherit; letter-spacing: 0; text-transform: none;
+  color: var(--ink);
+  background: color-mix(in srgb, var(--glass) 78%, var(--surface-deep, transparent));
+  border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
+  box-shadow: var(--bg-deep), 0 6px 20px color-mix(in srgb, var(--ink) 12%, transparent);
+  -webkit-backdrop-filter: blur(10px) saturate(140%);
+  backdrop-filter: blur(10px) saturate(140%);
+  pointer-events: none;
+  opacity: 0; transform: translateY(3px);
+  transition: opacity 120ms ease, transform 120ms ease;
+}
+.po-tip.is-shown { opacity: 1; transform: translateY(0); }
+.po-tip-text { display: block; }
+.po-tip-arrow {
+  position: absolute; width: 8px; height: 8px;
+  background: color-mix(in srgb, var(--glass) 78%, var(--surface-deep, transparent));
+  transform: translateX(-50%) rotate(45deg);
+}
+.po-tip.is-below .po-tip-arrow { top: -4px; border-left: 1px solid color-mix(in srgb, var(--border) 88%, transparent); border-top: 1px solid color-mix(in srgb, var(--border) 88%, transparent); }
+.po-tip.is-above .po-tip-arrow { bottom: -4px; border-right: 1px solid color-mix(in srgb, var(--border) 88%, transparent); border-bottom: 1px solid color-mix(in srgb, var(--border) 88%, transparent); }
+@media (prefers-reduced-motion: reduce) { .po-tip { transition: none; } }
+/* Once the JS tooltip is active, the pseudo-bubble fallback stands down. */
+html.js-tips [data-tip]::after, html.js-tips [data-tip]::before { display: none !important; content: none !important; }
 
 [data-tip] { position: relative; }
 
