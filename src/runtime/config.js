@@ -47,6 +47,15 @@ const lane = LANES[LANE] || LANES.live;
 export const PRAG_API_BASE = lane.apiBase;
 export const STRIPE_PUBLISHABLE_KEY = lane.stripePk;
 
+// The Studio (2026-09-19, Cameron: the flagship; Open Studio opens the studio,
+// nothing else). The site knows the studio's address itself, so the button
+// works whether or not the lane's backend names it. The studio talks to
+// WHATEVER lane the person is signed in on: the handoff carries this lane's
+// API base and lane name (#handoff=<code>&api=<base>&lane=<lane>), and the
+// studio redeems the code there and uses that base for everything after.
+// One address for both lanes until a dev studio exists; then LANES carries two.
+export const STUDIO_URL = lane.studioUrl || 'https://studio.pragoptics.com';
+
 // Explicit guest-order claim (v1/orders/claim): the "Link a guest order" card
 // and the checkout copy that points at it. Proven end to end on dev
 // 2026-09-06 (guest checkout -> confirmation email -> claim by order number).

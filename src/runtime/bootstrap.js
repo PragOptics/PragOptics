@@ -44,7 +44,7 @@
     import { initAdminView, onAdminEnter, refreshAdminNav } from '../admin/admin.js';
     import { initAccountView, onAccountEnter, presetAccountSection } from '../account/account.js';
     import { initJoinView, onJoinEnter } from '../team/join.js';
-    import { PRAG_API_BASE, LANE } from './config.js';
+    import { PRAG_API_BASE, LANE, STUDIO_URL } from "./config.js";
     import { consumeLaneSigninFlag, consumeLaneVerifier, consumeLaneHandoff } from './lane.js';
 
     // routePostLogin is now a thin forwarder only
@@ -580,11 +580,7 @@ function applyPostLoginResolution({ ping, force = false }) {
     // and consumed once that section renders.
     // The software (2026-09-16): a sign-in that started from it goes straight to it when the lane hosts it.
     if (back === "software") {
-      const url = String(ping?.software?.url || "");
-      if (/^https:\/\//i.test(url)) { (window.pragGoToSoftware || location.assign.bind(location))(url); return; }
-      clearBillingLandingOnly();
-      presetAccountSection("environment");
-      setAppMode("account");
+      (window.pragGoToSoftware || location.assign.bind(location))(STUDIO_URL);
       return;
     }
     if (["profile", "products", "subscription", "team", "environment", "orders", "builds"].includes(back)) {
@@ -792,25 +788,26 @@ window.applyPostLoginResolution = applyPostLoginResolution;
       else if (/^#software/i.test(String(location.hash || ""))) routeToSoftwareOnLoad();
     })();
 
-    // The session carried into the studio's origin by a one-time code (auth/softwareHandoff.js); the plain address when the mint fails.
+    // The session carried into the studio's origin by a one-time code (auth/softwareHandoff.js). The site composes the
+    // address itself from STUDIO_URL and adds this lane's API base and name, so the studio redeems the code on the lane
+    // the person is signed in on and talks to that lane after. The plain address when the mint fails (the studio asks for a sign-in).
     async function goToSoftware(url) {
-      let target = url;
+      const base = String(url || STUDIO_URL).replace(/\/+$/, "");
+      let target = base;
       try {
         const token = JSON.parse(sessionStorage.getItem("pragoptics_tokens") || "null")?.access_token || "";
         const res = await fetch(`${PRAG_API_BASE}/auth/software/handoff`, { method: "POST", headers: { Authorization: `Bearer ${token}` } });
         const d = res.ok ? await res.json() : null;
-        if (d?.url) target = d.url;
+        if (d?.code) target = `${base}/#handoff=${encodeURIComponent(d.code)}&api=${encodeURIComponent(PRAG_API_BASE)}&lane=${encodeURIComponent(LANE)}`;
       } catch { /* the plain address */ }
       location.assign(target);
     }
     window.pragGoToSoftware = goToSoftware;
     window.pragOpenStudio = () => routeToSoftwareOnLoad();
 
+    // Open Studio (2026-09-19): signed in, the studio, always; signed out, sign in first and land there.
     function routeToSoftwareOnLoad() {
-      let url = "";
-      try { url = JSON.parse(sessionStorage.getItem("pragoptics_ping") || "null")?.software?.url || ""; } catch { url = ""; }
-      if (isSessionActive() && /^https:\/\//i.test(url)) { goToSoftware(url); return; }
-      if (isSessionActive()) { presetAccountSection("environment"); setAppMode("account"); return; }
+      if (isSessionActive()) { goToSoftware(STUDIO_URL); return; }
       try { sessionStorage.setItem("pragoptics_return_to", "software"); } catch { /* falls back to the Environment section */ }
       setTimeout(() => { openLoginModal("login"); }, 50);
     }

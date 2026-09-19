@@ -24,7 +24,7 @@
 // Shared helpers (the fetch that carries the session, escaping, the error
 // wording, dates) arrive through `deps` from account.js.
 
-import { PRAG_API_BASE } from '../runtime/config.js';
+import { PRAG_API_BASE, STUDIO_URL, LANE } from '../runtime/config.js';
 import { tierName } from '../components/tierCopy.js';
 import { explainLink, writeClipboard } from '../components/explainer.js';
 import { stripeAppearance } from '../api/stripeAppearance.js';
@@ -409,7 +409,7 @@ function summaryHtml(v) {
           <p class="ev-owner adm-muted">${e(t.ownerEmail || '')}</p>
         </div>
         <div class="ev-actions">
-          ${phase === 'READY' && t.software?.url ? `<button class="btn btn-sm ev-btn-ico" type="button" data-env-action="open-software" data-url="${e(t.software.url)}" data-tip="The software, in a new tab, signed in with this account">${ico('external')}<span>Open the software</span></button>` : ''}
+          ${phase === 'READY' ? `<button class="btn btn-sm ev-btn-ico" type="button" data-env-action="open-software" data-url="${e(t.software?.url || STUDIO_URL)}" data-tip="The Studio, in a new tab, signed in with this account">${ico('external')}<span>Open Studio</span></button>` : ''}
           ${(me.role === 'owner' || me.role === 'admin') && (phase === 'READY' || phase === 'SUSPENDED') ? iconBtn('export', 'download', 'Download everything in this environment as one file') : ''}
           ${iconBtn('refresh', 'refresh', 'Refresh')}
         </div>
@@ -1838,12 +1838,14 @@ async function openSoftware(btn) {
   let w = null;
   try { w = window.open('about:blank', '_blank'); if (w) w.opener = null; } catch { w = null; }
   btn.disabled = true;
-  let target = plain;
+  const base = plain.replace(/\/+$/, '');
+  let target = base;
   try {
     const token = JSON.parse(sessionStorage.getItem('pragoptics_tokens') || 'null')?.access_token || '';
     const res = await fetch(`${PRAG_API_BASE}/auth/software/handoff`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
     const d = res.ok ? await res.json() : null;
-    if (d?.url) target = d.url;
+    // The code plus this lane's API base and name: the studio redeems on the lane the person is signed in on.
+    if (d?.code) target = `${base}/#handoff=${encodeURIComponent(d.code)}&api=${encodeURIComponent(PRAG_API_BASE)}&lane=${encodeURIComponent(LANE)}`;
   } catch { /* the plain address: the studio asks for a sign-in */ }
   btn.disabled = false;
   if (w) { try { w.location.replace(target); return; } catch { /* fall through */ } }
