@@ -468,6 +468,36 @@ async function loadRows(table, more = false) {
 }
 function closeTable() { ev.table = ''; ev.rows = null; ev.rowsAfter = ''; ev.openRow = ''; ev.rowsNote = ''; paintData(); }
 function valueText(v) { try { return typeof v === 'string' ? v : JSON.stringify(v, null, 2); } catch { return String(v); } }
+/** A field's name as a label: productId -> Product id, image_alt -> Image alt. */
+function labelOf(k) { const s = String(k).replace(/[_-]+/g, ' ').replace(/([a-z0-9])([A-Z])/g, '$1 $2').toLowerCase(); return s.charAt(0).toUpperCase() + s.slice(1); }
+function isImageUrl(v, k = '') { return typeof v === 'string' && /^https?:\/\//i.test(v) && (/\.(png|jpe?g|gif|webp|avif|svg)(\?|$)/i.test(v) || /image|photo|thumbnail|picture/i.test(String(k))); }
+function isUrl(v) { return typeof v === 'string' && /^https?:\/\/\S+$/i.test(v) && v.length < 2000; }
+/**
+ * A stored value as a card (2026-09-19, Cameron: not JSON). An object is a
+ * list of labeled fields; a nested object indents; an array of objects is a
+ * small table (a product's variants); an array of plain values is a row of
+ * chips; an image address shows the image; an address is a link. Copy still
+ * gives the JSON.
+ */
+function valueCardHtml(v, depth = 0) {
+  const e = D.escapeHtml;
+  if (v == null || v === '') return '<span class="adm-muted">empty</span>';
+  if (typeof v !== 'object') return isImageUrl(v) ? `<a href="${e(v)}" target="_blank" rel="noopener"><img class="ev-thumb" src="${e(v)}" alt=""></a>` : isUrl(v) ? `<a class="ev-link" href="${e(v)}" target="_blank" rel="noopener">${e(v)}</a>` : `<span class="ev-val-text">${e(String(v))}</span>`;
+  if (Array.isArray(v)) {
+    if (!v.length) return '<span class="adm-muted">none</span>';
+    if (v.every(x => x && typeof x === 'object' && !Array.isArray(x))) {
+      const keys = [...new Set(v.flatMap(x => Object.keys(x)))].filter(k => !/^(id)$/i.test(k) || v.every(x => Object.keys(x).length <= 2)).slice(0, 8);
+      return `<div class="adm-table-scroll ev-sub-table"><table class="adm-table adm-table--wrap ev-table"><thead><tr>${keys.map(k => `<th>${e(labelOf(k))}</th>`).join('')}</tr></thead><tbody>${v.slice(0, 50).map(x => `<tr>${keys.map(k => `<td data-th="${e(labelOf(k))}">${typeof x[k] === 'object' && x[k] !== null ? valueCardHtml(x[k], depth + 1) : e(x[k] == null ? '' : typeof x[k] === 'boolean' ? (x[k] ? 'yes' : 'no') : String(x[k]))}</td>`).join('')}</tr>`).join('')}</tbody></table></div>${v.length > 50 ? `<p class="adm-muted lic-desc">and ${v.length - 50} more</p>` : ''}`;
+    }
+    return `<span class="ev-chips">${v.slice(0, 40).map(x => `<span class="acct-tag">${e(typeof x === 'object' ? JSON.stringify(x) : String(x))}</span>`).join('')}</span>`;
+  }
+  const entries = Object.entries(v);
+  if (!entries.length) return '<span class="adm-muted">empty</span>';
+  // an image field leads the card
+  const imgKey = entries.find(([k, x]) => isImageUrl(x, k))?.[0];
+  const rows = entries.filter(([k]) => k !== imgKey).map(([k, x]) => `<div class="ev-kv-row"><dt class="ev-kv-k">${e(labelOf(k))}</dt><dd class="ev-kv-v">${typeof x === 'boolean' ? (x ? 'yes' : 'no') : valueCardHtml(x, depth + 1)}</dd></div>`).join('');
+  return `<div class="ev-kv ${depth ? 'is-nested' : ''}">${imgKey ? `<a class="ev-kv-img" href="${e(v[imgKey])}" target="_blank" rel="noopener"><img class="ev-thumb is-lead" src="${e(v[imgKey])}" alt="${e(String(v.imageAlt || v.alt || v.title || ''))}"></a>` : ''}<dl class="ev-kv-list">${rows}</dl></div>`;
+}
 /** One line of a value for the row: a string as itself, an object by its title, name or first keys. */
 function valuePeek(v) {
   if (v == null) return '';
@@ -520,7 +550,7 @@ function dataHtml() {
                 <td class="cell-tight adm-muted" data-th="Updated">${r.updatedAt ? e(D.fmtDate(r.updatedAt)) : ''}</td>
                 <td class="cell-tight ev-actions-cell">${iconBtn('data-row', ev.openRow === r.key ? 'x' : 'external', ev.openRow === r.key ? 'Close the value' : 'Show the value', `data-key="${e(r.key)}"`)}${iconBtn('domain-copy', 'copy', 'Copy the value', `data-text="${e(valueText(r.value))}"`)}</td>
               </tr>${ev.openRow === r.key ? `
-              <tr class="ev-note-row" data-row="value"><td colspan="5" data-th="Value"><pre class="ev-value">${e(valueText(r.value))}</pre></td></tr>` : ''}`).join('')}
+              <tr class="ev-note-row" data-row="value"><td colspan="5" data-th="Value"><div class="ev-value-card">${valueCardHtml(r.value)}</div></td></tr>` : ''}`).join('')}
           </tbody>
         </table>
       </div>
@@ -545,14 +575,13 @@ async function loadAi() {
   paintAi();
 }
 function cents(n) { const v = Number(n || 0); return v >= 100 ? `$${(v / 100).toFixed(2)}` : `${v % 1 ? v.toFixed(2) : v}¢`; }
-function dollars(n) { return `$${(Number(n || 0) / 100).toFixed(2)}`; }
-async function setAi(on, btn) {
+function dollars(n) { const c = Number(n || 0); return c > 0 && c < 1 ? `${c.toFixed(2)}¢` : `$${(c / 100).toFixed(2)}`; }
+async function setAi(on) {
   if (ev.aiBusy) return;
-  ev.aiBusy = true; if (btn) { btn.disabled = true; btn.textContent = on ? 'Turning on…' : 'Turning off…'; }
+  ev.aiBusy = true; paintAi();
   D.showError('evAiError', '');
-  try { await post(`${ENV_URL}/ai/${on ? 'enable' : 'disable'}`, {}); await loadAi(); }
-  catch (ex) { ev.aiBusy = false; paintAi(); D.showError('evAiError', errText(ex, on ? 'Could not turn AI on.' : 'Could not turn AI off.')); return; }
-  ev.aiBusy = false;
+  try { await post(`${ENV_URL}/ai/${on ? 'enable' : 'disable'}`, {}); ev.aiBusy = false; await loadAi(); }
+  catch (ex) { ev.aiBusy = false; paintAi(); D.showError('evAiError', errText(ex, on ? 'Could not turn AI on.' : 'Could not turn AI off.')); }
 }
 
 function aiHtml() {
@@ -570,8 +599,11 @@ function aiHtml() {
     inner = `
       ${!ready ? '<p class="acct-card-note">AI is being set up on the platform. Nothing to do on your side; the switch appears here when it is ready.</p>' : `
       <div class="ev-ai-row">
-        <span class="acct-tag ${on ? 'is-verified' : ''}">${on ? 'on' : 'off'}</span>
-        ${manage ? `<button class="btn btn-sm" type="button" data-env-action="${on ? 'ai-off' : 'ai-on'}" ${ev.aiBusy ? 'disabled' : ''}>${on ? 'Turn AI off' : 'Turn AI on'}</button>` : `<span class="adm-muted">The owner or an admin turns it ${on ? 'off' : 'on'}.</span>`}
+        <label class="ev-switch ${manage ? '' : 'is-locked'}" data-tip="${manage ? (on ? 'Turn AI off for this environment' : 'Turn AI on for this environment') : 'The owner or an admin turns it on or off'}">
+          <input type="checkbox" role="switch" data-env-switch="ai" ${on ? 'checked' : ''} ${manage && !ev.aiBusy ? '' : 'disabled'} aria-label="AI for this environment">
+          <span class="ev-switch-track" aria-hidden="true"><span class="ev-switch-thumb"></span></span>
+          <span class="ev-switch-text">${ev.aiBusy ? 'Saving…' : on ? 'AI is on' : 'AI is off'}</span>
+        </label>
       </div>
       <div class="use-row ev-meter">
         <div class="use-head"><span class="use-name">This month's credit</span><span class="use-val">${e(dollars(used))} / ${e(dollars(limit))} · ${callLine}</span></div>
@@ -2107,6 +2139,10 @@ export function bindEnvironmentActions(deps) {
   bindEnvironmentActions._bound = true;
   D = D || deps;
 
+  document.addEventListener('change', (e) => {
+    const sw = e.target.closest?.('[data-env-switch="ai"]');
+    if (sw) setAi(!!sw.checked);
+  });
   document.addEventListener('click', (e) => {
     const btn = e.target.closest('[data-env-action]');
     if (!btn) return;
@@ -2132,8 +2168,6 @@ export function bindEnvironmentActions(deps) {
     if (a === 'domain-bind') return void bindDomain(btn.dataset.host || '');
     if (a === 'domain-unbind') return void unbindDomain(btn.dataset.host || '');
     if (a === 'domain-copy') return void copyText(btn.dataset.text || '', btn);
-    if (a === 'ai-on') return void setAi(true, btn);
-    if (a === 'ai-off') return void setAi(false, btn);
     if (a === 'data-open' || a === 'data-reload') return void loadRows(btn.dataset.table || '');
     if (a === 'data-close') return void closeTable();
     if (a === 'data-more') return void loadRows(ev.table, true);

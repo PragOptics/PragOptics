@@ -259,3 +259,36 @@ html[data-theme="dark"] .btn.is-danger, :root:not([data-theme="light"]) .btn.is-
 
 /* AI card (2026-09-19). */
 .ev-ai-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+
+/* The AI switch (2026-09-19): one slider, the state in words beside it. */
+.ev-switch { display: inline-flex; align-items: center; gap: 10px; cursor: pointer; user-select: none; }
+.ev-switch.is-locked { cursor: default; }
+.ev-switch input { position: absolute; opacity: 0; width: 0; height: 0; }
+.ev-switch-track { position: relative; width: 44px; height: 24px; border-radius: 999px; background: color-mix(in srgb, var(--ink) 18%, transparent); transition: background 160ms ease; flex: 0 0 auto; }
+.ev-switch-thumb { position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: var(--card, #fff); box-shadow: 0 1px 3px rgba(0,0,0,.25); transition: transform 160ms ease; }
+.ev-switch input:checked + .ev-switch-track { background: var(--brand-600); }
+.ev-switch input:checked + .ev-switch-track .ev-switch-thumb { transform: translateX(20px); }
+.ev-switch input:disabled + .ev-switch-track { opacity: .55; }
+.ev-switch input:focus-visible + .ev-switch-track { outline: 2px solid var(--brand-600); outline-offset: 2px; }
+.ev-switch-text { font-weight: 600; font-size: .9rem; }
+
+/* A stored value as a card (2026-09-19). */
+.ev-value-card { padding: 8px 0 10px; }
+.ev-kv { display: flex; gap: 14px; align-items: flex-start; }
+.ev-kv.is-nested { padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; background: color-mix(in srgb, var(--ink) 3%, transparent); }
+.ev-kv-list { margin: 0; display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 6px 14px; min-width: 0; flex: 1 1 auto; }
+.ev-kv-row { display: contents; }
+.ev-kv-k { color: var(--muted); font-size: .72rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; padding-top: 2px; }
+.ev-kv-v { margin: 0; min-width: 0; font-size: .9rem; overflow-wrap: anywhere; }
+.ev-val-text { white-space: pre-wrap; }
+.ev-thumb { width: 96px; height: 96px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border); background: var(--surface-3); vertical-align: middle; }
+.ev-thumb.is-lead { width: 120px; height: 120px; }
+.ev-kv-img { flex: 0 0 auto; }
+.ev-chips { display: inline-flex; gap: 6px; flex-wrap: wrap; }
+.ev-sub-table { margin: 4px 0; }
+.ev-link { overflow-wrap: anywhere; }
+@container (max-width: 640px) {
+  .ev-kv { flex-direction: column; }
+  .ev-kv-list { grid-template-columns: 1fr; gap: 2px; }
+  .ev-kv-k { padding-top: 6px; }
+}
