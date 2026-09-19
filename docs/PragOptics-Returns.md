@@ -42,4 +42,5 @@ A deposit on a product that has not shipped may be refunded on request before th
 ## 8. Contact
 
 **Bridges Industrial LLC**  
+Website: **[bridgesindust.com](https://bridgesindust.com)**  
 Email: **support@bridgesindust.com**

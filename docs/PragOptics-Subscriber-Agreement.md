@@ -435,4 +435,5 @@ This Agreement is governed by the laws of the **State of Texas, USA**, without r
 ## 17. Contact
 
 Platform operator: **Bridges Industrial LLC**  
+Website: **[bridgesindust.com](https://bridgesindust.com)**  
 Support: **support@bridgesindust.com**

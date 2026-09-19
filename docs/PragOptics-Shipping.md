@@ -68,4 +68,5 @@ BI may update this policy as carriers, coverage, and services change. The versio
 ---
 
 **Bridges Industrial LLC**  
+Website: **[bridgesindust.com](https://bridgesindust.com)**  
 Support: **support@bridgesindust.com**

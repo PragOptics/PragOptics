@@ -210,4 +210,5 @@ If you leave a team or are removed from it, your membership is closed. The team 
 For privacy-related inquiries or requests, contact:
 
 **Bridges Industrial LLC**  
+Website: **[bridgesindust.com](https://bridgesindust.com)**  
 Email: **support@bridgesindust.com**
