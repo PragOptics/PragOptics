@@ -145,7 +145,7 @@ function canManageConnections() { return (myRole() === 'owner' || myRole() === '
 export async function renderEnvironment(main, deps) {
   D = deps;
   ev.madeKey = null; ev.filesNote = ''; ev.files = null; ev.keys = null; ev.domains = null; ev.domainNote = ''; ev.linkNote = ''; ev.domArm = ''; ev.keyArm = ''; ev.checking = ''; ev.registrations = []; ev.reg = freshReg();
-  ev.connections = null; ev.connProviders = []; ev.connNote = ''; ev.connPick = ''; ev.connBusy = false; ev.connResult = ''; ev.connTesting = ''; ev.connDraft = {}; ev.connArm = ''; ev.shopifyShop = ''; ev.shopifyLink = ''; ev.connSyncing = '';
+  ev.connections = null; ev.connProviders = []; ev.connNote = ''; ev.connPick = ''; ev.connBusy = false; ev.connResult = ''; ev.connTesting = ''; ev.connDraft = {}; ev.connArm = ''; ev.shopifyShop = ''; ev.shopifyLink = ''; ev.shopifyLinkId = ''; ev.connSyncing = '';
   ev.domTab = ev.domTab || 'connect'; initCards();
   // A link that names a card (/#account?section=environment&card=connections) opens that card; account.js scrolls to it.
   try { const want = JSON.parse(sessionStorage.getItem('pragoptics_open_card') || 'null'); const card = { files: 'files', connections: 'connections', domains: 'domains', keys: 'keys' }[String(want?.card || '')]; if (card) setOpen(`environment:${card}`, true); } catch { /* fine */ }
@@ -1223,7 +1223,13 @@ function connectionsHtml() {
                   ${isManagedShopify(c) && c.status === 'ACTIVE' ? `<button class="btn btn-sm ev-btn-ico" type="button" data-env-action="conn-shopify-sync" data-id="${e(c.id)}" ${ev.connSyncing === c.id ? 'disabled' : ''} title="Copy the store's products into this environment's data, table supplier_products">${ico('refresh')}<span>${ev.connSyncing === c.id ? 'Syncing…' : 'Sync products'}</span></button>` : ''}
                   ${iconBtn(refreshAction, testing ? 'refresh' : 'check', isManaged(c) ? 'Check status' : 'Test the credential', `data-id="${e(c.id)}" ${testing ? 'disabled' : ''}`, testing ? 'is-spinning' : '')}
                   ${iconBtn('conn-remove', 'trash', 'Remove', `data-id="${e(c.id)}" data-label="${e(c.label)}"`)}`) : ''}</td>
-              </tr>`; }).join('')}
+              </tr>${isManagedShopify(c) && ev.shopifyLink && ev.shopifyLinkId === c.id ? `
+              <tr class="ev-link-row" data-row="shopify-link">
+                <td colspan="5" data-th="Supplier link">
+                  <div class="ev-link-box"><code class="ev-code">${e(ev.shopifyLink)}</code>${iconBtn('domain-copy', 'copy', 'Copy the link', `data-text="${e(ev.shopifyLink)}"`)}${iconBtn('open-url', 'external', 'Open the link in a new tab', `data-url="${e(ev.shopifyLink)}"`)}</div>
+                  <p class="acct-card-note ev-note">Send this to your supplier. They open it on their Shopify store, see what PragOptics asks for, and approve; this row reads connected when they have.</p>
+                </td>
+              </tr>` : ''}`; }).join('')}
           </tbody>
         </table>
       </div>`;
@@ -1281,7 +1287,7 @@ function connectionsHtml() {
       ${form}
       <p class="acct-error" id="evConnError" hidden></p>
       ${ev.connResult ? `<p class="acct-card-note ev-note ev-conn-result" aria-live="polite">${e(ev.connResult)}</p>` : ''}
-      ${ev.shopifyLink ? `<div class="ev-link-box"><code class="ev-code">${e(ev.shopifyLink)}</code>${iconBtn('domain-copy', 'copy', 'Copy the link', `data-text="${e(ev.shopifyLink)}"`)}${iconBtn('open-url', 'external', 'Open the link in a new tab', `data-url="${e(ev.shopifyLink)}"`)}</div>` : ''}
+      ${ev.shopifyLink && !(ev.connections || []).some(c => c.id === ev.shopifyLinkId) ? `<div class="ev-link-box"><code class="ev-code">${e(ev.shopifyLink)}</code>${iconBtn('domain-copy', 'copy', 'Copy the link', `data-text="${e(ev.shopifyLink)}"`)}${iconBtn('open-url', 'external', 'Open the link in a new tab', `data-url="${e(ev.shopifyLink)}"`)}</div>` : ''}
       ${list}`
   });
 }
@@ -1754,7 +1760,7 @@ async function startShopifyConnect(id = '', shopFromRow = '') {
   try {
     const d = await post(`${ENV_URL}/connections/shopify/start`, { shop });
     if (!d?.url) throw new Error('The platform did not answer with a link.');
-    ev.shopifyLink = d.url; ev.shopifyShop = ''; ev.connResult = d.note || 'Send the link to your supplier.';
+    ev.shopifyLink = d.url; ev.shopifyLinkId = String(d.connection?.id || id || ''); ev.shopifyShop = ''; ev.connResult = ev.shopifyLinkId ? '' : (d.note || 'Send the link to your supplier.');
     ev.connBusy = false;
     await loadConnections();
   } catch (ex) {
