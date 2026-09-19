@@ -244,3 +244,10 @@ html[data-theme="dark"] .btn.is-danger, :root:not([data-theme="light"]) .btn.is-
   .lic-fact { display: block; }
   .lic-k { display: block; }
 }
+
+/* A row's own result or link sits directly under that row (2026-09-19), never at the top of the card. */
+.ev-note-row td, .ev-link-row td { padding-top: 0; background: color-mix(in srgb, var(--brand-600) 4%, transparent); }
+.ev-row-note { margin: 0; padding: 8px 0 10px; max-width: none; }
+.ev-note-row td .acct-error { margin: 6px 0 8px; }
+.ev-link-row .ev-link-box { margin-top: 0; }
+.ev-link-row .ev-note { margin: 8px 0 4px; }

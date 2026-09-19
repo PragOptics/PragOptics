@@ -145,7 +145,7 @@ function canManageConnections() { return (myRole() === 'owner' || myRole() === '
 export async function renderEnvironment(main, deps) {
   D = deps;
   ev.madeKey = null; ev.filesNote = ''; ev.files = null; ev.keys = null; ev.domains = null; ev.domainNote = ''; ev.linkNote = ''; ev.domArm = ''; ev.keyArm = ''; ev.checking = ''; ev.registrations = []; ev.reg = freshReg();
-  ev.connections = null; ev.connProviders = []; ev.connNote = ''; ev.connPick = ''; ev.connBusy = false; ev.connResult = ''; ev.connTesting = ''; ev.connDraft = {}; ev.connArm = ''; ev.shopifyShop = ''; ev.shopifyLink = ''; ev.shopifyLinkId = ''; ev.connSyncing = '';
+  ev.connections = null; ev.connProviders = []; ev.connNote = ''; ev.connPick = ''; ev.connBusy = false; ev.connResult = ''; ev.connTesting = ''; ev.connDraft = {}; ev.connArm = ''; ev.rowNote = null; ev.shopifyShop = ''; ev.shopifyLink = ''; ev.shopifyLinkId = ''; ev.connSyncing = ''; ev.rowNote = null;
   ev.domTab = ev.domTab || 'connect'; initCards();
   // A link that names a card (/#account?section=environment&card=connections) opens that card; account.js scrolls to it.
   try { const want = JSON.parse(sessionStorage.getItem('pragoptics_open_card') || 'null'); const card = { files: 'files', connections: 'connections', domains: 'domains', keys: 'keys' }[String(want?.card || '')]; if (card) setOpen(`environment:${card}`, true); } catch { /* fine */ }
@@ -1223,7 +1223,10 @@ function connectionsHtml() {
                   ${isManagedShopify(c) && c.status === 'ACTIVE' ? `<button class="btn btn-sm ev-btn-ico" type="button" data-env-action="conn-shopify-sync" data-id="${e(c.id)}" ${ev.connSyncing === c.id ? 'disabled' : ''} title="Copy the store's products into this environment's data, table supplier_products">${ico('refresh')}<span>${ev.connSyncing === c.id ? 'Syncing…' : 'Sync products'}</span></button>` : ''}
                   ${iconBtn(refreshAction, testing ? 'refresh' : 'check', isManaged(c) ? 'Check status' : 'Test the credential', `data-id="${e(c.id)}" ${testing ? 'disabled' : ''}`, testing ? 'is-spinning' : '')}
                   ${iconBtn('conn-remove', 'trash', 'Remove', `data-id="${e(c.id)}" data-label="${e(c.label)}"`)}`) : ''}</td>
-              </tr>${isManagedShopify(c) && ev.shopifyLink && ev.shopifyLinkId === c.id ? `
+              </tr>${ev.rowNote && ev.rowNote.id === c.id ? `
+              <tr class="ev-note-row" data-row="note">
+                <td colspan="5" data-th="${ev.rowNote.error ? 'Problem' : 'Result'}"><p class="${ev.rowNote.error ? 'acct-error' : 'acct-card-note'} ev-row-note" aria-live="polite">${e(ev.rowNote.text)}</p></td>
+              </tr>` : ''}${isManagedShopify(c) && ev.shopifyLink && ev.shopifyLinkId === c.id ? `
               <tr class="ev-link-row" data-row="shopify-link">
                 <td colspan="5" data-th="Supplier link">
                   <div class="ev-link-box"><code class="ev-code">${e(ev.shopifyLink)}</code>${iconBtn('domain-copy', 'copy', 'Copy the link', `data-text="${e(ev.shopifyLink)}"`)}${iconBtn('open-url', 'external', 'Open the link in a new tab', `data-url="${e(ev.shopifyLink)}"`)}</div>
@@ -1710,14 +1713,17 @@ async function addConnection(btn) {
   ev.connBusy = false; paintConnections();
 }
 
+/** What a row's own action answered, shown directly under that row: never a note at the top of the card for a click at the bottom of it. */
+function rowNote(id, text, error = false) { ev.rowNote = text ? { id: String(id || ''), text: String(text), error: !!error } : null; }
+
 async function testConnection(id) {
   if (!id || ev.connTesting) return;
   D.showError('evConnError', '');
-  ev.connTesting = id; ev.connResult = ''; paintConnections();
+  ev.connTesting = id; ev.connResult = ''; rowNote(id, ''); paintConnections();
   try {
     const d = await post(`${ENV_URL}/connections/test`, { id });
-    ev.connResult = d.connection?.message || (d.connection?.checked ? 'The provider accepted the credential.' : 'The provider rejected the credential.');
-  } catch (ex) { D.showError('evConnError', errText(ex, 'Could not check that connection.')); }
+    rowNote(id, d.connection?.message || (d.connection?.checked ? 'The provider accepted the credential.' : 'The provider rejected the credential.'), d.connection?.checked === false);
+  } catch (ex) { rowNote(id, errText(ex, 'Could not check that connection.'), true); }
   ev.connTesting = '';
   await loadConnections();
 }
@@ -1744,8 +1750,8 @@ async function refreshShippoConnect(id, quiet = false) {
   ev.connTesting = id; paintConnections();
   try {
     const d = await post(`${ENV_URL}/connections/shippo/refresh`, { id });
-    ev.connResult = d.connection?.message || 'Shippo answered for the account.';
-  } catch (ex) { if (!quiet) D.showError('evConnError', errText(ex, 'Could not check that Shippo account.')); }
+    rowNote(id, d.connection?.message || 'Shippo answered for the account.');
+  } catch (ex) { if (!quiet) rowNote(id, errText(ex, 'Could not check that Shippo account.'), true); }
   ev.connTesting = '';
   await loadConnections();
 }
@@ -1774,19 +1780,19 @@ async function refreshShopifyConnect(id, quiet = false) {
   ev.connTesting = id; paintConnections();
   try {
     const d = await post(`${ENV_URL}/connections/shopify/refresh`, { id });
-    ev.connResult = d.connection?.message || 'Shopify answered for the store.';
-  } catch (ex) { if (!quiet) D.showError('evConnError', errText(ex, 'Could not check that supplier.')); }
+    rowNote(id, d.connection?.message || 'Shopify answered for the store.');
+  } catch (ex) { if (!quiet) rowNote(id, errText(ex, 'Could not check that supplier.'), true); }
   ev.connTesting = '';
   await loadConnections();
 }
 async function syncShopifyProducts(id) {
   if (!id || ev.connSyncing) return;
   D.showError('evConnError', '');
-  ev.connSyncing = id; ev.connResult = ''; paintConnections();
+  ev.connSyncing = id; ev.connResult = ''; rowNote(id, ''); paintConnections();
   try {
     const d = await post(`${ENV_URL}/connections/shopify/sync`, { id });
-    ev.connResult = d.note || `${d.total} products copied.`;
-  } catch (ex) { D.showError('evConnError', errText(ex, 'Could not copy the products right now.')); }
+    rowNote(id, d.note || `${d.total} products copied.`);
+  } catch (ex) { rowNote(id, errText(ex, 'Could not copy the products right now.'), true); }
   ev.connSyncing = '';
   await loadConnections();
 }
@@ -1812,8 +1818,8 @@ async function refreshTwilioConnect(id, quiet = false) {
   ev.connTesting = id; paintConnections();
   try {
     const d = await post(`${ENV_URL}/connections/twilio/refresh`, { id });
-    ev.connResult = d.connection?.message || 'Twilio answered for the account.';
-  } catch (ex) { if (!quiet) D.showError('evConnError', errText(ex, 'Could not check that Twilio account.')); }
+    rowNote(id, d.connection?.message || 'Twilio answered for the account.');
+  } catch (ex) { if (!quiet) rowNote(id, errText(ex, 'Could not check that Twilio account.'), true); }
   ev.connTesting = '';
   await loadConnections();
 }
@@ -1843,8 +1849,8 @@ async function refreshStripeConnect(id, quiet = false) {
   ev.connTesting = id; paintConnections();
   try {
     const d = await post(`${ENV_URL}/connections/stripe/refresh`, { id });
-    ev.connResult = d.connection?.message || 'Stripe answered for the account.';
-  } catch (ex) { if (!quiet) D.showError('evConnError', errText(ex, 'Could not check that Stripe account.')); }
+    rowNote(id, d.connection?.message || 'Stripe answered for the account.');
+  } catch (ex) { if (!quiet) rowNote(id, errText(ex, 'Could not check that Stripe account.'), true); }
   ev.connTesting = '';
   await loadConnections();
 }
