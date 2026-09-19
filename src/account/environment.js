@@ -1282,8 +1282,9 @@ function connStatusTag(c) {
     const d = c.detail || {};
     if (c.status === 'ACTIVE') return '<span class="acct-tag is-verified" title="Shippo bills you directly for labels; the platform acts with an access token Shippo issued for PragOptics.">connected</span>';
     if (c.status === 'REJECTED') return `<span class="acct-tag is-bad" title="${e(c.lastError || '')}">disconnected</span>`;
-    if (d.declined) return `<span class="acct-tag is-pending" title="${e(c.lastError || '')}">declined</span>`;
-    return `<span class="acct-tag is-pending" title="${e(c.lastError || 'Waiting for you to sign in or sign up at Shippo and approve PragOptics.')}">not authorized</span>`;
+    if (d.declined) return `<span class="acct-tag is-pending" data-tip="${e(c.lastError || '')}">declined</span>`;
+    if (d.failed || (c.lastError && /did not hand/i.test(c.lastError))) return `<span class="acct-tag is-bad" data-tip="${e(c.lastError || '')}">failed</span>`;
+    return `<span class="acct-tag is-pending" data-tip="${e(c.lastError || 'Waiting for you to sign in or sign up at Shippo and approve PragOptics.')}">not authorized</span>`;
   }
   if (isManagedTwilio(c)) {
     const d = c.detail || {};
@@ -1424,7 +1425,8 @@ function connectionsHtml() {
                   ${isManagedShopify(c) && c.status === 'ACTIVE' ? `<button class="btn btn-sm ev-btn-ico" type="button" data-env-action="conn-shopify-sync" data-id="${e(c.id)}" ${ev.connSyncing === c.id ? 'disabled' : ''} title="Copy the store's products into this environment's data, table supplier_products">${ico('refresh')}<span>${ev.connSyncing === c.id ? 'Syncing…' : 'Sync products'}</span></button>` : ''}
                   ${iconBtn(refreshAction, testing ? 'refresh' : 'check', isManaged(c) ? 'Check status' : 'Test the credential', `data-id="${e(c.id)}" ${testing ? 'disabled' : ''}`, testing ? 'is-spinning' : '')}
                   ${iconBtn('conn-remove', 'trash', 'Remove', `data-id="${e(c.id)}" data-label="${e(c.label)}"`)}`) : ''}</td>
-              </tr>${ev.rowNote && ev.rowNote.id === c.id ? `
+              </tr>${isManagedShippo(c) && c.status !== 'ACTIVE' && c.lastError && !(ev.rowNote && ev.rowNote.id === c.id) ? `
+              <tr class="ev-note-row" data-row="note"><td colspan="5" data-th="Problem"><p class="acct-error ev-row-note">${e(c.lastError)}</p></td></tr>` : ''}${ev.rowNote && ev.rowNote.id === c.id ? `
               <tr class="ev-note-row" data-row="note">
                 <td colspan="5" data-th="${ev.rowNote.error ? 'Problem' : 'Result'}"><p class="${ev.rowNote.error ? 'acct-error' : 'acct-card-note'} ev-row-note" aria-live="polite">${e(ev.rowNote.text)}</p></td>
               </tr>` : ''}${isManagedShopify(c) && ev.shopifyLink && ev.shopifyLinkId === c.id ? `
