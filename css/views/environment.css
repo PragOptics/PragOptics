@@ -216,7 +216,8 @@ html[data-theme="dark"] .btn.is-danger, :root:not([data-theme="light"]) .btn.is-
   .account .adm-table--wrap td { border: 0; padding: 4px 0; white-space: normal; overflow: visible; text-overflow: clip; text-align: left; }
   .account .adm-table--wrap td[data-th]::before { content: attr(data-th); display: block; font-size: .64rem; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); font-weight: 700; margin-bottom: 2px; }
   .account .adm-table--wrap td:empty { display: none; }
-  .account .adm-table-scroll { overflow: visible; }
+  /* only a table whose rows stack gives up its scroll; every other wide table keeps scrolling inside its own frame */
+  .account .adm-table-scroll:has(> .adm-table--wrap) { overflow: visible; border: 0; }
   .account .ev-actions-cell, .account .tm-actions { display: flex; gap: 6px; flex-wrap: wrap; padding-top: 8px; }
   .account .ev-actions-cell .btn + .btn { margin: 0; }
   .ev-conn-name, .ev-conn-kind { white-space: normal; }
