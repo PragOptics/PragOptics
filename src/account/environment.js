@@ -1259,8 +1259,7 @@ function connectionsHtml() {
           <input class="acct-input" id="evShopifyShop" type="text" inputmode="url" autocomplete="off" placeholder="supplier-name.myshopify.com" aria-label="Your supplier's Shopify store address" value="${e(ev.shopifyShop || '')}">
           <button class="btn" type="button" data-env-action="conn-shopify-start" ${ev.connBusy ? 'disabled' : ''}>${ev.connBusy ? 'Making the link…' : 'Make the link'}</button>
         </div>
-        <p class="acct-card-note ev-dom-door">Your supplier's store address. You send them the link, they approve, and their products land here for your site. They bill you as they always have.</p>
-        ${ev.shopifyLink ? `<div class="ev-link-box"><code class="ev-code">${e(ev.shopifyLink)}</code>${iconBtn('domain-copy', 'copy', 'Copy the link', `data-text="${e(ev.shopifyLink)}"`)}</div>` : ''}`;
+        <p class="acct-card-note ev-dom-door">Your supplier's store address. You send them the link, they approve, and their products land here for your site. They bill you as they always have.</p>`;
     else if (picked) door = `${connFieldsHtml(picked)}<div class="ev-key-row"><button class="btn" type="button" data-env-action="conn-add" ${ev.connBusy ? 'disabled' : ''}>${ev.connBusy ? 'Checking with ' + e(picked.label) + '…' : 'Connect'}</button></div>`;
     form = `
       <div class="ev-conn-add">
@@ -1282,6 +1281,7 @@ function connectionsHtml() {
       ${form}
       <p class="acct-error" id="evConnError" hidden></p>
       ${ev.connResult ? `<p class="acct-card-note ev-note ev-conn-result" aria-live="polite">${e(ev.connResult)}</p>` : ''}
+      ${ev.shopifyLink ? `<div class="ev-link-box"><code class="ev-code">${e(ev.shopifyLink)}</code>${iconBtn('domain-copy', 'copy', 'Copy the link', `data-text="${e(ev.shopifyLink)}"`)}${iconBtn('open-url', 'external', 'Open the link in a new tab', `data-url="${e(ev.shopifyLink)}"`)}</div>` : ''}
       ${list}`
   });
 }
@@ -1951,6 +1951,7 @@ export function bindEnvironmentActions(deps) {
     if (a === 'domain-bind') return void bindDomain(btn.dataset.host || '');
     if (a === 'domain-unbind') return void unbindDomain(btn.dataset.host || '');
     if (a === 'domain-copy') return void copyText(btn.dataset.text || '', btn);
+    if (a === 'open-url') { const u = String(btn.dataset.url || ''); if (/^https:\/\//.test(u)) window.open(u, '_blank', 'noopener'); return; }
     if (a === 'domain-link') return void linkDomain(btn);
     if (a === 'domain-unlink') return void unlinkDomain(btn.dataset.host || '');
     if (a === 'domain-dns-start') return void startDnsDoor(btn);
