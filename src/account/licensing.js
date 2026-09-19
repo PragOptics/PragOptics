@@ -85,7 +85,7 @@ function summaryHtml() {
         <div class="ev-id">
           <div class="ev-tags"><span class="acct-tag is-primary">${e(tierName(v.tier))}</span>${state}</div>
           <h3 class="acct-card-h ev-name">Microsoft 365 for your team</h3>
-          <p class="ev-owner adm-muted">${e(countWord(seats.length, 'seat', 'seats'))} · ${e(countWord(boxes.length, 'mailbox', 'mailboxes'))} · Microsoft's list price, per person, per month</p>
+          <p class="ev-owner adm-muted">${e(countWord(seats.length, 'seat', 'seats'))} · ${e(countWord(boxes.length, 'mailbox', 'mailboxes'))} · a mailbox per seat included, other licenses at Microsoft's list price</p>
         </div>
         <div class="ev-actions">${iconBtn({ lic: 'refresh' }, 'refresh', 'Refresh')}</div>
       </div>
@@ -164,7 +164,7 @@ function catalogHtml() {
           </tbody>
         </table>
       </div>
-      <p class="acct-card-note ev-note">Prices are Microsoft's list price per person per month, before tax. A license is added from here once your licensing account is open.</p>`;
+      <p class="acct-card-note ev-note">The mailbox that comes with each seat is included in the plan. Anything else here is an add-on at Microsoft's list price per person per month, before tax, added once your licensing account is open.</p>`;
   return cardHtml({
     key: 'catalog', icon: 'layers', title: 'Licenses', summary,
     explain: explainLink('licensing', 'Which license does what'),
@@ -180,7 +180,7 @@ function mailboxesHtml() {
   const boxes = (v.mailboxes || []).length;
   const summary = `${countWord(seats.length, 'seat', 'seats')} · ${countWord(boxes, 'mailbox', 'mailboxes')}`;
   const domainLine = domains.length
-    ? `<p class="acct-card-note">Mailboxes live under ${domains.map(d => `<strong>${e(d)}</strong>`).join(', ')}. Every seat can have one.</p>`
+    ? `<p class="acct-card-note">Mailboxes live under ${domains.map(d => `<strong>${e(d)}</strong>`).join(', ')}. Every seat can have one, included: the owner, admins and developers get a full Exchange Online mailbox, members a Kiosk mailbox for web and phone.</p>`
     : `<p class="acct-card-note">A mailbox lives under a domain you have verified. <a href="#account?section=environment&card=domains" data-acct-section="environment">Verify a domain on Environment</a>, and every seat can have one.</p>`;
   const table = !seats.length ? '<p class="acct-empty">No seats yet. Invite people on Team; each seat can carry a mailbox.</p>' : `
       <div class="adm-table-scroll">

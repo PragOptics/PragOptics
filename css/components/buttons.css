@@ -180,3 +180,8 @@
 }
 
 
+
+/* The terminal button (2026-09-19): the API Console as a glyph beside the Studio button, the size of an icon button. */
+.btn.btn-term { min-width: 44px; padding-left: 12px; padding-right: 12px; font-family: ui-monospace, "Cascadia Code", Consolas, monospace; font-weight: 700; letter-spacing: .02em; }
+.term-glyph { font-family: ui-monospace, "Cascadia Code", Consolas, monospace; font-weight: 700; }
+.dropdown-menu .term-glyph { margin-right: 4px; opacity: .8; }

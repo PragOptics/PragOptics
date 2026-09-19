@@ -251,3 +251,11 @@ html[data-theme="dark"] .btn.is-danger, :root:not([data-theme="light"]) .btn.is-
 .ev-note-row td .acct-error { margin: 6px 0 8px; }
 .ev-link-row .ev-link-box { margin-top: 0; }
 .ev-link-row .ev-note { margin: 8px 0 4px; }
+
+/* Data card (2026-09-19): a table's rows, a row's value. */
+.ev-data-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+.ev-data-head .ev-btn-ico svg { transform: rotate(90deg); }
+.ev-value { margin: 8px 0 10px; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface-3); font: .78rem/1.5 ui-monospace, "Cascadia Code", Consolas, monospace; white-space: pre-wrap; overflow-wrap: anywhere; max-height: 420px; overflow: auto; color: var(--ink); }
+
+/* AI card (2026-09-19). */
+.ev-ai-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }

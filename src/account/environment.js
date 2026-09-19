@@ -146,9 +146,11 @@ export async function renderEnvironment(main, deps) {
   D = deps;
   ev.madeKey = null; ev.filesNote = ''; ev.files = null; ev.keys = null; ev.domains = null; ev.domainNote = ''; ev.linkNote = ''; ev.domArm = ''; ev.keyArm = ''; ev.checking = ''; ev.registrations = []; ev.reg = freshReg();
   ev.connections = null; ev.connProviders = []; ev.connNote = ''; ev.connPick = ''; ev.connBusy = false; ev.connResult = ''; ev.connTesting = ''; ev.connDraft = {}; ev.connArm = ''; ev.rowNote = null; ev.shopifyShop = ''; ev.shopifyLink = ''; ev.shopifyLinkId = ''; ev.connSyncing = ''; ev.rowNote = null;
+  ev.tables = null; ev.tablesNote = ''; ev.table = ''; ev.rows = null; ev.rowsAfter = ''; ev.rowsNote = ''; ev.openRow = ''; ev.rowsLoading = false;
+  ev.ai = null; ev.aiNote = ''; ev.aiBusy = false;
   ev.domTab = ev.domTab || 'connect'; initCards();
   // A link that names a card (/#account?section=environment&card=connections) opens that card; account.js scrolls to it.
-  try { const want = JSON.parse(sessionStorage.getItem('pragoptics_open_card') || 'null'); const card = { files: 'files', connections: 'connections', domains: 'domains', keys: 'keys' }[String(want?.card || '')]; if (card) setOpen(`environment:${card}`, true); } catch { /* fine */ }
+  try { const want = JSON.parse(sessionStorage.getItem('pragoptics_open_card') || 'null'); const card = { files: 'files', connections: 'connections', domains: 'domains', keys: 'keys', ai: 'ai', data: 'data' }[String(want?.card || '')]; if (card) setOpen(`environment:${card}`, true); } catch { /* fine */ }
   main.innerHTML = `
     <header class="acct-sec-head has-explain"><h2 class="acct-sec-title">Environment</h2>${explainLink('environment', 'How your environment works')}</header>
     <p class="acct-error" id="evError" hidden></p>
@@ -177,7 +179,7 @@ async function load() {
     paint();
     if (['READY', 'SUSPENDED'].includes(phaseOf(ev.view.tenant))) {
       if (ev.lane === 'sandbox' && !laneReady(ev.view.tenant)) return;   // the setup card is all there is
-      await Promise.all([loadFiles(), ...(ev.lane === 'live' ? [loadDomains()] : []), loadKeys(), loadConnections()]);
+      await Promise.all([loadFiles(), loadTables(), ...(ev.lane === 'live' ? [loadDomains(), loadAi()] : []), loadKeys(), loadConnections()]);
     }
   } catch (ex) {
     host.innerHTML = '';
@@ -256,8 +258,8 @@ function paint() {
   // On the sandbox lane the cards appear only once the sandbox is READY;
   // until then the section explains and (for the owner) offers to set it up.
   const cards = ev.lane === 'sandbox'
-    ? (laneReady(ev.view.tenant) ? `<div id="evFiles">${filesHtml()}</div><div id="evConnections">${connectionsHtml()}</div><div id="evKeys">${keysHtml()}</div>` : sandboxSetupHtml(ev.view))
-    : `<div id="evFiles">${filesHtml()}</div><div id="evConnections">${connectionsHtml()}</div><div id="evDomains">${domainsHtml()}</div><div id="evKeys">${keysHtml()}</div>`;
+    ? (laneReady(ev.view.tenant) ? `<div id="evFiles">${filesHtml()}</div><div id="evData">${dataHtml()}</div><div id="evConnections">${connectionsHtml()}</div><div id="evKeys">${keysHtml()}</div>` : sandboxSetupHtml(ev.view))
+    : `<div id="evFiles">${filesHtml()}</div><div id="evData">${dataHtml()}</div><div id="evAi">${aiHtml()}</div><div id="evConnections">${connectionsHtml()}</div><div id="evDomains">${domainsHtml()}</div><div id="evKeys">${keysHtml()}</div>`;
   host.innerHTML = `
     ${summaryHtml(ev.view)}
     ${ready ? `<div class="ev-cards">${cards}</div>` : ''}
@@ -431,6 +433,173 @@ function summaryHtml(v) {
       ${isOwner ? `<div class="acct-actions-row"><button class="btn" type="button" data-env-action="provision">${phase === 'PROVISIONING' ? 'Finish setup' : 'Set up storage'}</button></div>` : ''}
       <p class="acct-error" id="evProvError" hidden></p>` : ''}
     </section>`;
+}
+
+/* ---------- data (2026-09-19: everything the environment holds is readable from its page) ---------- */
+
+function paintData() { const h = document.getElementById('evData'); if (h) h.innerHTML = dataHtml(); }
+async function loadTables() {
+  try {
+    const d = await D.apiFetch(url(`${ENV_URL}/data`));
+    ev.tables = d.tables || [];
+    ev.tablesNote = '';
+  } catch (ex) {
+    ev.tables = [];
+    ev.tablesNote = ex?.sessionInvalidated ? '' : (ex?.data?.error || D.friendlyError(ex, 'Could not list the tables.'));
+  }
+  paintData();
+}
+/** The rows of one table, fifty at a time; `more` continues from the last key. */
+async function loadRows(table, more = false) {
+  if (!table) return;
+  if (!more) { ev.table = table; ev.rows = null; ev.rowsAfter = ''; ev.openRow = ''; }
+  ev.rowsLoading = true; ev.rowsNote = ''; paintData();
+  try {
+    const d = await D.apiFetch(url(`${ENV_URL}/data/${encodeURIComponent(table)}`, { values: 1, limit: 50, after: more ? ev.rowsAfter : '' }));
+    const items = d.items || [];
+    ev.rows = more ? [...(ev.rows || []), ...items] : items;
+    ev.rowsAfter = d.nextAfter || '';
+  } catch (ex) {
+    if (!more) ev.rows = [];
+    ev.rowsNote = ex?.sessionInvalidated ? '' : (ex?.data?.error || D.friendlyError(ex, 'Could not read that table.'));
+  }
+  ev.rowsLoading = false;
+  paintData();
+}
+function closeTable() { ev.table = ''; ev.rows = null; ev.rowsAfter = ''; ev.openRow = ''; ev.rowsNote = ''; paintData(); }
+function valueText(v) { try { return typeof v === 'string' ? v : JSON.stringify(v, null, 2); } catch { return String(v); } }
+/** One line of a value for the row: a string as itself, an object by its title, name or first keys. */
+function valuePeek(v) {
+  if (v == null) return '';
+  if (typeof v !== 'object') return String(v);
+  const pick = ['title', 'name', 'label', 'email', 'id'].find(k => typeof v[k] === 'string' && v[k]);
+  if (pick) return String(v[pick]);
+  const keys = Object.keys(v);
+  return keys.length ? `{ ${keys.slice(0, 4).join(', ')}${keys.length > 4 ? ', …' : ''} }` : '{ }';
+}
+
+function dataHtml() {
+  const e = D.escapeHtml;
+  const tables = ev.tables;
+  const summary = tables == null ? 'loading' : !tables.length ? 'no tables yet' : ev.table ? `${e(ev.table)}${ev.rows ? ` · ${countWord(ev.rows.length, 'row', 'rows')}${ev.rowsAfter ? '+' : ''}` : ''}` : countWord(tables.length, 'table', 'tables');
+  let body;
+  if (tables == null) body = '<p class="acct-loading">Loading tables…</p>';
+  else if (!tables.length) body = '<p class="acct-empty">No data yet. The software, your site and your API keys write tables here; a connected supplier\'s products land in supplier_products.</p>';
+  else if (!ev.table) body = `
+      <div class="adm-table-scroll">
+        <table class="adm-table adm-table--wrap ev-table">
+          <thead><tr><th>Table</th><th>Updated</th><th></th></tr></thead>
+          <tbody>
+            ${tables.map(t => `
+              <tr>
+                <td class="cell-ellip ev-name-cell" data-th="Table">${e(t.table)}</td>
+                <td class="cell-tight adm-muted" data-th="Updated">${t.updatedAt ? e(D.fmtDate(t.updatedAt)) : ''}</td>
+                <td class="cell-tight ev-actions-cell">${iconBtn('data-open', 'external', 'Open the table', `data-table="${e(t.table)}"`)}</td>
+              </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>`;
+  else {
+    const rows = ev.rows;
+    body = `
+      <div class="ev-data-head">
+        <button class="btn btn-sm ev-btn-ico" type="button" data-env-action="data-close">${ico('chevron')}<span>All tables</span></button>
+        <span class="ev-name-cell">${e(ev.table)}</span>
+        ${iconBtn('data-reload', 'refresh', 'Reload the rows', `data-table="${e(ev.table)}"`)}
+      </div>
+      ${rows == null ? '<p class="acct-loading">Reading rows…</p>' : !rows.length ? '<p class="acct-empty">This table is empty.</p>' : `
+      <div class="adm-table-scroll">
+        <table class="adm-table adm-table--wrap ev-table">
+          <thead><tr><th>Key</th><th>Value</th><th class="adm-num">Size</th><th>Updated</th><th></th></tr></thead>
+          <tbody>
+            ${rows.map(r => `
+              <tr>
+                <td class="cell-ellip ev-name-cell" data-th="Key" title="${e(r.key)}">${e(r.key)}</td>
+                <td class="cell-ellip" data-th="Value" title="${e(valuePeek(r.value))}">${e(valuePeek(r.value))}</td>
+                <td class="adm-num cell-tight" data-th="Size">${e(bytesFmt(r.size))}</td>
+                <td class="cell-tight adm-muted" data-th="Updated">${r.updatedAt ? e(D.fmtDate(r.updatedAt)) : ''}</td>
+                <td class="cell-tight ev-actions-cell">${iconBtn('data-row', ev.openRow === r.key ? 'x' : 'external', ev.openRow === r.key ? 'Close the value' : 'Show the value', `data-key="${e(r.key)}"`)}${iconBtn('domain-copy', 'copy', 'Copy the value', `data-text="${e(valueText(r.value))}"`)}</td>
+              </tr>${ev.openRow === r.key ? `
+              <tr class="ev-note-row" data-row="value"><td colspan="5" data-th="Value"><pre class="ev-value">${e(valueText(r.value))}</pre></td></tr>` : ''}`).join('')}
+          </tbody>
+        </table>
+      </div>
+      ${ev.rowsAfter ? `<div class="acct-actions-row ev-note"><button class="btn btn-sm" type="button" data-env-action="data-more" ${ev.rowsLoading ? 'disabled' : ''}>${ev.rowsLoading ? 'Reading…' : 'Next 50 rows'}</button></div>` : ''}`}`;
+  }
+  return cardHtml({
+    key: 'data', icon: 'database', title: 'Data', summary,
+    explain: explainLink('environment', 'What the environment holds'),
+    body: `${ev.tablesNote ? `<p class="acct-error">${e(ev.tablesNote)}</p>` : ''}${ev.rowsNote ? `<p class="acct-error">${e(ev.rowsNote)}</p>` : ''}${body}`
+  });
+}
+
+/* ---------- AI (2026-09-19): the switch, the credit, the lanes ---------- */
+
+function paintAi() { const h = document.getElementById('evAi'); if (h) h.innerHTML = aiHtml(); }
+async function loadAi() {
+  try { ev.ai = await D.apiFetch(url(`${ENV_URL}/ai`)); ev.aiNote = ''; }
+  catch (ex) {
+    ev.ai = null;
+    ev.aiNote = ex?.status === 404 ? 'AI is not on this lane yet.' : (ex?.sessionInvalidated ? '' : (ex?.data?.error || D.friendlyError(ex, 'Could not read the AI state.')));
+  }
+  paintAi();
+}
+function cents(n) { const v = Number(n || 0); return v >= 100 ? `$${(v / 100).toFixed(2)}` : `${v % 1 ? v.toFixed(2) : v}¢`; }
+function dollars(n) { return `$${(Number(n || 0) / 100).toFixed(2)}`; }
+async function setAi(on, btn) {
+  if (ev.aiBusy) return;
+  ev.aiBusy = true; if (btn) { btn.disabled = true; btn.textContent = on ? 'Turning on…' : 'Turning off…'; }
+  D.showError('evAiError', '');
+  try { await post(`${ENV_URL}/ai/${on ? 'enable' : 'disable'}`, {}); await loadAi(); }
+  catch (ex) { ev.aiBusy = false; paintAi(); D.showError('evAiError', errText(ex, on ? 'Could not turn AI on.' : 'Could not turn AI off.')); return; }
+  ev.aiBusy = false;
+}
+
+function aiHtml() {
+  const e = D.escapeHtml, a = ev.ai;
+  const manage = ['owner', 'admin'].includes(ev.view?.membership?.role);
+  let summary, inner;
+  if (!a) { summary = ev.aiNote ? 'not on this lane' : 'loading'; inner = ev.aiNote ? `<p class="acct-empty">${e(ev.aiNote)}</p>` : '<p class="acct-loading">Loading…</p>'; }
+  else {
+    const c = a.credit || {}, on = !!a.enabled, ready = !!a.provider?.configured;
+    const used = Number(c.usedCents || 0), limit = Number(c.limitCents || 0);
+    const pct = limit ? Math.min(100, used / limit * 100) : 0;
+    const cls = pct >= 95 ? 'is-hot' : pct >= 70 ? 'is-warn' : '';
+    const callLine = c.callLimit ? `${e(String(c.calls || 0))} of ${e(String(c.callLimit))} calls` : `${e(String(c.calls || 0))} calls`;
+    summary = !ready ? 'being set up' : !on ? 'off' : `on · ${e(dollars(used))} of ${e(dollars(limit))} this month`;
+    inner = `
+      ${!ready ? '<p class="acct-card-note">AI is being set up on the platform. Nothing to do on your side; the switch appears here when it is ready.</p>' : `
+      <div class="ev-ai-row">
+        <span class="acct-tag ${on ? 'is-verified' : ''}">${on ? 'on' : 'off'}</span>
+        ${manage ? `<button class="btn btn-sm" type="button" data-env-action="${on ? 'ai-off' : 'ai-on'}" ${ev.aiBusy ? 'disabled' : ''}>${on ? 'Turn AI off' : 'Turn AI on'}</button>` : `<span class="adm-muted">The owner or an admin turns it ${on ? 'off' : 'on'}.</span>`}
+      </div>
+      <div class="use-row ev-meter">
+        <div class="use-head"><span class="use-name">This month's credit</span><span class="use-val">${e(dollars(used))} / ${e(dollars(limit))} · ${callLine}</span></div>
+        <div class="use-track"><div class="use-fill ${cls}" style="width:${pct.toFixed(1)}%"></div></div>
+      </div>
+      <p class="acct-card-note ev-note">Every call is priced at the model's rate and paid from this plan's monthly credit, which renews on the first. ${c.callLimit ? `The Free plan carries ${e(String(c.callLimit))} calls a month; AI continues on the User plan.` : 'A higher plan carries more.'}</p>
+      ${(a.lanes || []).length ? `
+      <div class="adm-table-scroll">
+        <table class="adm-table adm-table--wrap ev-table">
+          <thead><tr><th>Model</th><th>Runs</th><th class="adm-num">Per exchange</th><th class="adm-num">Spent</th></tr></thead>
+          <tbody>
+            ${a.lanes.map(l => { const s = (a.byLane || {})[l.lane] || {}; return `
+              <tr>
+                <td data-th="Model"><span class="lic-name">${e(cap(l.lane))}</span>${l.lane === a.defaultLane ? ' <span class="acct-tag is-primary">default</span>' : ''}<br><span class="adm-muted lic-desc">${e(l.model)}</span></td>
+                <td class="cell-tight" data-th="Runs">${e(String(s.calls || 0))}</td>
+                <td class="adm-num cell-tight" data-th="Per exchange">${e(cents(l.exchangeCents))}</td>
+                <td class="adm-num cell-tight" data-th="Spent">${e(dollars((s.spendMicro || 0) / 10000))}</td>
+              </tr>`; }).join('')}
+          </tbody>
+        </table>
+      </div>
+      <p class="acct-card-note ev-note">Per exchange is a typical question and answer, about 2,000 words in and 400 out. The software and your API keys pick the model on each call.</p>` : ''}`}`;
+  }
+  return cardHtml({
+    key: 'ai', icon: 'activity', title: 'AI', summary,
+    explain: explainLink('ai', 'How the AI credit works'),
+    body: `<p class="acct-error" id="evAiError" hidden></p>${inner}`
+  });
 }
 
 /* ---------- files ---------- */
@@ -1963,6 +2132,12 @@ export function bindEnvironmentActions(deps) {
     if (a === 'domain-bind') return void bindDomain(btn.dataset.host || '');
     if (a === 'domain-unbind') return void unbindDomain(btn.dataset.host || '');
     if (a === 'domain-copy') return void copyText(btn.dataset.text || '', btn);
+    if (a === 'ai-on') return void setAi(true, btn);
+    if (a === 'ai-off') return void setAi(false, btn);
+    if (a === 'data-open' || a === 'data-reload') return void loadRows(btn.dataset.table || '');
+    if (a === 'data-close') return void closeTable();
+    if (a === 'data-more') return void loadRows(ev.table, true);
+    if (a === 'data-row') { const k = btn.dataset.key || ''; ev.openRow = ev.openRow === k ? '' : k; paintData(); return; }
     if (a === 'open-url') { const u = String(btn.dataset.url || ''); if (/^https:\/\//.test(u)) window.open(u, '_blank', 'noopener'); return; }
     if (a === 'domain-link') return void linkDomain(btn);
     if (a === 'domain-unlink') return void unlinkDomain(btn.dataset.host || '');

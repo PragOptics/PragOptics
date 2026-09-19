@@ -1,6 +1,6 @@
 # Licenses and mailboxes
 
-Microsoft 365 licenses are add-ons for your team's environment, from the User plan up. You pay Microsoft's list price per person per month, on the same monthly bill as your plan, and every seat on your team can carry a mailbox under a domain you own. PragOptics is your Microsoft partner of record: it sets up and runs the Microsoft side for you, and you never open a Microsoft account of your own.
+Every seat on your team can carry a mailbox under a domain you own, and the mailbox is included in the plan, from the User plan up. Any other Microsoft 365 license is an add-on at Microsoft's list price per person per month, on the same monthly bill as your plan. PragOptics is your Microsoft partner of record: it sets up and runs the Microsoft side for you, and you never open a Microsoft account of your own.
 
 ## The licensing account
 
@@ -15,11 +15,11 @@ Microsoft 365 Business Standard | Business Basic plus the Office apps installed 
 Microsoft 365 Business Premium | Business Standard plus device management and advanced security.
 ```
 
-Prices on the Licenses card are Microsoft's list price per person per month, before tax. The billing term is shown beside the price.
+Prices on the Licenses card are Microsoft's list price per person per month, before tax; they apply to add-ons, not to the mailbox that comes with a seat. The billing term follows your plan's term: monthly on a monthly plan, annual on an annual plan.
 
 ## A mailbox for every seat
 
-A seat is a person on your team with a role that can write (owner, admin, developer, member). Each seat can have one mailbox, at an address under a domain you have verified on Environment. The mailbox comes with a license that includes mail; the address is the person's choice within your domain, and it is theirs to sign in to from any mail app.
+A seat is a person on your team with a role that can write (owner, admin, developer, member). Each seat can have one mailbox, included, at an address under a domain you have verified on Environment; it is created when the person asks for it. The owner, admins and developers get a full Exchange Online mailbox (50 GB, Outlook on the desktop, the web and the phone); members get an Exchange Online Kiosk mailbox (2 GB, web and phone). Promote a member and the mailbox is upgraded at once. The address is the person's choice within your domain, and it is theirs to sign in to from any mail app.
 
 ## What you are not asked to do
 

@@ -833,3 +833,9 @@
     grid-template-columns: 1fr;
   }
 }
+/* Three buttons on a phone (2026-09-19): the wide ones share the row and wrap, the terminal glyph keeps its own width whether or not Get Started is showing. */
+@media (max-width: 640px) {
+  .hero .btnContainer { display: flex; flex-wrap: wrap; align-items: stretch; }
+  .hero .btnContainer > .cta, .hero .btnContainer > .btn { flex: 1 1 120px; width: auto; }
+  .hero .btnContainer > .btn.btn-term { flex: 0 0 auto; }
+}

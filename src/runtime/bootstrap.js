@@ -804,6 +804,7 @@ window.applyPostLoginResolution = applyPostLoginResolution;
       location.assign(target);
     }
     window.pragGoToSoftware = goToSoftware;
+    window.pragOpenStudio = () => routeToSoftwareOnLoad();
 
     function routeToSoftwareOnLoad() {
       let url = "";

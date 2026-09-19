@@ -48,6 +48,11 @@ export function initHeaderMenu() {
           window.location.href = '/docs/';
           break;
 
+        // The Studio (2026-09-19): signed in and hosted, straight in by the one-time code; signed in and not hosted, the Environment section; signed out, sign in first and land there.
+        case 'open-studio':
+          window.pragOpenStudio?.();
+          break;
+
         case 'open-cart':
           window.openCart?.();
           break;

@@ -70,6 +70,7 @@ const SHIPPO_LABELS_URL = `${PRAG_API_BASE}/admin/shipping/labels`;
 const PRINT_QUEUE_URL = `${PRAG_API_BASE}/admin/print-queue`;
 const USAGE_MINE_URL = `${PRAG_API_BASE}/usage/mine`;
 const ADMIN_USAGE_URL = `${PRAG_API_BASE}/admin/usage/overview`;
+const ADMIN_AI_URL = `${PRAG_API_BASE}/admin/ai/usage`;
 const ADMIN_COSTS_URL = `${PRAG_API_BASE}/admin/costs`;
 const NOTIFY_PREFS_URL = `${PRAG_API_BASE}/account/notifications`;
 const ADMIN_NOTIFY_URL = `${PRAG_API_BASE}/admin/notifications`;
@@ -300,7 +301,8 @@ const ICONS = {
   team:         '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
   tenants:      '<path d="M3 21h18"/><path d="M5 21V7l7-4 7 4v14"/><path d="M9 21v-6h6v6"/><path d="M9 10h.01"/><path d="M15 10h.01"/>',
   environment:  '<ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.66 3.58 3 8 3s8-1.34 8-3V5"/><path d="M4 12c0 1.66 3.58 3 8 3s8-1.34 8-3"/>',
-  licensing:    '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/>'
+  licensing:    '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/>',
+  ai:           '<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>'
 };
 
 const ACCOUNT_SECTIONS = [
@@ -324,7 +326,8 @@ const INTERNAL_SECTIONS = [
   { id: 'payments',   label: 'Payments' },
   { id: 'warranty',   label: 'Warranty' },
   { id: 'inventory',  label: 'Inventory' },
-  { id: 'catalog',    label: 'Catalog' }
+  { id: 'catalog',    label: 'Catalog' },
+  { id: 'ai',         label: 'AI' }
 ];
 
 // Team, Environment and Tenants ride the tenant spine, which reaches live
@@ -2077,6 +2080,71 @@ function statCard(n, label, hint, accent) {
       <span class="adm-stat-l">${escapeHtml(label)}</span>
       ${hint ? `<span class="adm-stat-h">${escapeHtml(hint)}</span>` : ''}
     </div>`;
+}
+
+/** The operator's AI section (2026-09-19): the month's spend against the platform ceiling, every owner who spent, the provider and its lanes. */
+async function renderAdminAi(main) {
+  main.innerHTML = `
+    <header class="adm-sec-head"><h2 class="adm-sec-title">AI</h2></header>
+    <p class="acct-error" id="admAiError" hidden></p>
+    <div id="admAiBody"><p class="adm-loading">Loading…</p></div>`;
+  const host = document.getElementById('admAiBody');
+  try {
+    const d = await apiFetch(ADMIN_AI_URL);
+    const dollars = (c) => `$${(Number(c || 0) / 100).toFixed(2)}`;
+    const cap = d.cap || {}, p = d.provider || {};
+    const pct = Number(cap.percent || 0);
+    const cls = pct >= 95 ? 'is-hot' : pct >= 70 ? 'is-warn' : '';
+    host.innerHTML = `
+      <div class="adm-stat-grid">
+        ${statCard(dollars(cap.totalCents), `Spent in ${escapeHtml(d.month || '')}`)}
+        ${statCard(dollars(cap.capCents), 'Platform ceiling', 'AI_PLATFORM_CAP_CENTS', pct >= 80 ? 'amber' : '')}
+        ${statCard(nFmt(cap.totalCalls), 'Calls this month')}
+        ${statCard(escapeHtml(p.configured ? p.name : 'not configured'), 'Provider', p.configured ? `${(p.lanes || []).length} lanes, default ${escapeHtml(p.defaultLane || '')}` : 'AI_PROVIDER and AI_API_KEY', p.configured ? '' : 'amber')}
+      </div>
+      <div class="adm-card">
+        <div class="use-row ev-meter">
+          <div class="use-head"><span class="use-name">Ceiling used</span><span class="use-val">${escapeHtml(String(pct))}%${cap.warned80 ? ' · 80% alert sent' : ''}</span></div>
+          <div class="use-track"><div class="use-fill ${cls}" style="width:${Math.min(100, pct).toFixed(1)}%"></div></div>
+        </div>
+        <p class="adm-note">Past the ceiling every AI call on the platform answers 503 until the month resets or the setting is raised. Each account is also held to its own credit: Free 10 calls and 2 cents, User $1, Partner $5, Super $25.</p>
+      </div>
+      ${(p.lanes || []).length ? `
+      <div class="adm-card">
+        <h3 class="adm-card-h">Lanes and prices</h3>
+        <div class="adm-table-scroll">
+          <table class="adm-table">
+            <thead><tr><th>Lane</th><th>Model</th><th class="adm-num">Per exchange</th></tr></thead>
+            <tbody>${p.lanes.map(l => `<tr><td>${escapeHtml(l.lane)}${l.lane === p.defaultLane ? ' <span class="acct-tag is-primary">default</span>' : ''}</td><td><code>${escapeHtml(l.model)}</code></td><td class="adm-num">${escapeHtml(String(l.exchangeCents))}¢</td></tr>`).join('')}</tbody>
+          </table>
+        </div>
+      </div>` : ''}
+      <div class="adm-card">
+        <h3 class="adm-card-h">Who spent (${escapeHtml(d.month || '')})</h3>
+        ${!(d.rows || []).length ? '<p class="adm-empty">Nobody has used AI this month.</p>' : `
+        <div class="adm-table-scroll">
+          <table class="adm-table">
+            <thead><tr><th>Account</th><th>Tier</th><th class="adm-num">Spent</th><th class="adm-num">Credit</th><th class="adm-num">Calls</th><th>Lanes</th></tr></thead>
+            <tbody>
+              ${d.rows.map(r => { const over = r.limitCents && r.usedCents >= r.limitCents; return `
+                <tr>
+                  <td class="adm-cell-email cell-ellip" title="${escapeHtml(r.email || r.userId)}">${escapeHtml(r.email || r.userId)}</td>
+                  <td>${tierPill(r.tier)}</td>
+                  <td class="adm-num ${over ? 'adm-money-neg' : ''}">${escapeHtml(dollars(r.usedCents))}</td>
+                  <td class="adm-num">${escapeHtml(dollars(r.limitCents))}${r.callLimit ? ` · ${escapeHtml(String(r.callLimit))} calls` : ''}</td>
+                  <td class="adm-num">${escapeHtml(nFmt(r.calls))}</td>
+                  <td class="adm-muted">${escapeHtml(Object.entries(r.byLane || {}).map(([k, v]) => `${k} ${v.calls}`).join(', '))}</td>
+                </tr>`; }).join('')}
+            </tbody>
+          </table>
+        </div>
+        ${d.truncated ? '<p class="adm-note">Showing the first 2,000 accounts.</p>' : ''}`}
+      </div>`;
+  } catch (ex) {
+    host.innerHTML = '';
+    if (ex?.status === 404) { host.innerHTML = '<p class="adm-empty">The AI routes are not on this lane yet.</p>'; return; }
+    showError('admAiError', friendlyError(ex, 'Could not read the AI usage.'));
+  }
 }
 
 async function renderOverview(main) {
@@ -3975,6 +4043,7 @@ function showSection(id) {
   if (id === 'warranty')     return void renderWarranty(main);
   if (id === 'inventory')    return renderSoon(main, 'Inventory', 'Physical stock levels for hardware, cases, and screwdrivers will live here.');
   if (id === 'catalog')      return void renderCatalog(main);
+  if (id === 'ai')           return void renderAdminAi(main);
 }
 
 function showError(id, message) {
