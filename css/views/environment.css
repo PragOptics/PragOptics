@@ -228,3 +228,18 @@ html[data-theme="dark"] .btn.is-danger, :root:not([data-theme="light"]) .btn.is-
   /* the table itself must not keep its desktop minimum once its rows stack */
   .account .adm-table--wrap, .account .adm-table--wrap tr, .account .adm-table--wrap td { min-width: 0; max-width: 100%; }
 }
+
+/* Licensing (2026-09-18): the account's facts, the price on a catalog row. */
+.lic-facts { display: grid; gap: 8px 16px; grid-template-columns: max-content minmax(0, 1fr); align-items: baseline; }
+.lic-fact { display: contents; }
+.lic-k { color: var(--muted); font-size: .8rem; font-weight: 600; letter-spacing: .02em; }
+.lic-v { min-width: 0; font-size: .9rem; }
+.lic-name { font-weight: 600; }
+.lic-desc { font-size: .8rem; }
+.lic-price { white-space: nowrap; }
+.lic-table td { vertical-align: top; }
+@container (max-width: 640px) {
+  .lic-facts { grid-template-columns: 1fr; gap: 4px; }
+  .lic-fact { display: block; }
+  .lic-k { display: block; }
+}
