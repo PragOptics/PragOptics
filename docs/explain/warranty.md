@@ -11,7 +11,7 @@ Transfer | Passing the unit on? Ownership, warranty included, moves to the new e
 
 ## With an account, or without
 
-Registration stands either way. An account keeps every unit you own in one place, under My Devices, so you can redeem or transfer without digging out the card. Adding an account later links the units you registered with the same email.
+Registration stands either way. An account keeps every unit you own in one place, under Registered hardware, so you can redeem or transfer without digging out the card. Adding an account later links the units you registered with the same email.
 
 ## Transfers
 

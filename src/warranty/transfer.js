@@ -1,5 +1,5 @@
 // src/warranty/transfer.js
-// Product ownership transfer — the second mode of the My Devices page.
+// Product ownership transfer — the second mode of the Registered hardware page.
 // Human-to-human: the warranty follows the product to the new owner's email.
 //
 // Flow:  1) lookup — current owner enters the email their products were

@@ -208,7 +208,7 @@ function resetRedeem() {
   epoch++;               // invalidates any in-flight continuation
   state.step = 'identify';
   state.busy = false; state.error = ''; state.locked = null;
-  // A "Redeem" click from My Devices drops the code here so it pre-fills.
+  // A "Redeem" click from Registered hardware drops the code here so it pre-fills.
   state.code = '';
   try {
     const pre = sessionStorage.getItem('pragoptics_redeem_prefill');

@@ -307,7 +307,7 @@ const ICONS = {
 
 const ACCOUNT_SECTIONS = [
   { id: 'profile',      label: 'Profile' },
-  { id: 'products',     label: 'My Devices' },
+  { id: 'products',     label: 'Registered hardware' },
   { id: 'subscription', label: 'Billing' },
   { id: 'team',         label: 'Team' },
   { id: 'environment',  label: 'Environment' },
@@ -1274,7 +1274,7 @@ function productItemHtml(it) {
 
 async function renderProducts(main) {
   main.innerHTML = `
-    <header class="acct-sec-head"><h2 class="acct-sec-title">My Devices</h2></header>
+    <header class="acct-sec-head"><h2 class="acct-sec-title">Registered hardware</h2></header>
     <div class="ev-cards">
     ${cardHtml({ key: 'products:list', icon: 'box', title: 'Registered devices', summary: 'loading', open: true, body: `
       <ul class="acct-product-list" id="acctProductList"><li class="acct-loading">Loading…</li></ul>
@@ -4209,7 +4209,7 @@ function bindOnce() {
 }
 
 /** Deep-link target for the next panel entry (e.g. the old admin route lands
- *  on Overview; the warranty success screen lands on My Devices). */
+ *  on Overview; the warranty success screen lands on Registered hardware). */
 /* A card link (2026-09-16): the software's "one button" lands here with
  * { section, card, row } kept in sessionStorage by routeToAccountOnLoad. Once
  * the section has rendered, the card scrolls into view and flashes once;

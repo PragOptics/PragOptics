@@ -162,7 +162,7 @@ function contactStepHtml(p) {
         <div class="wr-paths">
           <button class="cta wr-path" type="button" data-wr-action="register-account-linked">
             <span class="wr-path-t">Register to my account</span>
-            <span class="wr-path-s">Added to My Devices, ready to redeem when you need it.</span>
+            <span class="wr-path-s">Added to Registered hardware, ready to redeem when you need it.</span>
           </button>
         </div>
         <p class="wr-alt-note muted">Registering this for someone else, or under a different email?
@@ -201,7 +201,7 @@ function successHtml(p, withAccount, { linked = false } = {}) {
   const midline = withAccount
     ? `<p class="wr-thanks-sub">Finishing up: we're taking you to sign-in to create your account.</p>`
     : linked
-      ? `<p class="wr-done-hint">Added to <strong>My Devices</strong> on your account. You can redeem it from there whenever you need to.</p>`
+      ? `<p class="wr-done-hint">Added to <strong>Registered hardware</strong> on your account. You can redeem it from there whenever you need to.</p>`
       : `<p class="wr-done-hint">That's it. No account, no follow-up needed. Keep the card with the unit.</p>`;
   return `
     <div class="wr-step wr-step-done" data-wr-step="done">
@@ -212,7 +212,7 @@ function successHtml(p, withAccount, { linked = false } = {}) {
       The printed case is covered for life, the unit for one year against manufacturing defects.</p>
       ${midline}
       <p class="wr-done-hint">Passing it on someday? Ownership, warranty included, transfers
-      anytime from this page: <strong>My Devices → Transfer</strong>. The email you registered
+      anytime from this page: <strong>Registered hardware → Transfer</strong>. The email you registered
       with is the key.</p>
       ${(withAccount || linked) ? '' : `
       <div class="wr-invite">
@@ -226,7 +226,7 @@ function successHtml(p, withAccount, { linked = false } = {}) {
         </div>
       </div>`}
       <div class="wr-done-actions wr-done-secondary">
-        ${linked ? '<button class="cta" type="button" data-wr-action="go-my-products">View My Devices</button>' : ''}
+        ${linked ? '<button class="cta" type="button" data-wr-action="go-my-products">View Registered hardware</button>' : ''}
         <button class="btn" type="button" data-wr-action="register-another">Register another device</button>
         <button class="btn" type="button" data-wr-action="back-home">Back to PragOptics</button>
       </div>
@@ -609,7 +609,7 @@ export function initWarrantyView() {
   // A sign-in that started here comes back here (bootstrap consumes the return
   // flag and raises this event). Mid-registration, the contact step re-renders
   // as the signed-in path with the code kept; after a finished registration,
-  // the account's My Devices is the place to be.
+  // the account's Registered hardware is the place to be.
   window.addEventListener('pragoptics:warranty-resume', () => {
     if (!$body) return;
     if ($body.querySelector('[data-wr-step="done"]')) {

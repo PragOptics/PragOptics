@@ -151,7 +151,7 @@
   .acct-nav-item span:not(.acct-nav-ico) { display: none; }
 }
 
-/* ---- My Devices ---- */
+/* ---- Registered hardware ---- */
 .acct-product-list { list-style: none; margin: 12px 0 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
 .acct-product {
   display: flex; align-items: center; justify-content: space-between; gap: 14px;
