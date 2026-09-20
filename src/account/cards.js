@@ -110,6 +110,28 @@ export function cardHtml({ key, icon, title, summary = '', explain = '', body = 
     </section>`;
 }
 
+/* THE PROFILE GRID PACKS (2026-09-20, Cameron: dead space between cards at full width). Two columns of
+ * cards that open and fold leave a hole beside every opened card in a plain grid, since a row is as tall
+ * as its tallest card. Here the grid's rows are 1px and each card spans the rows its own height needs
+ * (plus the gap), so the next card starts right under the shorter one. A ResizeObserver keeps the spans
+ * true as cards open, load, or the width changes; under one column the spans come off. */
+const packed = new WeakMap();
+export function packGrid(grid) {
+  if (!grid || packed.has(grid) || typeof ResizeObserver === 'undefined') return;
+  const two = window.matchMedia('(min-width: 1100px)');
+  const gap = 14;
+  const fit = (card) => {
+    if (!two.matches) { card.style.gridRowEnd = ''; return; }
+    const h = Math.ceil(card.getBoundingClientRect().height);
+    if (h > 0) card.style.gridRowEnd = `span ${h + gap}`;
+  };
+  const ro = new ResizeObserver((entries) => { for (const en of entries) fit(en.target); });
+  grid.classList.add('is-packed');
+  for (const card of grid.querySelectorAll(':scope > .acct-card')) { fit(card); ro.observe(card); }
+  two.addEventListener?.('change', () => { for (const card of grid.querySelectorAll(':scope > .acct-card')) fit(card); });
+  packed.set(grid, ro);
+}
+
 let bound = false;
 /** One listener for every card's head, on the document, once. A click on the head folds or opens; a click on anything interactive inside it (the (i), a button) is that thing's own. */
 export function initCards() {

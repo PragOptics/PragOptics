@@ -151,7 +151,7 @@
   .acct-nav-item span:not(.acct-nav-ico) { display: none; }
 }
 
-/* ---- My Products ---- */
+/* ---- My Devices ---- */
 .acct-product-list { list-style: none; margin: 12px 0 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
 .acct-product {
   display: flex; align-items: center; justify-content: space-between; gap: 14px;
@@ -313,6 +313,8 @@ select.acct-input { background-color: var(--surface-deep); }
   .account .acct-sec-head { margin-bottom: 24px; }
   .account .acct-sec-title { font-size: 1.7rem; }
   .acct-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+  /* packed (cards.js packGrid): 1px rows, each card spanning its own height plus the gap; no hole beside an opened card */
+  .acct-grid.is-packed { grid-auto-rows: 1px; row-gap: 0; }
   .ev-cards { gap: 14px; }
   .acct-card { padding: 22px 24px 24px; }
   .ev-card { padding: 0; }
