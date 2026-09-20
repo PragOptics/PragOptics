@@ -277,6 +277,14 @@
       enterConsole();
     }
 
+    // A tab opened by the studio's door inherits a COPY of the opener tab's session storage, every origin's,
+    // and the opener was this site's own tab before it became the studio: its old token rides along and, once
+    // expired, drew "Your session has expired" over a tab that was about to be signed in by the code in the
+    // hash (Cameron, 2026-09-20). A handoff in the hash means a fresh session is coming: the inherited one goes first.
+    if (/^#handoff=/.test(String(location.hash || ""))) {
+      try { sessionStorage.removeItem("pragoptics_tokens"); sessionStorage.removeItem("pragoptics_ping"); } catch { /* nothing inherited */ }
+    }
+
     // ✅ Rehydrate API console auth state from stored ping/token
     try {
       const storedTokens = getStoredTokens();
