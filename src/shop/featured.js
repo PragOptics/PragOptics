@@ -88,6 +88,8 @@ function softwareCardHtml(s) {
   // plain "Coming soon" pill instead of a link anywhere.
   const primary = a.kind === 'external'
     ? `<a class="cta" href="${escapeHtml(a.href || '#')}" target="_blank" rel="noopener noreferrer">${escapeHtml(a.label || 'Open')}</a>`
+    : a.kind === 'studio'
+    ? `<button class="cta" type="button" data-sw-action="studio">${escapeHtml(a.label || 'Open Studio')}</button>`
     : SHOP_LIVE
       ? `<button class="cta" type="button" data-action="notify" data-product-id="${escapeHtml(s.id)}">${escapeHtml(a.label || 'Notify me')}</button>`
       : `<button class="cta" type="button" disabled>Coming soon</button>`;

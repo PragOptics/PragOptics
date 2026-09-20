@@ -513,7 +513,7 @@ function dataHtml() {
   const summary = tables == null ? 'loading' : !tables.length ? 'no tables yet' : ev.table ? `${e(ev.table)}${ev.rows ? ` · ${countWord(ev.rows.length, 'row', 'rows')}${ev.rowsAfter ? '+' : ''}` : ''}` : countWord(tables.length, 'table', 'tables');
   let body;
   if (tables == null) body = '<p class="acct-loading">Loading tables…</p>';
-  else if (!tables.length) body = '<p class="acct-empty">No data yet. The software, your site and your API keys write tables here; a connected supplier\'s products land in supplier_products.</p>';
+  else if (!tables.length) body = '<p class="acct-empty">No data yet. The Studio, your site and your API keys write tables here; a connected supplier\'s products land in supplier_products.</p>';
   else if (!ev.table) body = `
       <div class="adm-table-scroll">
         <table class="adm-table adm-table--wrap ev-table">
@@ -624,7 +624,7 @@ function aiHtml() {
           </tbody>
         </table>
       </div>
-      <p class="acct-card-note ev-note">Per exchange is a typical question and answer, about 2,000 words in and 400 out. The software and your API keys pick the model on each call.</p>` : ''}`}`;
+      <p class="acct-card-note ev-note">Per exchange is a typical question and answer, about 2,000 words in and 400 out. The Studio and your API keys pick the model on each call.</p>` : ''}`}`;
   }
   return cardHtml({
     key: 'ai', icon: 'activity', title: 'AI', summary,
@@ -641,7 +641,7 @@ function filesHtml() {
   const total = (rows || []).reduce((s, f) => s + Number(f.size || 0), 0);
   const summary = rows == null ? 'loading' : !rows.length ? 'none yet' : `${countWord(rows.length, 'file', 'files')} · ${e(bytesFmt(total))}`;
   const list = rows == null ? '<p class="acct-loading">Loading files…</p>'
-    : !rows.length ? `<p class="acct-empty">No files yet. The software puts its builds, images and exports here.</p>`
+    : !rows.length ? `<p class="acct-empty">No files yet. The Studio puts its builds, images and exports here.</p>`
     : `
       <div class="adm-table-scroll">
         <table class="adm-table adm-table--wrap ev-table">

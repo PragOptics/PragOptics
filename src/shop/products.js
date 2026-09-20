@@ -225,16 +225,18 @@ export const SOFTWARE = [
   {
     id: 'pragoptics-studio',
     category: 'software',
-    name: 'PragOptics',
-    tagline: 'The main platform engine.',
+    name: 'PragOptics Studio',
+    tagline: 'The main platform engine. Live at studio.pragoptics.com.',
     subtitle: 'The flagship app: a full production studio where you grab any element on a live canvas and shape it in place, or drop into raw code with a real repository tree. Websites, web apps, and code notebooks: one engine, AI assistance built in, and everything you make exports free.',
     icon: '/docs/assets/products/pragoptics/icon.png',
     splash: '/docs/assets/products/pragoptics/splash.png',
     splashAspect: '1024 / 450',
-    availability: 'coming-soon',
+    availability: 'available',
     access: 'free',
     priceLabel: 'Free to start',
-    action: { kind: 'notify', label: 'Notify me at launch' },
+    // LIVE (2026-09-20): the studio runs at studio.pragoptics.com. Signed in on the site, the door carries the
+    // session over (the one-time handoff); signed out, it opens as the no-account tool it is.
+    action: { kind: 'studio', label: 'Open Studio' },
     features: [
       'Direct-manipulation canvas: click, drag, and edit every element in place',
       'Raw code mode with a real repo tree, syntax highlighting, and live preview',

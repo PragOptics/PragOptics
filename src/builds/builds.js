@@ -18,13 +18,13 @@ const BUILDS_API_LIVE = false; // flip when the moderated builds feed is deploye
 // files (.potemplate.json), project packages (.wbdraft.json / .zip), and the
 // Automations rule JSON from its spec. Plugins are the surface being built.
 const BUILD_TYPES = [
-  { id: 'template',   label: 'Template',   hint: 'A full site or app, ready to open in the software' },
-  { id: 'plugin',     label: 'Plugin',     hint: 'Front-end pieces that extend the software' },
-  { id: 'automation', label: 'Automation', hint: 'A rule the software runs: when, if, do' },
+  { id: 'template',   label: 'Template',   hint: 'A full site or app, ready to open in the Studio' },
+  { id: 'plugin',     label: 'Plugin',     hint: 'Front-end pieces that extend the Studio' },
+  { id: 'automation', label: 'Automation', hint: 'A rule the Studio runs: when, if, do' },
   { id: 'tool',       label: 'Tool',       hint: 'Anything else useful, from scripts to fixtures' },
 ];
 const BUILD_TARGETS = [
-  { id: 'software',   label: 'PragOptics software' },
+  { id: 'software',   label: 'PragOptics Studio' },
   { id: 'device-api', label: 'Device APIs' },
   { id: 'standalone', label: 'Standalone' },
 ];
@@ -111,7 +111,7 @@ function renderBoard(builds = []) {
       <div class="bd-empty">
         <span class="bd-empty-glyph" aria-hidden="true">${FILE_ICON}</span>
         <p class="bd-empty-t">Nothing on the board yet.</p>
-        <p class="bd-empty-s muted">Verified builds published from the PragOptics software will appear here.</p>
+        <p class="bd-empty-s muted">Verified builds published from the Studio will appear here.</p>
       </div>
     `;
     return;

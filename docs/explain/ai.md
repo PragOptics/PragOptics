@@ -1,6 +1,6 @@
 # AI and its credit
 
-Your environment has an AI assistant: it writes and edits your site, builds the pieces the software runs, answers questions about your data, and works the same from the software, from your site, and from your own programs through an API key. It runs through the platform, never through an account of your own, so there is no key to manage and nothing to sign up for.
+Your environment has an AI assistant: it writes and edits your site, builds the pieces the Studio runs, answers questions about your data, and works the same from the software, from your site, and from your own programs through an API key. It runs through the platform, never through an account of your own, so there is no key to manage and nothing to sign up for.
 
 ## The switch
 
@@ -21,7 +21,7 @@ Every call is priced at the model's own rate for the words in and the words out,
 
 ## Picking a model
 
-The card lists the models you can use, from the fastest and cheapest to the most capable, with what a typical exchange costs on each. The software and your programs choose the model on every call, so a quick question can run on the cheap one and a page design on the strong one. The card shows how many runs and how much of the credit each model has used this month.
+The card lists the models you can use, from the fastest and cheapest to the most capable, with what a typical exchange costs on each. The Studio and your programs choose the model on every call, so a quick question can run on the cheap one and a page design on the strong one. The card shows how many runs and how much of the credit each model has used this month.
 
 ## What leaves your environment
 

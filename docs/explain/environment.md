@@ -5,7 +5,7 @@ Your environment is the private space the platform sets up for your account the 
 ## What is in it
 
 ```flow
-Data | Tables of values your apps and the software keep for you: settings, form submissions, records. Small things, read and written by key.
+Data | Tables of values your apps and the Studio keep for you: settings, form submissions, records. Small things, read and written by key.
 Files | Builds, images, exports. Anything too big for a data row lives here, in a container that only your environment can reach.
 Keys | Credentials your own programs use to read and write the two above without a person signing in.
 ```

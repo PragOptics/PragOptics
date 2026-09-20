@@ -4033,7 +4033,7 @@ function showSection(id) {
   if (id === 'team')         return void renderTeam(main, teamDeps());
   if (id === 'environment')  return void renderEnvironment(main, teamDeps());
   if (id === 'licensing')    return void renderLicensing(main, teamDeps());
-  if (id === 'builds')       return renderSoon(main, 'My Builds', 'Builds you publish from the PragOptics™ software will be listed here.');
+  if (id === 'builds')       return renderSoon(main, 'My Builds', 'Builds you publish from the Studio will be listed here.');
   if (id === 'overview')     return void renderOverview(main);
   if (id === 'users')        return void renderUsers(main);
   if (id === 'tenants')      return void renderTenants(main, teamDeps());

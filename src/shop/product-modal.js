@@ -4,6 +4,7 @@
 import { getProduct, formatPrice, preorderVariant, isPreorder, SHOP_LIVE } from './products.js';
 import { addItem, addDonation } from './cart.js';
 import { openCart } from './cart-drawer.js';
+import { openStudioDoor } from './software.js';
 import { createModelViewer } from '../components/modelViewer.js';
 import { inlineVideoHtml, bindInlineVideo, hasVideoSource } from '../components/videoOverlay.js';
 
@@ -105,6 +106,9 @@ function softwareActionsHtml(p) {
   const donate = `<button class="btn sw-donate" type="button" data-pm-donate data-product-id="${escapeHtml(p.id)}" title="Free to download. Donations keep it that way">♥ Donate</button>`;
   if (a.kind === 'external' && a.href) {
     return `<div class="pm-actions"><a class="cta" href="${escapeHtml(a.href)}" target="_blank" rel="noopener noreferrer">${label}</a>${donate}</div>`;
+  }
+  if (a.kind === 'studio') {
+    return `<div class="pm-actions"><button class="cta" type="button" data-pm-studio>${label}</button>${donate}</div>`;
   }
   if (a.kind === 'wizard') {
     return `<div class="pm-actions"><button class="cta" type="button" data-pm-wizard>${label}</button>${donate}</div>`;
@@ -463,6 +467,14 @@ function bindOnce() {
       if (hero) { hero.src = src; hero.alt = alt; }
       $panel?.querySelectorAll('.pm-thumb').forEach(t => t.classList.remove('is-active'));
       thumb.classList.add('is-active');
+      return;
+    }
+
+    const studioBtn = e.target.closest('[data-pm-studio]');
+    if (studioBtn) {
+      e.preventDefault();
+      closeProductModal();
+      openStudioDoor();
       return;
     }
 

@@ -804,6 +804,7 @@ window.applyPostLoginResolution = applyPostLoginResolution;
     }
     window.pragGoToSoftware = goToSoftware;
     window.pragOpenStudio = () => routeToSoftwareOnLoad();
+    window.pragSessionActive = () => isSessionActive();   // the shop's studio door asks before choosing the handoff
 
     // Open Studio (2026-09-19): signed in, the studio, always; signed out, sign in first and land there.
     function routeToSoftwareOnLoad() {

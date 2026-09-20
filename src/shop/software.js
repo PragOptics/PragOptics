@@ -6,6 +6,14 @@
 // is always free and never a checkout item).
 
 import { SOFTWARE, SHOP_LIVE } from './products.js';
+import { STUDIO_URL } from '../runtime/config.js';
+
+/* The studio door (2026-09-20): signed in, the site's own opener carries the session across by the one-time
+ * code; signed out, the studio opens as the no-account tool it is. */
+export function openStudioDoor() {
+  if (window.pragSessionActive?.()) { window.pragOpenStudio?.(); return; }
+  window.open(STUDIO_URL, '_blank', 'noopener');
+}
 import { addDonation } from './cart.js';
 
 function escapeHtml(s) {
@@ -36,6 +44,8 @@ function actionButton(product) {
       return `<button class="cta" type="button" data-sw-action="wizard">${escapeHtml(a.label)}</button>`;
     case 'external':
       return `<a class="cta" href="${escapeHtml(a.href)}" target="_blank" rel="noopener noreferrer">${escapeHtml(a.label)}</a>`;
+    case 'studio':
+      return `<button class="cta" type="button" data-sw-action="studio">${escapeHtml(a.label)}</button>`;
     case 'notify':
       // Notify routes through checkout — while the shop is gated the card's
       // "Coming soon" status pill carries the message and there is no button.
@@ -98,6 +108,7 @@ function bindOnce() {
     const btn = e.target.closest('[data-sw-action]');
     if (!btn) return;
     const kind = btn.dataset.swAction;
+    if (kind === 'studio') { e.preventDefault(); openStudioDoor(); return; }
     if (kind === 'wizard') {
       e.preventDefault();
       // The existing subscription flow lives behind "Get Started" on the landing.
