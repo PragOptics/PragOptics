@@ -767,6 +767,12 @@ window.applyPostLoginResolution = applyPostLoginResolution;
     // on load and route to that surface so those links land correctly instead
     // of always showing landing.
     (function routeFromHash() {
+      // THE DOOR BACK FROM THE STUDIO (2026-09-20): the studio's account panel opens this site in a new tab, which
+      // has no session (sessionStorage is per tab), so the studio mints the same one-time code the site mints for it
+      // and lands here as /#handoff=<code>&to=account?section=environment. The code is redeemed once on this lane,
+      // the session stored exactly as a sign-in stores it, and the tab lands on the section asked for.
+      const hm = String(location.hash || "").match(/^#handoff=([A-Za-z0-9_-]{32,64})(?:&to=([^&]*))?/);
+      if (hm) { redeemStudioHandoff(hm[1], decodeURIComponent(hm[2] || "account")); return; }
       const m = String(location.hash || "").match(/mode=(landing|console|shop|software|checkout|warranty|builds|admin)/);
       if (m) setAppMode(m[1]);
       // Warranty-card short link: /#warranty (with optional &device=)
@@ -787,6 +793,26 @@ window.applyPostLoginResolution = applyPostLoginResolution;
       // The software (2026-09-16): /#software sends a signed-in account straight to it once it is hosted (ping.software.url); signed out, the sign-in lands there.
       else if (/^#software/i.test(String(location.hash || ""))) routeToSoftwareOnLoad();
     })();
+
+    async function redeemStudioHandoff(code, to) {
+      try { history.replaceState(null, "", location.pathname + location.search); } catch { /* the hash is read once */ }
+      const dest = /^account(\?|$)/.test(to) ? to : "account";
+      try {
+        const res = await fetch(`${PRAG_API_BASE}/auth/software/redeem`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code }) });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data?.tokens?.access_token) throw new Error(data?.error || `redeem ${res.status}`);
+        sessionStorage.setItem("pragoptics_tokens", JSON.stringify(data.tokens));
+        const pingRes = await fetch(`${PRAG_API_BASE}/ping`, { headers: { Authorization: `Bearer ${data.tokens.access_token}` } });
+        const ping = await pingRes.json();
+        sessionStorage.setItem("pragoptics_ping", JSON.stringify(ping));
+        syncUserTheme();
+        window.setConsoleAuthenticated?.();
+      } catch {
+        // an expired or used code: the section still opens behind the sign-in, and the sign-in lands there
+      }
+      location.hash = "#" + dest;
+      routeToAccountOnLoad();
+    }
 
     // The session carried into the studio's origin by a one-time code (auth/softwareHandoff.js). The site composes the
     // address itself from STUDIO_URL and adds this lane's API base and name, so the studio redeems the code on the lane
