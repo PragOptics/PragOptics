@@ -409,7 +409,6 @@ function summaryHtml(v) {
           <p class="ev-owner adm-muted">${e(t.ownerEmail || '')}</p>
         </div>
         <div class="ev-actions">
-          ${phase === 'READY' ? `<button class="btn btn-sm ev-btn-ico" type="button" data-env-action="open-software" data-url="${e(t.software?.url || STUDIO_URL)}" data-tip="The Studio, in a new tab, signed in with this account">${ico('external')}<span>Open Studio</span></button>` : ''}
           ${(me.role === 'owner' || me.role === 'admin') && (phase === 'READY' || phase === 'SUSPENDED') ? iconBtn('export', 'download', 'Download everything in this environment as one file') : ''}
           ${iconBtn('refresh', 'refresh', 'Refresh')}
         </div>
