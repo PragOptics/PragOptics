@@ -66,4 +66,4 @@ export const ORDERS_CLAIM_LIVE = true;
 // the /#join invite page) on the LIVE lane. Off until blue and green carry the
 // tenant routes and Cameron calls it ready; dev always shows it. Flip to true,
 // push, done.
-export const TEAM_LIVE = false;
+export const TEAM_LIVE = true;
