@@ -34,6 +34,10 @@
 
 /* ---------- the panel ---------- */
 .explain-card { width: min(820px, 94vw); }
+/* The legal viewer sizes its head, body and foot at min(980px, 94vw); inside this 820px card that pushed the
+ * close button past the card's clipped edge on any screen wider than about 870px (found on live 2026-09-20,
+ * full screen: "none of them have close buttons"). The three follow the card. */
+.explain-card .legal-head, .explain-card .legal-body, .explain-card .legal-foot { width: 100%; }
 .explain-head { align-items: center; }
 .explain-head-text { display: grid; gap: 2px; min-width: 0; }
 .explain-kicker {
