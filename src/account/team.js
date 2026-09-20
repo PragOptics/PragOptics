@@ -120,7 +120,10 @@ async function loadTeam() {
       host.innerHTML = `<p class="acct-empty">The team routes are not on this lane yet. Deploy the backend that carries them, then reload.</p>`;
       return;
     }
-    D.showError('tmError', D.friendlyError(ex, 'Could not load your team.'));
+    // A refusal here is written for the customer on the server ("You are not a member of that team",
+    // "Your membership in this team is suspended"), so it is shown as is (2026-09-20, live: the
+    // generic 403 sentence hid the reason).
+    D.showError('tmError', (ex?.status === 403 && ex?.data?.error) || D.friendlyError(ex, 'Could not load your team.'));
   }
 }
 

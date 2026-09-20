@@ -60,7 +60,8 @@ async function load() {
     host.innerHTML = '';
     if (ex?.status === 404 && ex?.data?.needsTenant) { host.innerHTML = `<p class="acct-empty">Your environment is being set up. Licensing opens the moment it is ready.</p>`; return; }
     if (ex?.status === 404) { host.innerHTML = `<p class="acct-empty">The licensing routes are not on this lane yet. Deploy the backend that carries them, then reload.</p>`; return; }
-    D.showError('licError', D.friendlyError(ex, 'Could not load licensing.'));
+    // The server's refusal names the plan ("Licensing starts on the User plan"); show it as is.
+    D.showError('licError', (ex?.status === 403 && ex?.data?.error) || D.friendlyError(ex, 'Could not load licensing.'));
   }
 }
 
