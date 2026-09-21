@@ -30,9 +30,8 @@
 /* the kind, as a glyph in a ring */
 .bd-r-glyph {
   display: inline-flex; align-items: center; justify-content: center;
-  width: 44px; height: 44px; border-radius: 12px; flex: none;
-  border: 1px solid var(--border);
-  color: var(--muted); background: color-mix(in srgb, var(--ink) 5%, transparent);
+  width: 44px; height: 44px; border-radius: 12px; flex: none; border: 0;
+  color: var(--muted); background: color-mix(in srgb, var(--ink) 6%, transparent);
 }
 .bd-r-glyph.is-big { width: 52px; height: 52px; border-radius: 14px; }
 .bd-r-glyph--module     { color: var(--brand-600); border-color: color-mix(in srgb, var(--brand-600) 45%, transparent); background: color-mix(in srgb, var(--brand-600) 10%, transparent); }
@@ -59,18 +58,18 @@
 }
 .bd-dot { opacity: .5; }
 
-/* badges: SVG in a ring, a column of them, a tooltip each */
+/* badges: the icon itself in color on a soft rounded tile, no ring (Cameron, 2026-09-21); a column of them, a tooltip each */
 .bd-r-badges { display: flex; flex-direction: column; gap: 6px; align-items: center; }
 .bd-r-badges.is-row { flex-direction: row; }
 .bd-badge {
   display: inline-flex; align-items: center; justify-content: center;
-  width: 28px; height: 28px; border-radius: 50%;
-  border: 1px solid var(--border);
-  color: var(--muted); background: color-mix(in srgb, var(--ink) 5%, transparent);
+  width: 30px; height: 30px; border-radius: 8px; border: 0;
+  color: var(--muted); background: color-mix(in srgb, var(--ink) 6%, transparent);
   cursor: default;
 }
-.bd-badge--ok   { color: var(--brand-600); border-color: color-mix(in srgb, var(--brand-600) 45%, transparent); background: color-mix(in srgb, var(--brand-600) 10%, transparent); }
-.bd-badge--gold { color: var(--gold-soft); border-color: color-mix(in srgb, var(--gold-soft) 45%, transparent); background: color-mix(in srgb, var(--gold-soft) 10%, transparent); }
+.bd-badge svg { width: 17px; height: 17px; stroke-width: 2.2; }
+.bd-badge--ok   { color: var(--brand-600); background: color-mix(in srgb, var(--brand-600) 14%, transparent); }
+.bd-badge--gold { color: var(--gold-soft); background: color-mix(in srgb, var(--gold-soft) 14%, transparent); }
 
 /* the one action on a row: an icon button in the site's recipe */
 .bd-r-get { justify-self: end; }
@@ -107,10 +106,10 @@
 .bd-btn:active { transform: translateY(1px); }
 .bd-btn:focus-visible { outline: 2px solid var(--brand-600); outline-offset: 2px; }
 
-/* ================= the card ================= */
+/* ================= the card: a native dialog, the top layer, above every panel whatever its z-index ================= */
 
-.bd-modal { position: fixed; inset: 0; z-index: 1200; display: grid; place-items: center; padding: 20px; }
-.bd-scrim { position: absolute; inset: 0; background: rgba(4, 6, 12, .62); backdrop-filter: blur(6px); }
+.bd-modal { border: 0; padding: 0; margin: auto; background: transparent; max-width: none; max-height: none; width: auto; overflow: visible; color: inherit; }
+.bd-modal::backdrop { background: rgba(4, 6, 12, .62); backdrop-filter: blur(6px); }
 .bd-card {
   position: relative; width: min(760px, 96vw); max-height: min(88vh, 900px);
   display: flex; flex-direction: column;

@@ -146,8 +146,7 @@ function cardHtml(b) {
   const files = filesOf(b);
   const dflt = (s) => s.default == null || s.default === '' ? '' : Array.isArray(s.default) ? s.default.join(', ') : typeof s.default === 'boolean' ? (s.default ? 'on' : 'off') : String(s.default);
   return `
-    <div class="bd-modal" role="dialog" aria-modal="true" aria-labelledby="bdCardTitle">
-      <div class="bd-scrim" data-close></div>
+    <dialog class="bd-modal" aria-labelledby="bdCardTitle">
       <div class="bd-card">
         <header class="bd-card-head">
           <span class="bd-r-glyph bd-r-glyph--${e(t.id)} is-big" aria-hidden="true">${ico(t.icon, 24)}</span>
@@ -180,12 +179,11 @@ function cardHtml(b) {
           ${b.type === 'module' && id ? `<button type="button" class="bd-btn is-primary" data-install="${e(id)}">${ico('external', 16)} Open in the Studio</button>` : href ? `<a class="bd-btn is-primary" href="${e(href)}" download>${ico('download', 16)} Download</a>` : ''}
         </footer>
       </div>
-    </div>`;
+    </dialog>`;
 }
 
 let $modal = null;
-function closeCard() { if ($modal) { $modal.remove(); $modal = null; document.removeEventListener('keydown', onKey); } }
-function onKey(ev) { if (ev.key === 'Escape') closeCard(); }
+function closeCard() { if ($modal) { try { $modal.close(); } catch { /* already closed */ } $modal.remove(); $modal = null; } }
 function openCard(id) {
   const b = builds.find(x => buildIdOf(x) === id);
   if (!b) return;
@@ -196,7 +194,10 @@ function openCard(id) {
   document.body.appendChild($modal);
   $modal.querySelectorAll('[data-close]').forEach(el => el.addEventListener('click', closeCard));
   $modal.querySelectorAll('[data-install]').forEach(btn => btn.addEventListener('click', () => openInStudio(btn.dataset.install)));
-  document.addEventListener('keydown', onKey);
+  // Escape closes (the dialog's own cancel); a click on the backdrop, outside the card, closes too
+  $modal.addEventListener('cancel', (ev) => { ev.preventDefault(); closeCard(); });
+  $modal.addEventListener('click', (ev) => { if (ev.target === $modal) closeCard(); });
+  try { $modal.showModal(); } catch { $modal.setAttribute('open', ''); }
   $modal.querySelector('.bd-close')?.focus();
 }
 
