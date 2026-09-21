@@ -104,12 +104,13 @@ async function toggleDiff(btn, host) {
 export async function renderBuildsQueue(main, deps) {
   D = deps;
   main.innerHTML = `
-    <header class="adm-sec-head"><h2 class="adm-sec-title">Builds</h2></header>
+    <header class="adm-sec-head"><h2 class="adm-sec-title">Builds</h2><button class="btn btn-sm btn-ghost" type="button" id="bqRefresh">Refresh</button></header>
     <p class="adm-note">Everything published to the board from the Studio. A build waits here until it is approved; its builder can already use it in their own environment. Approve lists it for everyone; Reject keeps it off with a reason the builder sees.</p>
     <p class="adm-error" id="bqError" hidden></p>
     <div id="bqBody"><p class="adm-note">Loading…</p></div>
   `;
   const host = document.getElementById('bqBody');
+  document.getElementById('bqRefresh')?.addEventListener('click', () => { host.innerHTML = '<p class="adm-note">Loading…</p>'; load(); });
   const load = async () => {
     try {
       const d = await D.apiFetch(ADMIN_BUILDS_URL);
@@ -141,12 +142,13 @@ export async function renderBuildsQueue(main, deps) {
 export async function renderMyBuilds(main, deps) {
   D = deps;
   main.innerHTML = `
-    <header class="acct-sec-head"><h2 class="acct-sec-title">My Builds</h2></header>
+    <header class="acct-sec-head"><h2 class="acct-sec-title">My Builds</h2><button class="btn btn-sm btn-ghost" type="button" id="mbRefresh">Refresh</button></header>
     <p class="acct-card-note">What you published to the board from the Studio (Export, Publish as a module). A finished build is a draft only you see: install it in your own environment to prove it, then submit it for review; you can retract it until an operator decides. A new version of the same module replaces the old one on the board once approved. It waits for review before others see it; you can install it in your own environment right away.</p>
     <p class="acct-error" id="mbError" hidden></p>
     <div id="mbBody"><p class="acct-loading">Loading…</p></div>
   `;
   const host = document.getElementById('mbBody');
+  document.getElementById('mbRefresh')?.addEventListener('click', () => renderMyBuilds(main, D));
   try {
     const me = D.cachedPing()?.user;
     const d = await D.apiFetch(BUILDS_URL);

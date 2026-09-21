@@ -4021,6 +4021,9 @@ function showSection(id) {
   if (!isAdmin() && INTERNAL_SECTIONS.some(s => s.id === id)) id = 'profile';
   if (!TEAM_ON && TEAM_IDS.has(id)) id = 'profile';
   activeSection = id;
+  // The section rides in the hash (2026-09-21, Cameron: a reload sent him to the landing): replaceState never fires
+  // hashchange, and on load /#account?section=<id> opens exactly this section (runtime/bootstrap.js routeToAccountOnLoad).
+  try { if (/^#account/i.test(String(location.hash || '')) || !location.hash) history.replaceState(null, '', `#account?section=${encodeURIComponent(id)}`); } catch { /* the section still opens */ }
   document.querySelectorAll('.adm-nav-item').forEach(b => {
     const on = b.dataset.acctSection === id;
     b.classList.toggle('is-active', on);
