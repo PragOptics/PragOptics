@@ -63,6 +63,7 @@ function httpsUrl(value) {
 }
 
 /* A build id is what the platform mints: letters and digits. Nothing else reaches a URL. */
+function assistantReady(b) { return !!(b?.manifest && Array.isArray(b.manifest.actions) && b.manifest.actions.length); }
 function buildIdOf(b) { return /^[A-Za-z0-9]{6,40}$/.test(String(b?.buildId || '')) ? String(b.buildId) : ''; }
 
 function isListable(b) {
@@ -97,7 +98,7 @@ function rowHtml(b) {
         ${b.summary || b.description ? `<span class="bd-r-desc">${escapeHtml(b.summary || b.description)}</span>` : ''}
         ${fileMeta ? `<span class="bd-r-file">${fileMeta}</span>` : ''}
       </div>
-      <span class="bd-badge bd-badge--${escapeHtml(t?.id || 'tool')}">${escapeHtml(t?.label || 'Build')}</span>
+      <span class="bd-badge bd-badge--${escapeHtml(t?.id || 'tool')}">${escapeHtml(t?.label || 'Build')}${assistantReady(b) ? '<span class="bd-r-ready" title="Declares actions the assistant module can call; install both and connect them">Assistant-ready</span>' : ''}</span>
       <span class="bd-r-target">${escapeHtml(target?.label || '')}</span>
       <div class="bd-r-who">
         <span class="bd-r-handle">${escapeHtml(who)}</span>

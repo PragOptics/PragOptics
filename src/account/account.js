@@ -22,6 +22,7 @@ import { openReportAnomaly, installErrorCapture } from './report.js';
 import { renderTeam, renderTenants, bindTeamActions } from './team.js';
 import { renderEnvironment, bindEnvironmentActions } from './environment.js';
 import { renderLicensing, bindLicensingActions } from './licensing.js';
+import { renderBuildsQueue, renderMyBuilds } from './buildsDesk.js';
 import { explainLink } from '../components/explainer.js';
 import { cardHtml, iconBtn, ico, setCardSummary, initCards, openCardOf, packGrid } from './cards.js';
 import { applyTheme, getTheme, applyStarfield, getStarfield } from '../runtime/theme.js';
@@ -291,6 +292,7 @@ const ICONS = {
   shiporders:   '<path d="M16 3h5v13h-2"/><path d="M1 3h15v13H8"/><path d="M16 8h4l1 3"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/>',
   payments:     '<path d="M12 1v22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>',
   builds:       '<path d="M12 2l9 4.9V17L12 22 3 17V6.9z"/><path d="M12 22V12"/><path d="M21 7l-9 5-9-5"/>',
+  buildsqueue:  '<path d="M12 2l9 4.9V17L12 22 3 17V6.9z"/><path d="M12 22V12"/><path d="M21 7l-9 5-9-5"/>',
   overview:     '<path d="M4 13h6V4H4z"/><path d="M14 20h6v-9h-6z"/><path d="M14 8h6V4h-6z"/><path d="M4 20h6v-4H4z"/>',
   users:        '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
   warranty:     '<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M7 11h5"/><path d="M7 15h8"/><path d="M16 3l4 4"/><path d="M8 3L4 7"/>',
@@ -320,6 +322,7 @@ const INTERNAL_SECTIONS = [
   { id: 'overview',   label: 'Overview' },
   { id: 'users',      label: 'Users' },
   { id: 'tenants',    label: 'Tenants' },
+  { id: 'buildsqueue', label: 'Builds' },
   { id: 'notify',     label: 'Notifications' },
   { id: 'reports',    label: 'Reports' },
   { id: 'shiporders', label: 'Orders' },
@@ -4033,10 +4036,11 @@ function showSection(id) {
   if (id === 'team')         return void renderTeam(main, teamDeps());
   if (id === 'environment')  return void renderEnvironment(main, teamDeps());
   if (id === 'licensing')    return void renderLicensing(main, teamDeps());
-  if (id === 'builds')       return renderSoon(main, 'My Builds', 'Builds you publish from the Studio will be listed here.');
+  if (id === 'builds')       return void renderMyBuilds(main, teamDeps());
   if (id === 'overview')     return void renderOverview(main);
   if (id === 'users')        return void renderUsers(main);
   if (id === 'tenants')      return void renderTenants(main, teamDeps());
+  if (id === 'buildsqueue')  return void renderBuildsQueue(main, teamDeps());
   if (id === 'notify')       return void renderNotify(main);
   if (id === 'reports')      return void renderReports(main);
   if (id === 'shiporders')   return void renderAdminOrders(main);
