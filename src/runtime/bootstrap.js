@@ -588,7 +588,9 @@ function applyPostLoginResolution({ ping, force = false }) {
     // and consumed once that section renders.
     // The software (2026-09-16): a sign-in that started from it goes straight to it when the lane hosts it.
     if (back === "software") {
-      (window.pragGoToSoftware || location.assign.bind(location))(STUDIO_URL);
+      let extra = "";
+      try { extra = sessionStorage.getItem("pragoptics_software_extra") || ""; sessionStorage.removeItem("pragoptics_software_extra"); } catch { extra = ""; }
+      (window.pragGoToSoftware || location.assign.bind(location))(STUDIO_URL, extra);
       return;
     }
     if (["profile", "products", "subscription", "team", "environment", "orders", "builds"].includes(back)) {
@@ -825,25 +827,26 @@ window.applyPostLoginResolution = applyPostLoginResolution;
     // The session carried into the studio's origin by a one-time code (auth/softwareHandoff.js). The site composes the
     // address itself from STUDIO_URL and adds this lane's API base and name, so the studio redeems the code on the lane
     // the person is signed in on and talks to that lane after. The plain address when the mint fails (the studio asks for a sign-in).
-    async function goToSoftware(url) {
+    async function goToSoftware(url, extra = "") {
       const base = String(url || STUDIO_URL).replace(/\/+$/, "");
-      let target = base;
+      const more = /^[A-Za-z0-9_=&-]{1,120}$/.test(String(extra || "")) ? String(extra) : "";   // "install=<buildId>" from the Builds page
+      let target = more ? `${base}/#${more}` : base;
       try {
         const token = JSON.parse(sessionStorage.getItem("pragoptics_tokens") || "null")?.access_token || "";
         const res = await fetch(`${PRAG_API_BASE}/auth/software/handoff`, { method: "POST", headers: { Authorization: `Bearer ${token}` } });
         const d = res.ok ? await res.json() : null;
-        if (d?.code) target = `${base}/#handoff=${encodeURIComponent(d.code)}&api=${encodeURIComponent(PRAG_API_BASE)}&lane=${encodeURIComponent(LANE)}`;
+        if (d?.code) target = `${base}/#handoff=${encodeURIComponent(d.code)}&api=${encodeURIComponent(PRAG_API_BASE)}&lane=${encodeURIComponent(LANE)}${more ? "&" + more : ""}`;
       } catch { /* the plain address */ }
       location.assign(target);
     }
     window.pragGoToSoftware = goToSoftware;
-    window.pragOpenStudio = () => routeToSoftwareOnLoad();
+    window.pragOpenStudio = (extra) => routeToSoftwareOnLoad(extra);
     window.pragSessionActive = () => isSessionActive();   // the shop's studio door asks before choosing the handoff
 
     // Open Studio (2026-09-19): signed in, the studio, always; signed out, sign in first and land there.
-    function routeToSoftwareOnLoad() {
-      if (isSessionActive()) { goToSoftware(STUDIO_URL); return; }
-      try { sessionStorage.setItem("pragoptics_return_to", "software"); } catch { /* falls back to the Environment section */ }
+    function routeToSoftwareOnLoad(extra = "") {
+      if (isSessionActive()) { goToSoftware(STUDIO_URL, extra); return; }
+      try { sessionStorage.setItem("pragoptics_return_to", "software"); if (extra) sessionStorage.setItem("pragoptics_software_extra", String(extra)); } catch { /* falls back to the Environment section */ }
       setTimeout(() => { openLoginModal("login"); }, 50);
     }
 
