@@ -108,7 +108,7 @@
 
 /* ================= the card: a native dialog, the top layer, above every panel whatever its z-index ================= */
 
-dialog.bd-modal { position: fixed; inset: 0; border: 0; padding: 0; margin: auto; background: transparent; max-width: none; max-height: none; width: auto; overflow: visible; color: inherit; }
+dialog.bd-modal { position: fixed; inset: 0; border: 0; padding: 0; margin: auto; background: transparent; width: fit-content; height: fit-content; max-width: 96vw; max-height: 92vh; overflow: visible; color: inherit; }
 dialog.bd-modal::backdrop { background: rgba(4, 6, 12, .62); backdrop-filter: blur(6px); }
 .bd-card {
   position: relative; width: min(760px, 96vw); max-height: min(88vh, 900px);
