@@ -209,8 +209,10 @@ dialog.bd-modal.is-fallback { display: grid; place-items: center; }
   .bd-r-badges { grid-area: badges; flex-direction: row; justify-content: flex-start; }
 }
 @media (max-width: 880px) {
+  /* one column: the card scrolls as a whole; neither part shrinks, so nothing spills over the other (seen at 820 and 640 on 2026-09-21) */
   .bd-card { flex-direction: column; max-height: 92vh; overflow-y: auto; overscroll-behavior: contain; }
-  .bd-card-aside { flex: 0 0 auto; }
+  .bd-card-main { flex: 0 0 auto; min-height: auto; overflow: visible; }
+  .bd-card-aside { flex: 0 0 auto; min-height: auto; }
   .bd-card-aside { border-left: 0; border-top: 1px solid var(--border); padding: 20px 18px 16px; overflow: visible; gap: 12px; }
   .bd-marks { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
   .bd-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
