@@ -176,8 +176,12 @@
   .bd-r-main { grid-area: main; }
   .bd-r-get { grid-area: get; }
   .bd-r-badges { grid-area: badges; flex-direction: row; justify-content: flex-start; }
-  .bd-card-head { grid-template-columns: 44px minmax(0, 1fr) 36px; }
-  .bd-card-head .bd-r-badges { grid-column: 1 / -1; justify-content: flex-start; }
+  .bd-card-head { grid-template-columns: 44px minmax(0, 1fr) 36px; grid-template-areas: "glyph text close" "badges badges badges"; align-items: start; }
+  .bd-card-head .bd-r-glyph { grid-area: glyph; width: 44px; height: 44px; }
+  .bd-card-head .bd-card-text { grid-area: text; }
+  .bd-card-head .bd-close { grid-area: close; }
+  .bd-card-head .bd-r-badges { grid-area: badges; justify-content: flex-start; }
+  .bd-kicker { letter-spacing: .12em; line-height: 1.5; }
   .bd-card-foot { flex-wrap: wrap; }
   .bd-btn { flex: 1 1 auto; }
 }
