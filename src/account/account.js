@@ -4018,7 +4018,7 @@ function teamDeps() {
 function showSection(id) {
   // A customer must never land on an internal section id (stale deep link),
   // and nobody lands on Team while it is off for this lane.
-  if (!isAdmin() && INTERNAL_SECTIONS.some(s => s.id === id)) id = 'profile';
+  if (cachedPing() && !isAdmin() && INTERNAL_SECTIONS.some(s => s.id === id)) id = 'profile';
   if (!TEAM_ON && TEAM_IDS.has(id)) id = 'profile';
   activeSection = id;
   // The section rides in the hash (2026-09-21, Cameron: a reload sent him to the landing): replaceState never fires
@@ -4294,7 +4294,11 @@ export function onAccountEnter() {
   const admin = isAdmin();
   if (mounted && mountedAsAdmin !== admin) { mounted = false; cache.users = null; }
   if (!mounted) {
-    if (!allSections().some(s => s.id === activeSection)) activeSection = 'profile';
+    // A preset internal section (the queue, from /#account?section=buildsqueue on a reload) is kept while the ping that
+    // says who this is has not landed yet; showSection demotes it only once the answer is known (2026-09-21, Cameron
+    // reloaded on the Builds queue and landed on Profile).
+    const known = [...customerSections(), ...internalSections()];
+    if (!known.some(s => s.id === activeSection) || (cachedPing() && !allSections().some(s => s.id === activeSection))) activeSection = 'profile';
     $body.innerHTML = shellHtml();
     mounted = true;
     mountedAsAdmin = admin;
