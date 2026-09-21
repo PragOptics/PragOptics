@@ -609,7 +609,9 @@ function aiHtml() {
     const pct = limit ? Math.min(100, used / limit * 100) : 0;
     const cls = pct >= 95 ? 'is-hot' : pct >= 70 ? 'is-warn' : '';
     const callLine = c.callLimit ? `${e(String(c.calls || 0))} of ${e(String(c.callLimit))} calls` : `${e(String(c.calls || 0))} calls`;
-    summary = !ready ? 'being set up' : !on ? 'off' : `on · ${e(dollars(used))} of ${e(dollars(limit))} this month`;
+    // the environment's own AI connection (2026-09-21): every answer goes through the owner's account; the credit is not used
+    const own = a.connection && a.connection.provider ? a.connection : null;
+    summary = !ready ? 'being set up' : !on ? 'off' : own ? `on · through your ${e(own.label || own.provider)} connection` : `on · ${e(dollars(used))} of ${e(dollars(limit))} this month`;
     inner = `
       ${!ready ? '<p class="acct-card-note">AI is being set up on the platform. Nothing to do on your side; the switch appears here when it is ready.</p>' : `
       <div class="ev-ai-row">
@@ -619,6 +621,7 @@ function aiHtml() {
           <span class="ev-switch-text">${ev.aiBusy ? 'Saving…' : on ? 'AI is on' : 'AI is off'}</span>
         </label>
       </div>
+      ${own ? `<p class="acct-card-note ev-note">Answers on this lane go through your <b>${e(own.label || own.provider)}</b> connection, on your own account and bill: the platform's credit below is not used, and the platform's monthly ceiling does not apply. Lanes: ${e((own.lanes || []).map(l => `${l.lane} (${l.model})`).join(', ') || 'the connection’s')}. Remove the connection from Connected accounts to return to the platform's models.</p>` : ''}
       <div class="use-row ev-meter">
         <div class="use-head"><span class="use-name">This month's credit</span><span class="use-val">${e(dollars(used))} / ${e(dollars(limit))} · ${callLine}</span></div>
         <div class="use-track"><div class="use-fill ${cls}" style="width:${pct.toFixed(1)}%"></div></div>
