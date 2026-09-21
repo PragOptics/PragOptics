@@ -1,5 +1,5 @@
 /* /css/views/builds.css
-   The builds board (rebuilt 2026-09-21): rows you click, a card that opens over the page, SVG badges in a column,
+   The builds board (rebuilt 2026-09-21): rows you click, a card that opens over the page, SVG badges in a row,
    and buttons in the site's own recipe. Shares the page header with the shops (shop-head) and the console's dark
    glass and purple glow. */
 
@@ -58,8 +58,9 @@
 }
 .bd-dot { opacity: .5; }
 
-/* badges: the icon itself in color on a soft rounded tile, no ring (Cameron, 2026-09-21); a column of them, a tooltip each */
-.bd-r-badges { display: flex; flex-direction: column; gap: 6px; align-items: center; }
+/* badges: the icon itself in color on a soft rounded tile, no ring (Cameron, 2026-09-21); a row of them, a tooltip each
+   (a column made every row as tall as three tiles between 720 and 900 px; seen 2026-09-21) */
+.bd-r-badges { display: flex; flex-direction: row; gap: 6px; align-items: center; }
 .bd-r-badges.is-row { flex-direction: row; }
 .bd-badge {
   display: inline-flex; align-items: center; justify-content: center;
