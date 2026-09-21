@@ -13,6 +13,7 @@
 // public board and the Studio show.
 
 import { PRAG_API_BASE } from '../runtime/config.js';
+import { iconBtn } from './cards.js';
 
 const BUILDS_URL = `${PRAG_API_BASE}/builds`;
 const ADMIN_BUILDS_URL = `${PRAG_API_BASE}/admin/builds`;
@@ -104,7 +105,7 @@ async function toggleDiff(btn, host) {
 export async function renderBuildsQueue(main, deps) {
   D = deps;
   main.innerHTML = `
-    <header class="adm-sec-head"><h2 class="adm-sec-title">Builds</h2><button class="btn btn-sm btn-ghost" type="button" id="bqRefresh">Refresh</button></header>
+    <header class="adm-sec-head"><h2 class="adm-sec-title">Builds</h2><div class="ev-actions">${iconBtn({ builds: 'refresh' }, 'refresh', 'Refresh', 'id="bqRefresh"')}</div></header>
     <p class="adm-note">Everything published to the board from the Studio. A build waits here until it is approved; its builder can already use it in their own environment. Approve lists it for everyone; Reject keeps it off with a reason the builder sees.</p>
     <p class="adm-error" id="bqError" hidden></p>
     <div id="bqBody"><p class="adm-note">Loading…</p></div>
@@ -142,7 +143,7 @@ export async function renderBuildsQueue(main, deps) {
 export async function renderMyBuilds(main, deps) {
   D = deps;
   main.innerHTML = `
-    <header class="acct-sec-head"><h2 class="acct-sec-title">My Builds</h2><button class="btn btn-sm btn-ghost" type="button" id="mbRefresh">Refresh</button></header>
+    <header class="acct-sec-head"><h2 class="acct-sec-title">My Builds</h2><div class="ev-actions">${iconBtn({ builds: 'refresh' }, 'refresh', 'Refresh', 'id="mbRefresh"')}</div></header>
     <p class="acct-card-note">What you published to the board from the Studio (Export, Publish as a module). A finished build is a draft only you see: install it in your own environment to prove it, then submit it for review; you can retract it until an operator decides. A new version of the same module replaces the old one on the board once approved. It waits for review before others see it; you can install it in your own environment right away.</p>
     <p class="acct-error" id="mbError" hidden></p>
     <div id="mbBody"><p class="acct-loading">Loading…</p></div>
