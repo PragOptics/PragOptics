@@ -147,7 +147,7 @@ export async function renderEnvironment(main, deps) {
   ev.madeKey = null; ev.filesNote = ''; ev.files = null; ev.keys = null; ev.domains = null; ev.domainNote = ''; ev.linkNote = ''; ev.domArm = ''; ev.keyArm = ''; ev.checking = ''; ev.registrations = []; ev.reg = freshReg();
   ev.connections = null; ev.connProviders = []; ev.connNote = ''; ev.connPick = ''; ev.connBusy = false; ev.connResult = ''; ev.connTesting = ''; ev.connDraft = {}; ev.connArm = ''; ev.rowNote = null; ev.shopifyShop = ''; ev.shopifyLink = ''; ev.shopifyLinkId = ''; ev.connSyncing = ''; ev.rowNote = null;
   ev.tables = null; ev.tablesNote = ''; ev.table = ''; ev.rows = null; ev.rowsAfter = ''; ev.rowsNote = ''; ev.openRow = ''; ev.rowsLoading = false;
-  ev.ai = null; ev.aiNote = ''; ev.aiBusy = false;
+  ev.ai = null; ev.aiNote = ''; ev.aiBusy = false; ev.aiBudget = null; ev.budgetBusy = false;
   ev.domTab = ev.domTab || 'connect'; initCards();
   // A link that names a card (/#account?section=environment&card=connections) opens that card; account.js scrolls to it.
   try { const want = JSON.parse(sessionStorage.getItem('pragoptics_open_card') || 'null'); const card = { files: 'files', connections: 'connections', domains: 'domains', keys: 'keys', ai: 'ai', data: 'data' }[String(want?.card || '')]; if (card) setOpen(`environment:${card}`, true); } catch { /* fine */ }
@@ -586,7 +586,52 @@ async function loadAi() {
     ev.ai = null;
     ev.aiNote = ex?.status === 404 ? 'AI is not on this lane yet.' : (ex?.sessionInvalidated ? '' : (ex?.data?.error || D.friendlyError(ex, 'Could not read the AI state.')));
   }
+  // the AI budget desk (2026-09-21): where this lane's AI spend goes, one row per install that asks; older lanes carry no route
+  if (ev.ai) { try { ev.aiBudget = await D.apiFetch(url(`${ENV_URL}/ai/budget`)); } catch (ex) { ev.aiBudget = null; } } else ev.aiBudget = null;
   paintAi();
+}
+/* THE AI BUDGET DESK (2026-09-21, Cameron's ruling): one row per install that asks on this lane, with its model,
+ * effort, monthly answer cap and share of the credit in cents, what that buys, and what it has used this month;
+ * the studio as the last row. An owner or admin edits the rows and saves; everyone else reads them. */
+function budgetHtml(manage) {
+  const e = D.escapeHtml, b = ev.aiBudget;
+  if (!b) return '';
+  const rows = b.installs || [], own = b.own, lanes = b.lanes || [];
+  const laneSel = (r) => manage ? `<select class="ev-budget-in" data-budget-field="lane">${lanes.map(l => `<option value="${e(l.lane)}"${l.lane === r.lane ? ' selected' : ''}>${e(cap(l.lane))} · ${e(l.model)}${l.exchangeCents ? ` · ${e(cents(l.exchangeCents))}` : ''}</option>`).join('')}</select>` : `${e(cap(r.lane))}<br><span class="adm-muted lic-desc">${e(r.model)}</span>`;
+  const effortSel = (r) => manage ? `<select class="ev-budget-in" data-budget-field="effort">${(b.efforts || []).map(x => `<option value="${e(x)}"${x === r.effort ? ' selected' : ''}>${e(cap(x))}</option>`).join('')}</select>` : e(cap(r.effort));
+  const num = (r, field, val, min) => manage ? `<input class="ev-budget-in ev-budget-num" type="number" min="${min}" step="1" data-budget-field="${field}" value="${e(String(val))}">` : e(String(val));
+  const body = rows.length ? rows.map(r => `
+    <tr data-budget-row="${e(r.installId)}">
+      <td data-th="Assistant"><span class="lic-name">${e(r.name)}</span><br><span class="adm-muted lic-desc">${e(r.module)}</span></td>
+      <td data-th="Model">${laneSel(r)}</td>
+      <td data-th="Effort">${effortSel(r)}</td>
+      <td class="adm-num" data-th="Answers a month">${num(r, 'cap_month', r.capMonth, 1)}</td>
+      ${own ? '' : `<td class="adm-num" data-th="Share">${num(r, 'share_cents', r.shareCents, 0)}<span class="adm-muted"> ¢</span></td>`}
+      <td class="adm-num cell-tight" data-th="Buys">${e(String(r.projectedAnswers))}${r.limitedBy === 'share' ? ' <span class="acct-tag" title="The share at this model’s price, under the answer cap">by share</span>' : ''}</td>
+      <td class="adm-num cell-tight" data-th="This month">${e(String(r.answers))}${own ? '' : ` · ${e(dollars(r.spentCents))}`}</td>
+    </tr>`).join('') : `<tr><td colspan="${own ? 6 : 7}" class="acct-empty">No assistant is installed on this lane yet. Install one from the Studio and its row appears here.</td></tr>`;
+  const studio = b.studio ? `<tr class="ev-budget-studio"><td data-th="Assistant"><span class="lic-name">The Studio</span><br><span class="adm-muted lic-desc">your own building, the rest of the credit</span></td><td data-th="Model" class="adm-muted">any</td><td data-th="Effort" class="adm-muted">picked per call</td><td class="adm-num" data-th="Answers a month">&nbsp;</td><td class="adm-num" data-th="Share">${e(String(Math.round(b.studio.remainderCents)))}<span class="adm-muted"> ¢</span></td><td class="adm-num cell-tight" data-th="Buys">&nbsp;</td><td class="adm-num cell-tight" data-th="This month">${e(dollars(b.studio.spentCents))}</td></tr>` : '';
+  return `
+    <h4 class="acct-card-sub">Where this lane's AI spend goes</h4>
+    <div class="adm-table-scroll">
+      <table class="adm-table adm-table--wrap ev-table ev-budget">
+        <thead><tr><th>Assistant</th><th>Model</th><th>Effort</th><th class="adm-num">Answers a month</th>${own ? '' : '<th class="adm-num">Share</th>'}<th class="adm-num">Buys</th><th class="adm-num">This month</th></tr></thead>
+        <tbody>${body}${studio}</tbody>
+      </table>
+    </div>
+    <p class="acct-card-note ev-note">${own ? `Every row answers through your <b>${e(own.label || own.provider)}</b> connection on your own account, so only the answer caps hold here.` : `A share is the cents of this month's credit an assistant may spend; Buys is what that share affords at its model and effort, under its answer cap. Shares add up to at most the credit; what is left is the Studio's. ${b.unallocatedCents != null ? `Unallocated now: ${e(dollars(b.unallocatedCents))}.` : ''}`} Each row's monthly cap is also the door's stop, and its share is a second one.</p>
+    ${manage && rows.length ? `<div class="ev-actions"><button class="acct-btn" type="button" data-env-action="budget-save" ${ev.budgetBusy ? 'disabled' : ''}>${ev.budgetBusy ? 'Saving…' : 'Save the rows'}</button><span class="ev-status" id="evBudgetStatus" aria-live="polite"></span></div>` : ''}`;
+}
+async function saveBudget(btn) {
+  if (ev.budgetBusy) return;
+  const installs = [...document.querySelectorAll('[data-budget-row]')].map(tr => {
+    const out = { installId: tr.dataset.budgetRow };
+    tr.querySelectorAll('[data-budget-field]').forEach(el => { out[el.dataset.budgetField] = el.value; });
+    return out;
+  });
+  ev.budgetBusy = true; paintAi(); D.showError('evAiError', '');
+  try { ev.aiBudget = await D.apiFetch(url(`${ENV_URL}/ai/budget`), { method: 'PUT', body: body({ installs }) }); ev.budgetBusy = false; paintAi(); const s = document.getElementById('evBudgetStatus'); if (s) s.textContent = 'Saved.'; }
+  catch (ex) { ev.budgetBusy = false; paintAi(); D.showError('evAiError', errText(ex, 'Could not save the rows.')); }
 }
 function cents(n) { const v = Number(n || 0); return v >= 100 ? `$${(v / 100).toFixed(2)}` : `${v % 1 ? v.toFixed(2) : v}¢`; }
 function dollars(n) { const c = Number(n || 0); return c > 0 && c < 1 ? `${c.toFixed(2)}¢` : `$${(c / 100).toFixed(2)}`; }
@@ -642,7 +687,8 @@ function aiHtml() {
           </tbody>
         </table>
       </div>
-      <p class="acct-card-note ev-note">Per exchange is a typical question and answer, about 2,000 words in and 400 out. The Studio and your API keys pick the model on each call.</p>` : ''}`}`;
+      <p class="acct-card-note ev-note">Per exchange is a typical question and answer, about 2,000 words in and 400 out. The Studio and your API keys pick the model on each call.</p>` : ''}
+      ${budgetHtml(manage)}`}`;
   }
   return cardHtml({
     key: 'ai', icon: 'activity', title: 'AI', summary,
@@ -2171,6 +2217,7 @@ export function bindEnvironmentActions(deps) {
     const a = btn.dataset.envAction;
     if (a === 'dom-tab') { ev.domTab = btn.dataset.tab || 'connect'; paintDomains(); return; }
     if (a === 'refresh') return void refreshAll();
+    if (a === 'budget-save') return void saveBudget(btn);
     if (a === 'lane-live') return void setLane('live');
     if (a === 'lane-sandbox') return void setLane('sandbox');
     if (a === 'sandbox-setup') return void setupSandbox(btn);
