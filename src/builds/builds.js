@@ -145,40 +145,63 @@ function cardHtml(b) {
   const doors = Array.isArray(m.doors) ? m.doors : [];
   const files = filesOf(b);
   const dflt = (s) => s.default == null || s.default === '' ? '' : Array.isArray(s.default) ? s.default.join(', ') : typeof s.default === 'boolean' ? (s.default ? 'on' : 'off') : String(s.default);
+  const fact = (k, v) => v ? `<div class="bd-fact"><dt>${e(k)}</dt><dd>${v}</dd></div>` : '';
+  const get = b.type === 'module' && id
+    ? `<button type="button" class="bd-btn is-primary is-wide" data-install="${e(id)}">${ico('external', 16)} Open in the Studio</button>`
+    : href ? `<a class="bd-btn is-primary is-wide" href="${e(href)}" download>${ico('download', 16)} Download</a>` : '';
   return `
     <dialog class="bd-modal" aria-labelledby="bdCardTitle">
-      <div class="bd-card">
-        <header class="bd-card-head">
-          <span class="bd-r-glyph bd-r-glyph--${e(t.id)} is-big" aria-hidden="true">${ico(t.icon, 24)}</span>
-          <div class="bd-card-text">
-            <span class="bd-kicker">${e(t.label)}${b.version ? ` · v${e(b.version)}` : ''}${b.revision > 1 ? ` · revision ${e(String(b.revision))}` : ''}${target ? ` · ${e(target.label)}` : ''}</span>
-            <h2 class="bd-card-title" id="bdCardTitle">${e(b.name)}</h2>
-            <span class="bd-card-by">by <b>${e(b.handle || 'Anonymous')}</b>${b.publishedAt ? `, on the board since ${e(fmtDate(b.publishedAt))}` : ''}${b.installs ? `, installed ${e(String(b.installs))} time${b.installs === 1 ? '' : 's'}` : ''}</span>
-          </div>
-          <div class="bd-r-badges is-row">${badgesOf(b)}</div>
-          <button type="button" class="bd-close" data-close aria-label="Close" data-tip="Close">${ico('x', 18)}</button>
-        </header>
-        <div class="bd-card-body">
+      <article class="bd-card">
+        <button type="button" class="bd-close" data-close aria-label="Close" data-tip="Close">${ico('x', 18)}</button>
+
+        <div class="bd-card-main">
+          <span class="bd-kicker">${e(t.label)}${b.version ? ` · v${e(b.version)}` : ''}${b.revision > 1 ? ` · revision ${e(String(b.revision))}` : ''}</span>
+          <h2 class="bd-card-title" id="bdCardTitle">${e(b.name)}</h2>
+          <p class="bd-card-by">by <b>${e(b.handle || 'Anonymous')}</b>${b.publishedAt ? ` · on the board since ${e(fmtDate(b.publishedAt))}` : ''}</p>
           ${b.summary || b.description ? `<p class="bd-card-sum">${e(b.summary || b.description)}</p>` : ''}
-          <p class="bd-card-p muted">${e(t.hint)}. ${b.type === 'module' ? 'Installed from the Studio into your own environment, it runs against your storage and your settings, never the builder\'s; it takes your site\'s theme where the site was built in the Studio.' : ''}</p>
+          <p class="bd-card-p">${e(t.hint)}.${b.type === 'module' ? ' Installed from the Studio into your own environment, it runs against your storage and your settings, never the builder\u2019s, and takes your site\u2019s theme where the site was built in the Studio.' : ''}</p>
+
           ${settings.length ? `
-          <h3 class="bd-h">What it asks the installer</h3>
-          <ul class="bd-list">${settings.map(s => `<li><b>${e(s.label || s.key)}</b> <span class="muted">${e(SETTING_WORDS[s.type] || s.type || 'text')}${dflt(s) ? `, default "${e(dflt(s))}"` : ''}${s.required ? ', needed' : ''}</span>${s.help ? `<div class="muted bd-help">${e(s.help)}</div>` : ''}</li>`).join('')}</ul>` : ''}
+          <section class="bd-sec">
+            <h3 class="bd-h">What you set</h3>
+            <dl class="bd-defs">${settings.map(s => `
+              <div class="bd-def"><dt>${e(s.label || s.key)}${s.required ? '<span class="bd-req" title="Needed">*</span>' : ''}</dt><dd>${e(SETTING_WORDS[s.type] || s.type || 'text')}${dflt(s) ? `<span class="bd-dflt">default \u201c${e(dflt(s))}\u201d</span>` : ''}${s.help ? `<span class="bd-help">${e(s.help)}</span>` : ''}</dd></div>`).join('')}
+            </dl>
+          </section>` : ''}
+
           ${actions.length ? `
-          <h3 class="bd-h">${ico('sparkles', 14)} What the assistant can do with it</h3>
-          <ul class="bd-list">${actions.map(a => `<li><b>${e(a.label || a.name)}</b>${a.description ? ` <span class="muted">${e(a.description)}</span>` : ''}${Array.isArray(a.params) && a.params.length ? `<div class="muted bd-help">Fields: ${a.params.map(p => `${e(p.label || p.key)}${p.required ? '*' : ''}`).join(', ')}</div>` : ''}</li>`).join('')}</ul>` : ''}
+          <section class="bd-sec">
+            <h3 class="bd-h">${ico('sparkles', 14)} What the assistant can do with it</h3>
+            ${actions.map(a => `<p class="bd-act-p"><b>${e(a.label || a.name)}.</b> ${e(a.description || '')}${Array.isArray(a.params) && a.params.length ? ` <span class="bd-help">It fills ${a.params.map(p => `${e(p.label || p.key)}${p.required ? '*' : ''}`).join(', ')}.</span>` : ''}</p>`).join('')}
+          </section>` : ''}
+
           ${doors.length ? `
-          <h3 class="bd-h">Where it reaches</h3>
-          <ul class="bd-list">${doors.map(d => `<li><b>${e(d)}</b> <span class="muted">${e(DOOR_WORDS[d] || 'a door of the platform')}</span></li>`).join('')}</ul>` : ''}
-          ${files.length ? `
-          <h3 class="bd-h">Files</h3>
-          <ul class="bd-list bd-files">${files.map(f => `<li><code>${e(f.name || f.path || '')}</code> <span class="muted">${e(fmtSize(f.size))}</span></li>`).join('')}</ul>` : ''}
+          <section class="bd-sec">
+            <h3 class="bd-h">Where it reaches</h3>
+            ${doors.map(d => `<p class="bd-act-p"><b>${e(d.charAt(0).toUpperCase() + d.slice(1))}.</b> It ${e(DOOR_WORDS[d] || 'reaches a door of the platform')}.</p>`).join('')}
+          </section>` : ''}
         </div>
-        <footer class="bd-card-foot">
-          <button type="button" class="bd-btn is-ghost" data-close>Close</button>
-          ${b.type === 'module' && id ? `<button type="button" class="bd-btn is-primary" data-install="${e(id)}">${ico('external', 16)} Open in the Studio</button>` : href ? `<a class="bd-btn is-primary" href="${e(href)}" download>${ico('download', 16)} Download</a>` : ''}
-        </footer>
-      </div>
+
+        <aside class="bd-card-aside">
+          <div class="bd-kind">
+            <span class="bd-r-glyph bd-r-glyph--${e(t.id)} is-big" aria-hidden="true">${ico(t.icon, 24)}</span>
+            <div><span class="bd-kind-label">${e(t.label)}</span><span class="bd-kind-hint">${target ? e(target.label) : ''}</span></div>
+          </div>
+          <ul class="bd-marks">
+            <li class="bd-mark"><span class="bd-badge bd-badge--ok">${ico('badge', 15)}</span><span>Verified<small>reviewed and approved by PragOptics</small></span></li>
+            ${assistantReady(b) ? `<li class="bd-mark"><span class="bd-badge bd-badge--gold">${ico('sparkles', 15)}</span><span>Assistant-ready<small>the assistant module can act through it</small></span></li>` : ''}
+            ${settings.length ? `<li class="bd-mark"><span class="bd-badge">${ico('tag2', 15)}</span><span>${settings.length} setting${settings.length === 1 ? '' : 's'}<small>yours to change when you install it</small></span></li>` : ''}
+          </ul>
+          <dl class="bd-facts">
+            ${fact('Version', b.version ? `v${e(b.version)}` : '')}
+            ${fact('Revision', b.revision ? e(String(b.revision)) : '')}
+            ${fact('Installed', b.installs ? `${e(String(b.installs))} time${b.installs === 1 ? '' : 's'}` : '')}
+            ${fact('Files', files.length ? `${files.length}, ${e(fmtSize(sizeOf(b)))}` : '')}
+          </dl>
+          ${files.length ? `<details class="bd-filelist"><summary>The files</summary><ul>${files.map(f => `<li><code>${e(f.name || f.path || '')}</code><span>${e(fmtSize(f.size))}</span></li>`).join('')}</ul></details>` : ''}
+          <div class="bd-card-actions">${get}<button type="button" class="bd-btn is-ghost is-wide" data-close>Close</button></div>
+        </aside>
+      </article>
     </dialog>`;
 }
 
@@ -198,6 +221,9 @@ function openCard(id) {
   $modal.addEventListener('cancel', (ev) => { ev.preventDefault(); closeCard(); });
   $modal.addEventListener('click', (ev) => { if (ev.target === $modal) closeCard(); });
   try { $modal.showModal(); } catch { $modal.setAttribute('open', ''); }
+  // Not in the top layer (an old browser, or showModal refused): the card is pinned over the page by hand, above every z-index the site uses.
+  let modal = false; try { modal = $modal.matches(':modal'); } catch { modal = false; }
+  if (!modal) { $modal.classList.add('is-fallback'); $modal.style.cssText = 'position:fixed;inset:0;z-index:2147483000;display:grid;place-items:center;width:100vw;height:100vh;max-width:none;max-height:none;margin:0;padding:20px;background:rgba(4,6,12,.62)'; }
   $modal.querySelector('.bd-close')?.focus();
 }
 
