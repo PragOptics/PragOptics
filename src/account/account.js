@@ -299,7 +299,7 @@ const ICONS = {
   inventory:    '<path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="M3.27 6.96L12 12.01l8.73-5.05"/><path d="M12 22.08V12"/>',
   catalog:      '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>',
   notify:       '<path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/>',
-  reports:      '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M12 7v4"/><path d="M12 14h.01"/>',
+  reports:      '<path d="M12 2c-4.4 0-8 3.4-8 7.8 0 5.4 4.6 12.2 8 12.2s8-6.8 8-12.2C20 5.4 16.4 2 12 2z"/><path d="M6.8 10.2c2-.6 3.9.6 4.4 2.6-2 .6-3.9-.6-4.4-2.6z"/><path d="M17.2 10.2c-2-.6-3.9.6-4.4 2.6 2 .6 3.9-.6 4.4-2.6z"/>',
   team:         '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
   tenants:      '<path d="M3 21h18"/><path d="M5 21V7l7-4 7 4v14"/><path d="M9 21v-6h6v6"/><path d="M9 10h.01"/><path d="M15 10h.01"/>',
   environment:  '<ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.66 3.58 3 8 3s8-1.34 8-3V5"/><path d="M4 12c0 1.66 3.58 3 8 3s8-1.34 8-3"/>',
@@ -324,7 +324,7 @@ const INTERNAL_SECTIONS = [
   { id: 'tenants',    label: 'Tenants' },
   { id: 'buildsqueue', label: 'Builds' },
   { id: 'notify',     label: 'Notifications' },
-  { id: 'reports',    label: 'Reports' },
+  { id: 'reports',    label: 'Anomalies' },
   { id: 'shiporders', label: 'Orders' },
   { id: 'payments',   label: 'Payments' },
   { id: 'warranty',   label: 'Warranty' },
@@ -2993,7 +2993,7 @@ function rpCardHtml(r) {
 async function renderReports(main) {
   main.innerHTML = `
     <header class="adm-sec-head">
-      <h2 class="adm-sec-title">Reports</h2>
+      <h2 class="adm-sec-title">Anomalies</h2>
       <div class="adm-toolbar" role="tablist" aria-label="Report status">
         ${['OPEN', 'CLOSED', 'ALL'].map(s => `<button class="adm-tab ${s === rpStatus ? 'is-active' : ''}" type="button" role="tab" data-adm-reports="${s}" aria-selected="${s === rpStatus}">${s === 'ALL' ? 'All' : s === 'OPEN' ? 'Open' : 'Closed'}</button>`).join('')}
       </div>
