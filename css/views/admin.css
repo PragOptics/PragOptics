@@ -438,6 +438,8 @@ th.adm-num { text-align: right; }
   min-width: 0;
 }
 .adm-side-report + .adm-side-foot { margin-top: 0; }
+.adm-side .adm-side-report-btn.btn + .adm-side-report-btn.btn { margin-top: 6px; }
+.acct-report.is-support .acct-report-img { display: none; }
 .adm-side-report-img {
   width: 34px; height: 52px; flex: none;
   background-color: var(--brand-600);

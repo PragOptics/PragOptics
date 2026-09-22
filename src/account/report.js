@@ -1,7 +1,10 @@
 // src/account/report.js
 //
-// Report Anomaly: the signed-in customer's bug report, opened from the card
-// above the sign-out divider in the account panel.
+// Report Anomaly and Support: the signed-in customer's bug report and the
+// signed-in customer's ask for help, one modal in two kinds, opened from the
+// card above the sign-out divider in the account panel (Support since
+// 2026-09-22: the same shape across the whole platform, every lane, mailing
+// the operator through the platform notifications).
 //
 // An authenticated flow like every other account action: the bearer token
 // rides in the header, the request runs under the DNA veil (fetchWithDna), and
@@ -19,17 +22,47 @@
 import { PRAG_API_BASE, LANE } from '../runtime/config.js';
 import { fetchWithDna } from '../api/fetchWithDna.js';
 
-const ANOMALY_URL = `${PRAG_API_BASE}/support/anomaly`;
-
-const CATEGORIES = [
-  ['bug',      'Something broke'],
-  ['data',     'Wrong information'],
-  ['order',    'Order or payment'],
-  ['warranty', 'Warranty'],
-  ['signin',   'Sign-in or security'],
-  ['display',  'Display or theme'],
-  ['other',    'Other']
-];
+/** The two kinds: where they post, what they say, what they ask. */
+const KINDS = {
+  anomaly: {
+    url: `${PRAG_API_BASE}/support/anomaly`,
+    aria: 'Report an anomaly', title: 'Report an anomaly',
+    note: 'Something broke, looked wrong, or did not do what it said. Tell us what you saw. A person reads every report.',
+    categories: [
+      ['bug',      'Something broke'],
+      ['data',     'Wrong information'],
+      ['order',    'Order or payment'],
+      ['warranty', 'Warranty'],
+      ['signin',   'Sign-in or security'],
+      ['display',  'Display or theme'],
+      ['other',    'Other']
+    ],
+    summaryPlaceholder: 'The label button did nothing after I paid',
+    detailsLabel: 'What happened, step by step',
+    detailsPlaceholder: 'What you did, what you expected, what you got instead.',
+    send: 'Send report', sending: 'Sending…', word: 'report',
+    doneTitle: 'Thank you. We have it.', doneNote: 'We reply when there is something to tell you.'
+  },
+  support: {
+    url: `${PRAG_API_BASE}/support/request`,
+    aria: 'Ask for support', title: 'Ask for support',
+    note: 'A question, or something you need done on your account, plan, licenses, domains or environment. A person reads every request and answers by email.',
+    categories: [
+      ['question',    'A question'],
+      ['account',     'My account or team'],
+      ['billing',     'Billing or my plan'],
+      ['licensing',   'Licenses or mail'],
+      ['domains',     'Domains or DNS'],
+      ['environment', 'My environment or site'],
+      ['other',       'Other']
+    ],
+    summaryPlaceholder: 'Move my mailbox onto my new domain',
+    detailsLabel: 'Tell us more',
+    detailsPlaceholder: 'What you need, and anything that helps us do it right the first time.',
+    send: 'Send request', sending: 'Sending…', word: 'request',
+    doneTitle: 'Thank you. We have your request.', doneNote: 'You hear back by email.'
+  }
+};
 
 /* ---------------- error capture ---------------- */
 
@@ -84,26 +117,26 @@ function esc(s) {
   return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
-function formHtml(diag) {
+function formHtml(diag, K, kind) {
   const errCount = diag.errors.length;
   return `
     <div class="acct-modal-mask" data-rp-close></div>
-    <div class="acct-modal is-wide acct-report" role="dialog" aria-modal="true" aria-label="Report an anomaly">
+    <div class="acct-modal is-wide acct-report ${kind === 'support' ? 'is-support' : ''}" role="dialog" aria-modal="true" aria-label="${esc(K.aria)}">
       <div class="acct-report-head">
         <span class="acct-report-img" aria-hidden="true"></span>
         <div>
-          <h3 class="acct-modal-h">Report an anomaly</h3>
-          <p class="acct-modal-note">Something broke, looked wrong, or did not do what it said. Tell us what you saw. A person reads every report.</p>
+          <h3 class="acct-modal-h">${esc(K.title)}</h3>
+          <p class="acct-modal-note">${esc(K.note)}</p>
         </div>
       </div>
-      <label class="acct-label" for="rpCategory">What kind of thing</label>
+      <label class="acct-label" for="rpCategory">What it is about</label>
       <select class="acct-input acct-select" id="rpCategory">
-        ${CATEGORIES.map(([v, l]) => `<option value="${v}">${esc(l)}</option>`).join('')}
+        ${K.categories.map(([v, l]) => `<option value="${v}">${esc(l)}</option>`).join('')}
       </select>
       <label class="acct-label" for="rpSummary">In a few words</label>
-      <input class="acct-input" id="rpSummary" type="text" maxlength="140" placeholder="The label button did nothing after I paid" autocomplete="off">
-      <label class="acct-label" for="rpDetails">What happened, step by step <span class="muted">(optional)</span></label>
-      <textarea class="acct-input acct-textarea" id="rpDetails" rows="5" maxlength="4000" placeholder="What you did, what you expected, what you got instead."></textarea>
+      <input class="acct-input" id="rpSummary" type="text" maxlength="140" placeholder="${esc(K.summaryPlaceholder)}" autocomplete="off">
+      <label class="acct-label" for="rpDetails">${esc(K.detailsLabel)} <span class="muted">(optional)</span></label>
+      <textarea class="acct-input acct-textarea" id="rpDetails" rows="5" maxlength="4000" placeholder="${esc(K.detailsPlaceholder)}"></textarea>
       <label class="um-check acct-report-diag" title="Route, theme, window size, browser, lane, and the last console errors on this page. No passwords, no card details, nothing typed into forms.">
         <input type="checkbox" id="rpDiag" checked> Include page details
         <span class="muted">(${esc(diag.route)}, ${esc(diag.theme)} theme, ${esc(diag.viewport)}, ${errCount ? `${errCount} recent error${errCount === 1 ? '' : 's'}` : 'no recent errors'})</span>
@@ -111,20 +144,20 @@ function formHtml(diag) {
       <p class="acct-error" id="rpError" hidden></p>
       <div class="acct-modal-actions">
         <button class="btn btn-ghost" type="button" data-rp-close>Cancel</button>
-        <button class="cta" type="button" data-rp-send>Send report</button>
+        <button class="cta" type="button" data-rp-send>${esc(K.send)}</button>
       </div>
     </div>
   `;
 }
 
-function doneHtml({ ref, email }) {
+function doneHtml({ ref, email, K }) {
   return `
     <div class="acct-modal-mask" data-rp-close></div>
-    <div class="acct-modal acct-report" role="dialog" aria-modal="true" aria-label="Report sent">
-      <h3 class="acct-modal-h">Thank you. We have it.</h3>
+    <div class="acct-modal acct-report" role="dialog" aria-modal="true" aria-label="${esc(K.word)} sent">
+      <h3 class="acct-modal-h">${esc(K.doneTitle)}</h3>
       <p class="acct-modal-note">Your reference, for any follow-up${email ? `. A copy went to <strong>${esc(email)}</strong>` : ''}.</p>
       <div class="acct-report-ref"><code class="acct-product-code">${esc(ref)}</code></div>
-      <p class="acct-modal-note">We reply when there is something to tell you. Need to add a detail? Email support@bridgesindust.com and quote the reference.</p>
+      <p class="acct-modal-note">${esc(K.doneNote)} Need to add a detail? Email support@bridgesindust.com and quote the reference.</p>
       <div class="acct-modal-actions">
         <button class="cta" type="button" data-rp-close>Done</button>
       </div>
@@ -133,16 +166,17 @@ function doneHtml({ ref, email }) {
 }
 
 /**
- * Open the report modal. Resolves with { ref } after a successful send, or
- * null if the reporter cancelled.
- * @param {{ token: string, email?: string, friendlyError?: (ex: Error, fallback: string) => string }} opts
+ * Open the modal in one of its kinds. Resolves with { ref } after a successful
+ * send, or null if the reporter cancelled.
+ * @param {{ kind?: 'anomaly'|'support', token: string, email?: string, friendlyError?: (ex: Error, fallback: string) => string }} opts
  */
-export function openReportAnomaly({ token, email = '', friendlyError } = {}) {
+export function openReport({ kind = 'anomaly', token, email = '', friendlyError } = {}) {
+  const K = KINDS[kind] || KINDS.anomaly;
   return new Promise(resolve => {
     let host = document.getElementById('acctReport');
     if (!host) { host = document.createElement('div'); host.id = 'acctReport'; host.className = 'acct-modal-host'; document.body.appendChild(host); }
     const diag = diagnostics();
-    host.innerHTML = formHtml(diag);
+    host.innerHTML = formHtml(diag, K, kind);
     host.hidden = false;
 
     let busy = false;
@@ -156,13 +190,13 @@ export function openReportAnomaly({ token, email = '', friendlyError } = {}) {
       const details = (host.querySelector('#rpDetails')?.value || '').trim();
       const includeDiag = host.querySelector('#rpDiag')?.checked !== false;
       say('');
-      if (summary.length < 4) { say('Say what happened in a few words first.'); host.querySelector('#rpSummary')?.focus(); return; }
+      if (summary.length < 4) { say(kind === 'support' ? 'Say what you need in a few words first.' : 'Say what happened in a few words first.'); host.querySelector('#rpSummary')?.focus(); return; }
       busy = true;
       btn.disabled = true;
       const orig = btn.textContent;
-      btn.textContent = 'Sending…';
+      btn.textContent = K.sending;
       try {
-        const res = await fetchWithDna(ANOMALY_URL, {
+        const res = await fetchWithDna(K.url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
           body: JSON.stringify({
@@ -178,9 +212,10 @@ export function openReportAnomaly({ token, email = '', friendlyError } = {}) {
           throw err;
         }
         result = { ref: data.ref || '' };
-        host.innerHTML = doneHtml({ ref: result.ref, email });
+        host.innerHTML = doneHtml({ ref: result.ref, email, K });
       } catch (ex) {
-        say(typeof friendlyError === 'function' ? friendlyError(ex, 'Could not send the report. Try again.') : (ex?.message || 'Could not send the report. Try again.'));
+        const fallback = `Could not send the ${K.word}. Try again.`;
+        say(typeof friendlyError === 'function' ? friendlyError(ex, fallback) : (ex?.message || fallback));
         btn.disabled = false;
         btn.textContent = orig;
       } finally {
@@ -207,3 +242,8 @@ export function openReportAnomaly({ token, email = '', friendlyError } = {}) {
     host.querySelector('#rpSummary')?.focus();
   });
 }
+
+/** The bug report. */
+export function openReportAnomaly(opts = {}) { return openReport({ ...opts, kind: 'anomaly' }); }
+/** The ask for help (2026-09-22). */
+export function openSupportRequest(opts = {}) { return openReport({ ...opts, kind: 'support' }); }

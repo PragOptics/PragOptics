@@ -18,7 +18,7 @@ import { stripeAppearance } from '../api/stripeAppearance.js';
 import { ensureStripeJs } from '../runtime/stripeLoader.js';
 import { tierName, ADDON_NAME } from '../components/tierCopy.js';
 import { mountPricingSelect } from '../components/pricingCards.js';
-import { openReportAnomaly, installErrorCapture } from './report.js';
+import { openReportAnomaly, openSupportRequest, installErrorCapture } from './report.js';
 import { renderTeam, renderTenants, bindTeamActions } from './team.js';
 import { renderEnvironment, bindEnvironmentActions } from './environment.js';
 import { renderLicensing, bindLicensingActions } from './licensing.js';
@@ -80,6 +80,7 @@ const ADMIN_NOTIFY_SEND_URL = `${PRAG_API_BASE}/admin/notifications/send`;
 const ADMIN_ROLES_URL = `${PRAG_API_BASE}/admin/roles`;
 const ADMIN_ROLES_REMOVE_URL = `${PRAG_API_BASE}/admin/roles/remove`;
 const ADMIN_ANOMALIES_URL = `${PRAG_API_BASE}/admin/anomalies`;
+const ADMIN_SUPPORT_URL = `${PRAG_API_BASE}/admin/support`;
 const ADMIN_ANOMALY_PATCH_URL = `${PRAG_API_BASE}/admin/anomalies/patch`;
 
 // Catalog snapshots survive lane flips (localStorage is per-origin, and the
@@ -304,7 +305,8 @@ const ICONS = {
   tenants:      '<path d="M3 21h18"/><path d="M5 21V7l7-4 7 4v14"/><path d="M9 21v-6h6v6"/><path d="M9 10h.01"/><path d="M15 10h.01"/>',
   environment:  '<ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.66 3.58 3 8 3s8-1.34 8-3V5"/><path d="M4 12c0 1.66 3.58 3 8 3s8-1.34 8-3"/>',
   licensing:    '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/>',
-  ai:           '<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>'
+  ai:           '<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>',
+  support:      '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M9 10a3 3 0 0 1 6 0c0 2-3 2-3 4"/><path d="M12 17h.01"/>'
 };
 
 const ACCOUNT_SECTIONS = [
@@ -325,6 +327,7 @@ const INTERNAL_SECTIONS = [
   { id: 'buildsqueue', label: 'Builds' },
   { id: 'notify',     label: 'Notifications' },
   { id: 'reports',    label: 'Anomalies' },
+  { id: 'support',    label: 'Support' },
   { id: 'shiporders', label: 'Orders' },
   { id: 'payments',   label: 'Payments' },
   { id: 'warranty',   label: 'Warranty' },
@@ -382,6 +385,8 @@ function shellHtml() {
           <span class="adm-side-report-img" aria-hidden="true"></span>
           <button class="btn btn-sm adm-side-report-btn" type="button" data-acct-action="report-anomaly"
             title="Tell us about a bug or anything that looked wrong. Page details come along so we can find it.">Report Anomaly</button>
+          <button class="btn btn-sm adm-side-report-btn is-support" type="button" data-acct-action="support-request"
+            title="Ask a question or ask for something on your account, plan, licenses, domains or environment. A person answers by email.">Support</button>
         </div>
         <div class="adm-side-foot">
           <button class="btn acct-signout" type="button" data-acct-action="logout">Sign out</button>
@@ -799,6 +804,9 @@ async function saveNotifyPrefs(btn) {
 // for the receipt line, and the same error voice as the rest of the panel.
 function reportAnomaly() {
   return openReportAnomaly({ token: accessToken(), email: currentEmail(), friendlyError });
+}
+function supportRequest() {
+  return openSupportRequest({ token: accessToken(), email: currentEmail(), friendlyError });
 }
 
 /* ---------- platform lane (operators only) ---------- */
@@ -2954,7 +2962,7 @@ function rpDiagHtml(c) {
   if (!c || typeof c !== 'object') return '';
   const rows = [
     ['Page', c.route || c.url || ''], ['Theme', c.theme || ''], ['Viewport', c.viewport || ''],
-    ['Browser', c.ua || ''], ['Lane', c.lane || ''], ['Locale', [c.lang, c.tz].filter(Boolean).join(' · ')], ['Reported at', c.at ? fmtDate(c.at) : '']
+    ['Browser', c.ua || ''], ['Lane', [c.lane ? `${c.lane} site` : '', c.apiLane ? `${c.apiLane} api` : ''].filter(Boolean).join(' · ')], ['Locale', [c.lang, c.tz].filter(Boolean).join(' · ')], ['Reported at', c.at ? fmtDate(c.at) : '']
   ].filter(([, v]) => v);
   const errs = Array.isArray(c.errors) ? c.errors : [];
   return `
@@ -2971,12 +2979,13 @@ function rpCardHtml(r) {
         <code>${escapeHtml(r.ref)}</code>
         ${rpStatusPill(r.status)}
         <span class="adm-pill is-claimed">${escapeHtml(r.categoryLabel || r.category)}</span>
+        ${r.apiLane || r.context?.lane ? `<span class="adm-pill" title="The site's lane and the API's lane the ${rpKind === 'support' ? 'request' : 'report'} was filed on">${escapeHtml([r.context?.lane ? `${r.context.lane} site` : '', r.apiLane ? `${r.apiLane} api` : ''].filter(Boolean).join(' · '))}</span>` : ''}
         <span class="adm-muted">${escapeHtml(fmtDate(r.createdAt))}</span>
         <span class="adm-muted cell-ellip" title="${escapeHtml(r.email || '')}">from ${escapeHtml(r.email || r.userId || 'unknown')}</span>
       </div>
       <p class="rp-summary">${escapeHtml(r.summary)}</p>
       ${r.details ? `<pre class="adm-pre rp-details-text">${escapeHtml(r.details)}</pre>` : '<p class="adm-muted">No further details were given.</p>'}
-      <details class="rp-details"><summary>Page details</summary>${rpDiagHtml(r.context)}</details>
+      <details class="rp-details"><summary>Page details</summary>${rpDiagHtml({ ...(r.context || {}), apiLane: r.apiLane })}</details>
       ${open ? `
         <div class="rp-note">
           <textarea class="adm-input" id="rpNote-${escapeHtml(r.id)}" rows="2" maxlength="2000" placeholder="Note to the reporter (optional). Sent by email when you close."></textarea>
@@ -2990,16 +2999,22 @@ function rpCardHtml(r) {
     </div>`;
 }
 
-async function renderReports(main) {
+/** Which desk is on screen: the anomaly reports or the support requests (2026-09-22). */
+let rpKind = 'anomaly';
+async function renderReports(main) { rpKind = 'anomaly'; return renderDesk(main); }
+async function renderSupport(main) { rpKind = 'support'; return renderDesk(main); }
+async function renderDesk(main) {
+  const support = rpKind === 'support';
   main.innerHTML = `
     <header class="adm-sec-head">
-      <h2 class="adm-sec-title">Anomalies</h2>
-      <div class="adm-toolbar" role="tablist" aria-label="Report status">
+      <h2 class="adm-sec-title">${support ? 'Support' : 'Anomalies'}</h2>
+      <div class="adm-toolbar" role="tablist" aria-label="${support ? 'Request' : 'Report'} status">
         ${['OPEN', 'CLOSED', 'ALL'].map(s => `<button class="adm-tab ${s === rpStatus ? 'is-active' : ''}" type="button" role="tab" data-adm-reports="${s}" aria-selected="${s === rpStatus}">${s === 'ALL' ? 'All' : s === 'OPEN' ? 'Open' : 'Closed'}</button>`).join('')}
       </div>
     </header>
-    <p class="adm-note">Anomaly reports customers file from their account. Each carries the page details they agreed to send.
-      Close with a note and the reporter gets the note by email with their reference.</p>
+    <p class="adm-note">${support
+      ? 'Support requests customers send from their account: questions and things they need done. Each says which lane it came from. Close with a note and the answer goes to them by email with their reference.'
+      : 'Anomaly reports customers file from their account. Each carries the page details they agreed to send and the lane it came from. Close with a note and the reporter gets the note by email with their reference.'}</p>
     <p class="adm-error" id="rpError" hidden></p>
     <div id="rpBody"><p class="adm-note">Loading…</p></div>
   `;
@@ -3011,15 +3026,16 @@ async function loadReports() {
   if (!body) return;
   showError('rpError', '');
   try {
-    const data = await apiFetch(`${ADMIN_ANOMALIES_URL}?status=${encodeURIComponent(rpStatus)}&limit=200`);
+    const word = rpKind === 'support' ? 'requests' : 'reports';
+    const data = await apiFetch(`${rpKind === 'support' ? ADMIN_SUPPORT_URL : ADMIN_ANOMALIES_URL}?status=${encodeURIComponent(rpStatus)}&limit=200`);
     const reports = Array.isArray(data.reports) ? data.reports : [];
     body.innerHTML = reports.length
       ? reports.map(rpCardHtml).join('') + (data.truncated ? '<p class="adm-note">Showing the newest 200.</p>' : '')
-      : `<p class="adm-empty">${rpStatus === 'OPEN' ? 'No open reports.' : 'No reports in this view.'}</p>`;
+      : `<p class="adm-empty">${rpStatus === 'OPEN' ? `No open ${word}.` : `No ${word} in this view.`}</p>`;
   } catch (ex) {
     body.innerHTML = `<p class="adm-empty">${ex?.status === 404
-      ? 'The reports desk is not on this lane yet. Deploy the backend that carries it, then reload.'
-      : escapeHtml(friendlyError(ex, 'Could not load reports.'))}</p>`;
+      ? `The ${rpKind === 'support' ? 'support' : 'reports'} desk is not on this lane yet. Deploy the backend that carries it, then reload.`
+      : escapeHtml(friendlyError(ex, `Could not load ${word}.`))}</p>`;
   }
 }
 
@@ -3027,7 +3043,7 @@ async function rpPatch(btn, id, patch) {
   const orig = btn.textContent;
   btn.disabled = true; btn.textContent = 'Working…';
   try {
-    await apiFetch(ADMIN_ANOMALY_PATCH_URL, { method: 'POST', body: JSON.stringify({ id, ...patch }) });
+    await apiFetch(ADMIN_ANOMALY_PATCH_URL, { method: 'POST', body: JSON.stringify({ id, kind: rpKind, ...patch }) });
     await loadReports();
   } catch (ex) {
     showError('rpError', friendlyError(ex, 'Could not update the report.'));
@@ -4046,6 +4062,7 @@ function showSection(id) {
   if (id === 'buildsqueue')  return void renderBuildsQueue(main, teamDeps());
   if (id === 'notify')       return void renderNotify(main);
   if (id === 'reports')      return void renderReports(main);
+  if (id === 'support')      return void renderSupport(main);
   if (id === 'shiporders')   return void renderAdminOrders(main);
   if (id === 'payments')     return void renderPayments(main);
   if (id === 'warranty')     return void renderWarranty(main);
@@ -4094,6 +4111,7 @@ function bindOnce() {
       }
       if (a === 'phone-remove') return void removePhone();
       if (a === 'report-anomaly') return void reportAnomaly();
+      if (a === 'support-request') return void supportRequest();
       if (a === 'notify-save') return void saveNotifyPrefs(act);
       if (a === 'theme-set') return void setThemePreference(act.dataset.theme);
       if (a === 'starfield-set') return void setStarfieldPreference(act.dataset.starfield);
