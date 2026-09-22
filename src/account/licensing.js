@@ -31,7 +31,7 @@ import { microsoftHtml, licensesHtml, addHtml, canAdd, orderAction, orderChange 
 
 export async function renderLicensing(main, deps) {
   st.D = deps; st.paint = paint; st.load = load;
-  lc.view = null; lc.busy = false; lc.note = ''; lc.pricing = ''; lc.add = null; lc.saving = ''; lc.msEdit = false; lc.lineNote = '';
+  lc.view = null; lc.busy = false; lc.note = ''; lc.pricing = ''; lc.add = null; lc.saving = ''; lc.msEdit = false; lc.lineNote = ''; lc.needPhone = false;
   initCards();
   main.innerHTML = `
     <header class="acct-sec-head has-explain"><h2 class="acct-sec-title">Licensing</h2>${explainLink('licensing', 'How licenses and mailboxes work')}</header>
@@ -111,7 +111,7 @@ function accountHtml() {
     summary = 'not open yet';
     inner = `
       <p class="acct-card-note">Open your licensing account to add licenses. It is opened with the billing address you already gave, and nothing is charged for opening it.</p>
-      ${canManage ? `<div class="acct-actions-row"><button class="btn" type="button" data-lic-action="open-account" ${lc.busy ? 'disabled' : ''}>${lc.busy ? 'Opening…' : 'Open the licensing account'}</button></div>` : '<p class="acct-card-note">The team\'s owner or an admin opens it.</p>'}`;
+      ${canManage ? `${lc.needPhone ? `<div class="ev-reg-form"><div><label class="acct-label" for="licPhone">Phone number for the account</label><input class="acct-input" id="licPhone" type="tel" inputmode="tel" autocomplete="tel" placeholder="+1 555 555 5555"></div></div>` : ''}<div class="acct-actions-row"><button class="btn" type="button" data-lic-action="open-account" ${lc.busy ? 'disabled' : ''}>${lc.busy ? 'Opening…' : lc.needPhone ? 'Open with this number' : 'Open the licensing account'}</button></div>` : '<p class="acct-card-note">The team\'s owner or an admin opens it.</p>'}`;
   }
   return cardHtml({
     key: 'account', icon: 'shield', title: 'Licensing account', summary,
@@ -201,10 +201,13 @@ function mailboxesHtml() {
 
 async function openAccount(btn) {
   if (lc.busy) return;
+  // the distributor needs a phone on the account; the backend asks (PHONE_REQUIRED) when the billing profile has none
+  const phone = String(document.getElementById('licPhone')?.value || '').trim();
+  if (lc.needPhone && !phone) { st.D.showError('licAccountError', 'Give a phone number for the account.'); return; }
   lc.busy = true; lc.note = ''; st.D.showError('licAccountError', '');
   btn.disabled = true; btn.textContent = 'Opening…';
   try {
-    const d = await st.D.apiFetch(url(`${LIC_URL}/account`), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: body({}) });
+    const d = await st.D.apiFetch(url(`${LIC_URL}/account`), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: body(phone ? { phone } : {}) });
     lc.busy = false;
     lc.view.account = d.account;
     lc.note = 'Your licensing account is open.';
@@ -212,11 +215,17 @@ async function openAccount(btn) {
   } catch (ex) {
     lc.busy = false;
     const code = ex?.data?.code;
+    if (code === 'PHONE_REQUIRED') {
+      lc.needPhone = true; paint();
+      const el = document.getElementById('licPhone'); if (el && phone) el.value = phone;
+      st.D.showError('licAccountError', ex?.data?.error || 'Licensing needs a phone number for the account.');
+      return;
+    }
     const msg = code === 'BILLING_ADDRESS_INCOMPLETE' ? 'Your billing address is incomplete. Complete it on Billing, then try again.'
       : code === 'DISTRIBUTOR_CANNOT_CREATE' ? 'This account is opened by support on request; write to support@bridgesindust.com and it is done within a business day.'
       : code === 'NOT_CONFIGURED' ? 'Licensing is being set up on the platform. Try again later.'
       : (ex?.data?.error || st.D.friendlyError(ex, 'The account could not be opened.'));
-    btn.disabled = false; btn.textContent = 'Open the licensing account';
+    btn.disabled = false; btn.textContent = lc.needPhone ? 'Open with this number' : 'Open the licensing account';
     st.D.showError('licAccountError', msg);
   }
 }
