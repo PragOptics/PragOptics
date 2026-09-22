@@ -688,6 +688,7 @@ function aiHtml() {
         </table>
       </div>
       <p class="acct-card-note ev-note">Per exchange is a typical question and answer, about 2,000 words in and 400 out. The Studio and your API keys pick the model on each call.</p>` : ''}
+      <p class="acct-card-note ev-note">Answers come from this environment's own knowledge files and its installed modules on the lane, nothing else. AI answers can be wrong: check anything that matters.</p>
       ${budgetHtml(manage)}`}`;
   }
   return cardHtml({

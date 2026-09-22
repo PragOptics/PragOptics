@@ -1,6 +1,6 @@
 # PragOptics™ Privacy Policy
 
-**Version:** 2026-04  
+**Version:** 2026-09  
 **Effective Date:** Upon publication
 
 ---
@@ -66,6 +66,17 @@ PragOptics does not operate its own telecommunications network. Messaging delive
 
 ---
 
+### 2.5 AI Questions and Knowledge
+
+When a Participant or a visitor to a Participant's site uses an AI feature, PragOptics processes:
+- The question asked and the recent turns of that conversation, which the asking browser holds and sends with each question
+- The excerpts of the Participant's own knowledge files chosen to answer it
+- A count of answers per assistant and their cost, kept for caps and billing
+
+PragOptics stores no conversation. The question, the recent turns and the chosen excerpts are sent to the model provider that answers (Section 6) and are not kept by PragOptics after the answer. A message an assistant files on a visitor's behalf is stored in the Participant's own submissions table, like a message sent through a form, and is the Participant's data.
+
+---
+
 ## 3. How We Use Information
 
 We use the information described above to:
@@ -125,6 +136,7 @@ PragOptics relies on third-party services to operate core platform functions, in
 - Identity and access providers
 - Payment and billing processors
 - Messaging and communication delivery services
+- AI model providers: BI's provider for answers paid from a plan's AI credit, or a provider the Participant connects on their own account, which then processes the question under its own terms
 
 These providers process data only as necessary to deliver their services and are subject to contractual and security obligations.
 
