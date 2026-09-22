@@ -86,10 +86,19 @@ function fromPrice(id) {
   const low = Math.min(...got.filter(o => o.available !== false).map(perMonth));
   return Number.isFinite(low) ? `<span class="lic-from">from ${st.D.escapeHtml(money(low))} a month</span>` : '';
 }
+/**
+ * The distributor's product links, grouped by what they mean. Pax8 names each group (on dev: UpgradesTo for the
+ * licenses this one upgrades into); a name it has not used before is shown in its own words, never guessed.
+ */
 function requiresHtml(id) {
-  const e = st.D.escapeHtml, r = lc.requires[id] || [];
-  const names = r.flatMap(x => x.products.map(p => p.name)).slice(0, 4);
-  return names.length ? `<div><span class="lic-k">Needs one of these first</span><span>${e(names.join(', '))}</span></div>` : '';
+  const e = st.D.escapeHtml, groups = new Map();
+  for (const g of lc.requires[id] || []) {
+    const label = /^upgradesto$/i.test(g.name) ? 'Upgrades to' : /requir|prereq|addonto|isaddon/i.test(g.name) ? 'Needs one of these first' : String(g.name).replace(/([a-z])([A-Z])/g, '$1 $2');
+    const list = groups.get(label) || [];
+    for (const p of g.products) list.push(String(p.name).replace(/\s*\[New Commerce Experience\]\s*/i, ' ').trim());
+    groups.set(label, list);
+  }
+  return [...groups.entries()].map(([label, names]) => `<div class="lic-span"><span class="lic-k">${e(label)}</span><span class="lic-links">${e(names.slice(0, 4).join(', '))}${names.length > 4 ? `, and ${names.length - 4} more` : ''}</span></div>`).join('');
 }
 
 function rowHtml(p) {

@@ -18,7 +18,7 @@ export const st = { D: null, paint: () => {}, load: async () => {} };
 
 export const TERM_NAMES = { Monthly: 'a month', Annual: 'a year', '2-Year': 'two years', '3-Year': 'three years' };
 export const RENEW_WORDS = { Monthly: 'each month', Annual: 'each year', '2-Year': 'every two years', '3-Year': 'every three years' };
-export const STATUS_WORDS = { PAID: 'paid, ordering', ORDERED: 'ordered, provisioning', ACTIVE: 'active', ENDING: 'ending', CANCELED: 'ended', FAILED: 'refused, refunded' };
+export const STATUS_WORDS = { CHARGING: 'charging', PAID: 'paid, ordering', ORDERED: 'ordered, provisioning', ACTIVE: 'active', ENDING: 'ending', CANCELED: 'ended', FAILED: 'refused, refunded' };
 
 export function cardHtml(o) { return sharedCard({ ...o, key: `licensing:${o.key}` }); }
 export function countWord(n, one, many) { return `${n} ${n === 1 ? one : many}`; }
