@@ -1,6 +1,6 @@
 # PragOptics™ Privacy Policy
 
-**Version:** 2026-09.1  
+**Version:** 2026-09  
 **Effective Date:** Upon publication
 
 ---
@@ -73,7 +73,7 @@ When a Participant or a visitor to a Participant's site uses an AI feature, Prag
 - The excerpts of the Participant's own knowledge files chosen to answer it
 - A count of answers per assistant and their cost, kept for caps and billing
 
-PragOptics stores no conversation. The question, the recent turns and the chosen excerpts are sent to the model provider that answers (Section 6) and are not kept by PragOptics after the answer. A support request a Participant sends from their account, with plain facts about that account (plan, team, environment, licensing, domains), is sent to the model provider to write a first reply; the request and that reply are kept with the support record so the team sees what the Participant was told. A message an assistant files on a visitor's behalf is stored in the Participant's own submissions table, like a message sent through a form, and is the Participant's data.
+PragOptics stores no conversation. The question, the recent turns and the chosen excerpts are sent to the model provider that answers (Section 6) and are not kept by PragOptics after the answer. A message an assistant files on a visitor's behalf is stored in the Participant's own submissions table, like a message sent through a form, and is the Participant's data.
 
 ---
 
