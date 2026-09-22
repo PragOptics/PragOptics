@@ -168,19 +168,24 @@ async function saveMicrosoft() {
   if (!has && fields.domainPrefix.length < 3) { st.D.showError('licMsError', 'The tenant name is 3 to 27 letters and digits.'); return; }
   if (has && !fields.tenantId) { st.D.showError('licMsError', 'Paste the tenant id, or choose New tenant.'); return; }
   if (!accepted) { st.D.showError('licMsError', 'Tick the agreement to continue.'); return; }
-  lc.saving = 'ms'; st.D.showError('licMsError', ''); st.paint();
+  // the form stays as typed while it saves: locked in place, never redrawn until the answer
+  lc.saving = 'ms'; st.D.showError('licMsError', ''); lockForm('ms', true, 'Saving…');
   try {
     const d = await st.D.apiFetch(url(`${LIC_URL}/microsoft`), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: body(fields) });
     lc.saving = ''; lc.msEdit = false;
     lc.view.microsoft = { ...(d.microsoft || {}), ready: true };
     st.paint();
   } catch (ex) {
-    lc.saving = ''; st.paint();
-    // the form is repainted from the saved view on a failure; put the typed values back
-    for (const [id, val] of [['licMsFirst', fields.mca.firstName], ['licMsLast', fields.mca.lastName], ['licMsEmail', fields.mca.email], ['licMsTenant', fields.tenantId], ['licMsPrefix', fields.domainPrefix]]) { const el = document.getElementById(id); if (el) el.value = val; }
-    const el = document.getElementById('licMsAccept'); if (el) el.checked = accepted;
+    lc.saving = ''; lockForm('ms', false, 'Save');
     st.D.showError('licMsError', ex?.data?.error || st.D.friendlyError(ex, 'The details could not be saved.'));
   }
+}
+/** Lock or free a form's fields and its button in place, so what was typed stays on screen while a request runs. */
+function lockForm(which, on, label) {
+  const card = which === 'ms' ? document.getElementById('licMsError')?.closest('.acct-card') : null;
+  if (!card) return;
+  for (const el of card.querySelectorAll('input, select, button')) el.disabled = on;
+  const b = card.querySelector('[data-lic-action="ms-save"]'); if (b) b.textContent = label;
 }
 async function openAdd(btn) {
   const id = btn.dataset.product || '';
@@ -226,7 +231,9 @@ async function setSeats(btn) {
   if (!id || lc.saving) return;
   const qty = Math.floor(Number(document.getElementById(`licQty-${id}`)?.value));
   if (!Number.isFinite(qty) || qty < 1 || qty > 500) { st.D.showError('licLinesError', 'Seats are a whole number from 1 to 500.'); return; }
-  lc.saving = id; st.D.showError('licLinesError', ''); st.paint();
+  lc.saving = id; st.D.showError('licLinesError', '');
+  // the row keeps the typed seat count while it saves: its controls locked in place
+  const tr = btn.closest('tr'); for (const el of tr ? tr.querySelectorAll('input, button') : []) el.disabled = true; btn.textContent = 'Saving…';
   try {
     const d = await st.D.apiFetch(url(`${LIC_URL}/licenses/${encodeURIComponent(id)}`), { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: body({ quantity: qty }) });
     lc.saving = '';
