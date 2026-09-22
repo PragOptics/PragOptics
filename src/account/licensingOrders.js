@@ -54,25 +54,33 @@ function mailWhere(v, prefix) {
   if (ds.length) return `mailboxes start at name@${name} and move to <strong>${e(ds[0])}</strong> when it joins the tenant${ds.length > 1 ? ` (${e(ds.length - 1)} more on ${DOMAINS_LINK})` : ''}`;
   return `mailboxes are name@${name} until a domain of yours is added on ${DOMAINS_LINK}`;
 }
+/** The form in two modes (Cameron, 2026-09-22): a new tenant by name, or the id of a tenant they have. */
+function msModeOf(m) { return lc.msMode || (m.tenantId ? 'existing' : 'new'); }
 function msFormHtml(m) {
   const e = st.D.escapeHtml, v = lc.view, mca = m.mca || {}, ds = v.mailDomains || [];
-  const has = !!m.tenantId;
+  const mode = msModeOf(m);
   const prefix = m.domainPrefix || slugOf(ds[0]) || '';
   const f = (id, label, val, attrs = '') => `<div><label class="acct-label" for="${id}">${e(label)}</label><input class="acct-input" id="${id}" type="text" value="${e(val || '')}" ${attrs}></div>`;
+  const tab = (k, label) => `<button class="ev-tab ${mode === k ? 'is-on' : ''}" type="button" role="tab" aria-selected="${mode === k}" data-lic-action="ms-mode" data-mode="${k}">${label}</button>`;
   return `
-    <p class="acct-card-note">Every Microsoft tenant starts with a name of its own, <strong>name.onmicrosoft.com</strong>. Mail moves to a domain of yours once one is added.</p>
+    <div class="ev-tabs lic-ms-tabs" role="tablist" aria-label="Your Microsoft tenant">${tab('new', 'New tenant')}${tab('existing', 'I have a tenant')}</div>
     <div class="ev-reg-form">
-      <div id="licMsPrefixWrap" ${has ? 'hidden' : ''}><label class="acct-label" for="licMsPrefix">Tenant name</label><div class="lic-suffix"><input class="acct-input" id="licMsPrefix" type="text" value="${e(prefix)}" placeholder="acme" spellcheck="false" autocapitalize="off" maxlength="27"><span>.onmicrosoft.com</span></div></div>
-      <div id="licMsTenantWrap" ${has ? '' : 'hidden'}><label class="acct-label" for="licMsTenant">Tenant id</label><input class="acct-input" id="licMsTenant" type="text" value="${e(m.tenantId || '')}" placeholder="00000000-0000-0000-0000-000000000000" spellcheck="false"></div>
+      <div class="lic-span" id="licMsPrefixWrap" ${mode === 'existing' ? 'hidden' : ''}>
+        <label class="acct-label" for="licMsPrefix">Tenant name</label>
+        <div class="lic-suffix"><input class="acct-input" id="licMsPrefix" type="text" value="${e(prefix)}" placeholder="yourcompany" spellcheck="false" autocapitalize="off" maxlength="27"><span>.onmicrosoft.com</span></div>
+        <p class="lic-hint">${ds.length ? `Mail moves to <strong>${e(ds[0])}</strong> once it is added.` : `Mail moves to your own domain once you add one on ${DOMAINS_LINK}.`}</p>
+      </div>
+      <div class="lic-span" id="licMsTenantWrap" ${mode === 'existing' ? '' : 'hidden'}>
+        <label class="acct-label" for="licMsTenant">Tenant id</label>
+        <input class="acct-input" id="licMsTenant" type="text" value="${e(m.tenantId || '')}" placeholder="00000000-0000-0000-0000-000000000000" spellcheck="false">
+      </div>
       ${f('licMsFirst', 'First name', mca.firstName, 'autocomplete="given-name"')}
       ${f('licMsLast', 'Last name', mca.lastName, 'autocomplete="family-name"')}
       ${f('licMsEmail', 'Email', mca.email, 'autocomplete="email" inputmode="email"')}
     </div>
-    <label class="ev-agree"><input type="checkbox" id="licMsHas" ${has ? 'checked' : ''}><span>My organization already has a Microsoft 365 tenant</span></label>
-    <p class="acct-card-note">${ds.length ? `You have <strong>${e(ds[0])}</strong>: ${mailWhere(v, '')}.` : `No domain yet? ${mailWhere(v, '')}. Add or buy one there first, or continue and add it later.`}</p>
-    <label class="ev-agree"><input type="checkbox" id="licMsAccept"><span>I have read and accept the <a href="https://www.microsoft.com/licensing/docs/customeragreement" target="_blank" rel="noopener">Microsoft Customer Agreement</a> on behalf of my organization.</span></label>
+    <label class="ev-agree"><input type="checkbox" id="licMsAccept"><span>I accept the <a href="https://www.microsoft.com/licensing/docs/customeragreement" target="_blank" rel="noopener">Microsoft Customer Agreement</a> for my organization.</span></label>
     <div class="acct-actions-row">
-      <button class="btn" type="button" data-lic-action="ms-save" ${lc.saving === 'ms' ? 'disabled' : ''}>${lc.saving === 'ms' ? 'Saving…' : 'Save the Microsoft details'}</button>
+      <button class="btn" type="button" data-lic-action="ms-save" ${lc.saving === 'ms' ? 'disabled' : ''}>${lc.saving === 'ms' ? 'Saving…' : 'Save'}</button>
       ${lc.msEdit ? '<button class="btn btn-sm" type="button" data-lic-action="ms-cancel">Cancel</button>' : ''}
     </div>`;
 }
@@ -153,10 +161,10 @@ async function saveMicrosoft() {
   if (lc.saving) return;
   const g = (id) => String(document.getElementById(id)?.value || '').trim();
   const accepted = !!document.getElementById('licMsAccept')?.checked;
-  const has = !!document.getElementById('licMsHas')?.checked;
+  const has = msModeOf(lc.view.microsoft || {}) === 'existing';
   const fields = { mca: { firstName: g('licMsFirst'), lastName: g('licMsLast'), email: g('licMsEmail'), accepted }, tenantId: has ? g('licMsTenant') : '', domainPrefix: has ? '' : slugOf(g('licMsPrefix')) };
   if (!has && fields.domainPrefix.length < 3) { st.D.showError('licMsError', 'The tenant name is 3 to 27 letters and digits.'); return; }
-  if (has && !fields.tenantId) { st.D.showError('licMsError', 'Paste the tenant id, or untick the box for a new tenant.'); return; }
+  if (has && !fields.tenantId) { st.D.showError('licMsError', 'Paste the tenant id, or choose New tenant.'); return; }
   if (!accepted) { st.D.showError('licMsError', 'Tick the agreement to continue.'); return; }
   lc.saving = 'ms'; st.D.showError('licMsError', ''); st.paint();
   try {
@@ -169,7 +177,6 @@ async function saveMicrosoft() {
     // the form is repainted from the saved view on a failure; put the typed values back
     for (const [id, val] of [['licMsFirst', fields.mca.firstName], ['licMsLast', fields.mca.lastName], ['licMsEmail', fields.mca.email], ['licMsTenant', fields.tenantId], ['licMsPrefix', fields.domainPrefix]]) { const el = document.getElementById(id); if (el) el.value = val; }
     const el = document.getElementById('licMsAccept'); if (el) el.checked = accepted;
-    const hs = document.getElementById('licMsHas'); if (hs) { hs.checked = has; toggleTenant(has); }
     st.D.showError('licMsError', ex?.data?.error || st.D.friendlyError(ex, 'The details could not be saved.'));
   }
 }
@@ -249,6 +256,7 @@ async function endLicense(btn) {
 /** Handles a data-lic-action this module owns; false when it is not one of them. */
 export function orderAction(a, btn) {
   if (a === 'ms-save') { saveMicrosoft(); return true; }
+  if (a === 'ms-mode') { setMsMode(btn.dataset.mode); return true; }
   if (a === 'ms-edit') { lc.msEdit = true; st.paint(); return true; }
   if (a === 'ms-cancel') { lc.msEdit = false; st.paint(); return true; }
   if (a === 'add-open') { openAdd(btn); return true; }
@@ -259,13 +267,17 @@ export function orderAction(a, btn) {
   return false;
 }
 /** The tenant toggle: a name for a new tenant, or the id of one they have. Typed values stay. */
-function toggleTenant(has) {
+/** Switch the form's mode in place, so what was typed stays. */
+function setMsMode(mode) {
+  lc.msMode = mode === 'existing' ? 'existing' : 'new';
+  const has = lc.msMode === 'existing';
   const p = document.getElementById('licMsPrefixWrap'), t = document.getElementById('licMsTenantWrap');
   if (p) p.hidden = has; if (t) t.hidden = !has;
+  for (const b of document.querySelectorAll('[data-lic-action="ms-mode"]')) { const on = b.dataset.mode === lc.msMode; b.classList.toggle('is-on', on); b.setAttribute('aria-selected', String(on)); }
+  st.D.showError('licMsError', '');
 }
 /** The add box's term or seat count changed: the charge sentence follows. */
 export function orderChange(e) {
   const t = e.target;
-  if (t && t.id === 'licMsHas') return void toggleTenant(!!t.checked);
   if (t && (t.id === 'licAddTerm' || t.id === 'licAddQty') && lc.add && !lc.saving) { readAdd(); st.paint(); }
 }

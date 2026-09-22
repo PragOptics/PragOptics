@@ -31,7 +31,7 @@ import { microsoftHtml, licensesHtml, addHtml, canAdd, orderAction, orderChange 
 
 export async function renderLicensing(main, deps) {
   st.D = deps; st.paint = paint; st.load = load;
-  lc.view = null; lc.busy = false; lc.note = ''; lc.pricing = ''; lc.add = null; lc.saving = ''; lc.msEdit = false; lc.lineNote = ''; lc.needPhone = false;
+  lc.view = null; lc.busy = false; lc.note = ''; lc.pricing = ''; lc.add = null; lc.saving = ''; lc.msEdit = false; lc.lineNote = ''; lc.needPhone = false; lc.msMode = '';
   initCards();
   main.innerHTML = `
     <header class="acct-sec-head has-explain"><h2 class="acct-sec-title">Licensing</h2>${explainLink('licensing', 'How licenses and mailboxes work')}</header>
