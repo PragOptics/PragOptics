@@ -2985,6 +2985,7 @@ function rpCardHtml(r) {
       </div>
       <p class="rp-summary">${escapeHtml(r.summary)}</p>
       ${r.details ? `<pre class="adm-pre rp-details-text">${escapeHtml(r.details)}</pre>` : '<p class="adm-muted">No further details were given.</p>'}
+      ${r.assist && r.assist.text ? `<div class="rp-note"><div class="adm-muted">The first reply they got, written by AI from their account</div><pre class="adm-pre">${escapeHtml(r.assist.text)}</pre>${(r.assist.resources || []).length ? `<div class="adm-muted">Pointed at: ${escapeHtml(r.assist.resources.map(x => x.title).join(', '))}</div>` : ''}</div>` : ''}
       <details class="rp-details"><summary>Page details</summary>${rpDiagHtml({ ...(r.context || {}), apiLane: r.apiLane })}</details>
       ${open ? `
         <div class="rp-note">

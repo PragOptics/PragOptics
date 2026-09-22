@@ -263,6 +263,13 @@ select.acct-input { background-color: var(--surface-deep); }
   mask: url("/images/anomaly.png") 52% center / auto 100% no-repeat;
 }
 .acct-report-diag { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 4px; font-size: .84rem; align-items: center; }
+/* the support request's notice and first reply (2026-09-22) */
+.acct-report-notice { font-size: .82rem; margin: 0 0 6px; }
+.acct-report-assist { margin: 14px 0 10px; padding: 12px 14px; border: 1px solid var(--border); border-left: 3px solid var(--brand-600); border-radius: 0 12px 12px 0; }
+.acct-report-assist .acct-label { margin-top: 0; }
+.acct-report-assist-text { margin: 4px 0 10px; font-size: .92rem; line-height: 1.55; }
+.acct-report-res { display: flex; flex-wrap: wrap; gap: 6px; }
+.acct-report-ai { margin: 10px 0 0; font-size: .78rem; }
 .acct-report-diag .muted { font-size: .78rem; }
 .acct-report-ref { margin: 6px 0 14px; }
 .acct-report-ref .acct-product-code { font-size: 1.15rem; letter-spacing: .12em; padding: .35rem .8rem; }

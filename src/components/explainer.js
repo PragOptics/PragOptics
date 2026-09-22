@@ -207,4 +207,9 @@ export function initExplainer() {
     if (e.key === 'Escape' && isOpen()) close();
   });
   window.pragExplain = openExplainer;
+  // A link can open an explainer (2026-09-22, the support request's first reply mails these):
+  // #account?section=licensing&explain=licensing opens "Licenses and mailboxes" over the page.
+  const fromHash = () => { const m = /[?&]explain=([a-z]+)/.exec(location.hash || ''); if (m && DOCS[m[1]] && !isOpen()) openExplainer(m[1]); };
+  window.addEventListener('hashchange', fromHash);
+  setTimeout(fromHash, 600);
 }

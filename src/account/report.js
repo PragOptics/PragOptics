@@ -47,6 +47,7 @@ const KINDS = {
     url: `${PRAG_API_BASE}/support/request`,
     aria: 'Ask for support', title: 'Ask for support',
     note: 'A question, or something you need done on your account, plan, licenses, domains or environment. A person reads every request and answers by email.',
+    notice: 'An AI assistant reads your request and your plan details to send you a first reply with resources right away. It can be wrong; a person answers after.',
     categories: [
       ['question',    'A question'],
       ['account',     'My account or team'],
@@ -59,8 +60,8 @@ const KINDS = {
     summaryPlaceholder: 'Move my mailbox onto my new domain',
     detailsLabel: 'Tell us more',
     detailsPlaceholder: 'What you need, and anything that helps us do it right the first time.',
-    send: 'Send request', sending: 'Sending…', word: 'request',
-    doneTitle: 'Thank you. We have your request.', doneNote: 'You hear back by email.'
+    send: 'Send request', sending: 'Sending, reading your account…', word: 'request',
+    doneTitle: 'Thank you. We have your request.', doneNote: 'A member of the team has been notified and will be in touch after reviewing it.'
   }
 };
 
@@ -129,6 +130,7 @@ function formHtml(diag, K, kind) {
           <p class="acct-modal-note">${esc(K.note)}</p>
         </div>
       </div>
+      ${K.notice ? `<p class="acct-modal-note acct-report-notice">${esc(K.notice)}</p>` : ''}
       <label class="acct-label" for="rpCategory">What it is about</label>
       <select class="acct-input acct-select" id="rpCategory">
         ${K.categories.map(([v, l]) => `<option value="${v}">${esc(l)}</option>`).join('')}
@@ -150,13 +152,27 @@ function formHtml(diag, K, kind) {
   `;
 }
 
-function doneHtml({ ref, email, K }) {
+/** The first reply the platform wrote from the account (supportAssist), with the explainers it points at. */
+function assistHtml(assist) {
+  if (!assist || !assist.text) return '';
+  const res = Array.isArray(assist.resources) ? assist.resources : [];
+  return `
+      <div class="acct-report-assist">
+        <div class="acct-label">While you wait</div>
+        <p class="acct-report-assist-text">${esc(assist.text).replace(/\n/g, '<br>')}</p>
+        ${res.length ? `<div class="acct-report-res">${res.map(r => `<button class="btn btn-sm" type="button" data-explain="${esc(r.key)}" data-rp-close>${esc(r.title)}</button>`).join('')}</div>` : ''}
+        <p class="acct-report-ai muted">Written by AI from your account details; it can be wrong. A person answers your request.</p>
+      </div>`;
+}
+
+function doneHtml({ ref, email, K, assist = null }) {
   return `
     <div class="acct-modal-mask" data-rp-close></div>
     <div class="acct-modal acct-report" role="dialog" aria-modal="true" aria-label="${esc(K.word)} sent">
       <h3 class="acct-modal-h">${esc(K.doneTitle)}</h3>
       <p class="acct-modal-note">Your reference, for any follow-up${email ? `. A copy went to <strong>${esc(email)}</strong>` : ''}.</p>
       <div class="acct-report-ref"><code class="acct-product-code">${esc(ref)}</code></div>
+      ${assistHtml(assist)}
       <p class="acct-modal-note">${esc(K.doneNote)} Need to add a detail? Email support@bridgesindust.com and quote the reference.</p>
       <div class="acct-modal-actions">
         <button class="cta" type="button" data-rp-close>Done</button>
@@ -212,7 +228,7 @@ export function openReport({ kind = 'anomaly', token, email = '', friendlyError 
           throw err;
         }
         result = { ref: data.ref || '' };
-        host.innerHTML = doneHtml({ ref: result.ref, email, K });
+        host.innerHTML = doneHtml({ ref: result.ref, email, K, assist: data.assist || null });
       } catch (ex) {
         const fallback = `Could not send the ${K.word}. Try again.`;
         say(typeof friendlyError === 'function' ? friendlyError(ex, fallback) : (ex?.message || fallback));
