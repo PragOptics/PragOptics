@@ -17,16 +17,18 @@
 //   DELETE v1/environment/licensing/licenses/{id}      ends at the period's end
 //
 // Follows the Team section's choice of team (the same sessionStorage key).
-// This module is the section: the read, the head, the account, the catalog
-// and the mailboxes. The Microsoft details, the licenses held and the add
-// flow live in licensingOrders.js; the state and helpers both share are in
+// This module is the section: the read, the head, the account and the
+// mailboxes. The Microsoft details, the licenses held and the add flow live
+// in licensingOrders.js; the catalog with its search, kinds, filters and
+// cards in licensingCatalog.js; the state and helpers all share are in
 // licensingShared.js. Creating a mailbox is the next slice.
 
 import { tierName } from '../components/tierCopy.js';
 import { explainLink } from '../components/explainer.js';
-import { ico, iconBtn, setCardSummary, initCards } from './cards.js';
-import { LIC_URL, lc, st, url, body, cardHtml, countWord, cap, money } from './licensingShared.js';
-import { microsoftHtml, licensesHtml, addHtml, canAdd, orderAction, orderChange } from './licensingOrders.js';
+import { iconBtn, setCardSummary, initCards } from './cards.js';
+import { LIC_URL, lc, st, url, body, cardHtml, countWord, cap } from './licensingShared.js';
+import { microsoftHtml, licensesHtml, orderAction, orderChange } from './licensingOrders.js';
+import { catalogHtml, catalogAction, catalogInput } from './licensingCatalog.js';
 
 
 export async function renderLicensing(main, deps) {
@@ -120,52 +122,6 @@ function accountHtml() {
   });
 }
 
-/* ---------- the catalog ---------- */
-
-function priceCell(p) {
-  const e = st.D.escapeHtml;
-  const got = lc.prices[p.id];
-  if (got === undefined) return `<button class="btn btn-sm btn-ico" type="button" data-lic-action="price" data-product="${e(p.id)}" aria-label="Show the price" data-tip="Show the price" ${lc.pricing === p.id ? 'disabled' : ''}>${ico('tag')}</button>`;
-  if (got === null) return '<span class="adm-muted">at order</span>';
-  return got.map(t => `<span class="lic-price"><strong>${e(money(t.list))}</strong> <span class="adm-muted">${e(termWord(t))}</span></span>`).join('<br>');
-}
-function termWord(t) {
-  const term = String(t.billingTerm || '').toLowerCase();
-  if (term === 'monthly') return t.commitmentMonths > 1 ? `a month, ${t.commitmentMonths}-month term` : 'a month';
-  if (term === 'annual') return 'a year';
-  return term || '';
-}
-
-function catalogHtml() {
-  const e = st.D.escapeHtml, v = lc.view;
-  const items = v.catalog;
-  const summary = items == null ? e(v.catalogCode === 'TIER' ? `from the ${tierName(v.minimumTier)} plan` : 'not open yet') : `${countWord(items.length, 'license', 'licenses')} available`;
-  const bodyHtml = items == null ? `<p class="acct-empty">${e(v.catalogNote || 'Nothing to show yet.')}</p>`
-    : !items.length ? '<p class="acct-empty">The distributor listed no Microsoft licenses. Try again in a moment.</p>'
-    : `
-      <div class="adm-table-scroll">
-        <table class="adm-table adm-table--wrap ev-table lic-table">
-          <thead><tr><th>License</th><th>SKU</th><th>Price</th><th></th></tr></thead>
-          <tbody>
-            ${items.map(p => `
-              <tr>
-                <td data-th="License"><span class="lic-name">${e(p.name)}</span>${p.description ? `<br><span class="adm-muted lic-desc">${e(p.description)}</span>` : ''}</td>
-                <td class="cell-tight" data-th="SKU"><span class="ev-code">${e(p.sku || '')}</span></td>
-                <td class="cell-tight" data-th="Price">${priceCell(p)}</td>
-                <td class="cell-tight" data-th="Add">${canAdd() ? `<button class="btn btn-sm" type="button" data-lic-action="add-open" data-product="${e(p.id)}" ${lc.saving ? 'disabled' : ''}>Add</button>` : ''}</td>
-              </tr>`).join('')}
-          </tbody>
-        </table>
-      </div>
-      ${lc.add ? addHtml() : ''}
-      <p class="acct-card-note ev-note">The mailbox that comes with each seat is included in the plan. Anything else here is an add-on at Microsoft's list price per seat, before tax, charged to your card first and ordered on that charge.${canAdd() ? '' : ' Open the licensing account and save the Microsoft details above, then Add appears here.'}</p>`;
-  return cardHtml({
-    key: 'catalog', icon: 'layers', title: 'Licenses', summary,
-    explain: explainLink('licensing', 'Which license does what'),
-    body: `<p class="acct-error" id="licCatalogError" hidden></p>${bodyHtml}`
-  });
-}
-
 /* ---------- mailboxes per seat ---------- */
 
 function mailboxesHtml() {
@@ -230,21 +186,6 @@ async function openAccount(btn) {
   }
 }
 
-async function showPrice(btn) {
-  const id = btn.dataset.product || '';
-  if (!id || lc.pricing) return;
-  lc.pricing = id; btn.disabled = true; st.D.showError('licCatalogError', '');
-  try {
-    const d = await st.D.apiFetch(url(`${LIC_URL}/products/${encodeURIComponent(id)}/pricing`));
-    const terms = (d.terms || []).filter(t => (t.rates || []).length).map(t => ({ billingTerm: t.billingTerm, commitmentMonths: t.commitmentMonths, list: t.rates[0].list }));
-    lc.prices[id] = terms.length ? terms : null;
-  } catch (ex) {
-    st.D.showError('licCatalogError', ex?.data?.error || st.D.friendlyError(ex, 'The price could not be read.'));
-  }
-  lc.pricing = '';
-  paint();
-}
-
 export function bindLicensingActions(deps) {
   if (bindLicensingActions._bound) return;
   bindLicensingActions._bound = true;
@@ -256,10 +197,11 @@ export function bindLicensingActions(deps) {
     const a = btn.dataset.licAction;
     if (a === 'refresh') return void load();
     if (a === 'open-account') return void openAccount(btn);
-    if (a === 'price') return void showPrice(btn);
+    if (catalogAction(a, btn)) return;
     orderAction(a, btn);
   });
-  document.addEventListener('change', orderChange);
+  document.addEventListener('change', (e) => { orderChange(e); catalogInput(e); });
+  document.addEventListener('input', (e) => { if (e.target && e.target.id === 'licCatQ') catalogInput(e); });
 }
 
 /** The summary line on the tab's own cards, for a caller that re-reads one card. */

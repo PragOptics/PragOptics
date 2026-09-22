@@ -13,7 +13,7 @@
 // licensing.js paints these cards and routes clicks here through orderAction.
 
 import { explainLink } from '../components/explainer.js';
-import { LIC_URL, lc, st, url, body, cardHtml, countWord, money, TERM_NAMES, RENEW_WORDS, STATUS_WORDS } from './licensingShared.js';
+import { LIC_URL, lc, st, url, body, cardHtml, countWord, money, TERM_NAMES, RENEW_WORDS, STATUS_WORDS, loadOffers, billWord, commitWord, ruleWords } from './licensingShared.js';
 
 /* ---------- the Microsoft details: the agreement and the tenant (2026-09-22) ---------- */
 
@@ -98,7 +98,9 @@ export function licensesHtml() {
   const row = (l) => {
     const tag = l.status === 'ACTIVE' ? 'is-verified' : l.status === 'ENDING' || l.status === 'FAILED' ? 'is-bad' : 'is-pending';
     const when = l.status === 'ENDING' && l.cancelAt ? ` on ${e(st.D.fmtDate(l.cancelAt))}` : '';
-    const pending = l.pendingQuantity != null && l.pendingQuantity !== l.quantity ? `<br><span class="adm-muted">${e(String(l.pendingQuantity))} from ${e(l.periodEnd ? st.D.fmtDate(l.periodEnd) : 'the period end')}</span>` : '';
+    const pendingOn = l.pendingAt || l.periodEnd;
+    const pending = l.pendingQuantity != null && l.pendingQuantity !== l.quantity ? `<br><span class="adm-muted">${e(String(l.pendingQuantity))} from ${e(pendingOn ? st.D.fmtDate(pendingOn) : 'the period end')}</span>` : '';
+    const commit = Number(l.commitmentMonths || 0) > 1 && l.commitmentEndsAt ? `<br><span class="adm-muted">${e(commitWord(l))} until ${e(st.D.fmtDate(l.commitmentEndsAt))}</span>` : '';
     const acts = canManage && (l.status === 'ORDERED' || l.status === 'ACTIVE') ? `
       <span class="lic-acts">
         <input class="acct-input lic-qty" type="number" min="1" max="500" value="${e(String(l.quantity))}" id="licQty-${e(l.id)}" aria-label="Seats">
@@ -109,7 +111,7 @@ export function licensesHtml() {
       <tr>
         <td data-th="License"><span class="lic-name">${e(l.productName)}</span>${l.sku ? `<br><span class="ev-code">${e(l.sku)}</span>` : ''}</td>
         <td class="cell-tight" data-th="Seats">${e(String(l.quantity))}${pending}</td>
-        <td class="cell-tight" data-th="Price">${e(money((l.listCents || 0) / 100))} <span class="adm-muted">${e(TERM_NAMES[l.billingTerm] || l.billingTerm || '')}</span></td>
+        <td class="cell-tight" data-th="Price">${e(money((l.listCents || 0) / 100))} <span class="adm-muted">${e(TERM_NAMES[l.billingTerm] || l.billingTerm || '')}</span>${commit}</td>
         <td class="cell-tight" data-th="Status"><span class="acct-tag ${tag}">${e(STATUS_WORDS[l.status] || String(l.status || '').toLowerCase())}${when}</span>${l.error ? `<br><span class="adm-muted lic-desc">${e(l.error)}</span>` : ''}</td>
         <td class="cell-tight" data-th="">${acts}</td>
       </tr>`;
@@ -135,18 +137,18 @@ export function addHtml() {
   const e = st.D.escapeHtml, a = lc.add, v = lc.view;
   const p = (v.catalog || []).find(x => x.id === a.productId);
   if (!p) return '';
-  const terms = lc.prices[p.id] || null;
-  const chosen = terms ? terms.find(t => t.billingTerm === a.term) || terms[0] : null;
-  const termOpts = terms ? terms.map(t => `<option value="${e(t.billingTerm)}" ${a.term === t.billingTerm ? 'selected' : ''}>${e(money(t.list))} ${e(TERM_NAMES[t.billingTerm] || t.billingTerm)} per seat</option>`).join('') : '<option value="Monthly">Monthly</option>';
+  const offers = (lc.prices[p.id] || []).filter(o => o.available !== false);
+  const chosen = offers.find(o => o.key === a.key) || offers[0] || null;
+  const opts = offers.map(o => `<option value="${e(o.key)}" ${chosen && chosen.key === o.key ? 'selected' : ''}>${e(money(o.list))} ${e(billWord(o.billingTerm))}, ${e(commitWord(o))}</option>`).join('');
   const total = chosen ? money(chosen.list * a.quantity) : '';
+  const rule = chosen ? ruleWords(chosen) : '';
   return `
     <div class="lic-add" id="licAdd">
-      <h4 class="acct-card-h">Add ${e(p.name)}</h4>
       <div class="ev-reg-form">
-        <div><label class="acct-label" for="licAddTerm">Term</label><select class="acct-input" id="licAddTerm">${termOpts}</select></div>
-        <div><label class="acct-label" for="licAddQty">Seats</label><input class="acct-input" id="licAddQty" type="number" min="1" max="500" value="${e(String(a.quantity))}"></div>
+        <div class="lic-span"><label class="acct-label" for="licAddTerm">Plan</label><select class="acct-input" id="licAddTerm" ${offers.length ? '' : 'disabled'}>${opts || '<option>Reading the price…</option>'}</select></div>
+        <div><label class="acct-label" for="licAddQty">Seats</label><input class="acct-input" id="licAddQty" type="number" min="1" max="500" inputmode="numeric" value="${e(String(a.quantity))}"></div>
       </div>
-      <p class="acct-card-note">${chosen ? `Your card on file is charged <strong>${e(total)}</strong> plus any tax now, and again ${e(RENEW_WORDS[chosen.billingTerm] || 'each term')} until you end it. The order goes to Microsoft's distributor on that charge; the license activates within a few hours.` : lc.prices[p.id] === null ? 'This license has no list price to charge on; write to support@bridgesindust.com and it is added by hand.' : 'Reading the price…'}</p>
+      <p class="acct-card-note">${chosen ? `Charged now: <strong>${e(total)}</strong> plus any tax, then ${e(RENEW_WORDS[chosen.billingTerm] || 'each term')} until you end it.${rule ? ` ${e(rule.charAt(0).toUpperCase() + rule.slice(1))}.` : ''}` : lc.prices[p.id] === null ? 'This license has no list price to order on; ask Support and it is added by hand.' : 'Reading the price…'}</p>
       <p class="acct-error" id="licAddError" hidden></p>
       <div class="acct-actions-row">
         <button class="btn" type="button" data-lic-action="add-confirm" ${lc.saving === 'add' || !chosen ? 'disabled' : ''}>${lc.saving === 'add' ? 'Charging and ordering…' : chosen ? `Charge ${e(total)} and order` : 'No price to order on'}</button>
@@ -183,24 +185,20 @@ async function saveMicrosoft() {
 async function openAdd(btn) {
   const id = btn.dataset.product || '';
   if (!id || lc.saving) return;
-  lc.add = { productId: id, term: 'Monthly', quantity: 1 };
+  lc.add = { productId: id, key: '', quantity: 1 };
   if (lc.prices[id] === undefined) {
     st.paint();
-    try {
-      const d = await st.D.apiFetch(url(`${LIC_URL}/products/${encodeURIComponent(id)}/pricing`));
-      const terms = (d.terms || []).filter(t => (t.rates || []).length).map(t => ({ billingTerm: t.billingTerm, commitmentMonths: t.commitmentMonths, list: t.rates[0].list }));
-      lc.prices[id] = terms.length ? terms : null;
-    } catch (ex) { lc.prices[id] = null; }
+    try { await loadOffers(id); } catch { /* the box says it has no price */ }
     if (!lc.add || lc.add.productId !== id) return;
   }
-  const terms = lc.prices[id];
-  if (terms && terms.length) lc.add.term = terms.find(t => t.billingTerm === 'Monthly') ? 'Monthly' : terms[0].billingTerm;
+  const offers = (lc.prices[id] || []).filter(o => o.available !== false);
+  if (offers.length) lc.add.key = offers[0].key;
   st.paint();
   document.getElementById('licAdd')?.scrollIntoView({ block: 'center', behavior: 'smooth' });
 }
 function readAdd() {
   if (!lc.add) return;
-  lc.add.term = String(document.getElementById('licAddTerm')?.value || lc.add.term);
+  lc.add.key = String(document.getElementById('licAddTerm')?.value || lc.add.key);
   lc.add.quantity = Math.max(1, Math.min(500, Math.floor(Number(document.getElementById('licAddQty')?.value) || 1)));
 }
 async function confirmAdd() {
@@ -208,7 +206,7 @@ async function confirmAdd() {
   readAdd();
   lc.saving = 'add'; st.paint();
   try {
-    const d = await st.D.apiFetch(url(`${LIC_URL}/licenses`), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: body({ productId: lc.add.productId, billingTerm: lc.add.term, quantity: lc.add.quantity }) });
+    const d = await st.D.apiFetch(url(`${LIC_URL}/licenses`), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: body((() => { const o = (lc.prices[lc.add.productId] || []).find(x => x.key === lc.add.key) || {}; return { productId: lc.add.productId, billingTerm: o.billingTerm || 'Monthly', commitmentMonths: o.commitmentMonths ?? null, quantity: lc.add.quantity }; })()) });
     lc.saving = ''; lc.add = null;
     lc.lineNote = `${d.license.productName} ordered: ${countWord(d.license.quantity, 'seat', 'seats')}. It activates within a few hours; this list shows it active when Microsoft has it.`;
     await st.load();

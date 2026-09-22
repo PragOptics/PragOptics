@@ -246,12 +246,61 @@ html[data-theme="dark"] .btn.is-danger, :root:not([data-theme="light"]) .btn.is-
 .lic-qty { width: 72px; flex: none; padding: 6px 8px; }
 .lic-past { margin-top: 12px; }
 .lic-past summary { cursor: pointer; font-size: .84rem; color: var(--muted); }
-.lic-suffix { display: flex; align-items: center; gap: 6px; }
-.lic-suffix .acct-input { min-width: 0; }
-.lic-suffix span { flex: none; font-size: .86rem; color: var(--muted); white-space: nowrap; }
+.lic-suffix { display: flex; align-items: stretch; border: 1px solid var(--border); border-radius: var(--radius-ctl); background: var(--grad); overflow: hidden; }
+.lic-suffix:focus-within { border-color: color-mix(in srgb, var(--brand-600) 45%, transparent); }
+.lic-suffix .acct-input { flex: 1 1 auto; min-width: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+.lic-suffix span { flex: none; display: flex; align-items: center; padding: 0 12px; font-size: .84rem; color: var(--muted); white-space: nowrap; border-left: 1px solid var(--border); }
+.ev-agree + .acct-actions-row { margin-top: 16px; }
 .lic-ms-tabs { margin: 0 0 4px; }
 .lic-span { grid-column: 1 / -1; }
 .lic-hint { margin: 6px 0 0; font-size: .8rem; color: var(--muted); }
+
+/* the catalog (2026-09-22): search, kinds, filters, a compact list whose rows open into cards */
+.lic-cat-tools { display: grid; gap: 10px; margin-bottom: 6px; }
+.lic-cat-q { width: 100%; box-sizing: border-box; }
+.lic-cat-kinds { margin-top: 0; }
+@media (max-width: 640px) {
+  /* on a phone the kinds are one swipeable row; the cut-off chip says there is more */
+  .lic-cat-kinds { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; margin-right: -14px; padding-right: 14px; }
+  .lic-cat-kinds::-webkit-scrollbar { display: none; }
+}
+.lic-cat-kinds .ev-tab { flex: none; }
+.lic-cat-selects { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.lic-cat-selects label { display: grid; gap: 4px; min-width: 0; }
+.lic-cat-selects .acct-input { width: 100%; box-sizing: border-box; }
+.lic-cat-count { margin: 4px 0 8px; }
+.lic-list { display: grid; gap: 8px; }
+.lic-item { border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+.lic-item.is-open { border-color: color-mix(in srgb, var(--brand-600) 45%, var(--border)); }
+.lic-item-head { display: grid; gap: 6px; width: 100%; padding: 12px 14px; border: 0; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.lic-item-head:hover { background: color-mix(in srgb, var(--brand-600) 5%, transparent); }
+.lic-item-head:focus-visible { outline: 2px solid var(--brand-600); outline-offset: -2px; }
+.lic-item-name { font-weight: 600; font-size: .92rem; line-height: 1.35; overflow-wrap: anywhere; }
+.lic-item-meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.lic-tag { font-size: .72rem; font-weight: 600; letter-spacing: .02em; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); }
+.lic-from { font-size: .8rem; font-weight: 600; color: var(--card-title, var(--ink)); }
+.lic-item-body { padding: 0 14px 14px; display: grid; gap: 12px; }
+.lic-item-desc { margin: 0; font-size: .86rem; line-height: 1.55; color: var(--muted); }
+.lic-item-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; }
+.lic-item-facts .lic-k { display: block; margin-bottom: 4px; }
+.lic-item-prices { display: grid; gap: 8px; }
+.lic-offer { display: grid; gap: 2px; }
+.lic-offer.is-off { opacity: .55; }
+.lic-offer-terms { font-size: .8rem; color: var(--muted); }
+.lic-item-body .lic-add { margin: 0; }
+.lic-item-body .acct-actions-row { margin: 0; }
+.lic-more { margin-top: 10px; justify-content: center; }
+
+/* the licenses held, on a phone: the seat box and the two buttons take the row */
+@container (max-width: 640px) {
+  .lic-acts { display: grid; grid-template-columns: 80px 1fr; gap: 8px; width: 100%; }
+  .lic-acts .lic-qty { width: 100%; }
+  .lic-acts .is-danger { grid-column: 1 / -1; }
+}
+@media (max-width: 640px) {
+  .lic-cat-selects { grid-template-columns: 1fr 1fr; }
+  .lic-add .ev-reg-form { grid-template-columns: 1fr 1fr; }
+}
 @container (max-width: 640px) {
   .lic-facts { grid-template-columns: 1fr; gap: 4px; }
   .lic-fact { display: block; }
