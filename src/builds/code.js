@@ -113,7 +113,7 @@ export function readProject(project) {
     const type = String(node.type || '');
     const p = node.props || {};
     if (type === 'input') read.fields.push({ key: String(p.stateKey || ''), label: String(p.label || p.placeholder || p.stateKey || 'a field'), kind: String(p.kind || 'text'), required: p.required === true, when: String(p.when || ''), options: String(p.options || '').split(/\r?\n/).map(x => x.trim()).filter(Boolean).length });
-    else if (type === 'button') read.buttons.push({ label: String(p.label || 'Button'), action: String(p.action?.type || (p.href ? 'link' : '')), href: String(p.href || '') });
+    else if (type === 'button') read.buttons.push({ label: String(p.text || p.label || 'Button'), action: String(p.action?.type || (p.href ? 'link' : '')), href: String(p.href || '') });
     else if (type === 'assistant') read.assistants.push({ title: String(p.title || 'Assistant'), floating: p.floating === true, welcome: String(p.welcome || '') });
     else if (type === 'list') read.lists += 1;
     else if (type === 'display') read.displays += 1;
