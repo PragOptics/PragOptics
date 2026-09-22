@@ -180,7 +180,9 @@ async function enrollMail(btn) {
     lc.busy = false;
     await load();
   } catch (ex) {
-    lc.busy = false; btn.disabled = false; btn.textContent = 'Turn on mail';
+    lc.busy = false;
+    // a refused enrollment leaves a failed line: the list shows it with the reason, and the button comes back
+    try { await load(); } catch { /* the error below still shows */ }
     const code = ex?.data?.code;
     st.D.showError('licEnrollError', code === 'MICROSOFT_DETAILS_REQUIRED' ? 'Save the Microsoft details first.' : code === 'LIVE_LANE_ONLY' ? 'Mail is turned on for your live environment, not the sandbox.' : (ex?.data?.error || st.D.friendlyError(ex, 'Mail could not be turned on.')));
   }
