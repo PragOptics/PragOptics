@@ -29,7 +29,7 @@ The license then renews on the same day each period until you end it. More seats
 
 ## A mailbox for every seat
 
-A seat is a person on your team with a role that can write (owner, admin, developer, member). Each seat can have one mailbox, included, at an address under a domain you have verified on Environment; it is created when the person asks for it. The owner, admins and developers get a full Exchange Online mailbox (50 GB, Outlook on the desktop, the web and the phone); members get an Exchange Online Kiosk mailbox (2 GB, web and phone). Promote a member and the mailbox is upgraded at once. The address is the person's choice within your domain, and it is theirs to sign in to from any mail app.
+A seat is a person on your team with a role that can write (owner, admin, developer, member). Each seat can have one mailbox, included, at an address under a domain you have verified on Environment; it is created when the person asks for it. Every seat's included mailbox is Exchange Online Kiosk, the same on every plan: 2 GB, Outlook on the web and on the phone. A seat that needs more, a 50 GB mailbox with an archive, moves to Exchange Online Plan 1 as an upgrade on this tab, at Microsoft's list price, for that seat alone. The address is the person's choice within your domain, and it is theirs to sign in to from any mail app.
 
 ## What you are not asked to do
 

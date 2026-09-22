@@ -130,7 +130,7 @@ function mailboxesHtml() {
   const boxes = (v.mailboxes || []).length;
   const summary = `${countWord(seats.length, 'seat', 'seats')} · ${countWord(boxes, 'mailbox', 'mailboxes')}`;
   const domainLine = domains.length
-    ? `<p class="acct-card-note">Mailboxes live under ${domains.map(d => `<strong>${e(d)}</strong>`).join(', ')}. Every seat can have one, included: the owner, admins and developers get a full Exchange Online mailbox, members a Kiosk mailbox for web and phone.</p>`
+    ? `<p class="acct-card-note">Mailboxes live under ${domains.map(d => `<strong>${e(d)}</strong>`).join(', ')}. Every seat can have one, included: an Exchange Online Kiosk mailbox for the web and the phone. A seat that needs a 50 GB mailbox upgrades to Plan 1 from the Licenses list.</p>`
     : `<p class="acct-card-note">A mailbox lives under a domain you have verified. <a href="#account?section=environment&card=domains" data-acct-section="environment">Verify a domain on Environment</a>, and every seat can have one.</p>`;
   const table = !seats.length ? '<p class="acct-empty">No seats yet. Invite people on Team; each seat can carry a mailbox.</p>' : `
       <div class="adm-table-scroll">
