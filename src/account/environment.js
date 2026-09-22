@@ -1028,8 +1028,8 @@ function registrationsHtml() {
             ${r.status === 'FAILED' ? '<span class="acct-tag is-bad">registration failed</span>' : '<span class="acct-tag is-pending">registering</span>'}
           </div>
           <p class="acct-card-note ev-dom-note">${r.status === 'FAILED'
-            ? `The registry did not complete it${r.error ? `: ${e(String(r.error).replace(/\.$/, ''))}` : ''}. Nothing was registered and nothing was charged by the registrar. Try again once the cause is fixed, or support refunds order ${e(String(r.orderId).slice(0, 8))} in full.`
-            : `Paid on order ${e(String(r.orderId).slice(0, 8))}. The registry usually finishes within a few minutes; this card updates on its own.`}</p>
+            ? `The registry did not complete it${r.error ? `: ${e(String(r.error).replace(/\.$/, ''))}` : ''}. Nothing was registered. If your card was held, the hold was released and nothing was charged; if it was charged, support refunds order ${e(String(r.orderId).slice(0, 8))} in full.`
+            : `Order ${e(String(r.orderId).slice(0, 8))} is placed. The registry usually finishes within a few minutes and this card updates on its own; your card is charged exactly the registrar's price once the name is yours.`}</p>
           ${r.status === 'FAILED' && myRole() === 'owner' ? `
           <div class="ev-dom-actions">
             <button class="btn btn-sm" type="button" data-env-action="domain-reg-retry" data-order="${e(r.orderId)}" data-host="${e(r.host)}" ${ev.regRetrying === r.orderId ? 'disabled' : ''}>${ev.regRetrying === r.orderId ? 'Trying…' : 'Try again'}</button>
@@ -1093,7 +1093,7 @@ function registerHtml() {
       ${head}
       ${r.retryOrderId
         ? `<p class="acct-card-note"><b>${e(q.host)}</b> is paid on order ${e(String(r.retryOrderId).slice(0, 8))} and the registry refused the contact. Correct it and try again; nothing is charged again.</p>`
-        : `<p class="acct-card-note"><b>${e(q.host)}</b>, ${e(money(q.priceCents))} for the first year, plus any sales tax due at your address. The registry records a contact for every domain; privacy protection is on, so the public record shows the registrar's proxy, not you.</p>`}
+        : `<p class="acct-card-note"><b>${e(q.host)}</b>, ${e(money(q.priceCents))} for the first year, plus any sales tax due at your address. Your card is held for that amount, not charged, until the name is registered; then it is charged exactly what the registrar charged and the rest of the hold is released. The registry records a contact for every domain; privacy protection is on, so the public record shows the registrar's proxy, not you.</p>`}
       <dl class="ev-record ev-registrant" aria-label="Registrant">
         <dt>Registrant</dt><dd>${e([c2.nameFirst, c2.nameLast].filter(Boolean).join(' '))}${c2.organization ? `, ${e(c2.organization)}` : ''}</dd><dd><button class="btn btn-sm" type="button" data-env-action="domain-reg-edit-contact">Edit</button></dd>
         <dt>Address</dt><dd>${e(line)}</dd><dd></dd>
@@ -1103,7 +1103,7 @@ function registerHtml() {
       ${r.retryOrderId ? '' : `<label class="ev-agree"><input type="checkbox" id="evRegAgree" ${r.agree ? 'checked' : ''} /> <span>I accept the registrar agreements: ${(q.agreements || []).map(a => a.url ? `<a class="acct-inline-link" href="${e(a.url)}" target="_blank" rel="noopener noreferrer">${e(a.title || a.key)}</a>` : e(a.title || a.key)).join(', ')}.</span></label>`}
       <p class="acct-error" id="evRegError" ${r.error ? '' : 'hidden'}>${e(r.error)}</p>
       <div class="ev-dom-actions">
-        <button class="btn" type="button" data-env-action="domain-reg-pay" ${r.busy ? 'disabled' : ''}>${r.busy ? (r.retryOrderId ? 'Trying…' : 'Starting…') : r.retryOrderId ? 'Save and try again' : `Pay ${e(money(q.priceCents))} and register`}</button>
+        <button class="btn" type="button" data-env-action="domain-reg-pay" ${r.busy ? 'disabled' : ''}>${r.busy ? (r.retryOrderId ? 'Trying…' : 'Starting…') : r.retryOrderId ? 'Save and try again' : `Hold ${e(money(q.priceCents))} and register`}</button>
         <button class="btn btn-sm" type="button" data-env-action="domain-reg-cancel">Cancel</button>
       </div>`;
     }
@@ -1111,7 +1111,7 @@ function registerHtml() {
       ${head}
       ${r.retryOrderId
         ? `<p class="acct-card-note"><b>${e(q.host)}</b> is paid on order ${e(String(r.retryOrderId).slice(0, 8))} and the registry refused the contact. Correct it below and try again; nothing is charged again.</p>`
-        : `<p class="acct-card-note"><b>${e(q.host)}</b>, ${e(money(q.priceCents))} for the first year, plus any sales tax due at your address. The registry records a contact for every domain; privacy protection is on, so the public record shows the registrar's proxy, not you.</p>`}
+        : `<p class="acct-card-note"><b>${e(q.host)}</b>, ${e(money(q.priceCents))} for the first year, plus any sales tax due at your address. Your card is held for that amount, not charged, until the name is registered; then it is charged exactly what the registrar charged and the rest of the hold is released. The registry records a contact for every domain; privacy protection is on, so the public record shows the registrar's proxy, not you.</p>`}
       <div class="ev-reg-form">
         ${f('evRegFirst', 'First name', c.nameFirst, 'autocomplete="given-name"')}
         ${f('evRegLast', 'Last name', c.nameLast, 'autocomplete="family-name"')}
@@ -1128,23 +1128,23 @@ function registerHtml() {
       ${r.retryOrderId ? '' : `<label class="ev-agree"><input type="checkbox" id="evRegAgree" ${r.agree ? 'checked' : ''} /> <span>I accept the registrar agreements: ${(q.agreements || []).map(a => a.url ? `<a class="acct-inline-link" href="${e(a.url)}" target="_blank" rel="noopener noreferrer">${e(a.title || a.key)}</a>` : e(a.title || a.key)).join(', ')}.</span></label>`}
       <p class="acct-error" id="evRegError" ${r.error ? '' : 'hidden'}>${e(r.error)}</p>
       <div class="ev-dom-actions">
-        <button class="btn" type="button" data-env-action="domain-reg-pay" ${r.busy ? 'disabled' : ''}>${r.busy ? (r.retryOrderId ? 'Trying…' : 'Starting…') : r.retryOrderId ? 'Save and try again' : `Pay ${e(money(q.priceCents))} and register`}</button>
+        <button class="btn" type="button" data-env-action="domain-reg-pay" ${r.busy ? 'disabled' : ''}>${r.busy ? (r.retryOrderId ? 'Trying…' : 'Starting…') : r.retryOrderId ? 'Save and try again' : `Hold ${e(money(q.priceCents))} and register`}</button>
         <button class="btn btn-sm" type="button" data-env-action="domain-reg-cancel">Cancel</button>
       </div>`;
   }
   if (r.step === 'paying') {
     return `
       ${head}
-      <p class="acct-card-note"><b>${e(q.host)}</b>, ${e(money(r.order?.breakdown?.totalCents ?? q.priceCents))}${r.order?.breakdown?.taxCents ? ` including ${e(money(r.order.breakdown.taxCents))} tax` : ''}. Order ${e(String(r.order?.orderId || '').slice(0, 8))}.</p>
+      <p class="acct-card-note"><b>${e(q.host)}</b>, ${e(money(r.order?.breakdown?.totalCents ?? q.priceCents))}${r.order?.breakdown?.taxCents ? ` including ${e(money(r.order.breakdown.taxCents))} tax` : ''}. Order ${e(String(r.order?.orderId || '').slice(0, 8))}.${r.order?.hold ? ' Confirming holds the amount on your card; the charge is exactly the registrar\u2019s price once the name is yours.' : ''}</p>
       <div id="evRegPayEl" class="ev-pay"></div>
       <p class="acct-error" id="evRegError" ${r.error ? '' : 'hidden'}>${e(r.error)}</p>
       <div class="ev-dom-actions">
-        <button class="btn" type="button" data-env-action="domain-reg-confirm" ${r.busy ? 'disabled' : ''}>${r.busy ? 'Paying…' : 'Confirm payment'}</button>
+        <button class="btn" type="button" data-env-action="domain-reg-confirm" ${r.busy ? 'disabled' : ''}>${r.busy ? (r.order?.hold ? 'Holding…' : 'Paying…') : (r.order?.hold ? 'Confirm the hold' : 'Confirm payment')}</button>
         <button class="btn btn-sm" type="button" data-env-action="domain-reg-cancel" ${r.busy ? 'disabled' : ''}>Cancel</button>
       </div>`;
   }
   if (r.step === 'paid') {
-    return `${head}<p class="acct-card-note"><b>${e(q.host)}</b> is paid. The registry is working; it usually takes a few minutes and this card updates on its own.</p>`;
+    return `${head}<p class="acct-card-note">${r.order?.hold ? `Your card is held for <b>${e(q.host)}</b>.` : `<b>${e(q.host)}</b> is paid.`} The registry is working; it usually takes a few minutes and this card updates on its own.${r.order?.hold ? ' The charge lands, exactly the registrar\u2019s price, once the name is yours.' : ''}</p>`;
   }
   if (r.step === 'done') {
     return `${head}<p class="acct-card-note"><b>${e(q.host)}</b> is registered and on the list above.</p><div class="ev-dom-actions"><button class="btn btn-sm" type="button" data-env-action="domain-reg-cancel">Register another</button></div>`;
@@ -1285,7 +1285,8 @@ async function regConfirm() {
       redirect: 'if_required'
     });
     if (error) throw new Error(error.message || 'Payment failed.');
-    if (paymentIntent && paymentIntent.status !== 'succeeded' && paymentIntent.status !== 'processing') throw new Error(`Payment ${paymentIntent.status}.`);
+    // A hold (2026-09-22): Stripe answers requires_capture, and that is the success; the charge lands when the name is registered.
+    if (paymentIntent && !['succeeded', 'processing', 'requires_capture'].includes(paymentIntent.status)) throw new Error(`Payment ${paymentIntent.status}.`);
     r.step = 'paid'; r.busy = false; r.stripe = null; r.elements = null;
     paintDomains();
     pollRegistration(r.quote.host);
