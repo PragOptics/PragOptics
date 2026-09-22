@@ -200,6 +200,66 @@ dialog.bd-modal.is-fallback { display: grid; place-items: center; }
 .bd-empty-t { margin: 0; font-weight: 800; font-size: 1.05rem; color: var(--ink); }
 .bd-empty-s { margin: 0; font-size: .86rem; }
 
+
+/* ================= the card's reads: what it is made of, and the code (2026-09-22) ================= */
+
+.bd-logic-p { margin: 0 0 12px; font-size: .92rem; line-height: 1.55; color: var(--ink); }
+.bd-logic-p b { color: var(--ink); }
+.bd-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; margin: 0 0 6px; }
+.bd-tile {
+  display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border-radius: 10px;
+  border: 1px solid var(--border); background: color-mix(in srgb, var(--ink) 4%, transparent);
+}
+.bd-tile b { font: 800 1.15rem/1.1 var(--font-display, inherit); color: var(--brand-600); letter-spacing: -.01em; font-variant-numeric: tabular-nums; }
+.bd-tile span { font-size: .72rem; color: var(--muted); letter-spacing: .04em; text-transform: uppercase; }
+.bd-h4 { margin: 16px 0 6px; font-size: .74rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.bd-parts { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.bd-parts li { display: grid; grid-template-columns: minmax(120px, 42%) 1fr; gap: 10px; align-items: baseline; padding: 6px 0; border-top: 1px solid color-mix(in srgb, var(--border) 60%, transparent); font-size: .86rem; }
+.bd-parts li:first-child { border-top: 0; }
+.bd-parts li b { color: var(--ink); font-weight: 700; }
+.bd-parts li span { color: var(--muted); }
+.bd-parts code { font: 600 .78rem/1.4 ui-monospace, "Cascadia Code", Consolas, monospace; color: var(--ink); }
+
+.bd-code-lead { margin: -6px 0 10px; }
+.bd-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 10px; }
+.bd-tab {
+  appearance: none; cursor: pointer; padding: 6px 12px; border-radius: 999px;
+  border: 1px solid var(--border); background: color-mix(in srgb, var(--ink) 4%, transparent);
+  color: var(--muted); font: 600 .76rem/1 ui-monospace, "Cascadia Code", Consolas, monospace;
+  transition: border-color 160ms ease, color 160ms ease, background 160ms ease;
+}
+.bd-tab:hover { color: var(--ink); border-color: color-mix(in srgb, var(--brand-purp-solid) 40%, transparent); }
+.bd-tab.is-on { color: var(--ink); background: color-mix(in srgb, var(--brand-purp-solid) 16%, transparent); border-color: color-mix(in srgb, var(--brand-purp-solid) 55%, transparent); }
+.bd-code {
+  max-height: 420px; overflow: auto; overscroll-behavior: contain;
+  border: 1px solid var(--border); border-radius: 12px;
+  background: color-mix(in srgb, #05070e 78%, var(--surface-deep, #0b0f1a));
+  font: 500 .78rem/1.55 ui-monospace, "Cascadia Code", Consolas, monospace; color: var(--ink);
+  tab-size: 2;
+}
+.bd-code:focus-visible { outline: 2px solid color-mix(in srgb, var(--brand-600) 70%, transparent); outline-offset: 2px; }
+.bd-code-lines { display: grid; grid-template-columns: max-content 1fr; padding: 12px 0; min-width: max-content; }
+.bd-ln { padding: 0 12px 0 14px; text-align: right; color: color-mix(in srgb, var(--muted) 55%, transparent); user-select: none; font-variant-numeric: tabular-nums; border-right: 1px solid color-mix(in srgb, var(--border) 70%, transparent); }
+.bd-lc { padding: 0 16px 0 14px; white-space: pre; }
+.bd-code-note { margin: 0; padding: 14px 16px; font: 500 .84rem/1.5 inherit; color: var(--muted); }
+.bd-code-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 8px; }
+.bd-code-meta { font-size: .76rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.bd-btn.is-sm { padding: 6px 12px; font-size: .78rem; }
+
+/* the tokens: the site's own palette, comments quiet, strings warm, keywords purple, numbers teal */
+.tk-c { color: color-mix(in srgb, var(--muted) 78%, transparent); font-style: italic; }
+.tk-s { color: var(--gold-soft); }
+.tk-r { color: var(--gold-soft); }
+.tk-n { color: var(--brand-600); }
+.tk-k { color: #c98fff; font-weight: 600; }
+.tk-f { color: #8fd3ff; }
+.tk-y { color: #e2c4ff; }
+.tk-w { color: var(--ink); }
+.tk-p { color: color-mix(in srgb, var(--ink) 62%, transparent); }
+.tk-a { color: var(--brand-600); }
+.tk-v { color: #8fd3ff; }
+.tk-g { color: #c98fff; }
+
 /* ================= responsive ================= */
 
 @media (max-width: 720px) {
@@ -224,4 +284,7 @@ dialog.bd-modal.is-fallback { display: grid; place-items: center; }
 }
 @media (max-width: 640px) {
   .builds { padding: 22px 16px 30px; }
+  .bd-parts li { grid-template-columns: 1fr; gap: 2px; }
+  .bd-code { max-height: 320px; font-size: .74rem; }
+  .bd-tiles { grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); }
 }

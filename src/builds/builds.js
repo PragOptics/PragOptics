@@ -18,6 +18,7 @@
 
 import { PRAG_API_BASE } from '../runtime/config.js';
 import { ico } from '../account/cards.js';
+import { codeHtml, langOf, readProject, logicHtml, manifestRead } from './code.js';
 
 const BUILDS_API_LIVE = true;   // the moderated feed is on the platform (2026-09-21)
 const BUILDS_URL = `${PRAG_API_BASE}/builds`;
@@ -74,6 +75,23 @@ function httpsUrl(value) {
 function assistantReady(b) { return !!(b?.manifest && Array.isArray(b.manifest.actions) && b.manifest.actions.length); }
 function buildIdOf(b) { return /^[A-Za-z0-9]{6,40}$/.test(String(b?.buildId || '')) ? String(b.buildId) : ''; }
 function filesOf(b) { return Array.isArray(b.files) ? b.files.filter(f => f && typeof f === 'object') : []; }
+/** The text files of a build, the ones a person can read on the card, the element and its manifest first. */
+const TEXT_FILE = /\.(?:js|mjs|css|json|html?|svg|md|txt)$/i;
+const FILE_ORDER = ['element.js', 'manifest.json', 'element.css', 'project.json'];
+function textFilesOf(b) {
+  const names = filesOf(b).map(f => String(f.name || f.path || '')).filter(n => n && TEXT_FILE.test(n));
+  return [...new Set(names)].sort((a, c) => { const ia = FILE_ORDER.indexOf(a), ic = FILE_ORDER.indexOf(c); return (ia < 0 ? 99 : ia) - (ic < 0 ? 99 : ic) || a.localeCompare(c); });
+}
+/** One line on a row about what the build is made of, from its manifest: the fields its form asks and whether it talks. */
+function madeOf(b) {
+  const m = b.manifest || {};
+  const send = (Array.isArray(m.actions) ? m.actions : []).find(a => a && a.name === 'send_message');
+  const n = send && Array.isArray(send.params) ? send.params.length : 0;
+  const parts = [];
+  if (n) parts.push(`a form with ${n} field${n === 1 ? '' : 's'}`);
+  if (Array.isArray(m.doors) && m.doors.includes('assistant')) parts.push('an assistant');
+  return parts.join(' and ');
+}
 function sizeOf(b) { return filesOf(b).reduce((n, f) => n + (Number(f.size) || 0), 0) || Number(b.size) || 0; }
 
 /** What the board shows: approved builds with a name and a way to get them. A draft or a pending build never lists here. */
@@ -106,7 +124,7 @@ function rowHtml(b) {
   const files = filesOf(b);
   const id = buildIdOf(b);
   const href = httpsUrl(b.downloadUrl);
-  const meta = [who, when, b.installs ? `installed ${b.installs} time${b.installs === 1 ? '' : 's'}` : '', files.length ? `${files.length} file${files.length === 1 ? '' : 's'}, ${fmtSize(sizeOf(b))}` : ''].filter(Boolean);
+  const meta = [who, when, madeOf(b), b.installs ? `installed ${b.installs} time${b.installs === 1 ? '' : 's'}` : '', files.length ? `${files.length} file${files.length === 1 ? '' : 's'}, ${fmtSize(sizeOf(b))}` : ''].filter(Boolean);
   const get = (b.type === 'module' && id)
     ? `<button type="button" class="bd-act" data-install="${e(id)}" data-tip="Open ${e(b.name)} in the Studio" aria-label="Open ${e(b.name)} in the Studio">${ico('external', 17)}</button>`
     : href ? `<a class="bd-act" href="${e(href)}" download data-tip="Download ${e(b.name)}" aria-label="Download ${e(b.name)}">${ico('download', 17)}</a>` : '';
@@ -144,6 +162,7 @@ function cardHtml(b) {
   const actions = Array.isArray(m.actions) ? m.actions : [];
   const doors = Array.isArray(m.doors) ? m.doors : [];
   const files = filesOf(b);
+  const textFiles = id ? textFilesOf(b) : [];
   const dflt = (s) => s.default == null || s.default === '' ? '' : Array.isArray(s.default) ? s.default.join(', ') : typeof s.default === 'boolean' ? (s.default ? 'on' : 'off') : String(s.default);
   const fact = (k, v) => v ? `<div class="bd-fact"><dt>${e(k)}</dt><dd>${v}</dd></div>` : '';
   const get = b.type === 'module' && id
@@ -179,6 +198,20 @@ function cardHtml(b) {
           <section class="bd-sec">
             <h3 class="bd-h">Where it reaches</h3>
             ${doors.map(d => `<p class="bd-act-p"><b>${e(d.charAt(0).toUpperCase() + d.slice(1))}.</b> It ${e(DOOR_WORDS[d] || 'reaches a door of the platform')}.</p>`).join('')}
+          </section>` : ''}
+
+          <section class="bd-sec">
+            <h3 class="bd-h">${ico('puzzle', 14)} What it is made of</h3>
+            <div class="bd-logic" data-logic>${logicHtml(manifestRead(m), { manifest: m })}</div>
+          </section>
+
+          ${textFiles.length ? `
+          <section class="bd-sec">
+            <h3 class="bd-h">${ico('code', 14)} The code</h3>
+            <p class="bd-help bd-code-lead">The files exactly as published, read from the platform. Nothing here runs on this page.</p>
+            <div class="bd-tabs" role="tablist">${textFiles.map((f, i) => `<button type="button" class="bd-tab${i === 0 ? ' is-on' : ''}" role="tab" aria-selected="${i === 0 ? 'true' : 'false'}" data-file="${e(f)}">${e(f)}</button>`).join('')}</div>
+            <div class="bd-code" data-code tabindex="0"><p class="bd-code-note">Opening ${e(textFiles[0])}…</p></div>
+            <div class="bd-code-foot"><span class="bd-code-meta" data-code-meta></span><button type="button" class="bd-btn is-ghost is-sm" data-copy hidden>${ico('copy', 14)} Copy</button></div>
           </section>` : ''}
         </div>
 
@@ -225,6 +258,54 @@ function openCard(id) {
   let modal = false; try { modal = $modal.matches(':modal'); } catch { modal = false; }
   if (!modal) { $modal.classList.add('is-fallback'); $modal.style.cssText = 'position:fixed;inset:0;z-index:2147483000;display:grid;place-items:center;width:100vw;height:100vh;max-width:none;max-height:none;margin:0;padding:20px;background:rgba(4,6,12,.62)'; }
   $modal.querySelector('.bd-close')?.focus();
+  hydrateCard($modal, b);
+}
+
+/* ---------- the card's reads: the project's logic and the files' text, fetched from the platform's public raw route ---------- */
+
+async function rawText(id, path) {
+  const res = await fetch(`${BUILDS_URL}/${encodeURIComponent(id)}/raw?path=${encodeURIComponent(path)}`);
+  if (!res.ok) { let why = ''; try { why = (await res.json()).error || ''; } catch { why = ''; } throw new Error(why || `The platform answered ${res.status}.`); }
+  return res.text();
+}
+function hydrateCard(modal, b) {
+  const id = buildIdOf(b);
+  if (!id) return;
+  const textFiles = textFilesOf(b);
+  const cache = new Map();
+  const get = async (path) => { if (!cache.has(path)) cache.set(path, rawText(id, path)); return cache.get(path); };
+  // the logic: the project file, read into sentences; the manifest's read stays when the build carries none
+  const logic = modal.querySelector('[data-logic]');
+  if (logic && textFiles.includes('project.json')) {
+    get('project.json').then(text => { const read = readProject(JSON.parse(text)); if (modal.isConnected) logic.innerHTML = logicHtml(read, { manifest: b.manifest || {} }); }).catch(() => { /* the manifest's read stands */ });
+  }
+  // the code: one file at a time, colored, numbered, copyable
+  const box = modal.querySelector('[data-code]'), meta = modal.querySelector('[data-code-meta]'), copy = modal.querySelector('[data-copy]');
+  if (!box) return;
+  let current = '', currentText = '';
+  const show = async (path) => {
+    current = path;
+    modal.querySelectorAll('.bd-tab').forEach(t => { const on = t.dataset.file === path; t.classList.toggle('is-on', on); t.setAttribute('aria-selected', on ? 'true' : 'false'); });
+    box.innerHTML = `<p class="bd-code-note">Opening ${e(path)}…</p>`; if (meta) meta.textContent = ''; if (copy) copy.hidden = true;
+    try {
+      const text = await get(path);
+      if (current !== path || !modal.isConnected) return;
+      currentText = text;
+      box.innerHTML = codeHtml(text, langOf(path));
+      box.scrollTop = 0;
+      if (meta) meta.textContent = `${text.split('\n').length} lines · ${fmtSize(new Blob([text]).size)}`;
+      if (copy) copy.hidden = false;
+    } catch (err) {
+      if (current !== path) return;
+      box.innerHTML = `<p class="bd-code-note">Could not read ${e(path)}: ${e(err?.message || 'something went wrong')}</p>`;
+    }
+  };
+  modal.querySelectorAll('.bd-tab').forEach(t => t.addEventListener('click', () => show(t.dataset.file)));
+  copy?.addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText(currentText); copy.innerHTML = `${ico('check', 14)} Copied`; setTimeout(() => { if (modal.isConnected) copy.innerHTML = `${ico('copy', 14)} Copy`; }, 1400); }
+    catch { copy.textContent = 'Select the text to copy it'; }
+  });
+  if (textFiles.length) show(textFiles[0]);
 }
 
 function openInStudio(id) {
