@@ -11,35 +11,27 @@
 //   POST v1/environment/licensing/account               owner or admin opens the licensing account (no charge)
 //   GET  v1/environment/licensing/products/{id}/pricing the list price of one license, read when asked
 //
+//   POST v1/environment/licensing/microsoft            the Microsoft Customer Agreement attestation and the tenant (2026-09-22)
+//   POST v1/environment/licensing/licenses             add a license: the card charged first, then the order at the distributor
+//   PUT  v1/environment/licensing/licenses/{id}        seats: more now, fewer at the period's end
+//   DELETE v1/environment/licensing/licenses/{id}      ends at the period's end
+//
 // Follows the Team section's choice of team (the same sessionStorage key).
-// Ordering a license and creating a mailbox are the next slices; nothing
-// here pretends to do either.
+// This module is the section: the read, the head, the account, the catalog
+// and the mailboxes. The Microsoft details, the licenses held and the add
+// flow live in licensingOrders.js; the state and helpers both share are in
+// licensingShared.js. Creating a mailbox is the next slice.
 
-import { PRAG_API_BASE } from '../runtime/config.js';
 import { tierName } from '../components/tierCopy.js';
 import { explainLink } from '../components/explainer.js';
-import { ico, iconBtn, cardHtml as sharedCard, setCardSummary, initCards } from './cards.js';
+import { ico, iconBtn, setCardSummary, initCards } from './cards.js';
+import { LIC_URL, lc, st, url, body, cardHtml, countWord, cap, money } from './licensingShared.js';
+import { microsoftHtml, licensesHtml, addHtml, canAdd, orderAction, orderChange } from './licensingOrders.js';
 
-const LIC_URL = `${PRAG_API_BASE}/environment/licensing`;
-const TEAM_KEY = 'pragoptics_team_id';
-function cardHtml(o) { return sharedCard({ ...o, key: `licensing:${o.key}` }); }
-function countWord(n, one, many) { return `${n} ${n === 1 ? one : many}`; }
-function cap(s) { s = String(s || ''); return s.charAt(0).toUpperCase() + s.slice(1); }
-function teamId() { try { return sessionStorage.getItem(TEAM_KEY) || ''; } catch { return ''; } }
-function url(path, extra = {}) {
-  const u = new URL(path);
-  const t = teamId(); if (t) u.searchParams.set('tenant', t);
-  for (const [k, v] of Object.entries(extra)) if (v != null && v !== '') u.searchParams.set(k, String(v));
-  return u.toString();
-}
-function body(obj) { const t = teamId(); return JSON.stringify({ ...(t ? { tenant: t } : {}), ...obj }); }
-
-const lc = { view: null, busy: false, note: '', prices: {}, pricing: '' };
-let D = null;
 
 export async function renderLicensing(main, deps) {
-  D = deps;
-  lc.view = null; lc.busy = false; lc.note = ''; lc.pricing = '';
+  st.D = deps; st.paint = paint; st.load = load;
+  lc.view = null; lc.busy = false; lc.note = ''; lc.pricing = ''; lc.add = null; lc.saving = ''; lc.msEdit = false; lc.lineNote = '';
   initCards();
   main.innerHTML = `
     <header class="acct-sec-head has-explain"><h2 class="acct-sec-title">Licensing</h2>${explainLink('licensing', 'How licenses and mailboxes work')}</header>
@@ -52,29 +44,29 @@ export async function renderLicensing(main, deps) {
 async function load() {
   const host = document.getElementById('licBody');
   if (!host) return;
-  D.showError('licError', '');
+  st.D.showError('licError', '');
   try {
-    lc.view = await D.apiFetch(url(LIC_URL));
+    lc.view = await st.D.apiFetch(url(LIC_URL));
     paint();
   } catch (ex) {
     host.innerHTML = '';
     if (ex?.status === 404 && ex?.data?.needsTenant) { host.innerHTML = `<p class="acct-empty">Your environment is being set up. Licensing opens the moment it is ready.</p>`; return; }
     if (ex?.status === 404) { host.innerHTML = `<p class="acct-empty">The licensing routes are not on this lane yet. Deploy the backend that carries them, then reload.</p>`; return; }
     // The server's refusal names the plan ("Licensing starts on the User plan"); show it as is.
-    D.showError('licError', (ex?.status === 403 && ex?.data?.error) || D.friendlyError(ex, 'Could not load licensing.'));
+    st.D.showError('licError', (ex?.status === 403 && ex?.data?.error) || st.D.friendlyError(ex, 'Could not load licensing.'));
   }
 }
 
 function paint() {
   const host = document.getElementById('licBody');
   if (!host || !lc.view) return;
-  host.innerHTML = `${summaryHtml()}<div class="ev-cards">${accountHtml()}${catalogHtml()}${mailboxesHtml()}</div>`;
+  host.innerHTML = `${summaryHtml()}<div class="ev-cards">${accountHtml()}${microsoftHtml()}${licensesHtml()}${catalogHtml()}${mailboxesHtml()}</div>`;
 }
 
 /* ---------- the head ---------- */
 
 function summaryHtml() {
-  const e = D.escapeHtml, v = lc.view;
+  const e = st.D.escapeHtml, v = lc.view;
   const seats = v.seats || [], boxes = v.mailboxes || [];
   const state = !v.eligible ? `<span class="acct-tag">${e(tierName(v.minimumTier))} plan and above</span>`
     : v.account ? '<span class="acct-tag is-verified">account open</span>'
@@ -96,7 +88,7 @@ function summaryHtml() {
 /* ---------- the licensing account ---------- */
 
 function accountHtml() {
-  const e = D.escapeHtml, v = lc.view, a = v.account;
+  const e = st.D.escapeHtml, v = lc.view, a = v.account;
   const canManage = !!v.canManage;
   let summary, inner;
   if (!v.eligible) {
@@ -109,7 +101,7 @@ function accountHtml() {
     inner = `
       <div class="lic-facts">
         <div class="lic-fact"><span class="lic-k">Account</span><span class="lic-v ev-code">${e(a.customerId)}</span></div>
-        <div class="lic-fact"><span class="lic-k">Opened</span><span class="lic-v">${e(a.createdAt ? D.fmtDate(a.createdAt) : '')}</span></div>
+        <div class="lic-fact"><span class="lic-k">Opened</span><span class="lic-v">${e(a.createdAt ? st.D.fmtDate(a.createdAt) : '')}</span></div>
         <div class="lic-fact"><span class="lic-k">Microsoft tenant</span><span class="lic-v">${a.microsoftTenantId ? `<span class="ev-code">${e(a.microsoftTenantId)}</span>` : '<span class="adm-muted">created with the first license</span>'}</span></div>
       </div>`;
   } else if (!v.distributor?.configured) {
@@ -131,13 +123,12 @@ function accountHtml() {
 /* ---------- the catalog ---------- */
 
 function priceCell(p) {
-  const e = D.escapeHtml;
+  const e = st.D.escapeHtml;
   const got = lc.prices[p.id];
   if (got === undefined) return `<button class="btn btn-sm btn-ico" type="button" data-lic-action="price" data-product="${e(p.id)}" aria-label="Show the price" data-tip="Show the price" ${lc.pricing === p.id ? 'disabled' : ''}>${ico('tag')}</button>`;
   if (got === null) return '<span class="adm-muted">at order</span>';
   return got.map(t => `<span class="lic-price"><strong>${e(money(t.list))}</strong> <span class="adm-muted">${e(termWord(t))}</span></span>`).join('<br>');
 }
-function money(n) { return `$${Number(n || 0).toFixed(2)}`; }
 function termWord(t) {
   const term = String(t.billingTerm || '').toLowerCase();
   if (term === 'monthly') return t.commitmentMonths > 1 ? `a month, ${t.commitmentMonths}-month term` : 'a month';
@@ -146,7 +137,7 @@ function termWord(t) {
 }
 
 function catalogHtml() {
-  const e = D.escapeHtml, v = lc.view;
+  const e = st.D.escapeHtml, v = lc.view;
   const items = v.catalog;
   const summary = items == null ? e(v.catalogCode === 'TIER' ? `from the ${tierName(v.minimumTier)} plan` : 'not open yet') : `${countWord(items.length, 'license', 'licenses')} available`;
   const bodyHtml = items == null ? `<p class="acct-empty">${e(v.catalogNote || 'Nothing to show yet.')}</p>`
@@ -154,18 +145,20 @@ function catalogHtml() {
     : `
       <div class="adm-table-scroll">
         <table class="adm-table adm-table--wrap ev-table lic-table">
-          <thead><tr><th>License</th><th>SKU</th><th>Price</th></tr></thead>
+          <thead><tr><th>License</th><th>SKU</th><th>Price</th><th></th></tr></thead>
           <tbody>
             ${items.map(p => `
               <tr>
                 <td data-th="License"><span class="lic-name">${e(p.name)}</span>${p.description ? `<br><span class="adm-muted lic-desc">${e(p.description)}</span>` : ''}</td>
                 <td class="cell-tight" data-th="SKU"><span class="ev-code">${e(p.sku || '')}</span></td>
                 <td class="cell-tight" data-th="Price">${priceCell(p)}</td>
+                <td class="cell-tight" data-th="Add">${canAdd() ? `<button class="btn btn-sm" type="button" data-lic-action="add-open" data-product="${e(p.id)}" ${lc.saving ? 'disabled' : ''}>Add</button>` : ''}</td>
               </tr>`).join('')}
           </tbody>
         </table>
       </div>
-      <p class="acct-card-note ev-note">The mailbox that comes with each seat is included in the plan. Anything else here is an add-on at Microsoft's list price per person per month, before tax, added once your licensing account is open.</p>`;
+      ${lc.add ? addHtml() : ''}
+      <p class="acct-card-note ev-note">The mailbox that comes with each seat is included in the plan. Anything else here is an add-on at Microsoft's list price per seat, before tax, charged to your card first and ordered on that charge.${canAdd() ? '' : ' Open the licensing account and save the Microsoft details above, then Add appears here.'}</p>`;
   return cardHtml({
     key: 'catalog', icon: 'layers', title: 'Licenses', summary,
     explain: explainLink('licensing', 'Which license does what'),
@@ -176,7 +169,7 @@ function catalogHtml() {
 /* ---------- mailboxes per seat ---------- */
 
 function mailboxesHtml() {
-  const e = D.escapeHtml, v = lc.view;
+  const e = st.D.escapeHtml, v = lc.view;
   const seats = v.seats || [], domains = v.mailDomains || [];
   const boxes = (v.mailboxes || []).length;
   const summary = `${countWord(seats.length, 'seat', 'seats')} · ${countWord(boxes, 'mailbox', 'mailboxes')}`;
@@ -208,10 +201,10 @@ function mailboxesHtml() {
 
 async function openAccount(btn) {
   if (lc.busy) return;
-  lc.busy = true; lc.note = ''; D.showError('licAccountError', '');
+  lc.busy = true; lc.note = ''; st.D.showError('licAccountError', '');
   btn.disabled = true; btn.textContent = 'Opening…';
   try {
-    const d = await D.apiFetch(url(`${LIC_URL}/account`), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: body({}) });
+    const d = await st.D.apiFetch(url(`${LIC_URL}/account`), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: body({}) });
     lc.busy = false;
     lc.view.account = d.account;
     lc.note = 'Your licensing account is open.';
@@ -222,22 +215,22 @@ async function openAccount(btn) {
     const msg = code === 'BILLING_ADDRESS_INCOMPLETE' ? 'Your billing address is incomplete. Complete it on Billing, then try again.'
       : code === 'DISTRIBUTOR_CANNOT_CREATE' ? 'This account is opened by support on request; write to support@bridgesindust.com and it is done within a business day.'
       : code === 'NOT_CONFIGURED' ? 'Licensing is being set up on the platform. Try again later.'
-      : (ex?.data?.error || D.friendlyError(ex, 'The account could not be opened.'));
+      : (ex?.data?.error || st.D.friendlyError(ex, 'The account could not be opened.'));
     btn.disabled = false; btn.textContent = 'Open the licensing account';
-    D.showError('licAccountError', msg);
+    st.D.showError('licAccountError', msg);
   }
 }
 
 async function showPrice(btn) {
   const id = btn.dataset.product || '';
   if (!id || lc.pricing) return;
-  lc.pricing = id; btn.disabled = true; D.showError('licCatalogError', '');
+  lc.pricing = id; btn.disabled = true; st.D.showError('licCatalogError', '');
   try {
-    const d = await D.apiFetch(url(`${LIC_URL}/products/${encodeURIComponent(id)}/pricing`));
+    const d = await st.D.apiFetch(url(`${LIC_URL}/products/${encodeURIComponent(id)}/pricing`));
     const terms = (d.terms || []).filter(t => (t.rates || []).length).map(t => ({ billingTerm: t.billingTerm, commitmentMonths: t.commitmentMonths, list: t.rates[0].list }));
     lc.prices[id] = terms.length ? terms : null;
   } catch (ex) {
-    D.showError('licCatalogError', ex?.data?.error || D.friendlyError(ex, 'The price could not be read.'));
+    st.D.showError('licCatalogError', ex?.data?.error || st.D.friendlyError(ex, 'The price could not be read.'));
   }
   lc.pricing = '';
   paint();
@@ -246,7 +239,7 @@ async function showPrice(btn) {
 export function bindLicensingActions(deps) {
   if (bindLicensingActions._bound) return;
   bindLicensingActions._bound = true;
-  D = D || deps;
+  st.D = st.D || deps;
   document.addEventListener('click', (e) => {
     const btn = e.target.closest('[data-lic-action]');
     if (!btn) return;
@@ -255,7 +248,9 @@ export function bindLicensingActions(deps) {
     if (a === 'refresh') return void load();
     if (a === 'open-account') return void openAccount(btn);
     if (a === 'price') return void showPrice(btn);
+    orderAction(a, btn);
   });
+  document.addEventListener('change', orderChange);
 }
 
 /** The summary line on the tab's own cards, for a caller that re-reads one card. */

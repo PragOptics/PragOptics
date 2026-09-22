@@ -1,6 +1,6 @@
 # Licenses and mailboxes
 
-Every seat on your team can carry a mailbox under a domain you own, and the mailbox is included in the plan, from the User plan up. Any other Microsoft 365 license is an add-on at Microsoft's list price per person per month, on the same monthly bill as your plan. PragOptics is your Microsoft partner of record: it sets up and runs the Microsoft side for you, and you never open a Microsoft account of your own.
+Every seat on your team can carry a mailbox under a domain you own, and the mailbox is included in the plan, from the User plan up. Any other Microsoft 365 license is an add-on at Microsoft's list price per seat, charged to your card before it is ordered, on a bill of its own beside your plan. PragOptics is your Microsoft partner of record: it sets up and runs the Microsoft side for you, and you never open a Microsoft account of your own.
 
 ## The licensing account
 
@@ -15,7 +15,17 @@ Microsoft 365 Business Standard | Business Basic plus the Office apps installed 
 Microsoft 365 Business Premium | Business Standard plus device management and advanced security.
 ```
 
-Prices on the Licenses card are Microsoft's list price per person per month, before tax; they apply to add-ons, not to the mailbox that comes with a seat. The billing term follows your plan's term: monthly on a monthly plan, annual on an annual plan.
+Prices on the Licenses card are Microsoft's list price per seat, before tax; they apply to add-ons, not to the mailbox that comes with a seat. Each license has its own term, chosen when you add it: monthly, a year, or Microsoft's two and three year terms where the license offers them.
+
+## The agreement and the tenant
+
+Microsoft asks two things before the first license, and the Microsoft details card holds both. First, its Customer Agreement: Microsoft records who accepted it for your organization, so you give a name and an email and tick the box. Second, a tenant, the Microsoft account your licenses land in. If your organization already has one, paste its tenant id and the licenses join it; if not, choose a prefix and a new tenant is created with the first order as prefix.onmicrosoft.com. Both can be changed until a license is ordered.
+
+## How a license is billed
+
+Adding a license charges your card on file first: the seats times the list price for the term, plus any tax. Only when that charge has gone through is the order placed with Microsoft's distributor, so nothing is ever ordered on your behalf that you have not paid for. A declined card orders nothing. If the distributor refuses the order after the charge, the charge is refunded in full and the line shows why.
+
+The license then renews on the same day each period until you end it. More seats are charged now, for the rest of the current period, and applied now. Fewer seats, and ending a license, take effect at the end of the paid period, with nothing refunded; the card shows the change and the date. If a renewal charge fails, the card is retried over the following days and you are told; if it never goes through, every license ends that day.
 
 ## A mailbox for every seat
 
@@ -23,4 +33,4 @@ A seat is a person on your team with a role that can write (owner, admin, develo
 
 ## What you are not asked to do
 
-You do not create a Microsoft tenant, verify your domain with Microsoft, or manage licenses in a Microsoft portal. The platform does that work through Microsoft's partner program on your behalf. What you see here is the whole of it: the account, the licenses, the mailboxes.
+You do not set up a Microsoft tenant by hand, verify your domain with Microsoft, or manage licenses in a Microsoft portal. The platform does that work through Microsoft's partner program on your behalf. What you see here is the whole of it: the account, the Microsoft details, the licenses, the mailboxes.

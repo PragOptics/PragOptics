@@ -239,6 +239,13 @@ html[data-theme="dark"] .btn.is-danger, :root:not([data-theme="light"]) .btn.is-
 .lic-desc { font-size: .8rem; }
 .lic-price { white-space: nowrap; }
 .lic-table td { vertical-align: top; }
+/* the add box under the catalog, the seat controls on a row, past licenses folded away (2026-09-22) */
+.lic-add { margin: 14px 0 6px; padding: 14px 16px; border: 1px solid var(--border); border-radius: 12px; background: color-mix(in srgb, var(--brand-600) 5%, transparent); }
+.lic-add .acct-card-h { margin: 0; }
+.lic-acts { display: inline-flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.lic-qty { width: 72px; flex: none; padding: 6px 8px; }
+.lic-past { margin-top: 12px; }
+.lic-past summary { cursor: pointer; font-size: .84rem; color: var(--muted); }
 @container (max-width: 640px) {
   .lic-facts { grid-template-columns: 1fr; gap: 4px; }
   .lic-fact { display: block; }
