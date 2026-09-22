@@ -25,16 +25,17 @@ export function microsoftHtml() {
   const canManage = !!v.canManage;
   let summary, inner;
   if (m.ready && !lc.msEdit) {
-    summary = m.tenantId ? 'existing tenant' : 'new tenant';
+    summary = m.tenantId ? 'existing tenant' : `${m.domainPrefix}.onmicrosoft.com`;
     inner = `
       <div class="lic-facts">
-        <div class="lic-fact"><span class="lic-k">Tenant</span><span class="lic-v">${m.tenantId ? `<span class="ev-code">${e(m.tenantId)}</span>` : `<span class="ev-code">${e(m.domainPrefix)}.onmicrosoft.com</span> <span class="adm-muted">created with the first license</span>`}</span></div>
-        <div class="lic-fact"><span class="lic-k">Agreement</span><span class="lic-v">Microsoft Customer Agreement accepted by ${e(m.mca.firstName)} ${e(m.mca.lastName)}, ${e(m.mca.email)}, on ${e(st.D.fmtDate(m.mca.acceptedAt))}</span></div>
+        <div class="lic-fact"><span class="lic-k">Tenant</span><span class="lic-v">${m.tenantId ? `<span class="ev-code">${e(m.tenantId)}</span> <span class="adm-muted">yours, already there</span>` : `<span class="ev-code">${e(m.domainPrefix)}.onmicrosoft.com</span> <span class="adm-muted">created with the first license</span>`}</span></div>
+        <div class="lic-fact"><span class="lic-k">Mail</span><span class="lic-v">${mailWhere(v, m.domainPrefix)}</span></div>
+        <div class="lic-fact"><span class="lic-k">Agreement</span><span class="lic-v">accepted by ${e(m.mca.firstName)} ${e(m.mca.lastName)}, ${e(m.mca.email)}, ${e(st.D.fmtDate(m.mca.acceptedAt))}</span></div>
       </div>
       ${canManage ? `<div class="acct-actions-row"><button class="btn btn-sm" type="button" data-lic-action="ms-edit">Change</button></div>` : ''}`;
   } else {
     summary = m.ready ? 'changing' : 'needed before the first license';
-    inner = canManage ? msFormHtml(m) : '<p class="acct-card-note">The owner or an admin accepts the Microsoft Customer Agreement and names the tenant before a license can be added.</p>';
+    inner = canManage ? msFormHtml(m) : '<p class="acct-card-note">The owner or an admin names the tenant and accepts the Microsoft Customer Agreement before a license can be added.</p>';
   }
   return cardHtml({
     key: 'microsoft', icon: 'file', title: 'Microsoft details', summary,
@@ -42,18 +43,33 @@ export function microsoftHtml() {
     body: `<p class="acct-error" id="licMsError" hidden></p>${inner}`
   });
 }
+/** The first label of a domain as a tenant name: acme.com -> acme, 3 to 27 letters and digits. */
+function slugOf(host) { return String(host || '').toLowerCase().split('.')[0].replace(/[^a-z0-9]/g, '').slice(0, 27); }
+const DOMAINS_LINK = '<a href="#account?section=environment&card=domains" data-acct-section="environment">Environment</a>';
+/** Where mail lands, from the domains this environment has verified: the smart line under the tenant name. */
+function mailWhere(v, prefix) {
+  const e = st.D.escapeHtml, ds = v.mailDomains || [];
+  const name = `${prefix ? e(prefix) : 'yourname'}.onmicrosoft.com`;
+  if (v.microsoft?.tenantId) return `mailboxes use the domains already in your tenant${ds.length ? `; <strong>${e(ds[0])}</strong> joins it too` : `, and any you add on ${DOMAINS_LINK}`}`;
+  if (ds.length) return `mailboxes start at name@${name} and move to <strong>${e(ds[0])}</strong> when it joins the tenant${ds.length > 1 ? ` (${e(ds.length - 1)} more on ${DOMAINS_LINK})` : ''}`;
+  return `mailboxes are name@${name} until a domain of yours is added on ${DOMAINS_LINK}`;
+}
 function msFormHtml(m) {
-  const e = st.D.escapeHtml, mca = m.mca || {};
+  const e = st.D.escapeHtml, v = lc.view, mca = m.mca || {}, ds = v.mailDomains || [];
+  const has = !!m.tenantId;
+  const prefix = m.domainPrefix || slugOf(ds[0]) || '';
   const f = (id, label, val, attrs = '') => `<div><label class="acct-label" for="${id}">${e(label)}</label><input class="acct-input" id="${id}" type="text" value="${e(val || '')}" ${attrs}></div>`;
   return `
-    <p class="acct-card-note">Microsoft records who accepted its Customer Agreement for your organization, and every license lands in a Microsoft tenant: yours if you have one, or a new one created with the first order.</p>
+    <p class="acct-card-note">Every Microsoft tenant starts with a name of its own, <strong>name.onmicrosoft.com</strong>. Mail moves to a domain of yours once one is added.</p>
     <div class="ev-reg-form">
+      <div id="licMsPrefixWrap" ${has ? 'hidden' : ''}><label class="acct-label" for="licMsPrefix">Tenant name</label><div class="lic-suffix"><input class="acct-input" id="licMsPrefix" type="text" value="${e(prefix)}" placeholder="acme" spellcheck="false" autocapitalize="off" maxlength="27"><span>.onmicrosoft.com</span></div></div>
+      <div id="licMsTenantWrap" ${has ? '' : 'hidden'}><label class="acct-label" for="licMsTenant">Tenant id</label><input class="acct-input" id="licMsTenant" type="text" value="${e(m.tenantId || '')}" placeholder="00000000-0000-0000-0000-000000000000" spellcheck="false"></div>
       ${f('licMsFirst', 'First name', mca.firstName, 'autocomplete="given-name"')}
       ${f('licMsLast', 'Last name', mca.lastName, 'autocomplete="family-name"')}
       ${f('licMsEmail', 'Email', mca.email, 'autocomplete="email" inputmode="email"')}
-      ${f('licMsTenant', 'Existing tenant id (empty for a new tenant)', m.tenantId, 'placeholder="00000000-0000-0000-0000-000000000000" spellcheck="false"')}
-      ${f('licMsPrefix', 'New tenant prefix (becomes prefix.onmicrosoft.com)', m.domainPrefix, 'placeholder="yourcompany" spellcheck="false" autocapitalize="off"')}
     </div>
+    <label class="ev-agree"><input type="checkbox" id="licMsHas" ${has ? 'checked' : ''}><span>My organization already has a Microsoft 365 tenant</span></label>
+    <p class="acct-card-note">${ds.length ? `You have <strong>${e(ds[0])}</strong>: ${mailWhere(v, '')}.` : `No domain yet? ${mailWhere(v, '')}. Add or buy one there first, or continue and add it later.`}</p>
     <label class="ev-agree"><input type="checkbox" id="licMsAccept"><span>I have read and accept the <a href="https://www.microsoft.com/licensing/docs/customeragreement" target="_blank" rel="noopener">Microsoft Customer Agreement</a> on behalf of my organization.</span></label>
     <div class="acct-actions-row">
       <button class="btn" type="button" data-lic-action="ms-save" ${lc.saving === 'ms' ? 'disabled' : ''}>${lc.saving === 'ms' ? 'Saving…' : 'Save the Microsoft details'}</button>
@@ -137,7 +153,10 @@ async function saveMicrosoft() {
   if (lc.saving) return;
   const g = (id) => String(document.getElementById(id)?.value || '').trim();
   const accepted = !!document.getElementById('licMsAccept')?.checked;
-  const fields = { mca: { firstName: g('licMsFirst'), lastName: g('licMsLast'), email: g('licMsEmail'), accepted }, tenantId: g('licMsTenant'), domainPrefix: g('licMsPrefix').toLowerCase() };
+  const has = !!document.getElementById('licMsHas')?.checked;
+  const fields = { mca: { firstName: g('licMsFirst'), lastName: g('licMsLast'), email: g('licMsEmail'), accepted }, tenantId: has ? g('licMsTenant') : '', domainPrefix: has ? '' : slugOf(g('licMsPrefix')) };
+  if (!has && fields.domainPrefix.length < 3) { st.D.showError('licMsError', 'The tenant name is 3 to 27 letters and digits.'); return; }
+  if (has && !fields.tenantId) { st.D.showError('licMsError', 'Paste the tenant id, or untick the box for a new tenant.'); return; }
   if (!accepted) { st.D.showError('licMsError', 'Tick the agreement to continue.'); return; }
   lc.saving = 'ms'; st.D.showError('licMsError', ''); st.paint();
   try {
@@ -150,6 +169,7 @@ async function saveMicrosoft() {
     // the form is repainted from the saved view on a failure; put the typed values back
     for (const [id, val] of [['licMsFirst', fields.mca.firstName], ['licMsLast', fields.mca.lastName], ['licMsEmail', fields.mca.email], ['licMsTenant', fields.tenantId], ['licMsPrefix', fields.domainPrefix]]) { const el = document.getElementById(id); if (el) el.value = val; }
     const el = document.getElementById('licMsAccept'); if (el) el.checked = accepted;
+    const hs = document.getElementById('licMsHas'); if (hs) { hs.checked = has; toggleTenant(has); }
     st.D.showError('licMsError', ex?.data?.error || st.D.friendlyError(ex, 'The details could not be saved.'));
   }
 }
@@ -238,8 +258,14 @@ export function orderAction(a, btn) {
   if (a === 'end') { endLicense(btn); return true; }
   return false;
 }
+/** The tenant toggle: a name for a new tenant, or the id of one they have. Typed values stay. */
+function toggleTenant(has) {
+  const p = document.getElementById('licMsPrefixWrap'), t = document.getElementById('licMsTenantWrap');
+  if (p) p.hidden = has; if (t) t.hidden = !has;
+}
 /** The add box's term or seat count changed: the charge sentence follows. */
 export function orderChange(e) {
   const t = e.target;
+  if (t && t.id === 'licMsHas') return void toggleTenant(!!t.checked);
   if (t && (t.id === 'licAddTerm' || t.id === 'licAddQty') && lc.add && !lc.saving) { readAdd(); st.paint(); }
 }

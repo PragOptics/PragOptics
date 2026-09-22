@@ -246,6 +246,9 @@ html[data-theme="dark"] .btn.is-danger, :root:not([data-theme="light"]) .btn.is-
 .lic-qty { width: 72px; flex: none; padding: 6px 8px; }
 .lic-past { margin-top: 12px; }
 .lic-past summary { cursor: pointer; font-size: .84rem; color: var(--muted); }
+.lic-suffix { display: flex; align-items: center; gap: 6px; }
+.lic-suffix .acct-input { min-width: 0; }
+.lic-suffix span { flex: none; font-size: .86rem; color: var(--muted); white-space: nowrap; }
 @container (max-width: 640px) {
   .lic-facts { grid-template-columns: 1fr; gap: 4px; }
   .lic-fact { display: block; }
