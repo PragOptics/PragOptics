@@ -290,6 +290,9 @@ html[data-theme="dark"] .btn.is-danger, :root:not([data-theme="light"]) .btn.is-
 .lic-item-body .lic-add { margin: 0; }
 .lic-item-body .acct-actions-row { margin: 0; }
 .lic-more { margin-top: 10px; justify-content: center; }
+.lic-enroll { display: grid; gap: 8px; margin-bottom: 12px; padding: 12px 14px; border: 1px solid color-mix(in srgb, var(--brand-600) 35%, var(--border)); border-radius: 12px; }
+.lic-enroll .acct-card-note, .lic-enroll .acct-actions-row { margin: 0; }
+.lic-mail-on { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 
 /* the licenses held, on a phone: the seat box and the two buttons take the row */
 @container (max-width: 640px) {

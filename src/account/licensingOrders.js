@@ -101,7 +101,7 @@ export function licensesHtml() {
     const pendingOn = l.pendingAt || l.periodEnd;
     const pending = l.pendingQuantity != null && l.pendingQuantity !== l.quantity ? `<br><span class="adm-muted">${e(String(l.pendingQuantity))} from ${e(pendingOn ? st.D.fmtDate(pendingOn) : 'the period end')}</span>` : '';
     const commit = Number(l.commitmentMonths || 0) > 1 && l.commitmentEndsAt ? `<br><span class="adm-muted">${e(commitWord(l))} until ${e(st.D.fmtDate(l.commitmentEndsAt))}</span>` : '';
-    const acts = canManage && (l.status === 'ORDERED' || l.status === 'ACTIVE') ? `
+    const acts = canManage && !l.included && (l.status === 'ORDERED' || l.status === 'ACTIVE') ? `
       <span class="lic-acts">
         <input class="acct-input lic-qty" type="number" min="1" max="500" value="${e(String(l.quantity))}" id="licQty-${e(l.id)}" aria-label="Seats">
         <button class="btn btn-sm" type="button" data-lic-action="seats" data-line="${e(l.id)}" ${lc.saving ? 'disabled' : ''}>Set seats</button>
@@ -111,7 +111,7 @@ export function licensesHtml() {
       <tr>
         <td data-th="License"><span class="lic-name">${e(l.productName)}</span>${l.sku ? `<br><span class="ev-code">${e(l.sku)}</span>` : ''}</td>
         <td class="cell-tight" data-th="Seats">${e(String(l.quantity))}${pending}</td>
-        <td class="cell-tight" data-th="Price">${e(money((l.listCents || 0) / 100))} <span class="adm-muted">${e(TERM_NAMES[l.billingTerm] || l.billingTerm || '')}</span>${commit}</td>
+        <td class="cell-tight" data-th="Price">${l.included ? '<span class="acct-tag is-primary">included</span><br><span class="adm-muted">with your plan, follows your seats</span>' : `${e(money((l.listCents || 0) / 100))} <span class="adm-muted">${e(TERM_NAMES[l.billingTerm] || l.billingTerm || '')}</span>${commit}`}</td>
         <td class="cell-tight" data-th="Status"><span class="acct-tag ${tag}">${e(STATUS_WORDS[l.status] || String(l.status || '').toLowerCase())}${when}</span>${l.error ? `<br><span class="adm-muted lic-desc">${e(l.error)}</span>` : ''}</td>
         <td class="cell-tight" data-th="">${acts}</td>
       </tr>`;

@@ -129,9 +129,11 @@ function mailboxesHtml() {
   const seats = v.seats || [], domains = v.mailDomains || [];
   const boxes = (v.mailboxes || []).length;
   const summary = `${countWord(seats.length, 'seat', 'seats')} · ${countWord(boxes, 'mailbox', 'mailboxes')}`;
+  const m = v.microsoft || {};
+  const tenant = m.tenantId ? 'your tenant' : m.domainPrefix ? `${m.domainPrefix}.onmicrosoft.com` : 'your tenant name';
   const domainLine = domains.length
-    ? `<p class="acct-card-note">Mailboxes live under ${domains.map(d => `<strong>${e(d)}</strong>`).join(', ')}. Every seat can have one, included: an Exchange Online Kiosk mailbox for the web and the phone. A seat that needs a 50 GB mailbox upgrades to Plan 1 from the Licenses list.</p>`
-    : `<p class="acct-card-note">A mailbox lives under a domain you have verified. <a href="#account?section=environment&card=domains" data-acct-section="environment">Verify a domain on Environment</a>, and every seat can have one.</p>`;
+    ? `<p class="acct-card-note">Every seat can have one, included: an Exchange Online Kiosk mailbox for the web and the phone, under ${domains.map(d => `<strong>${e(d)}</strong>`).join(', ')}. A seat that needs 50 GB upgrades to Plan 1 from the Licenses list.</p>`
+    : `<p class="acct-card-note">Every seat can have one, included: an Exchange Online Kiosk mailbox for the web and the phone, at ${e(tenant)} until you add a domain on <a href="#account?section=environment&card=domains" data-acct-section="environment">Environment</a>.</p>`;
   const table = !seats.length ? '<p class="acct-empty">No seats yet. Invite people on Team; each seat can carry a mailbox.</p>' : `
       <div class="adm-table-scroll">
         <table class="adm-table adm-table--wrap ev-table lic-table">
@@ -149,8 +151,39 @@ function mailboxesHtml() {
   return cardHtml({
     key: 'mailboxes', icon: 'mail', title: 'Mailboxes', summary,
     explain: explainLink('licensing', 'A mailbox for every seat'),
-    body: `${domainLine}${table}`
+    body: `${enrollHtml()}${domainLine}${table}`
   });
+}
+
+/* ---------- turning on the team's mail (2026-09-22): the included Kiosk, at the platform's cost ---------- */
+
+function includedLine() { return (lc.view.licenses || []).find(l => l.included && ['CHARGING', 'PAID', 'ORDERED', 'ACTIVE', 'ENDING'].includes(l.status)) || null; }
+function enrollHtml() {
+  const e = st.D.escapeHtml, v = lc.view;
+  if (!v.eligible || !v.account) return '';
+  const on = includedLine();
+  if (on) return `<p class="acct-card-note lic-mail-on"><span class="acct-tag ${on.status === 'ACTIVE' ? 'is-verified' : 'is-pending'}">${on.status === 'ACTIVE' ? 'mail on' : 'turning on'}</span> ${e(String(on.quantity))} included Kiosk ${on.quantity === 1 ? 'mailbox' : 'mailboxes'}, nothing charged.</p>`;
+  if (!v.microsoft?.ready) return '<p class="acct-card-note">Save the Microsoft details above, then turn on your team\'s mail here.</p>';
+  if (!v.canManage) return '<p class="acct-card-note">The owner or an admin turns on the team\'s mail.</p>';
+  return `
+    <div class="lic-enroll">
+      <p class="acct-card-note">Turn on mail for your team. Your own Kiosk mailbox comes first, included with your plan; nothing is charged.</p>
+      <p class="acct-error" id="licEnrollError" hidden></p>
+      <div class="acct-actions-row"><button class="btn" type="button" data-lic-action="mail-enroll" ${lc.busy ? 'disabled' : ''}>${lc.busy ? 'Turning on…' : 'Turn on mail'}</button></div>
+    </div>`;
+}
+async function enrollMail(btn) {
+  if (lc.busy) return;
+  lc.busy = true; btn.disabled = true; btn.textContent = 'Turning on…'; st.D.showError('licEnrollError', '');
+  try {
+    await st.D.apiFetch(url(`${LIC_URL}/enroll`), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: body({}) });
+    lc.busy = false;
+    await load();
+  } catch (ex) {
+    lc.busy = false; btn.disabled = false; btn.textContent = 'Turn on mail';
+    const code = ex?.data?.code;
+    st.D.showError('licEnrollError', code === 'MICROSOFT_DETAILS_REQUIRED' ? 'Save the Microsoft details first.' : code === 'LIVE_LANE_ONLY' ? 'Mail is turned on for your live environment, not the sandbox.' : (ex?.data?.error || st.D.friendlyError(ex, 'Mail could not be turned on.')));
+  }
 }
 
 /* ---------- actions ---------- */
@@ -197,6 +230,7 @@ export function bindLicensingActions(deps) {
     const a = btn.dataset.licAction;
     if (a === 'refresh') return void load();
     if (a === 'open-account') return void openAccount(btn);
+    if (a === 'mail-enroll') return void enrollMail(btn);
     if (catalogAction(a, btn)) return;
     orderAction(a, btn);
   });
