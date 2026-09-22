@@ -1,6 +1,6 @@
 # PragOptics™ Platform Agreement
 
-**Version:** 2026-09.8  
+**Version:** 2026-09.10  
 **Effective Date:** Upon electronic acceptance (“I Agree”)
 
 ---
@@ -133,7 +133,7 @@ Additional seats may be added to a Partner or Super subscription at the per-seat
 
 ### 4.6 Mailboxes and Connected Domains
 
-Each seat may, at the seat holder's request, be provisioned with one hosted mailbox on a domain the Participant has connected. The mailbox is included in the seat price. It is not provisioned automatically; it is set up from the PragOptics software after the domain is connected. Shared mailboxes and aliases on a connected domain do not consume a seat. The mailbox feature set and included storage track the underlying hosted-mail provider plan and may change with reasonable notice under Section 14.
+Each seat may, at the seat holder's request, be provisioned with one hosted mailbox. The mailbox is included in the seat price. It is not provisioned automatically; it is set up from the PragOptics software when the Participant enrolls in licensing. Until the Participant connects a domain, the mailbox's address is on the Participant's own tenant name (name.onmicrosoft.com); once a domain is connected and verified, the address may move to it. The included mailbox is a basic hosted mailbox, the same on every plan (currently Exchange Online Kiosk); a seat may be upgraded to a larger mailbox as a paid license at the provider's list price. Shared mailboxes and aliases do not consume a seat. The mailbox feature set and included storage track the underlying hosted-mail provider plan and may change with reasonable notice under Section 14.
 
 A Participant may connect a domain they already own in either of two ways. They may prove ownership by publishing a verification record in the domain's DNS themselves, in which case BI never touches the domain's records. Or they may connect the account at the registrar that holds the domain, in which case BI publishes the verification record and the records the Platform needs (for serving, and for mail where a mailbox is provisioned) through that account, on the Participant's instruction, reading the existing records before writing. Unlinking the account leaves every record in place; nothing at the registrar is deleted. Connecting a domain the Participant already owns carries no charge. Domain and mailbox services are not available on the Free tier.
 
@@ -253,7 +253,7 @@ Actual capabilities, limits, and commercial terms are defined at purchase, renew
 | Tier | Intended Scope | Typical Use Cases |
 |-----|----------------|-------------------|
 | **Free** | Evaluation and light personal use; no subscription; no domain, mailbox, or automation services | Trying the API console, exploring public APIs within limited allowances, downloading builds, running the PragOptics software, hardware warranty |
-| **User** | One person's environment | API access with your own keys, a provisioned environment and storage, a connected domain with a hosted mailbox on request, consuming partner-built solutions, optional add-ons |
+| **User** | One person's environment | API access with your own keys, a provisioned environment and storage, a connected domain, a hosted mailbox on request, consuming partner-built solutions, optional add-ons |
 | **Partner** | Builders and resellers, with a team | Custom endpoint namespaces, publishing to the builds marketplace, onboarding users on included seats, delivering PragOptics-backed products |
 | **Super** | Enterprise and advanced operators | Large-scale integrations, multi-user orchestration on included seats, complex tenant or external-system execution |
 
