@@ -13,7 +13,7 @@
 // public board and the Studio show.
 
 import { PRAG_API_BASE } from '../runtime/config.js';
-import { iconBtn } from './cards.js';
+import { iconBtn, leadBtn, armed } from './cards.js';
 
 const BUILDS_URL = `${PRAG_API_BASE}/builds`;
 const ADMIN_BUILDS_URL = `${PRAG_API_BASE}/admin/builds`;
@@ -48,17 +48,24 @@ function rowHtml(b, { operator = false } = {}) {
       <td class="cell-tight"><span class="acct-tag${status === 'published' ? ' is-ok' : status === 'pending' ? ' is-pending' : status === 'rejected' ? ' is-off' : ''}">${e(statusLabel(b))}</span>${b.revision ? ` <span class="adm-muted">rev ${e(String(b.revision))}</span>` : ''}
         ${status === 'rejected' && b.reason ? `<div class="adm-muted">${e(b.reason)}</div>` : ''}${Number(b.installs) ? `<div class="adm-muted">installed ${e(String(b.installs))} time${b.installs === 1 ? '' : 's'}</div>` : ''}</td>
       <td class="adm-muted cell-tight">${e(D.fmtDate(b.publishedAt || b.updatedAt || b.createdAt))}</td>
-      <td class="cell-tight tm-actions">
-        ${operator && status === 'pending' ? `<button class="btn btn-sm btn-ghost" type="button" data-build-action="diff" data-id="${e(buildIdOf(b))}" data-name="${e(b.name)}">What changed</button>` : ''}
-        ${operator && (status === 'pending' || status === 'rejected') ? `<button class="btn btn-sm" type="button" data-build-action="approve" data-id="${e(buildIdOf(b))}" data-name="${e(b.name)}">Approve</button>` : ''}
-        ${operator && status === 'pending' ? `<button class="btn btn-sm btn-ghost" type="button" data-build-action="reject" data-id="${e(buildIdOf(b))}" data-name="${e(b.name)}">Reject</button>` : ''}
-        ${!operator && ((status === 'draft' && b.ready) || status === 'rejected') ? `<button class="btn btn-sm" type="button" data-build-action="submit" data-id="${e(buildIdOf(b))}" data-name="${e(b.name)}">Submit for review</button>` : ''}
-        ${!operator && status === 'pending' ? `<button class="btn btn-sm btn-ghost" type="button" data-build-action="retract" data-id="${e(buildIdOf(b))}" data-name="${e(b.name)}">Retract</button>` : ''}
-        ${!operator && (status === 'draft' || status === 'rejected' || status === 'pending') ? `<button class="btn btn-sm btn-ghost" type="button" data-build-action="remove" data-id="${e(buildIdOf(b))}" data-name="${e(b.name)}">Remove</button>` : ''}
-        ${!operator && status === 'pending' ? `<button class="btn btn-sm btn-ghost" type="button" data-build-action="diff" data-id="${e(buildIdOf(b))}" data-name="${e(b.name)}">What changed</button>` : ''}
-      </td>
+      <td class="cell-tight tm-actions"><span class="act-row">
+        ${(() => { const at = `data-id="${e(buildIdOf(b))}" data-name="${e(b.name)}"`; return [
+          !operator && ((status === 'draft' && b.ready) || status === 'rejected') ? leadBtn({ build: 'submit' }, 'upload', 'Submit for review', at, 'btn-primary') : '',
+          status === 'pending' ? iconBtn({ build: 'diff' }, 'eye', 'What changed against the version on the board', at) : '',
+          operator && (status === 'pending' || status === 'rejected') ? iconBtn({ build: 'approve' }, 'checkCircle', 'Approve: list it for everyone', at, 'btn-primary') : '',
+          operator && status === 'pending' ? iconBtn({ build: 'reject' }, 'xCircle', 'Reject: send it back with a reason the builder reads', at, 'is-risky') : '',
+          !operator && status === 'pending' ? iconBtn({ build: 'retract' }, 'undo', 'Retract the review request', at) : '',
+          !operator && (status === 'draft' || status === 'rejected' || status === 'pending') ? iconBtn({ build: 'remove' }, 'trash', 'Remove this build and its files', at, 'is-risky') : ''
+        ].join(''); })()}
+      </span></td>
     </tr>
-    <tr class="bd-diff-row" data-diff-for="${e(buildIdOf(b))}" hidden><td colspan="5" class="bd-diff-cell"></td></tr>`;
+    <tr class="bd-diff-row" data-diff-for="${e(buildIdOf(b))}" hidden><td colspan="5" class="bd-diff-cell"></td></tr>
+    <tr class="bd-reason-row" data-reason-for="${e(buildIdOf(b))}" hidden><td colspan="5">
+      <div class="tm-inline-edit bd-reason">
+        <input class="acct-input" type="text" maxlength="400" placeholder="Why it is sent back; the builder reads this" aria-label="Reason for sending it back" />
+        <span class="act-row">${iconBtn({ build: 'reject-send' }, 'send', 'Send it back with this reason', `data-id="${e(buildIdOf(b))}"`, 'btn-primary')}${iconBtn({ build: 'reject-cancel' }, 'x', 'Cancel', `data-id="${e(buildIdOf(b))}"`)}</span>
+      </div>
+    </td></tr>`;
 }
 
 function tableHtml(rows, { operator = false } = {}) {
@@ -120,10 +127,14 @@ export async function renderBuildsQueue(main, deps) {
       const pending = rows.filter(b => b.status === 'pending').length;
       host.innerHTML = `${pending ? `<p class="adm-note"><b>${pending}</b> awaiting review.</p>` : ''}${tableHtml(rows, { operator: true })}`;
       host.querySelectorAll('[data-build-action]').forEach(btn => btn.addEventListener('click', async () => {
-        const id = btn.dataset.id, verb = btn.dataset.buildAction, name = btn.dataset.name;
-        if (verb === 'diff') return void toggleDiff(btn, host);
-        let reason = '';
-        if (verb === 'reject') { reason = window.prompt(`Why is "${name}" sent back? The builder reads this.`, '') ?? null; if (reason === null) return; }
+        const id = btn.dataset.id, verb0 = btn.dataset.buildAction;
+        if (verb0 === 'diff') return void toggleDiff(btn, host);
+        const reasonRow = host.querySelector(`[data-reason-for="${CSS.escape(id)}"]`);
+        if (verb0 === 'reject') { if (reasonRow) { reasonRow.hidden = false; reasonRow.querySelector('input')?.focus(); } return; }
+        if (verb0 === 'reject-cancel') { if (reasonRow) reasonRow.hidden = true; return; }
+        const verb = verb0 === 'reject-send' ? 'reject' : verb0;
+        const reason = verb === 'reject' ? String(reasonRow?.querySelector('input')?.value || '').trim() : '';
+        if (verb === 'reject' && !reason) { D.showError('bqError', 'Give the builder a reason; they read it.'); reasonRow?.querySelector('input')?.focus(); return; }
         btn.disabled = true;
         try {
           await D.apiFetch(`${ADMIN_BUILDS_URL}/${encodeURIComponent(id)}/${verb}`, { method: 'POST', body: JSON.stringify(verb === 'reject' ? { reason } : {}) });
@@ -160,7 +171,7 @@ export async function renderMyBuilds(main, deps) {
     host.querySelectorAll('[data-build-action]').forEach(btn => btn.addEventListener('click', async () => {
       const id = btn.dataset.id, verb = btn.dataset.buildAction, name = btn.dataset.name;
       if (verb === 'diff') return void toggleDiff(btn, host);
-      if (verb === 'remove' && !window.confirm(`Remove "${name}"? Its files go with it.`)) return;
+      if (verb === 'remove' && !armed(btn, 'Remove?')) return;
       btn.disabled = true;
       try {
         if (verb === 'remove') await D.apiFetch(`${BUILDS_URL}/${encodeURIComponent(id)}`, { method: 'DELETE' });

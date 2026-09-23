@@ -1256,13 +1256,13 @@ function productItemHtml(it) {
     // The owner's own unfinished start (a closed tab at payment). Picking it
     // up lands on the same checkout; the server resumes or re-quotes.
     statusHtml = '<span class="acct-tag is-pending">Redemption started</span>';
-    action = `<button class="btn btn-sm" type="button" data-acct-action="redeem-product" data-code="${escapeHtml(it.code || '')}" title="Continue the redemption you started. Same address and shipping resumes it; anything else re-quotes.">Resume redemption</button>`;
+    action = leadBtn({ acct: 'redeem-product' }, 'play', 'Resume redemption', `data-code="${escapeHtml(it.code || '')}" data-tip="Continue the redemption you started; same address and shipping resumes it"`, 'btn-primary');
   } else if (e.pendingRedemptionId) {
     statusHtml = '<span class="acct-tag is-pending">Redemption in progress</span>';
     action = '';
   } else if (e.eligible) {
     statusHtml = '<span class="acct-tag is-verified">Redemption available</span>';
-    action = `<button class="btn btn-sm" type="button" data-acct-action="redeem-product" data-code="${escapeHtml(it.code || '')}">Redeem warranty</button>`;
+    action = leadBtn({ acct: 'redeem-product' }, 'shield', 'Redeem warranty', `data-code="${escapeHtml(it.code || '')}"`, 'btn-primary');
   } else if (e.nextEligibleAt) {
     statusHtml = `<span class="acct-tag">Next redemption ${escapeHtml(fmtDate(e.nextEligibleAt))}</span>`;
     action = '';
@@ -1936,7 +1936,7 @@ async function renderOrders(main) {
     ${showClaim ? cardHtml({ key: 'orders:claim', icon: 'link', title: 'Link a guest order', summary: 'by order number', body: `
       <div class="acct-add-row">
         <input class="acct-input" type="text" id="acctClaimOrderId" placeholder="Order number" spellcheck="false" autocomplete="off" />
-        <button class="btn" type="button" id="acctClaimBtn">Link order</button>
+        <button class="btn btn-sm btn-lead btn-primary" type="button" id="acctClaimBtn">${ico('link')}<span>Link order</span></button>
       </div>
       <p class="acct-card-note ev-dom-door">The order number from your confirmation email. It must have been placed with an email verified on this account.</p>
       <p class="acct-error" id="acctClaimError" hidden></p>
@@ -2132,12 +2132,12 @@ async function renderOverview(main) {
       <p class="adm-note">Each sync converges the provider to the exact event list this backend
       dispatches: nothing hand-maintained in a dashboard, nothing silently missing.</p>
       <div class="adm-actions-row">
-        <button class="btn" type="button" data-adm-action="wh-stripe"
-          title="Creates or updates this lane's Stripe webhook endpoint to the canonical event list">Sync Stripe webhooks</button>
-        <button class="btn" type="button" data-adm-action="wh-stripe-connect"
-          title="Creates or updates this lane's Stripe Connect webhook endpoint (events from connected accounts: account.updated, account.application.deauthorized); a new endpoint's signing secret is shown once for STRIPE_CONNECT_WEBHOOK_SECRET">Sync Stripe Connect webhook</button>
-        <button class="btn" type="button" data-adm-action="wh-shippo"
-          title="Registers this lane's Shippo webhooks (labels, transactions, tracking)">Sync Shippo webhooks</button>
+        <button class="btn btn-sm btn-lead" type="button" data-adm-action="wh-stripe"
+          data-tip="Creates or updates this lane's Stripe webhook endpoint to the canonical event list">${ico('zap')}<span>Sync Stripe webhooks</span></button>
+        <button class="btn btn-sm btn-lead" type="button" data-adm-action="wh-stripe-connect"
+          data-tip="Creates or updates this lane's Stripe Connect webhook endpoint (events from connected accounts: account.updated, account.application.deauthorized); a new endpoint's signing secret is shown once for STRIPE_CONNECT_WEBHOOK_SECRET">${ico('zap')}<span>Sync Stripe Connect webhook</span></button>
+        <button class="btn btn-sm btn-lead" type="button" data-adm-action="wh-shippo"
+          data-tip="Registers this lane's Shippo webhooks (labels, transactions, tracking)">${ico('zap')}<span>Sync Shippo webhooks</span></button>
       </div>
       <p class="muted" id="admIntegrationsResult" hidden></p>
       <h4 class="adm-card-h">Reconcile billing from Stripe</h4>
@@ -2147,10 +2147,10 @@ async function renderOverview(main) {
       under the same proofs the webhook uses. Dry run shows the plan and writes nothing.</p>
       <div class="adm-actions-row">
         <input class="adm-input" type="text" id="admReconcileWho" placeholder="account email or userId" autocomplete="off" spellcheck="false">
-        <button class="btn" type="button" data-adm-action="billing-reconcile-dry"
-          title="Compute the plan for this account and show it; nothing is written">Dry run</button>
-        <button class="btn" type="button" data-adm-action="billing-reconcile"
-          title="Write the plan: Stripe metadata, the profile link, status and tier">Reconcile</button>
+        <button class="btn btn-sm btn-lead" type="button" data-adm-action="billing-reconcile-dry"
+          data-tip="Compute the plan for this account and show it; nothing is written">${ico('eye')}<span>Dry run</span></button>
+        <button class="btn btn-sm btn-lead btn-primary" type="button" data-adm-action="billing-reconcile"
+          data-tip="Write the plan: Stripe metadata, the profile link, status and tier">${ico('check')}<span>Reconcile</span></button>
       </div>
       <pre class="muted adm-pre" id="admReconcileResult" hidden></pre>
     </div>
@@ -2233,7 +2233,7 @@ async function loadAdminCosts(force) {
         <div class="adm-card" style="margin-top:12px;">
           <h3 class="adm-card-h">Azure spend</h3>
           <p class="adm-note">${escapeHtml(d.message || 'Azure cost is not available yet.')}</p>
-          <div class="adm-actions-row"><button class="btn btn-sm" type="button" data-adm-action="cost-refresh">Refresh</button></div>
+          <div class="adm-actions-row">${iconBtn({ adm: 'cost-refresh' }, 'refresh', 'Read Azure spend again')}</div>
         </div>`;
       return;
     }
@@ -2244,7 +2244,7 @@ async function loadAdminCosts(force) {
       <div class="adm-card" style="margin-top:12px;">
         <div class="adm-actions-row" style="justify-content:space-between;align-items:center;">
           <h3 class="adm-card-h">Azure spend this month</h3>
-          <button class="btn btn-sm" type="button" data-adm-action="cost-refresh" title="Re-query Cost Management (cached a few hours)">Refresh</button>
+          ${iconBtn({ adm: 'cost-refresh' }, 'refresh', 'Read Azure spend again')}
         </div>
         <div class="adm-stat-grid" style="margin-top:8px;">
           ${statCard(money(d.total), `Total, ${escapeHtml(d.month || '')} (${escapeHtml(d.currency || 'USD')})`, escapeHtml(sub))}
@@ -2266,7 +2266,7 @@ async function loadAdminCosts(force) {
       <div class="adm-card" style="margin-top:12px;">
         <h3 class="adm-card-h">Azure spend</h3>
         <p class="adm-note">${escapeHtml(friendlyError(ex, 'Could not read Azure cost.'))}</p>
-        <div class="adm-actions-row"><button class="btn btn-sm" type="button" data-adm-action="cost-refresh">Refresh</button></div>
+        <div class="adm-actions-row">${iconBtn({ adm: 'cost-refresh' }, 'refresh', 'Read Azure spend again')}</div>
       </div>`;
   }
 }
@@ -2290,12 +2290,12 @@ function userManageButtonHtml(u) {
   const closed = String(u.status || '').toUpperCase() === 'CLOSED';
   const attrs = `data-adm-action="user-manage" data-user="${escapeHtml(u.userId || '')}" data-email="${escapeHtml(u.email || '')}"`;
   if (closed && !u.billingProfileId) {
-    return `<button class="btn adm-copy" type="button" ${attrs} disabled title="Closed accounts cannot be changed.">Manage</button>`;
+    return `<button class="btn btn-sm btn-ico" type="button" ${attrs} disabled aria-label="Closed accounts cannot be changed" data-tip="Closed accounts cannot be changed">${ico('sliders')}</button>`;
   }
   if (closed) {
-    return `<button class="btn adm-copy" type="button" ${attrs} title="This account is closed but still carries a billing profile. Run the close again to finish it.">Finish close</button>`;
+    return `<button class="btn btn-sm btn-lead is-danger" type="button" ${attrs} data-tip="Closed but still carries a billing profile; run the close again to finish it">${ico('power')}<span>Finish close</span></button>`;
   }
-  return `<button class="btn adm-copy" type="button" ${attrs} title="Role, operator flags, suspension, phone freeze, and closing">Manage</button>`;
+  return `<button class="btn btn-sm btn-ico" type="button" ${attrs} aria-label="Manage ${escapeHtml(u.email || '')}" data-tip="Manage: role, operator flags, suspension, phone freeze, closing">${ico('sliders')}</button>`;
 }
 
 function usersTableHtml(users) {
@@ -2446,7 +2446,7 @@ function userManageHtml(u, { self }) {
           </div>
           ${tier !== 'free' ? `<p class="um-note">Paying: on the ${escapeHtml(tierName(tier))} plan. Suspension does not pause billing.</p>` : ''}
           <div class="um-actions">
-            <button class="cta btn-sm" type="button" data-um-save title="Saves the role and flags above in one change">Save changes</button>
+            <button class="btn btn-sm btn-lead btn-primary" type="button" data-um-save data-tip="Saves the role and flags above in one change">${ico('check')}<span>Save changes</span></button>
           </div>
         </section>
         <section class="um-sec">
@@ -2454,9 +2454,9 @@ function userManageHtml(u, { self }) {
           <p class="acct-modal-note">Suspending blocks sign-in and revokes every session. Billing continues. Reactivating restores sign-in.</p>
           <div class="um-actions">
             ${status === 'SUSPENDED'
-              ? `<button class="btn btn-sm" type="button" data-um-status="ACTIVE" ${lock || 'title="Click twice to confirm."'}>Reactivate</button>`
-              : `<button class="btn btn-sm btn-danger" type="button" data-um-status="SUSPENDED" ${lock || 'title="Click twice to confirm."'}>Suspend</button>`}
-            ${u.phoneChangesFrozen ? `<button class="btn btn-sm" type="button" data-um-unfreeze title="Lets the account add, verify, and remove mobile numbers again">Unfreeze phone changes</button>` : ''}
+              ? `<button class="btn btn-sm btn-lead" type="button" data-um-status="ACTIVE" ${lock || 'title="Click twice to confirm."'}>${ico('play')}<span>Reactivate</span></button>`
+              : `<button class="btn btn-sm btn-lead is-danger" type="button" data-um-status="SUSPENDED" ${lock || 'title="Click twice to confirm."'}>${ico('pause')}<span>Suspend</span></button>`}
+            ${u.phoneChangesFrozen ? `<button class="btn btn-sm btn-lead" type="button" data-um-unfreeze data-tip="Lets the account add, verify, and remove mobile numbers again">${ico('lock')}<span>Unfreeze phone changes</span></button>` : ''}
           </div>
         </section>
         <section class="um-sec">
@@ -2464,7 +2464,7 @@ function userManageHtml(u, { self }) {
           <p class="acct-modal-note">Clears the authenticator and every passkey and signs the account out everywhere. The customer enrolls a new second factor on their next sign-in. The password is untouched. A reason is required.</p>
           <input class="adm-input" id="umResetReason" type="text" maxlength="200" placeholder="Ticket number or short note" ${self ? 'disabled' : ''} aria-label="Reason for the second factor reset">
           <div class="um-actions">
-            <button class="btn btn-sm btn-danger" type="button" data-um-2fa-reset ${self ? `disabled title="${lockTitle}"` : 'title="Click twice to confirm."'}>Reset second factor</button>
+            <button class="btn btn-sm btn-lead is-danger" type="button" data-um-2fa-reset ${self ? `disabled data-tip="${lockTitle}"` : 'title="Click twice to confirm."'}>${ico('refresh')}<span>Reset second factor</span></button>
           </div>
         </section>
       `}
@@ -2473,8 +2473,8 @@ function userManageHtml(u, { self }) {
         <p class="acct-modal-note">Permanent. Ends any subscription now, removes the sign-in, and signs the account out everywhere. Type the account email to enable the button.</p>
         <input class="adm-input" id="umCloseEmail" type="email" autocomplete="off" spellcheck="false" placeholder="${escapeHtml(email)}" ${lock} aria-label="Type the account email to confirm">
         <div class="um-actions">
-          <button class="btn btn-sm btn-danger" type="button" data-um-close-account disabled
-            title="${self ? lockTitle : 'Enabled once the email above matches this account'}">Close account</button>
+          <button class="btn btn-sm btn-lead is-danger" type="button" data-um-close-account disabled
+            data-tip="${self ? lockTitle : 'Enabled once the email above matches this account'}">${ico('power')}<span>Close account</span></button>
         </div>
       </section>
       <p class="acct-error" id="umError" hidden></p>
@@ -2512,9 +2512,9 @@ function openUserManage(userId, email) {
   async function run(btn, patch, { closeOnSuccess = false } = {}) {
     if (busy) return;
     busy = true;
-    const orig = btn.textContent;
+    const orig = btnLabel(btn);
     btn.disabled = true;
-    btn.textContent = 'Working…';
+    btnLabel(btn, 'Working…');
     const fresh = await patchUser(row, patch);
     busy = false;
     if (fresh) {
@@ -2524,7 +2524,7 @@ function openUserManage(userId, email) {
       return;
     }
     btn.disabled = false;
-    btn.textContent = orig;
+    btnLabel(btn, orig);
   }
   function onClick(e) {
     if (e.target.closest('[data-um-close]')) { if (!busy) close(); return; }
@@ -2670,7 +2670,7 @@ function ntRowHtml(ev) {
           <input type="checkbox" data-nt-ch="${escapeHtml(ev.key)}|sms" ${r.sms ? 'checked' : ''} ${ntState.smsConfigured ? '' : 'disabled'}> Text</label>
       </td>
       <td class="cell-tight">
-        <button class="btn adm-copy" type="button" data-nt-test="${escapeHtml(ev.key)}" title="Sends a test through the SAVED routing for this event">Test</button>
+        <button class="btn btn-sm btn-ico" type="button" data-nt-test="${escapeHtml(ev.key)}" data-tip="Sends a test through the SAVED routing for this event" aria-label="Send a test through the saved routing">${ico('send')}</button>
       </td>
     </tr>`;
 }
@@ -2690,7 +2690,7 @@ function ntRolesCardHtml() {
       </div>
       <div class="adm-actions-row nt-role-add">
         <input class="adm-input nt-add" id="ntRoleLabel" type="text" maxlength="32" placeholder="New role, e.g. Shipping" autocomplete="off" aria-label="New team role">
-        <button class="btn adm-copy" type="button" data-adm-action="nt-role-add">Add role</button>
+        <button class="btn btn-sm btn-lead" type="button" data-adm-action="nt-role-add">${ico('plus')}<span>Add role</span></button>
         <span class="muted nt-result" id="ntRoleResult"></span>
       </div>
     </div>`;
@@ -2714,7 +2714,7 @@ function ntBodyHtml() {
         </table>
       </div>
       <div class="adm-actions-row">
-        <button class="cta adm-copy" type="button" data-adm-action="nt-save" title="Saves every row above in one change">Save routing</button>
+        <button class="btn btn-sm btn-lead btn-primary" type="button" data-adm-action="nt-save" data-tip="Saves every row above in one change">${ico('check')}<span>Save routing</span></button>
         <span class="muted nt-result" id="ntSaved">${escapeHtml(saved)}</span>
       </div>
       <p class="muted nt-result" id="ntTestResult" hidden></p>
@@ -2731,7 +2731,7 @@ function ntBodyHtml() {
         <input type="checkbox" id="ntSms" ${ntState.smsConfigured ? '' : 'disabled'}> Also send as a text
       </label>
       <div class="adm-actions-row">
-        <button class="cta adm-copy" type="button" data-adm-action="nt-send" title="Click twice: the second click sends">Send notice</button>
+        <button class="btn btn-sm btn-lead btn-primary" type="button" data-adm-action="nt-send" data-tip="Click twice: the second click sends">${ico('send')}<span>Send notice</span></button>
         <span class="muted nt-result" id="ntSendResult"></span>
       </div>
     </div>
@@ -2781,8 +2781,8 @@ async function ntRoleAdd(btn) {
   const label = (document.getElementById('ntRoleLabel')?.value || '').trim();
   showError('ntError', '');
   if (label.length < 2) { showError('ntError', 'Name the role first: at least 2 characters.'); return; }
-  const orig = btn.textContent;
-  btn.disabled = true; btn.textContent = 'Adding…';
+  const orig = btnLabel(btn);
+  btn.disabled = true; btnLabel(btn, 'Adding…');
   try {
     const res = await apiFetch(ADMIN_ROLES_URL, { method: 'POST', body: JSON.stringify({ label }) });
     ntApplyRoles(res);
@@ -2791,7 +2791,7 @@ async function ntRoleAdd(btn) {
   } catch (ex) {
     showError('ntError', friendlyError(ex, 'Could not add the role.'));
   } finally {
-    btn.disabled = false; btn.textContent = orig;
+    btn.disabled = false; btnLabel(btn, orig);
   }
 }
 
@@ -2844,8 +2844,8 @@ function ntToggle(el) {
 
 async function ntSave(btn) {
   showError('ntError', '');
-  const orig = btn.textContent;
-  btn.disabled = true; btn.textContent = 'Saving…';
+  const orig = btnLabel(btn);
+  btn.disabled = true; btnLabel(btn, 'Saving…');
   try {
     const data = await apiFetch(ADMIN_NOTIFY_URL, { method: 'POST', body: JSON.stringify({ routes: ntState.routes }) });
     ntState = { ...data, routes: Object.fromEntries((data.events || []).map(e => [e.key, { ...e.route }])) };
@@ -2856,15 +2856,15 @@ async function ntSave(btn) {
   } catch (ex) {
     showError('ntError', friendlyError(ex, 'Could not save the routing.'));
   } finally {
-    btn.disabled = false; btn.textContent = orig;
+    btn.disabled = false; btnLabel(btn, orig);
   }
 }
 
 async function ntTest(btn) {
   const event = btn.dataset.ntTest;
   const out = document.getElementById('ntTestResult');
-  const orig = btn.textContent;
-  btn.disabled = true; btn.textContent = 'Sending…';
+  const orig = btnLabel(btn);
+  btn.disabled = true; btnLabel(btn, 'Sending…');
   try {
     const res = await apiFetch(ADMIN_NOTIFY_TEST_URL, { method: 'POST', body: JSON.stringify({ event }) });
     const label = ntState.events.find(e => e.key === event)?.label || event;
@@ -2877,7 +2877,7 @@ async function ntTest(btn) {
   } catch (ex) {
     if (out) { out.hidden = false; out.textContent = friendlyError(ex, 'The test could not be sent.'); }
   } finally {
-    btn.disabled = false; btn.textContent = orig;
+    btn.disabled = false; btnLabel(btn, orig);
   }
 }
 
@@ -2891,8 +2891,8 @@ async function ntSend(btn) {
   if (subject.length < 3) { showError('ntError', 'Give the notice a subject (at least 3 characters).'); return; }
   if (message.length < 10) { showError('ntError', 'Write the message first (at least 10 characters).'); return; }
   const send = async () => {
-    const orig = btn.textContent;
-    btn.disabled = true; btn.textContent = 'Sending…';
+    const orig = btnLabel(btn);
+    btn.disabled = true; btnLabel(btn, 'Sending…');
     try {
       const res = await apiFetch(ADMIN_NOTIFY_SEND_URL, { method: 'POST', body: JSON.stringify({ roles: ntNotice.roles, userIds: ntNotice.userIds, subject, message, sms }) });
       if (out) out.textContent = res.sent
@@ -2903,7 +2903,7 @@ async function ntSend(btn) {
     } catch (ex) {
       showError('ntError', friendlyError(ex, 'The notice could not be sent.'));
     } finally {
-      btn.disabled = false; btn.textContent = orig;
+      btn.disabled = false; btnLabel(btn, orig);
     }
   };
   const who = ntNotice.roles.map(ntLabel).join(', ');
@@ -2951,12 +2951,12 @@ function rpCardHtml(r) {
         <div class="rp-note">
           <textarea class="adm-input" id="rpNote-${escapeHtml(r.id)}" rows="2" maxlength="2000" placeholder="Note to the reporter (optional). Sent by email when you close."></textarea>
           <div class="adm-actions-row">
-            <button class="btn adm-copy" type="button" data-rp-close-report="${escapeHtml(r.id)}" title="Marks the report closed. If the note has text, the reporter receives it by email. Click twice to confirm.">Close report</button>
+            <button class="btn btn-sm btn-lead btn-primary" type="button" data-rp-close-report="${escapeHtml(r.id)}" data-tip="Marks the report closed. If the note has text, the reporter receives it by email. Click twice to confirm.">${ico('checkCircle')}<span>Close report</span></button>
           </div>
         </div>` : `
         ${r.note ? `<div class="rp-note"><div class="adm-muted">Note to the reporter</div><pre class="adm-pre">${escapeHtml(r.note)}</pre></div>` : ''}
         <div class="adm-muted" style="margin-top:8px">Closed ${escapeHtml(fmtDate(r.closedAt))}${r.closedBy ? ` by ${escapeHtml(r.closedBy)}` : ''}</div>
-        <div class="adm-actions-row"><button class="btn adm-copy" type="button" data-rp-reopen="${escapeHtml(r.id)}">Reopen</button></div>`}
+        <div class="adm-actions-row"><button class="btn btn-sm btn-lead" type="button" data-rp-reopen="${escapeHtml(r.id)}">${ico('undo')}<span>Reopen</span></button></div>`}
     </div>`;
 }
 
@@ -3001,14 +3001,14 @@ async function loadReports() {
 }
 
 async function rpPatch(btn, id, patch) {
-  const orig = btn.textContent;
-  btn.disabled = true; btn.textContent = 'Working…';
+  const orig = btnLabel(btn);
+  btn.disabled = true; btnLabel(btn, 'Working…');
   try {
     await apiFetch(ADMIN_ANOMALY_PATCH_URL, { method: 'POST', body: JSON.stringify({ id, kind: rpKind, ...patch }) });
     await loadReports();
   } catch (ex) {
     showError('rpError', friendlyError(ex, 'Could not update the report.'));
-    btn.disabled = false; btn.textContent = orig;
+    btn.disabled = false; btnLabel(btn, orig);
   }
 }
 
@@ -3053,12 +3053,12 @@ function admOrderRowHtml(o) {
       <td class="cell-tight">
         <div class="adm-order-actions">
           ${safeUrl(o.labelUrl)
-            ? `<a class="btn adm-copy" href="${escapeHtml(safeUrl(o.labelUrl))}" target="_blank" rel="noopener" title="Opens the 4x6 label PDF for printing"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9V3h12v6"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 14h12v7H6z"/></svg>Print</a>`
+            ? `<a class="btn btn-sm btn-lead" href="${escapeHtml(safeUrl(o.labelUrl))}" target="_blank" rel="noopener" title="Opens the 4x6 label PDF for printing"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9V3h12v6"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 14h12v7H6z"/></svg>Print</a>`
             : (paid && physical
-                ? `<button class="btn adm-copy" type="button" data-adm-action="order-label" data-order="${escapeHtml(o.orderId)}" title="Buys the shipping label from Shippo with the rate the customer paid for"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"/><circle cx="7.5" cy="7.5" r="1.5"/></svg>Buy label</button>`
+                ? `<button class="btn btn-sm btn-lead btn-primary" type="button" data-adm-action="order-label" data-order="${escapeHtml(o.orderId)}" title="Buys the shipping label from Shippo with the rate the customer paid for"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"/><circle cx="7.5" cy="7.5" r="1.5"/></svg>Buy label</button>`
                 : '')}
           ${orderRefundable(o)
-            ? `<button class="btn adm-copy btn-danger" type="button" data-adm-action="order-refund"
+            ? `<button class="btn btn-sm btn-lead is-danger" type="button" data-adm-action="order-refund"
                  data-order="${escapeHtml(o.orderId)}" data-total="${Number(o.totalCents) || 0}"
                  data-refunded="${Number(o.refundedCents) || 0}" data-goods="${Number(o.goodsCents) || 0}"
                  title="Refund this order through Stripe (a hardware return)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>Refund</button>`
@@ -3101,8 +3101,8 @@ async function renderAdminOrders(main) {
       <div class="adm-toolbar od-range">
         <label class="od-range-lbl">From <input class="adm-input od-date" id="odFrom" type="date" value="${escapeHtml(odRange.from)}" aria-label="Orders from date"></label>
         <label class="od-range-lbl">To <input class="adm-input od-date" id="odTo" type="date" value="${escapeHtml(odRange.to)}" aria-label="Orders to date"></label>
-        <button class="btn adm-copy" type="button" data-adm-action="orders-clear-range" title="Drop the date range">All time</button>
-        <button class="btn adm-copy" type="button" data-adm-action="orders-export" title="Every row below with every money column, as a spreadsheet file">Export CSV</button>
+        <button class="btn btn-sm btn-ico" type="button" data-adm-action="orders-clear-range" data-tip="Drop the date range" aria-label="All time: drop the date range">${ico('calendarX')}</button>
+        <button class="btn btn-sm btn-ico" type="button" data-adm-action="orders-export" data-tip="Every row below with every money column, as a spreadsheet file" aria-label="Export CSV: every row below with every money column">${ico('download')}</button>
       </div>
     </header>
     <p class="adm-error" id="admOrdersError" hidden></p>
@@ -3253,8 +3253,8 @@ async function buyOrderLabel(btn) {
   if (!orderId) return;
   armConfirm(btn, 'Confirm: buy label', async () => {
     btn.disabled = true;
-    const orig = btn.textContent;
-    btn.textContent = 'Buying…';
+    const orig = btnLabel(btn);
+    btnLabel(btn, 'Buying…');
     showError('admOrdersError', '');
     try {
       const res = await apiFetch(ADMIN_ORDER_LABEL_URL, { method: 'POST', body: JSON.stringify({ orderId }) });
@@ -3264,7 +3264,7 @@ async function buyOrderLabel(btn) {
     } catch (ex) {
       showError('admOrdersError', friendlyError(ex, 'Label purchase failed.'));
       btn.disabled = false;
-      btn.textContent = orig;
+      btnLabel(btn, orig);
     }
   });
 }
@@ -3495,8 +3495,8 @@ async function loadLabelsAndQueue() {
 
 async function runWebhookSync(btn, url, label, body = {}) {
   btn.disabled = true;
-  const orig = btn.textContent;
-  btn.textContent = 'Syncing…';
+  const orig = btnLabel(btn);
+  btnLabel(btn, 'Syncing…');
   const out = document.getElementById('admIntegrationsResult');
   try {
     const res = await apiFetch(url, { method: 'POST', body: JSON.stringify(body) });
@@ -3517,7 +3517,7 @@ async function runWebhookSync(btn, url, label, body = {}) {
     if (out) { out.textContent = `${label}: ${friendlyError(ex, 'sync failed')}`; out.hidden = false; }
   } finally {
     btn.disabled = false;
-    btn.textContent = orig;
+    btnLabel(btn, orig);
   }
 }
 
@@ -3529,12 +3529,12 @@ async function runBillingReconcile(btn, dryRun) {
   const out = document.getElementById('admReconcileResult');
   const show = (text) => { if (out) { out.textContent = text; out.hidden = false; } };
   if (!who) { show('Enter the account email or userId first.'); return; }
-  if (!dryRun && !window.confirm(`Reconcile billing for ${who} from Stripe? This writes Stripe metadata, the profile link, status and tier.`)) return;
+  if (!dryRun && !armed(btn, `Write it for ${who}?`)) return;
 
   const body = who.includes('@') ? { email: who.toLowerCase(), dryRun } : { userId: who, dryRun };
   btn.disabled = true;
-  const orig = btn.textContent;
-  btn.textContent = dryRun ? 'Planning…' : 'Reconciling…';
+  const orig = btnLabel(btn);
+  btnLabel(btn, dryRun ? 'Planning…' : 'Reconciling…');
   try {
     const r = await apiFetch(BILLING_RECONCILE_URL, { method: 'POST', body: JSON.stringify(body) });
     const lines = [
@@ -3552,7 +3552,7 @@ async function runBillingReconcile(btn, dryRun) {
     show(`Reconcile: ${friendlyError(ex, 'failed')}`);
   } finally {
     btn.disabled = false;
-    btn.textContent = orig;
+    btnLabel(btn, orig);
   }
 }
 
@@ -3564,7 +3564,7 @@ function mintResultHtml(result) {
     <div class="adm-result">
       <div class="adm-result-head">
         <strong>${codes.length} code${codes.length === 1 ? '' : 's'} minted</strong>
-        <button class="btn adm-copy" type="button" data-adm-action="copy" title="Copy every minted code to the clipboard">Copy all</button>
+        <button class="btn btn-sm btn-ico" type="button" data-adm-action="copy" data-tip="Copy every minted code to the clipboard" aria-label="Copy every minted code">${ico('copy')}</button>
       </div>
       <p class="adm-note">Batch ${escapeHtml(result.batchId || '')}</p>
       <ul class="adm-codes" id="admCodeList">
@@ -3622,7 +3622,7 @@ function renderWarranty(main) {
           <label class="adm-label" for="admNote">Note</label>
           <input class="adm-input" id="admNote" type="text" maxlength="80" placeholder="e.g. October build">
         </div>
-        <div class="adm-actions"><button class="cta" type="button" data-adm-action="mint">Mint codes</button></div>
+        <div class="adm-actions"><button class="btn btn-sm btn-lead btn-primary" type="button" data-adm-action="mint">${ico('plus')}<span>Mint codes</span></button></div>
         <p class="adm-error" id="admMintError" hidden></p>
         <div id="admMintResult"></div>
       </section>
@@ -3668,8 +3668,8 @@ async function mint(btn) {
   // backend refuses over-cap batches, but say so BEFORE the round trip.
   if (count > 500) { showError('admMintError', 'You can mint at most 500 codes per batch.'); return; }
   btn.disabled = true;
-  const original = btn.textContent;
-  btn.textContent = 'Minting…';
+  const original = btnLabel(btn);
+  btnLabel(btn, 'Minting…');
   try {
     const result = await apiFetch(ISSUE_URL, { method: 'POST', body: JSON.stringify({ count, productId, note }) });
     const out = document.getElementById('admMintResult');
@@ -3680,7 +3680,7 @@ async function mint(btn) {
     showError('admMintError', friendlyError(ex, 'Mint failed.'));
   } finally {
     btn.disabled = false;
-    btn.textContent = original;
+    btnLabel(btn, original);
   }
 }
 
@@ -3688,9 +3688,9 @@ function copyCodes(btn) {
   const codes = [...document.querySelectorAll('#admCodeList code')].map(c => c.textContent).join('\n');
   if (!codes) return;
   navigator.clipboard?.writeText(codes).then(() => {
-    const original = btn.textContent;
-    btn.textContent = 'Copied';
-    setTimeout(() => { btn.textContent = original; }, 1200);
+    const original = btnLabel(btn);
+    btnLabel(btn, 'Copied');
+    setTimeout(() => { btnLabel(btn, original); }, 1200);
   }).catch(() => { /* clipboard blocked; codes are on screen anyway */ });
 }
 
@@ -3746,8 +3746,8 @@ function renderCatalog(main) {
           </table>
         </div>
         <div class="adm-actions-row">
-          <button class="cta" type="button" data-adm-action="catalog-snapshot"
-            title="Saves this lane's catalog in this browser so you can import it after flipping lanes">Snapshot ${rows.length} row${rows.length === 1 ? '' : 's'} from ${escapeHtml(LANE)}</button>
+          <button class="btn btn-sm btn-lead btn-primary" type="button" data-adm-action="catalog-snapshot"
+            data-tip="Saves this lane's catalog in this browser so you can import it after flipping lanes">${ico('database')}<span>Snapshot ${rows.length} row${rows.length === 1 ? '' : 's'} from ${escapeHtml(LANE)}</span></button>
         </div>
       ` : `
         <p class="muted">No catalog rows on this lane yet. Sign out and back in if you subscribed
@@ -3761,8 +3761,8 @@ function renderCatalog(main) {
         physical goods bound to their products (a one-time price with lookup key <code>po.goods.&lt;sku&gt;.&lt;variant&gt;</code>
         on a product tagged <code>po_sku</code>). Run it after changing products or prices in Stripe. Nothing pulls at page load.</p>
       <div class="adm-actions-row">
-        <button class="cta" type="button" data-adm-action="catalog-sync" title="Reads Stripe now and updates the catalog table on this lane">Sync from Stripe</button>
-        <button class="btn" type="button" data-adm-action="catalog-copy" title="Copies the raw inventory as plain text: every keyed price, the goods rows, and the keyless prices from the last sync">Copy list</button>
+        <button class="btn btn-sm btn-lead btn-primary" type="button" data-adm-action="catalog-sync" data-tip="Reads Stripe now and updates the catalog table on this lane">${ico('refresh')}<span>Sync from Stripe</span></button>
+        <button class="btn btn-sm btn-ico" type="button" data-adm-action="catalog-copy" data-tip="Copies the raw inventory as plain text: every keyed price, the goods rows, and the keyless prices from the last sync" aria-label="Copy the raw inventory as plain text">${ico('copy')}</button>
         <span class="muted nt-result" id="admCatalogSyncResult"></span>
       </div>
       <p class="adm-error" id="admCatalogSyncError" hidden></p>
@@ -3788,8 +3788,9 @@ function renderCatalog(main) {
              <strong>${escapeHtml(LANE)}</strong> lane's Stripe account (by lookup key, idempotent),
              then syncs its ProductCatalog table.</p>
              <div class="adm-actions-row">
-               <button class="cta" type="button" data-adm-action="catalog-import"
-                 title="Creates the missing products and prices in this lane's Stripe account, then syncs its catalog table">Import into ${escapeHtml(LANE)}</button>
+               ${LANE === 'live' ? '<input class="adm-input adm-live-word" id="admImportLiveWord" type="text" autocomplete="off" spellcheck="false" placeholder="type live" aria-label="Type live to import into the live Stripe account">' : ''}
+               <button class="btn btn-sm btn-lead btn-primary" type="button" data-adm-action="catalog-import"
+                 data-tip="Creates the missing products and prices in this lane's Stripe account, then syncs its catalog table">${ico('upload')}<span>Import into ${escapeHtml(LANE)}</span></button>
              </div>`}
       ` : `
         <p class="muted">No snapshot stored. Take one on the lane that has the catalog (live), then
@@ -3891,8 +3892,8 @@ async function catalogSync(btn) {
   showError('admCatalogSyncError', '');
   const out = document.getElementById('admCatalogSyncResult');
   const diagEl = document.getElementById('admCatalogSyncDiag');
-  const orig = btn.textContent;
-  btn.disabled = true; btn.textContent = 'Syncing…';
+  const orig = btnLabel(btn);
+  btn.disabled = true; btnLabel(btn, 'Syncing…');
   try {
     const r = await apiFetch(CATALOG_SYNC_URL, { method: 'POST', body: '{}' });
     lastCatalogSync = r;
@@ -3923,7 +3924,7 @@ async function catalogSync(btn) {
   } catch (ex) {
     showError('admCatalogSyncError', friendlyError(ex, 'The sync could not run.'));
   } finally {
-    btn.disabled = false; btn.textContent = orig;
+    btn.disabled = false; btnLabel(btn, orig);
   }
 }
 
@@ -3953,12 +3954,12 @@ async function catalogImport(btn) {
   // backend refuses without the confirm token; the operator types the word.
   let confirm;
   if (LANE === 'live') {
-    confirm = window.prompt('This imports into the LIVE Stripe account. Type "live" to confirm.') || '';
-    if (confirm.trim().toLowerCase() !== 'live') return;
+    const word = String(document.getElementById('admImportLiveWord')?.value || '').trim().toLowerCase();
+    if (word !== 'live') { showError('admCatalogError', 'This imports into the LIVE Stripe account. Type live in the box beside the button, then press Import.'); document.getElementById('admImportLiveWord')?.focus(); return; }
     confirm = 'live';
   }
   btn.disabled = true;
-  btn.textContent = 'Importing…';
+  btnLabel(btn, 'Importing…');
   try {
     const data = await apiFetch(CATALOG_IMPORT_URL, {
       method: 'POST',
@@ -3974,7 +3975,7 @@ async function catalogImport(btn) {
   } catch (ex) {
     showError('admCatalogError', friendlyError(ex, 'Import failed.'));
     btn.disabled = false;
-    btn.textContent = `Import into ${LANE}`;
+    btnLabel(btn, `Import into ${LANE}`);
   }
 }
 

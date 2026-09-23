@@ -208,7 +208,7 @@
 .btn.btn-ico .ev-ico { width: 16px; height: 16px; }
 .btn.btn-ico:hover { color: var(--brand-600); transform: translateY(-1px); }
 .btn.btn-lead { display: inline-flex; align-items: center; gap: 7px; }
-.btn.btn-lead .ev-ico { width: 15px; height: 15px; flex: none; }
+.btn.btn-lead .ev-ico, .btn.btn-lead > svg { width: 15px; height: 15px; flex: none; }
 .btn.btn-lead > span { min-width: 0; }
 
 /* the one primary action of a card: filled with the brand */
@@ -284,3 +284,4 @@
 }
 .btn.btn-sm { min-height: var(--ctl-h); }
 .btn.btn-ico, .btn.btn-sm.btn-ico { width: var(--ctl-h); min-width: var(--ctl-h); height: var(--ctl-h); min-height: var(--ctl-h); }
+.adm-live-word { width: 8.5rem; flex: 0 0 auto; }

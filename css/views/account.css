@@ -80,7 +80,10 @@
   position: static; background: none; border: 0; z-index: auto;
   -webkit-backdrop-filter: none; backdrop-filter: none;
   margin-bottom: 18px;
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
 }
+/* a section's own actions (refresh) sit at the end of its title line, as on the operator desks */
+.acct-sec-head > .ev-actions { margin-left: auto; }
 .account .acct-sec-title { margin: 0; font-size: 1.3rem; font-weight: 700; letter-spacing: -.015em; color: var(--ink); }
 
 /* The card a link landed on (2026-09-16): one soft flash, then gone. */

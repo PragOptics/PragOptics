@@ -108,12 +108,18 @@ export function leadBtn(action, name, label, attrs = '', cls = '') {
   return `<button class="btn btn-sm btn-lead ${cls}" type="button" ${attr}="${esc(value)}" ${attrs}>${ico(name)}<span>${esc(label)}</span></button>`;
 }
 
-/** Set a button's word ("Saving…", "Saved") without dropping its icon: the span of a leadBtn, else the whole text. */
+/** Read or set a button's word ("Saving…", "Saved") without dropping its icon: the span of a leadBtn, the tip of an icon button, else the whole text. */
 export function btnLabel(btn, text) {
   if (!btn) return '';
+  // an icon button's word is its tooltip and its label for screen readers; its icon stays
+  if (btn.classList.contains('btn-ico')) {
+    const before = btn.getAttribute('data-tip') || btn.getAttribute('aria-label') || '';
+    if (text !== undefined) { btn.setAttribute('data-tip', text); btn.setAttribute('aria-label', text); }
+    return before;
+  }
   const span = btn.classList.contains('btn-lead') ? btn.querySelector(':scope > span') : null;
   const before = span ? span.textContent : btn.textContent;
-  if (span) span.textContent = text; else btn.textContent = text;
+  if (text !== undefined) { if (span) span.textContent = text; else btn.textContent = text; }
   return before;
 }
 
