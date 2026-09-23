@@ -226,7 +226,10 @@
         flow.style.display = "none";
       }
       window.setConsoleAuthenticated?.();
-      presetAccountSection("profile");
+      // a section the address bar names (/#account?section=licensing) is where this lands, not Profile first
+      let wanted = "profile";
+      try { if (/^#account/i.test(String(location.hash || ""))) wanted = new URLSearchParams(String(location.hash).split("?")[1] || "").get("section") || "profile"; } catch { /* Profile */ }
+      presetAccountSection(wanted);
       setAppMode("account");
       renderConsoleBanner(banner);
     }

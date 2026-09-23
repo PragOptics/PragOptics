@@ -529,8 +529,8 @@ async function renderProfile(main) {
     ${platformLaneCardHtml()}
   `;
   packGrid(main.querySelector('.acct-grid'));
-  await loadAliases();
-  await loadPhone();
+  const aliasData = await loadAliases();
+  await loadPhone(aliasData);
   await loadPasskeys();
   await loadNotifyPrefs();
 }
@@ -682,11 +682,12 @@ function phoneStateHtml({ phone, phoneVerified, reverifyDue }) {
   `;
 }
 
-async function loadPhone() {
+/** The phone card, from the address list's answer when the caller already has it (the Profile render does). */
+async function loadPhone(known = null) {
   const host = document.getElementById('acctPhoneState');
   if (!host) return;
   try {
-    const data = await apiFetch(ALIASES_URL);
+    const data = known || await apiFetch(ALIASES_URL);
     const reverifyDue = data.phoneReverifyRequired === true;
     host.innerHTML = phoneStateHtml({ phone: data.phone || '', phoneVerified: data.phoneVerified === true, reverifyDue });
     setCardSummary('profile:phone', escapeHtml(!data.phone ? 'none yet' : reverifyDue ? `${data.phone} · confirm again` : data.phoneVerified === true ? `${data.phone} · verified` : `${data.phone} · not confirmed`));
@@ -838,9 +839,10 @@ function platformLaneCardHtml() {
       ${laneSwitchHtml('data-acct-action')}` })}</div>`;
 }
 
+/** The address list, read once; the phone card reads the same answer (2026-09-23: each card fetched it on its own). */
 async function loadAliases() {
   const host = document.getElementById('acctAliasList');
-  if (!host) return;
+  if (!host) return null;
   showError('acctProfileError', '');
   try {
     const data = await apiFetch(ALIASES_URL);
@@ -853,9 +855,10 @@ async function loadAliases() {
     if (!list.length) {
       // Fall back to the ping's primary so the section is never empty.
       host.innerHTML = aliasRowHtml({ displayEmail: currentEmail(), isPrimary: true, state: 'VERIFIED' });
-      return;
+      return data;
     }
     host.innerHTML = list.map(aliasRowHtml).join('');
+    return data;
   } catch (ex) {
     // Could not read the list, so nothing is known about the primary; fall
     // back to the ping rather than trusting a value from a previous account.
@@ -863,6 +866,7 @@ async function loadAliases() {
     // Until the endpoint ships, show the current primary from the ping.
     host.innerHTML = aliasRowHtml({ displayEmail: currentEmail(), isPrimary: true, state: 'VERIFIED' });
     if (ex.status && ex.status !== 404) showError('acctProfileError', friendlyError(ex, 'Could not load addresses.'));
+    return null;
   }
 }
 
@@ -4258,6 +4262,13 @@ export function initAccountView() {
   });
 }
 
+// The two ways a load lands in the panel (the sign-in's own landing and the address bar's route) arrive within a moment
+// of each other; the second found the same section already rendering and fetched all of it again (2026-09-23,
+// Profile read its lists twice, the address list four times). A second entry into the same section inside this
+// window is the same visit.
+const ENTER_WINDOW_MS = 1500;
+let lastEnter = { id: '', at: 0 };
+
 export function onAccountEnter() {
   if (!$body) return;
   syncUserTheme();
@@ -4280,6 +4291,10 @@ export function onAccountEnter() {
     $body.innerHTML = shellHtml();
     mounted = true;
     mountedAsAdmin = admin;
+    lastEnter = { id: '', at: 0 };
   }
+  const now = Date.now();
+  if (lastEnter.id === activeSection && now - lastEnter.at < ENTER_WINDOW_MS) return;
+  lastEnter = { id: activeSection, at: now };
   showSection(activeSection);
 }
