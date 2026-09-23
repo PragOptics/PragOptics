@@ -277,7 +277,22 @@ select.acct-input { background-color: var(--surface-deep); }
 .acct-notify-main { display: grid; gap: 2px; min-width: 0; flex: 1 1 14rem; }
 .acct-notify-name { font-weight: 600; color: var(--ink); }
 .acct-notify-detail { font-size: .8rem; line-height: 1.4; }
-.acct-notify-ctl { display: flex; gap: 14px; flex-wrap: wrap; }
+.acct-notify-ctl { display: flex; gap: 8px; flex-wrap: wrap; }
+/* a channel as a toggle chip (2026-09-23 polish): the checkbox underneath, the chip shows on or off */
+.acct-chip {
+  position: relative; display: inline-flex; align-items: center; gap: 6px;
+  height: 30px; padding: 0 12px 0 10px; border-radius: var(--radius-pill, 999px);
+  border: 1px solid var(--border); background: color-mix(in srgb, var(--ink) 3%, transparent);
+  color: var(--muted); font-size: .8rem; font-weight: 700; cursor: pointer; user-select: none;
+  transition: background 140ms ease, border-color 140ms ease, color 140ms ease;
+}
+.acct-chip input { position: absolute; opacity: 0; width: 0; height: 0; margin: 0; }
+.acct-chip:hover { border-color: color-mix(in srgb, var(--brand-600) 45%, var(--border)); color: var(--ink); }
+.acct-chip:has(input:checked) { color: var(--brand-600); border-color: color-mix(in srgb, var(--brand-600) 55%, transparent); background: color-mix(in srgb, var(--brand-600) 12%, transparent); }
+.acct-chip:has(input:focus-visible) { outline: 2px solid var(--brand-600); outline-offset: 2px; }
+.acct-chip.is-locked { opacity: .5; cursor: not-allowed; }
+.acct-chip .ev-ico { width: 14px; height: 14px; }
+.acct-stars-switch { margin-top: 12px; }
 .acct-notify-why { margin: 0 0 10px; }
 
 /* Appearance (Profile): a two-way choice, the pressed side reads as chosen. */

@@ -24,7 +24,7 @@ import { renderEnvironment, bindEnvironmentActions } from './environment.js';
 import { renderLicensing, bindLicensingActions } from './licensing.js';
 import { renderBuildsQueue, renderMyBuilds } from './buildsDesk.js';
 import { explainLink } from '../components/explainer.js';
-import { cardHtml, iconBtn, ico, setCardSummary, initCards, openCardOf, packGrid } from './cards.js';
+import { cardHtml, iconBtn, leadBtn, btnLabel, armed, ico, setCardSummary, initCards, openCardOf, packGrid } from './cards.js';
 import { applyTheme, getTheme, applyStarfield, getStarfield } from '../runtime/theme.js';
 import { sunSvg, moonSvg, LIGHT_LABEL, DARK_LABEL } from '../components/themeMarks.js';
 import { syncUserTheme, rememberUserTheme, rememberUserPreference } from '../runtime/userTheme.js';
@@ -383,13 +383,15 @@ function shellHtml() {
         </ul>
         <div class="adm-side-report">
           <span class="adm-side-report-img" aria-hidden="true"></span>
-          <button class="btn btn-sm adm-side-report-btn" type="button" data-acct-action="report-anomaly"
-            title="Tell us about a bug or anything that looked wrong. Page details come along so we can find it.">Report Anomaly</button>
-          <button class="btn btn-sm adm-side-report-btn is-support" type="button" data-acct-action="support-request"
-            title="Ask a question or ask for something on your account, plan, licenses, domains or environment. A person answers by email.">Support</button>
+          <span class="adm-side-report-btns">
+            <button class="btn btn-sm adm-side-report-btn" type="button" data-acct-action="report-anomaly"
+              aria-label="Report an anomaly" data-tip="Report a bug or anything that looked wrong; page details come along"><span class="adm-side-alien" aria-hidden="true"></span><span class="adm-side-btn-text">Report Anomaly</span></button>
+            <button class="btn btn-sm adm-side-report-btn is-support" type="button" data-acct-action="support-request"
+              aria-label="Ask support" data-tip="Ask about your account, plan, licenses, domains or environment; a person answers by email">${ico('help')}<span class="adm-side-btn-text">Support</span></button>
+          </span>
         </div>
         <div class="adm-side-foot">
-          <button class="btn acct-signout" type="button" data-acct-action="logout">Sign out</button>
+          <button class="btn acct-signout" type="button" data-acct-action="logout" aria-label="Sign out" data-tip="Sign out of this browser">${ico('logOut')}<span class="adm-side-btn-text">Sign out</span></button>
         </div>
       </nav>
       <main class="adm-main" id="acctMain"><!-- section --></main>
@@ -417,10 +419,10 @@ function aliasRowHtml(a) {
           ${pending ? '<span class="acct-tag is-pending">Unverified</span>' : ''}
         </span>
       </div>
-      <div class="acct-alias-actions">
-        ${verified && !primary ? `<button class="btn btn-sm" type="button" data-acct-action="make-primary" data-alias="${escapeHtml(a.aliasId)}">Make primary</button>` : ''}
-        ${!primary ? `<button class="btn btn-sm btn-ghost" type="button" data-acct-action="remove-alias" data-alias="${escapeHtml(a.aliasId)}">Remove</button>` : ''}
-        ${pending ? `<button class="btn btn-sm" type="button" data-acct-action="verify-alias" data-alias="${escapeHtml(a.aliasId)}" data-claim="${escapeHtml(a.claimId || '')}">Enter code</button>` : ''}
+      <div class="acct-alias-actions act-row">
+        ${pending ? iconBtn({ acct: 'verify-alias' }, 'hash', 'Enter the code we emailed to it', `data-alias="${escapeHtml(a.aliasId)}" data-claim="${escapeHtml(a.claimId || '')}"`, 'btn-primary') : ''}
+        ${verified && !primary ? iconBtn({ acct: 'make-primary' }, 'star', 'Make this the primary address', `data-alias="${escapeHtml(a.aliasId)}"`) : ''}
+        ${!primary ? iconBtn({ acct: 'remove-alias' }, 'trash', 'Remove this address (you confirm with a code)', `data-alias="${escapeHtml(a.aliasId)}"`, 'is-risky') : ''}
       </div>
     </li>
   `;
@@ -451,6 +453,8 @@ async function setStarfieldPreference(value) {
   const v = value === 'off' ? 'off' : 'on';
   applyStarfield(v);
   document.querySelectorAll('[data-acct-action="starfield-set"]').forEach(b => b.setAttribute('aria-pressed', b.dataset.starfield === v ? 'true' : 'false'));
+  const sw = document.getElementById('acctStarsSwitch');
+  if (sw) { sw.checked = v === 'on'; const t = sw.closest('.ev-switch')?.querySelector('.ev-switch-text'); if (t) t.textContent = `Starfield ${v}`; }
   showError('acctThemeError', '');
   try {
     await apiFetch(`${PRAG_API_BASE}/account/preferences`, { method: 'POST', body: JSON.stringify({ starfield: v }) });
@@ -470,15 +474,15 @@ async function renderProfile(main) {
       <ul class="acct-alias-list" id="acctAliasList"><li class="acct-loading">Loading…</li></ul>
       <div class="acct-add-row">
         <input class="acct-input" id="acctNewEmail" type="email" autocomplete="email" placeholder="add another email…" aria-label="New email address">
-        <button class="cta btn-sm" type="button" data-acct-action="add-alias">Add</button>
+        ${iconBtn({ acct: 'add-alias' }, 'plus', 'Add this address (we email it a code)', '', 'btn-primary')}
       </div>
       <p class="acct-card-note ev-dom-door">Any verified address signs you in. The primary one gets account and recovery mail.</p>
       <p class="acct-error" id="acctProfileError" hidden></p>` })}
     ${cardHtml({ key: 'profile:twofactor', icon: 'shield', title: 'Two-factor', summary: 'loading', body: `
       <div class="acct-alias-list" id="acctPasskeyList"><span class="acct-loading">Loading…</span></div>
-      <div class="acct-add-row">
-        <button class="cta btn-sm" type="button" data-acct-action="add-passkey" title="Registers a passkey on this device. You confirm with your current password.">Add passkey</button>
-        <button class="btn btn-sm" type="button" data-acct-action="reset-2fa" title="Clears the current authenticator and sets up a new one right away. Use it when you switch phones.">Reset authenticator</button>
+      <div class="acct-add-row act-row">
+        ${leadBtn({ acct: 'add-passkey' }, 'fingerprint', 'Add passkey', 'data-tip="Registers a passkey on this device; you confirm with your password"', 'btn-primary')}
+        ${iconBtn({ acct: 'reset-2fa' }, 'refresh', 'Reset the authenticator: clears it and sets up a new one (for a new phone)')}
       </div>
       <p class="acct-card-note ev-dom-door">Sign-in always needs a second step: an authenticator app, a passkey, or both. Either one completes it.</p>
       <p class="acct-error" id="acct2faError" hidden></p>` })}
@@ -486,20 +490,20 @@ async function renderProfile(main) {
       <div class="acct-alias-list" id="acctPhoneState"><span class="acct-loading">Loading…</span></div>
       <div class="acct-add-row">
         <input class="acct-input" id="acctNewPhone" type="tel" autocomplete="tel" placeholder="+1 555 123 4567" aria-label="Mobile number">
-        <button class="cta btn-sm" type="button" data-acct-action="phone-start">Send code</button>
+        ${iconBtn({ acct: 'phone-start' }, 'send', 'Text a code to this number', '', 'btn-primary')}
       </div>
       <p class="acct-card-note ev-dom-door">For sign-in codes by text. A number counts once you confirm a code sent to it.</p>
       <p class="acct-error" id="acctPhoneError" hidden></p>` })}
     ${cardHtml({ key: 'profile:notify', icon: 'bell', title: 'Notifications', summary: 'email to your primary address', body: `
       <div id="acctNotifyPrefs"><span class="acct-loading">Loading…</span></div>
       <div class="acct-add-row">
-        <button class="cta btn-sm" type="button" data-acct-action="notify-save">Save</button>
+        ${leadBtn({ acct: 'notify-save' }, 'check', 'Save', '', 'btn-primary')}
       </div>
       <p class="acct-card-note ev-dom-door">Order, warranty and security mail always comes to your primary address. Texts per category once your number is verified.</p>
       <p class="acct-error" id="acctNotifyError" hidden></p>` })}
     ${cardHtml({ key: 'profile:password', icon: 'lock', title: 'Password', summary: 'change it any time', body: `
       <div class="acct-add-row">
-        <button class="cta btn-sm" type="button" data-acct-action="change-password">Change password</button>
+        ${leadBtn({ acct: 'change-password' }, 'lock', 'Change password')}
       </div>
       <p class="acct-card-note ev-dom-door">Changing it signs out every other device.</p>
       <p class="acct-error" id="acctPasswordError" hidden></p>` })}
@@ -508,17 +512,17 @@ async function renderProfile(main) {
         <button class="btn btn-sm acct-theme-btn" type="button" data-acct-action="theme-set" data-theme="dark" aria-pressed="${theme === 'dark' ? 'true' : 'false'}">${DARK_LABEL}${moonSvg('acct-theme-ico')}</button>
         <button class="btn btn-sm acct-theme-btn" type="button" data-acct-action="theme-set" data-theme="light" aria-pressed="${theme === 'light' ? 'true' : 'false'}">${LIGHT_LABEL}${sunSvg('acct-theme-ico')}</button>
       </div>
-      <div class="acct-seg" role="group" aria-label="Starfield">
-        <button class="btn btn-sm" type="button" data-acct-action="starfield-set" data-starfield="on" aria-pressed="${stars === 'on' ? 'true' : 'false'}">Stars on</button>
-        <button class="btn btn-sm" type="button" data-acct-action="starfield-set" data-starfield="off" aria-pressed="${stars === 'off' ? 'true' : 'false'}">Stars off</button>
-      </div>
+      <label class="ev-switch acct-stars-switch">
+        <input type="checkbox" id="acctStarsSwitch" data-acct-stars ${stars === 'on' ? 'checked' : ''}>
+        <span class="ev-switch-track" aria-hidden="true"><span class="ev-switch-thumb"></span></span>
+        <span class="ev-switch-text">Starfield ${stars === 'on' ? 'on' : 'off'}</span>
+      </label>
       <p class="acct-card-note ev-dom-door">Remembered on your account, so the site looks the same wherever you sign in.</p>
       <p class="acct-error" id="acctThemeError" hidden></p>` })}
     ${cardHtml({ key: 'profile:close', icon: 'alert', title: 'Close account', summary: 'permanent', danger: true, body: `
       <p class="acct-card-note ev-dom-door">Closing is permanent: it signs you out everywhere, removes your sign-in, and ends any subscription now, with no refund for the rest of a paid period. To keep service until the period ends, cancel on Billing instead.</p>
       <div class="acct-add-row">
-        <button class="btn btn-sm btn-danger" type="button" data-acct-action="close-account"
-          title="Opens a confirmation step. Nothing changes until you confirm there.">Close my account</button>
+        ${leadBtn({ acct: 'close-account' }, 'alert', 'Close my account', 'data-tip="Opens a confirmation step; nothing changes until you confirm there"', 'is-danger')}
       </div>
       <p class="acct-error" id="acctCloseError" hidden></p>` })}
     </div>
@@ -670,9 +674,9 @@ function phoneStateHtml({ phone, phoneVerified, reverifyDue }) {
         <span class="acct-alias-email">${escapeHtml(phone)}</span>
         <span class="acct-alias-tags">${tag}</span>
       </div>
-      <div class="acct-alias-actions">
-        ${reverifyDue ? `<button class="btn btn-sm" type="button" data-acct-action="phone-reverify" data-phone="${escapeHtml(phone)}" title="Texts a new code to this number">Verify again</button>` : ''}
-        <button class="btn btn-sm btn-ghost" type="button" data-acct-action="phone-remove">Remove</button>
+      <div class="acct-alias-actions act-row">
+        ${reverifyDue ? iconBtn({ acct: 'phone-reverify' }, 'send', 'Verify again: texts a new code to this number', `data-phone="${escapeHtml(phone)}"`, 'btn-primary') : ''}
+        ${iconBtn({ acct: 'phone-remove' }, 'trash', 'Remove this number', '', 'is-risky')}
       </div>
     </div>
   `;
@@ -743,9 +747,9 @@ function notifyPrefsHtml(d) {
               <span class="acct-notify-detail muted">${escapeHtml(c.detail)}</span>
             </div>
             <div class="acct-notify-ctl">
-              ${sms ? `<label class="um-check ${smsOff ? 'is-locked' : ''}" ${why ? `title="${escapeHtml(why)}"` : ''}>
-                <input type="checkbox" data-np="${escapeHtml(c.key)}|sms" ${p.sms ? 'checked' : ''} ${smsOff ? 'disabled' : ''}> Text me</label>` : ''}
-              ${em ? `<label class="um-check"><input type="checkbox" data-np="${escapeHtml(c.key)}|email" ${p.email ? 'checked' : ''}> Email me</label>` : ''}
+              ${sms ? `<label class="acct-chip ${smsOff ? 'is-locked' : ''}" ${why ? `data-tip="${escapeHtml(why)}"` : ''}>
+                <input type="checkbox" data-np="${escapeHtml(c.key)}|sms" ${p.sms ? 'checked' : ''} ${smsOff ? 'disabled' : ''}>${ico('phone', 14)}<span>Text</span></label>` : ''}
+              ${em ? `<label class="acct-chip"><input type="checkbox" data-np="${escapeHtml(c.key)}|email" ${p.email ? 'checked' : ''}>${ico('mail', 14)}<span>Email</span></label>` : ''}
             </div>
           </li>`;
       }).join('')}
@@ -781,17 +785,17 @@ async function saveNotifyPrefs(btn) {
     (prefs[key] ||= {})[ch] = el.checked === true;
   });
   showError('acctNotifyError', '');
-  const orig = btn.textContent;
-  btn.disabled = true; btn.textContent = 'Saving…';
+  const orig = btnLabel(btn, 'Saving…');
+  btn.disabled = true;
   try {
     const data = await apiFetch(NOTIFY_PREFS_URL, { method: 'POST', body: JSON.stringify({ prefs }) });
     notifyPrefs = data;
     host.innerHTML = notifyPrefsHtml(data);
-    btn.textContent = 'Saved';
+    btnLabel(btn, 'Saved');
     if (data.needsPhone) showError('acctNotifyError', 'Saved. Texts stayed off: verify a mobile number first, then turn them on.');
-    setTimeout(() => { btn.textContent = orig; }, 1400);
+    setTimeout(() => { btnLabel(btn, orig); }, 1400);
   } catch (ex) {
-    btn.textContent = orig;
+    btnLabel(btn, orig);
     showError('acctNotifyError', friendlyError(ex, 'Could not save notification settings.'));
   } finally {
     btn.disabled = false;
@@ -816,22 +820,22 @@ function supportRequest() {
 // its own accounts. When the two accounts are linked the switch is seamless
 // (the source lane vouches for you, no password); otherwise it opens sign-in
 // on the target. Either way the session comes back fresh; nothing runs stale.
+/** Live | Dev as the environment's pill switch (2026-09-23 polish): the lane in use is filled; the other switches. */
+function laneSwitchHtml(attr) {
+  const opt = (k, label, tip) => `<button class="ev-lane ${LANE === k ? 'is-on' : ''}" type="button" role="tab" aria-selected="${LANE === k}" ${attr}="lane-${k}" ${LANE === k ? 'disabled' : ''} data-tip="${escapeHtml(LANE === k ? `You are on the ${k} lane` : tip)}">${label}</button>`;
+  return `<div class="ev-lanes" role="tablist" aria-label="Which lane this browser calls">
+    ${opt('live', 'Live', 'Signs you out here and signs you in on the live lane')}
+    ${opt('dev', 'Dev', 'Signs you out here and signs you in on the dev sandbox')}
+  </div>`;
+}
+
 function platformLaneCardHtml() {
   if (!isPlatformOperator()) return '';
-  return `
-    <section class="acct-card">
-      <h3 class="acct-card-h">Platform lane</h3>
+  return `<div class="acct-grid-tail">${cardHtml({ key: 'profile:lane', icon: 'zap', title: 'Platform lane', summary: `calls go to ${escapeHtml(LANE)}`, body: `
       <p class="acct-card-note">This browser is routing API calls to the <strong>${escapeHtml(LANE)}</strong> lane.
       When your accounts are linked, switching is seamless; otherwise it asks you to sign in on the
       other lane. The site itself never changes, only where your calls go.</p>
-      <div class="acct-add-row">
-        <button class="btn btn-sm" type="button" data-acct-action="lane-live" ${LANE === 'live' ? 'disabled' : ''}
-          title="${LANE === 'live' ? 'You are already on the live lane' : 'Signs you out here and signs you in on the live lane'}">Switch to live</button>
-        <button class="btn btn-sm" type="button" data-acct-action="lane-dev" ${LANE === 'dev' ? 'disabled' : ''}
-          title="${LANE === 'dev' ? 'You are already on the dev lane' : 'Signs you out here and signs you in on the dev sandbox'}">Switch to dev</button>
-      </div>
-    </section>
-  `;
+      ${laneSwitchHtml('data-acct-action')}` })}</div>`;
 }
 
 async function loadAliases() {
@@ -1046,9 +1050,8 @@ async function loadPasskeys() {
           <span class="acct-tag">passkey${p.backedUp ? ', synced' : ''}</span>
           <span class="muted">added ${escapeHtml(fmtDate(p.createdAt))}${p.lastUsedAt ? `, last used ${escapeHtml(fmtDate(p.lastUsedAt))}` : ''}</span>
         </div>
-        <div class="acct-alias-actions">
-          <button class="btn btn-sm" type="button" data-acct-action="remove-passkey" data-cred="${escapeHtml(p.credentialId)}"
-            title="Removes this passkey. You confirm with your password. Your last second factor cannot be removed.">Remove</button>
+        <div class="acct-alias-actions act-row">
+          ${iconBtn({ acct: 'remove-passkey' }, 'trash', 'Remove this passkey (you confirm with your password)', `data-cred="${escapeHtml(p.credentialId)}"`, 'is-risky')}
         </div>
       </li>`);
     }
@@ -3770,12 +3773,7 @@ function renderCatalog(main) {
       Stripe mode. When your accounts are linked the switch is seamless (no password); otherwise
       it opens sign-in on the other lane. Either way the session and every cached response come
       back fresh. The deployed site never changes; only where this browser routes.</p>
-      <div class="adm-actions-row">
-        <button class="btn" type="button" data-adm-action="lane-live" ${LANE === 'live' ? 'disabled' : ''}
-          title="${LANE === 'live' ? 'You are already on the live lane' : 'Signs you out here and signs you in on the live lane'}">Switch to live</button>
-        <button class="btn" type="button" data-adm-action="lane-dev" ${LANE === 'dev' ? 'disabled' : ''}
-          title="${LANE === 'dev' ? 'You are already on the dev lane' : 'Signs you out here and signs you in on the dev sandbox'}">Switch to dev</button>
-      </div>
+      ${laneSwitchHtml('data-adm-action')}
     </div>
 
     <div class="adm-card">
@@ -4109,7 +4107,7 @@ function bindOnce() {
         if (input) input.value = act.dataset.phone || '';
         return void startPhone();
       }
-      if (a === 'phone-remove') return void removePhone();
+      if (a === 'phone-remove') { if (!armed(act, 'Remove?')) return; return void removePhone(); }
       if (a === 'report-anomaly') return void reportAnomaly();
       if (a === 'support-request') return void supportRequest();
       if (a === 'notify-save') return void saveNotifyPrefs(act);
@@ -4221,6 +4219,8 @@ function bindOnce() {
     if (e.target.id === 'admUserSearch') renderUserRows();
   });
   document.addEventListener('change', (e) => {
+    // Appearance: the starfield is a switch (2026-09-23 polish)
+    if (e.target.id === 'acctStarsSwitch') { setStarfieldPreference(e.target.checked ? 'on' : 'off'); return; }
     if (e.target.id === 'admUserStatus' || e.target.id === 'admUserTier') renderUserRows();
     // Orders desk: the date range reloads the selection and its totals.
     if (e.target.id === 'odFrom' || e.target.id === 'odTo') {

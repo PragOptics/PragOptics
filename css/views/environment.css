@@ -45,16 +45,16 @@
 .ev-lane { padding: 6px 14px; border-radius: var(--radius-btn-sm); border: 1px solid color-mix(in srgb, var(--ink) 18%, transparent); background: transparent; color: var(--muted); font: inherit; font-size: .86rem; font-weight: 600; cursor: pointer; transition: background 140ms ease, color 140ms ease, border-color 140ms ease; }
 .ev-lane:hover { border-color: color-mix(in srgb, var(--brand-600) 60%, transparent); color: var(--card-title); }
 .ev-lane.is-on { background: var(--brand-600); border-color: var(--brand-600); color: var(--on-brand, #fff); }
+.ev-lane:disabled { cursor: default; opacity: 1; }
+.ev-lane { min-height: var(--ctl-h, 36px); }
+.acct-grid-tail { margin-top: 14px; }
 .ev-lane:focus-visible { outline: 2px solid var(--brand-600); outline-offset: 2px; }
 .ev-lane .acct-tag { margin-left: 6px; font-size: .68rem; vertical-align: middle; }
 .ev-lane.is-on .acct-tag { background: color-mix(in srgb, #fff 22%, transparent); color: var(--on-brand, #fff); }
 .ev-lane-hint { font-size: .84rem; color: var(--muted); margin-left: 4px; }
 @media (max-width: 640px) { .ev-lane-hint { flex-basis: 100%; margin-left: 0; } }
 
-/* an armed destructive action: Remove for sure? */
-.btn.is-danger { border-color: color-mix(in srgb, #d0342c 55%, transparent); background: color-mix(in srgb, #d0342c 12%, transparent); color: #b3261e; font-weight: 700; }
-.btn.is-danger:hover { background: color-mix(in srgb, #d0342c 20%, transparent); }
-html[data-theme="dark"] .btn.is-danger, :root:not([data-theme="light"]) .btn.is-danger { color: #ff8a80; }
+/* the destructive and armed buttons live in css/components/buttons.css (panel actions), drawn from the theme's tokens */
 
 /* connected accounts: a provider picker, then that provider's own fields */
 .ev-conn-add { margin-top: 4px; }
@@ -147,9 +147,7 @@ html[data-theme="dark"] .btn.is-danger, :root:not([data-theme="light"]) .btn.is-
 .ev-card-body > .ev-key-row:first-child, .ev-card-body > .ev-dom-row:first-child, .ev-card-body > .ev-conn-add:first-child { margin-top: 12px; }
 @media (prefers-reduced-motion: reduce) { .ev-card-chev { transition: none; } }
 
-/* icon buttons: 32px square, the label in the tooltip and for screen readers */
-.btn.btn-ico { width: 32px; min-width: 32px; padding: 0; display: inline-grid; place-items: center; }
-.btn.btn-ico .ev-ico { width: 16px; height: 16px; }
+/* icon buttons: css/components/buttons.css (panel actions) */
 .btn.ev-btn-ico { display: inline-flex; align-items: center; gap: 6px; }
 .btn.ev-btn-ico .ev-ico { width: 15px; height: 15px; }
 .btn.is-spinning .ev-ico { animation: evSpin 900ms linear infinite; }

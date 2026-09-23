@@ -36,7 +36,7 @@
 .tm-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
 .tm-name { margin: 0 0 4px; font-size: 1.25rem; }
 .tm-owner { margin: 0; }
-.tm-summary-actions { flex: 0 0 auto; display: flex; gap: 8px; flex-wrap: wrap; }
+.tm-summary-actions { flex: 0 0 auto; }
 .tm-rename { margin-top: 12px; }
 
 .tm-seats { margin-top: 16px; }
@@ -58,15 +58,30 @@
 
 .tm-table td { vertical-align: middle; }
 .tm-role { min-width: 132px; }
-.tm-actions { white-space: nowrap; }
-.tm-actions .btn + .btn { margin-left: 6px; }
+.tm-actions { white-space: nowrap; text-align: right; }
+.tm-actions .act-row { flex-wrap: nowrap; justify-content: flex-end; }
+.tm-allow { font-variant-numeric: tabular-nums; }
 .tm-edit td { background: color-mix(in srgb, var(--brand-600) 5%, transparent); }
-.tm-edit-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-.tm-edit-row .acct-label { margin: 0; font-size: .8rem; color: var(--muted); }
-.tm-edit-row .acct-input { flex: 0 1 140px; }
+/* the allowance editor: two labeled fields and the three icons on one line; stacked on a phone */
+.tm-edit-row { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
+.tm-field { display: grid; gap: 4px; flex: 0 1 170px; min-width: 0; }
+.tm-field .acct-label { margin: 0; font-size: .74rem; letter-spacing: .06em; color: var(--muted); }
+.tm-field .acct-input { width: 100%; }
+.tm-edit-acts { padding-bottom: 1px; }
 .tm-edit-note { margin: 8px 0 0; }
+/* an input with its icons (rename, the invite link): the field takes the room */
+.tm-inline-edit { display: flex; gap: 8px; align-items: center; }
+.tm-inline-edit .acct-input { flex: 1 1 auto; min-width: 0; }
 
-.tm-invite-row .adm-select { flex: 0 0 auto; }
+/* the invite: address, role, Invite; on a phone the address takes the whole first line */
+.tm-invite-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px; align-items: center; margin-top: 4px; }
+.tm-invite-row .acct-input, .tm-invite-row .adm-select { min-width: 0; }
+.tm-invite-role { min-width: 128px; }
+@media (max-width: 560px) {
+  .tm-invite-row { grid-template-columns: minmax(0, 1fr) auto; }
+  .tm-invite-email { grid-column: 1 / -1; }
+  .tm-invite-role { min-width: 0; width: 100%; }
+}
 .tm-invite-result {
   margin-top: 12px; padding: 12px 14px; border-radius: var(--radius-ctl);
   border: 1px solid color-mix(in srgb, var(--brand-600) 32%, transparent);
@@ -77,7 +92,9 @@
 .tm-link { font-family: ui-monospace, Consolas, monospace; font-size: .8rem; }
 .tm-sub-h { margin: 18px 0 8px; font-size: .78rem; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
 .tm-invites { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
-.tm-invites li { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius-ctl); background: var(--surface-3); font-size: .88rem; }
+.tm-invites li { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 8px 8px 8px 12px; border: 1px solid var(--border); border-radius: var(--radius-ctl); background: var(--surface-3); font-size: .88rem; }
+.tm-invites li .act-row { margin-left: auto; }
+.tm-inv-when { font-size: .82rem; }
 .tm-inv-who { font-weight: 600; color: var(--card-title); flex: 1 1 200px; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .tm-recent { margin: 10px 0 0; }
 

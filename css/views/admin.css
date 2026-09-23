@@ -438,7 +438,16 @@ th.adm-num { text-align: right; }
   min-width: 0;
 }
 .adm-side-report + .adm-side-foot { margin-top: 0; }
-.adm-side .adm-side-report-btn.btn + .adm-side-report-btn.btn { margin-top: 6px; }
+.adm-side-report-btns { display: grid; gap: 6px; flex: 1 1 auto; min-width: 0; }
+/* on the wide rail the words carry the buttons; the glyphs appear only on the phone's icon rail */
+.adm-side-report-btn .ev-ico, .adm-side-alien { display: none; }
+.adm-side-alien {
+  width: 26px; height: 30px; flex: none; background-color: currentColor;
+  -webkit-mask: url("/images/anomaly.png") 52% center / auto 132% no-repeat;
+  mask: url("/images/anomaly.png") 52% center / auto 132% no-repeat;
+}
+.adm-side .acct-signout { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+.adm-side .acct-signout .ev-ico { width: 16px; height: 16px; }
 .acct-report.is-support .acct-report-img { display: none; }
 .adm-side-report-img {
   width: 34px; height: 52px; flex: none;
@@ -648,10 +657,22 @@ select.adm-select option:checked, select.adm-input option:checked {
      stretches to fill the shell's minimum height while a section is still loading. */
   .adm-shell { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); align-content: start; }
   .adm-side { flex-direction: row; align-items: center; border-right: 0; border-bottom: 1px solid var(--border); padding: 10px; gap: 4px; overflow-x: auto; }
-  .adm-side-brand, .adm-side-foot, .adm-side-report { display: none; }
+  .adm-side-brand { display: none; }
   .adm-nav { flex-direction: row; }
   .adm-nav-item span:not(.adm-nav-ico) { display: none; }
   .adm-nav-item { padding: 9px 12px; }
+  /* Report Anomaly, Support and Sign out ride at the end of the rail as icons with tips (2026-09-23 polish);
+     before, the phone had no way to report, ask, or sign out from the panel. */
+  .adm-side-report, .adm-side-foot { display: flex; flex: none; margin: 0; padding: 0 0 0 6px; border: 0; gap: 4px; }
+  .adm-side-report { margin-left: auto; border-left: 1px solid var(--border); padding-left: 8px; }
+  .adm-side-report-img, .adm-side-btn-text { display: none; }
+  .adm-side-report-btns { display: flex; gap: 4px; }
+  .adm-side .adm-side-report-btn.btn, .adm-side .acct-signout {
+    width: var(--ctl-h, 40px); min-width: var(--ctl-h, 40px); height: var(--ctl-h, 40px); min-height: var(--ctl-h, 40px);
+    padding: 0; display: inline-grid; place-items: center; flex: none;
+  }
+  .adm-side-report-btn .ev-ico, .adm-side-alien { display: block; }
+  .adm-side .acct-signout { background: transparent; }
 }
 
 /* ---- Catalog section ---- */

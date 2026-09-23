@@ -17,7 +17,8 @@
 // so there is never a double bubble.
 //
 // The label is read from data-tip; aria-label carries it for assistive tech
-// whether or not the visual bubble ever shows (touch, reduced hover).
+// whether or not the visual bubble ever shows. On touch, press and hold shows
+// the tip (2026-09-23); a plain tap acts.
 
 let tip = null;         // the floating element
 let arrow = null;
@@ -113,6 +114,40 @@ export function initTooltips() {
     const el = e.target.closest?.('[data-tip]');
     if (el === current) hide();
   });
+  // Touch (2026-09-23 polish): a touch has no hover, so pressing and holding
+  // anything with a tip shows it; the press that showed it does not also act
+  // (its click is swallowed), and the tip fades a moment after the finger lifts.
+  // A plain tap acts at once, as before. A finger that moves (a scroll) cancels.
+  let holdTimer = null, holdEl = null, holdX = 0, holdY = 0, swallowEl = null;
+  const endHold = () => { clearTimeout(holdTimer); holdTimer = null; holdEl = null; };
+  document.addEventListener('pointerdown', (e) => {
+    if (e.pointerType !== 'touch') return;
+    swallowEl = null;
+    const el = e.target.closest?.('[data-tip]');
+    if (!el) return;
+    endHold();
+    holdEl = el; holdX = e.clientX; holdY = e.clientY;
+    holdTimer = setTimeout(() => { if (holdEl === el) { show(el); swallowEl = el; } }, 450);
+  }, { passive: true });
+  document.addEventListener('pointermove', (e) => {
+    if (!holdEl || e.pointerType !== 'touch') return;
+    if (Math.abs(e.clientX - holdX) > 10 || Math.abs(e.clientY - holdY) > 10) endHold();
+  }, { passive: true });
+  document.addEventListener('pointerup', (e) => {
+    if (e.pointerType !== 'touch') return;
+    endHold();
+    if (swallowEl) { const el = swallowEl; setTimeout(() => { if (current === el) hide(); }, 1400); }
+  }, { passive: true });
+  document.addEventListener('pointercancel', endHold, { passive: true });
+  // the click that follows a hold was a question, not an action
+  document.addEventListener('click', (e) => {
+    if (swallowEl && swallowEl.contains(e.target)) { e.preventDefault(); e.stopImmediatePropagation(); swallowEl = null; }
+  }, true);
+  // no long-press menu over a tipped control while it is being held
+  document.addEventListener('contextmenu', (e) => {
+    if (swallowEl && swallowEl.contains(e.target)) e.preventDefault();
+  });
+
   // Keyboard focus.
   document.addEventListener('focusin', (e) => {
     const el = e.target.closest?.('[data-tip]');

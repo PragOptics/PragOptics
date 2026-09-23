@@ -185,3 +185,101 @@
 .btn.btn-term { min-width: 44px; padding-left: 12px; padding-right: 12px; font-family: ui-monospace, "Cascadia Code", Consolas, monospace; font-weight: 700; letter-spacing: .02em; }
 .term-glyph { font-family: ui-monospace, "Cascadia Code", Consolas, monospace; font-weight: 700; }
 .dropdown-menu .term-glyph { margin-right: 4px; opacity: .8; }
+
+/* ====== PANEL ACTIONS (2026-09-23 polish) ======
+   One action language for every section of the account panel
+   (src/account/cards.js: iconBtn, leadBtn, armed):
+   - an icon button with a styled tooltip for the repeated row actions (edit,
+     copy, refresh, remove, send, open), 34px, the label in data-tip and
+     aria-label; 40px under a coarse pointer, where a finger needs the room;
+   - an icon with a word for the one primary action of a card and for
+     anything that moves money or cannot be undone;
+   - a destructive icon arms into a red pill carrying its question on the
+     first press, with a Keep-it beside it; the second press acts.
+   Tokens only (--danger, --danger-text, --brand-600, --on-brand), so both
+   themes hold. */
+.btn.btn-ico {
+  padding: 0;
+  display: inline-grid; place-items: center; flex: none;
+  border-radius: var(--radius-btn-sm);
+  color: color-mix(in srgb, var(--ink) 80%, transparent);
+  -webkit-touch-callout: none; -webkit-user-select: none; user-select: none;
+}
+.btn.btn-ico .ev-ico { width: 16px; height: 16px; }
+.btn.btn-ico:hover { color: var(--brand-600); transform: translateY(-1px); }
+.btn.btn-lead { display: inline-flex; align-items: center; gap: 7px; }
+.btn.btn-lead .ev-ico { width: 15px; height: 15px; flex: none; }
+.btn.btn-lead > span { min-width: 0; }
+
+/* the one primary action of a card: filled with the brand */
+.btn.btn-primary {
+  background: var(--brand-600); border-color: var(--brand-600); color: var(--on-brand);
+}
+.btn.btn-primary:hover {
+  background: color-mix(in srgb, var(--brand-600) 86%, var(--ink));
+  border-color: color-mix(in srgb, var(--brand-600) 86%, var(--ink));
+  color: var(--on-brand);
+}
+.btn.btn-primary:disabled:hover { background: var(--brand-600); border-color: var(--brand-600); color: var(--on-brand); }
+
+/* destructive: a worded danger button, and a destructive icon that stays
+   quiet until the pointer is on it */
+.btn.is-danger {
+  color: var(--danger-text);
+  border-color: color-mix(in srgb, var(--danger) 50%, transparent);
+  background: color-mix(in srgb, var(--danger) 10%, transparent);
+  font-weight: 700;
+}
+.btn.is-danger:hover {
+  color: var(--danger-text);
+  border-color: color-mix(in srgb, var(--danger) 65%, transparent);
+  background: color-mix(in srgb, var(--danger) 18%, transparent);
+}
+.btn.btn-ico.is-risky:hover {
+  color: var(--danger-text);
+  border-color: color-mix(in srgb, var(--danger) 55%, transparent);
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+}
+
+/* armed: the icon opened into its question, waiting for the second press */
+.btn.is-armed, .btn.btn-ico.is-armed {
+  width: auto; min-width: 34px; padding: 0 12px 0 10px;
+  display: inline-flex; align-items: center; gap: 6px;
+  color: var(--danger-text);
+  border-color: color-mix(in srgb, var(--danger) 60%, transparent);
+  background: color-mix(in srgb, var(--danger) 14%, transparent);
+  font-weight: 700; white-space: nowrap;
+  animation: poArmed 1.1s ease-in-out infinite alternate;
+}
+.btn.is-armed:hover {
+  color: var(--danger-text);
+  border-color: color-mix(in srgb, var(--danger) 75%, transparent);
+  background: color-mix(in srgb, var(--danger) 20%, transparent);
+}
+@keyframes poArmed {
+  from { box-shadow: 0 0 0 0 color-mix(in srgb, var(--danger) 0%, transparent); }
+  to   { box-shadow: 0 0 0 4px color-mix(in srgb, var(--danger) 22%, transparent); }
+}
+.btn.btn-arm-cancel { margin-left: 6px; }
+@media (prefers-reduced-motion: reduce) { .btn.is-armed { animation: none; } }
+
+/* a group of row actions: icons side by side, never wrapping one per line */
+.act-row { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.act-row > .btn + .btn { margin-left: 0; }
+
+/* a finger needs more room than a pointer: the icon grows with --ctl-h below */
+@media (pointer: coarse) { .btn.btn-ico .ev-ico { width: 18px; height: 18px; } }
+
+/* ONE CONTROL HEIGHT (2026-09-23 polish): an input, a select, a small button
+   and an icon button standing in a row are the same height, so a row of
+   controls reads as one object. 36px; 40px under a finger. Textareas,
+   checkboxes, radios and file pickers keep their own. Written with :is() so it
+   holds whatever order the view sheets load in. */
+:root { --ctl-h: 36px; }
+@media (pointer: coarse) { :root { --ctl-h: 40px; } }
+:is(.acct-input, .adm-input, .adm-select, .adm-search):not(textarea):not([type="checkbox"]):not([type="radio"]):not([type="file"]) {
+  box-sizing: border-box; height: var(--ctl-h); min-height: var(--ctl-h);
+  padding-top: 0; padding-bottom: 0; line-height: normal;
+}
+.btn.btn-sm { min-height: var(--ctl-h); }
+.btn.btn-ico, .btn.btn-sm.btn-ico { width: var(--ctl-h); min-width: var(--ctl-h); height: var(--ctl-h); min-height: var(--ctl-h); }

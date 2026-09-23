@@ -17,7 +17,7 @@
 import { PRAG_API_BASE } from '../runtime/config.js';
 import { tierName } from '../components/tierCopy.js';
 import { explainLink } from '../components/explainer.js';
-import { cardHtml, iconBtn } from './cards.js';
+import { cardHtml, iconBtn, leadBtn, ico, armed } from './cards.js';
 
 const TENANT_URL = `${PRAG_API_BASE}/tenant`;
 const ADMIN_TENANTS_URL = `${PRAG_API_BASE}/admin/tenants`;
@@ -147,7 +147,7 @@ function emptyHtml(view) {
       <section class="acct-card">
         <h3 class="acct-card-h">Your environment is being set up.</h3>
         <p class="acct-card-note">Your team shows here the moment it exists, usually within a moment of signing in. Press Refresh.</p>
-        <div class="acct-actions-row"><button class="btn btn-sm" type="button" data-acct-section="team">Refresh</button></div>
+        <div class="acct-actions-row"><button class="btn btn-sm btn-lead" type="button" data-acct-section="team">${ico('refresh')}<span>Refresh</span></button></div>
       </section>`;
   }
   if (view.needsSubscription) {
@@ -155,7 +155,7 @@ function emptyHtml(view) {
       <section class="acct-card">
         <h3 class="acct-card-h">Your team starts with a plan.</h3>
         <p class="acct-card-note">User is one seat, yours. Partner includes five seats and Super forty-five, with more available. Add the platform and your team comes with it; the people you invite sign in with their own login and see only your team.</p>
-        <div class="acct-actions-row"><button class="btn" type="button" data-acct-action="subscribe">See plans</button></div>
+        <div class="acct-actions-row"><button class="btn btn-sm btn-lead btn-primary" type="button" data-acct-action="subscribe">${ico('layers')}<span>See plans</span></button></div>
       </section>`;
   }
   const teams = view.teams || [];
@@ -198,16 +198,15 @@ function summaryHtml(v) {
           <h3 class="acct-card-h tm-name">${e(name || (isOwner ? 'Your team' : 'Unnamed team'))}</h3>
           <p class="acct-card-note tm-owner">Owner ${e(t.ownerEmail || '')}. ${e(ROLE_HELP[me.role] || '')}</p>
         </div>
-        <div class="tm-summary-actions">
-          ${isOwner ? `<button class="btn btn-sm" type="button" data-acct-section="subscription" title="${['partner', 'super'].includes(t.tier) ? 'Extra seats are added on the Billing section, per seat per month' : 'Partner and Super come with more seats; change the plan on the Billing section'}">${['partner', 'super'].includes(t.tier) ? 'Add seats' : 'More seats'}</button>` : ''}
-          ${isOwner ? `<button class="btn btn-sm" type="button" data-team-action="rename">${name ? 'Rename' : 'Name the team'}</button>` : `<button class="btn btn-sm" type="button" data-team-action="leave">Leave team</button>`}
+        <div class="tm-summary-actions act-row">
+          ${isOwner ? (() => { const tip = ['partner', 'super'].includes(t.tier) ? 'Add seats on Billing, per seat per month' : 'More seats come with Partner and Super, on Billing'; return `<button class="btn btn-sm btn-ico" type="button" data-acct-section="subscription" aria-label="${e(tip)}" data-tip="${e(tip)}">${ico('userPlus')}</button>`; })() : ''}
+          ${isOwner ? iconBtn({ team: 'rename' }, 'edit', name ? 'Rename the team' : 'Name the team') : iconBtn({ team: 'leave' }, 'logOut', 'Leave this team', '', 'is-risky')}
         </div>
       </div>
       <div class="tm-rename ${tm.renaming ? '' : 'hidden'}" id="tmRename">
-        <div class="acct-add-row">
-          <input class="acct-input" type="text" id="tmNameInput" maxlength="80" value="${e(name)}" placeholder="Team name" autocomplete="organization" />
-          <button class="btn" type="button" data-team-action="rename-save">Save</button>
-          <button class="btn btn-sm" type="button" data-team-action="rename-cancel">Cancel</button>
+        <div class="acct-add-row tm-inline-edit">
+          <input class="acct-input" type="text" id="tmNameInput" maxlength="80" value="${e(name)}" placeholder="Team name" autocomplete="organization" aria-label="Team name" />
+          <span class="act-row">${iconBtn({ team: 'rename-save' }, 'check', 'Save the name', '', 'btn-primary')}${iconBtn({ team: 'rename-cancel' }, 'x', 'Cancel')}</span>
         </div>
       </div>
       <div class="tm-seats">
@@ -256,21 +255,27 @@ function membersHtml(v) {
         <td class="cell-ellip" data-th="Person" title="${e(m.email)}">${e(m.email)}${self ? ' <span class="adm-muted">(you)</span>' : ''}</td>
         <td class="cell-tight" data-th="Role">${roleCell}</td>
         <td class="cell-tight" data-th="Status">${statusTag(m.status)}${m.seat ? '' : ' <span class="adm-muted">no seat</span>'}</td>
-        <td class="cell-tight" data-th="Allowance">${e(allowanceText(m))}${act && m.role !== 'owner' ? ` <button class="btn btn-sm" type="button" data-team-action="allow-edit" data-user="${e(m.userId)}">Edit</button>` : ''}</td>
-        <td class="cell-tight tm-actions">${act ? `
-          <button class="btn btn-sm" type="button" data-team-action="${suspended ? 'restore' : 'suspend'}" data-user="${e(m.userId)}" data-email="${e(m.email)}">${suspended ? 'Restore' : 'Suspend'}</button>
-          <button class="btn btn-sm" type="button" data-team-action="remove" data-user="${e(m.userId)}" data-email="${e(m.email)}">Remove</button>` : ''}</td>
+        <td class="cell-tight" data-th="Allowance"><span class="tm-allow">${e(allowanceText(m))}</span></td>
+        <td class="cell-tight tm-actions" data-th="">${act ? `<span class="act-row">
+          ${m.role !== 'owner' ? iconBtn({ team: 'allow-edit' }, 'sliders', `Cap ${m.email} under the plan`, `data-user="${e(m.userId)}"`) : ''}
+          ${suspended
+            ? iconBtn({ team: 'restore' }, 'play', `Restore ${m.email}`, `data-user="${e(m.userId)}" data-email="${e(m.email)}"`)
+            : iconBtn({ team: 'suspend' }, 'pause', `Suspend ${m.email}: they stay on the team but cannot use it until restored`, `data-user="${e(m.userId)}" data-email="${e(m.email)}"`, 'is-risky')}
+          ${iconBtn({ team: 'remove' }, 'userMinus', `Remove ${m.email} from the team`, `data-user="${e(m.userId)}" data-email="${e(m.email)}"`, 'is-risky')}
+        </span>` : ''}</td>
       </tr>
       ${tm.editing === m.userId ? `
       <tr class="tm-edit"><td colspan="5">
         <div class="tm-edit-row">
-          <label class="acct-label" for="tmAllowCalls">API calls per month</label>
-          <input class="acct-input" type="number" id="tmAllowCalls" min="1" step="1" max="${e(String(ceiling.apiCalls || ''))}" value="${e(String(m.allowance?.apiCalls || ''))}" placeholder="${e(num(ceiling.apiCalls))}" />
-          <label class="acct-label" for="tmAllowGb">Storage, GB</label>
-          <input class="acct-input" type="number" id="tmAllowGb" min="0.1" step="0.1" value="${e(m.allowance?.storageBytes ? String(Math.round(m.allowance.storageBytes / 1024 ** 3 * 10) / 10) : '')}" placeholder="${e(gb(ceiling.storageBytes).replace(' GB', ''))}" />
-          <button class="btn" type="button" data-team-action="allow-save" data-user="${e(m.userId)}">Save</button>
-          <button class="btn btn-sm" type="button" data-team-action="allow-clear" data-user="${e(m.userId)}">Use plan limit</button>
-          <button class="btn btn-sm" type="button" data-team-action="allow-cancel">Cancel</button>
+          <label class="tm-field"><span class="acct-label">API calls per month</span>
+            <input class="acct-input" type="number" id="tmAllowCalls" min="1" step="1" max="${e(String(ceiling.apiCalls || ''))}" value="${e(String(m.allowance?.apiCalls || ''))}" placeholder="${e(num(ceiling.apiCalls))}" /></label>
+          <label class="tm-field"><span class="acct-label">Storage, GB</span>
+            <input class="acct-input" type="number" id="tmAllowGb" min="0.1" step="0.1" value="${e(m.allowance?.storageBytes ? String(Math.round(m.allowance.storageBytes / 1024 ** 3 * 10) / 10) : '')}" placeholder="${e(gb(ceiling.storageBytes).replace(' GB', ''))}" /></label>
+          <span class="act-row tm-edit-acts">
+            ${iconBtn({ team: 'allow-save' }, 'check', 'Save the cap', `data-user="${e(m.userId)}"`, 'btn-primary')}
+            ${iconBtn({ team: 'allow-clear' }, 'undo', 'Back to the plan limit', `data-user="${e(m.userId)}"`)}
+            ${iconBtn({ team: 'allow-cancel' }, 'x', 'Cancel')}
+          </span>
         </div>
         <p class="acct-card-note tm-edit-note">A cap sits under the plan: up to ${e(num(ceiling.apiCalls))} calls and ${e(gb(ceiling.storageBytes))}. Blank means the plan limit.</p>
       </td></tr>` : ''}`;
@@ -294,12 +299,12 @@ function inviteHtml(v) {
   return cardHtml({ key: 'team:invite', icon: 'userPlus', title: 'Invite someone', summary: e(open ? `${open} seat${open === 1 ? '' : 's'} open${pending.length ? ` · ${pending.length} pending` : ''}` : (pending.length ? `no seats open · ${pending.length} pending` : 'no seats open')), body: `
     <section class="tm-invite-card">
       <p class="acct-card-note">They get an email with a one-time link that works for seven days, and they must sign in with the address you invite. ${open ? `${e(String(open))} seat${open === 1 ? '' : 's'} open.` : 'No seats open: invite as a viewer, free a seat, or add seats.'}</p>
-      <div class="acct-add-row tm-invite-row">
-        <input class="acct-input" type="email" id="tmInviteEmail" placeholder="name@company.com" autocomplete="off" spellcheck="false" />
-        <select class="adm-select" id="tmInviteRole" aria-label="Role for the invite">
+      <div class="tm-invite-row">
+        <input class="acct-input tm-invite-email" type="email" id="tmInviteEmail" placeholder="name@company.com" autocomplete="off" spellcheck="false" aria-label="Email to invite" />
+        <select class="adm-select tm-invite-role" id="tmInviteRole" aria-label="Role for the invite">
           ${tm.roles.map(r => `<option value="${e(r)}" ${r === 'member' ? 'selected' : ''}>${e(cap(r))}</option>`).join('')}
         </select>
-        <button class="btn" type="button" data-team-action="invite">Send invite</button>
+        ${leadBtn({ team: 'invite' }, 'send', 'Invite', '', 'btn-primary tm-invite-send')}
       </div>
       <p class="acct-error" id="tmInviteError" hidden></p>
       ${tm.lastInvite ? inviteResultHtml(tm.lastInvite) : ''}
@@ -310,8 +315,8 @@ function inviteHtml(v) {
             <li>
               <span class="tm-inv-who">${e(i.email)}</span>
               <span class="acct-tag">${e(cap(i.role))}</span>
-              <span class="adm-muted">expires ${e(D.fmtDate(i.expiresAt))}</span>
-              <button class="btn btn-sm" type="button" data-team-action="revoke" data-invite="${e(i.inviteId)}" data-email="${e(i.email)}">Revoke</button>
+              <span class="adm-muted tm-inv-when">expires ${e(D.fmtDate(i.expiresAt))}</span>
+              <span class="act-row">${iconBtn({ team: 'revoke' }, 'xCircle', `Withdraw the invite to ${i.email}`, `data-invite="${e(i.inviteId)}" data-email="${e(i.email)}"`, 'is-risky')}</span>
             </li>`).join('')}
         </ul>` : `<p class="acct-empty">No pending invites.</p>`}
       ${recent.length ? `<p class="acct-card-note tm-recent">Recent: ${recent.map(i => `${e(i.email)} (${e(i.status.toLowerCase())})`).join(', ')}.</p>` : ''}
@@ -324,9 +329,9 @@ function inviteResultHtml(r) {
   return `
     <div class="tm-invite-result">
       <p><b>Invite sent to ${e(r.invite?.email || '')}</b> as ${e(r.invite?.role || '')}. ${e(mail)} The link works once and expires ${e(D.fmtDate(r.invite?.expiresAt))}.</p>
-      <div class="acct-add-row">
+      <div class="acct-add-row tm-inline-edit">
         <input class="acct-input tm-link" type="text" readonly value="${e(r.link || '')}" aria-label="Invite link" />
-        <button class="btn btn-sm" type="button" data-team-action="copy-link" data-link="${e(r.link || '')}">Copy</button>
+        ${iconBtn({ team: 'copy-link' }, 'copy', 'Copy the link', `data-link="${e(r.link || '')}"`)}
       </div>
     </div>`;
 }
@@ -375,41 +380,17 @@ async function act(fn, errorId = 'tmError', fallback = 'That change did not go t
 }
 
 async function copyText(text, btn) {
-  const orig = btn.textContent;
-  try { await navigator.clipboard.writeText(text); btn.textContent = 'Copied'; }
+  const orig = btn.innerHTML, tip = btn.getAttribute('data-tip');
+  try { await navigator.clipboard.writeText(text); btn.innerHTML = ico('check'); btn.setAttribute('data-tip', 'Copied'); btn.classList.add('is-done'); }
   catch {
     const input = btn.closest('.acct-add-row')?.querySelector('input');
     if (input) { input.focus(); input.select(); }
-    btn.textContent = 'Select and copy';
+    btn.setAttribute('data-tip', 'Selected: copy it with your keyboard');
   }
-  setTimeout(() => { btn.textContent = orig; }, 1600);
+  setTimeout(() => { btn.innerHTML = orig; btn.classList.remove('is-done'); if (tip) btn.setAttribute('data-tip', tip); }, 1600);
 }
 
-// No native confirm() anywhere here: embedded browsers (the app's own pane)
-// swallow it and the click looks dead. The first click arms the button in
-// place ("… for sure?" beside a Cancel), the second within six seconds acts;
-// it disarms itself otherwise. armed(btn, label) answers true on the second click.
-let armTimer = null, armedBtn = null;
-function disarm() {
-  clearTimeout(armTimer);
-  const b = armedBtn; armedBtn = null;
-  if (!b) return;
-  b.classList.remove('is-danger');
-  if (b.dataset.armLabel != null) b.textContent = b.dataset.armLabel;
-  delete b.dataset.armed; delete b.dataset.armLabel;
-  const c = b.nextElementSibling;
-  if (c && c.hasAttribute('data-arm-cancel')) c.remove();
-}
-function armed(btn, label) {
-  if (btn.dataset.armed === '1') { disarm(); return true; }
-  disarm();
-  armedBtn = btn; btn.dataset.armed = '1'; btn.dataset.armLabel = btn.textContent; btn.textContent = label; btn.classList.add('is-danger');
-  const c = document.createElement('button');
-  c.type = 'button'; c.className = 'btn btn-sm'; c.textContent = 'Cancel'; c.setAttribute('data-arm-cancel', '1');
-  btn.after(c);
-  armTimer = setTimeout(disarm, 6000);
-  return false;
-}
+// Confirms: the shared armed() in cards.js (the icon opens into its question; a second press acts).
 
 export function bindTeamActions(deps) {
   if (bindTeamActions._bound) return;
@@ -417,7 +398,6 @@ export function bindTeamActions(deps) {
   D = D || deps;
 
   document.addEventListener('click', (e) => {
-    if (e.target.closest('[data-arm-cancel]')) { e.preventDefault(); disarm(); return; }
     const tb = e.target.closest('[data-tenant-action]');
     if (tb) { e.preventDefault(); if (tb.dataset.tenantAction === 'repair') repairTenant(tb); return; }
     const btn = e.target.closest('[data-team-action]');
@@ -435,7 +415,7 @@ export function bindTeamActions(deps) {
     }
     if (a === 'leave') {
       const name = tm.view?.tenant?.organizationName || 'this team';
-      if (!armed(btn, 'Leave for sure?')) return;
+      if (!armed(btn, 'Leave?')) return;
       return void act(async () => { await post(`${TENANT_URL}/leave`, {}); tm.teamId = ''; remember(); });
     }
     if (a === 'invite') {
@@ -450,16 +430,16 @@ export function bindTeamActions(deps) {
     }
     if (a === 'copy-link') return void copyText(btn.dataset.link || '', btn);
     if (a === 'revoke') {
-      if (!armed(btn, 'Withdraw for sure?')) return;
+      if (!armed(btn, 'Withdraw?')) return;
       return void act(async () => { await post(`${TENANT_URL}/invites/revoke`, { inviteId: btn.dataset.invite }); if (tm.lastInvite?.invite?.inviteId === btn.dataset.invite) tm.lastInvite = null; });
     }
     if (a === 'suspend') {
-      if (!armed(btn, 'Suspend for sure?')) return;
+      if (!armed(btn, 'Suspend?')) return;
       return void act(() => post(`${TENANT_URL}/members/patch`, { userId, status: 'SUSPENDED' }));
     }
     if (a === 'restore') return void act(() => post(`${TENANT_URL}/members/patch`, { userId, status: 'ACTIVE' }));
     if (a === 'remove') {
-      if (!armed(btn, 'Remove for sure?')) return;
+      if (!armed(btn, 'Remove?')) return;
       return void act(() => post(`${TENANT_URL}/members/remove`, { userId }));
     }
     if (a === 'allow-edit') { tm.editing = userId; paint(); document.getElementById('tmAllowCalls')?.focus(); return; }
@@ -525,16 +505,16 @@ function repairable(t) {
 }
 async function repairTenant(btn) {
   const name = btn.dataset.name || 'this team';
-  if (!armed(btn, 'Run for sure?')) return;
+  if (!armed(btn, 'Run it?')) return;
   D.showError('tnError', '');
-  btn.disabled = true; btn.textContent = 'Running…';
+  btn.disabled = true; btn.classList.add('is-spinning'); btn.setAttribute('data-tip', 'Running…');
   try {
     const r = await D.apiFetch(PROVISION_URL, { method: 'POST', body: JSON.stringify({ userId: btn.dataset.user }) });
     const main = document.getElementById('acctMain');
     if (main) await renderTenants(main, D);
     if (r.status !== 'READY') D.showError('tnError', `${name}: ${r.note || r.nextAction?.message || r.status}`);
   } catch (ex) {
-    btn.disabled = false; btn.textContent = 'Repair';
+    btn.disabled = false; btn.classList.remove('is-spinning'); btn.setAttribute('data-tip', 'Repair: run provisioning');
     D.showError('tnError', ex?.sessionInvalidated ? '' : (ex?.data?.error || D.friendlyError(ex, 'Provisioning did not run.')));
   }
 }
@@ -567,7 +547,7 @@ export async function renderTenants(main, deps) {
                 <td class="adm-num cell-tight">${e(String(t.seats?.used ?? 0))} / ${e(String(t.seats?.limit ?? 0))}${Number(t.seats?.pending) ? `<div class="adm-muted">+${e(String(t.seats.pending))} pending</div>` : ''}</td>
                 <td class="adm-num cell-tight">${e(String(t.members ?? 0))}${Number(t.viewers) ? `<div class="adm-muted">${e(String(t.viewers))} viewer${t.viewers === 1 ? '' : 's'}</div>` : ''}</td>
                 <td class="adm-muted cell-tight">${e(D.fmtDate(t.createdAt))}</td>
-                <td class="cell-tight tm-actions">${repairable(t) ? `<button class="btn btn-sm" type="button" data-tenant-action="repair" data-user="${e(t.ownerUserId)}" data-name="${e(t.organizationName || t.ownerEmail || 'this team')}">Repair</button>` : ''}</td>
+                <td class="cell-tight tm-actions">${repairable(t) ? iconBtn({ tenant: 'repair' }, 'tool', 'Repair: run provisioning', `data-user="${e(t.ownerUserId)}" data-name="${e(t.organizationName || t.ownerEmail || 'this team')}"`) : ''}</td>
               </tr>`).join('')}
           </tbody>
         </table>
