@@ -16,15 +16,17 @@
 //   PUT  v1/environment/licensing/licenses/{id}        seats: more now, fewer at the period's end
 //   DELETE v1/environment/licensing/licenses/{id}      ends at the period's end
 //   POST v1/environment/licensing/licenses/{id}/keep   an ending taken back before its date
-//   POST   v1/environment/licensing/mailboxes/{userId}  a seat gets its included mailbox (the Kiosk count rises, nothing charged)
-//   DELETE v1/environment/licensing/mailboxes/{userId}  taken back: the count falls at the period's end
+//   POST   v1/environment/licensing/mailboxes/{userId}  a seat gets its included mailbox (the Kiosk count rises, nothing charged;
+//                                                        with the tenant connected, the person and address are made at once)
+//   DELETE v1/environment/licensing/mailboxes/{userId}  taken back: the count falls at the period's end, the license comes off the person
 //
 // Follows the Team section's choice of team (the same sessionStorage key).
 // This module is the section: the read, the head, the account and the
 // mailboxes. The Microsoft details, the licenses held and the add flow live
 // in licensingOrders.js; the catalog with its search, kinds, filters and
 // cards in licensingCatalog.js; the state and helpers all share are in
-// licensingShared.js. The person and the mailbox address in the tenant are the next slice.
+// licensingShared.js. The tenant itself (connecting it, each seat's person and address, the domain and the
+// mail switch) is licensingTenant.js (2026-09-23).
 
 import { tierName } from '../components/tierCopy.js';
 import { explainLink } from '../components/explainer.js';
@@ -34,11 +36,13 @@ import { microsoftHtml, licensesHtml, orderAction, orderChange } from './licensi
 import { catalogHtml, catalogAction, catalogInput } from './licensingCatalog.js';
 import { billingHtml, billingAction } from './licensingBilling.js';
 import { pax8Html, pax8Action } from './licensingPax8.js';
+import { tenantHtml, tenantAction, resetTenant } from './licensingTenant.js';
 
 
 export async function renderLicensing(main, deps) {
   st.D = deps; st.paint = paint; st.load = load;
   lc.view = null; lc.busy = false; lc.note = ''; lc.pricing = ''; lc.add = null; lc.saving = ''; lc.msEdit = false; lc.lineNote = ''; lc.needPhone = false; lc.msMode = ''; lc.bill = null; lc.seatBusy = ''; lc.p8 = null;
+  resetTenant();
   initCards();
   main.innerHTML = `
     <header class="acct-sec-head has-explain"><h2 class="acct-sec-title">Licensing</h2>${explainLink('licensing', 'How licenses and mailboxes work')}</header>
@@ -67,7 +71,7 @@ async function load() {
 function paint() {
   const host = document.getElementById('licBody');
   if (!host || !lc.view) return;
-  host.innerHTML = `${summaryHtml()}<div class="ev-cards">${accountHtml()}${microsoftHtml()}${licensesHtml()}${catalogHtml()}${mailboxesHtml()}${billingHtml()}${pax8Html()}</div>`;
+  host.innerHTML = `${summaryHtml()}<div class="ev-cards">${accountHtml()}${microsoftHtml()}${tenantHtml()}${licensesHtml()}${catalogHtml()}${mailboxesHtml()}${billingHtml()}${pax8Html()}</div>`;
 }
 
 /* ---------- the head ---------- */
@@ -167,14 +171,22 @@ function mailSummary(v) {
   return `${countWord(seats.length, 'seat', 'seats')} · ${held} included`;
 }
 
-/** One seat's mailbox: the address once it exists, the included Kiosk it holds, or the button that gives it one. */
+/**
+ * One seat's mailbox: its address in the tenant once the person is made (2026-09-23), waiting while Microsoft adds
+ * the license, the included Kiosk it holds before the tenant is connected, or the button that gives it one.
+ */
 function seatMailCell(s, on, canManage, e) {
-  if (s.mailbox) return `<span class="ev-code">${e(s.mailbox)}</span>`;
   const busy = lc.seatBusy === s.userId;
   if (s.included) {
+    const mb = s.mailbox || null;
     const take = canManage && s.role !== 'owner'
       ? iconBtn({ lic: 'seat-release' }, 'userMinus', `Take back ${s.email}'s mailbox; the count falls at the period's end`, `data-user="${e(s.userId)}" ${lc.seatBusy ? 'disabled' : ''}`, `is-risky ${busy ? 'is-spinning' : ''}`) : '';
-    return `<div class="lic-seat-mail"><span class="acct-tag is-verified">Kiosk included</span>${take}</div>`;
+    const addr = mb?.address ? `<span class="ev-code">${e(mb.address)}</span>` : '';
+    const tag = mb?.state === 'ready' ? ''
+      : mb?.state === 'waiting' ? `<span class="acct-tag is-pending" data-tip="${e(mb.why || 'Microsoft has not added the license yet')}">waiting for Microsoft</span>`
+      : mb?.state === 'failed' ? `<span class="acct-tag is-bad" data-tip="${e(mb.why || 'Microsoft refused it')}">not made</span>`
+      : '<span class="acct-tag is-verified">Kiosk included</span>';
+    return `<div class="lic-seat-mail">${addr}${tag}${take}</div>`;
   }
   if (on && canManage && s.status !== 'SUSPENDED')
     return iconBtn({ lic: 'seat-give' }, 'mail', `Give ${s.email} their included mailbox; nothing is charged`, `data-user="${e(s.userId)}" ${lc.seatBusy ? 'disabled' : ''}`, `btn-primary ${busy ? 'is-spinning' : ''}`);
@@ -187,8 +199,9 @@ async function seatMail(btn, give) {
   if (!give && !armed(btn, 'Take it back?')) return;
   lc.seatBusy = btn.dataset.user; st.D.showError('licSeatError', ''); paint();
   try {
-    await st.D.apiFetch(url(`${LIC_URL}/mailboxes/${encodeURIComponent(btn.dataset.user)}`), { method: give ? 'POST' : 'DELETE', headers: { 'Content-Type': 'application/json' }, body: body({}) });
+    const d = await st.D.apiFetch(url(`${LIC_URL}/mailboxes/${encodeURIComponent(btn.dataset.user)}`), { method: give ? 'POST' : 'DELETE', headers: { 'Content-Type': 'application/json' }, body: body({}) });
     lc.seatBusy = '';
+    if (d?.tenant?.seats && lc.tn) { lc.tn.seats = d.tenant; lc.tn.status = null; }
     await load();
   } catch (ex) {
     lc.seatBusy = ''; paint();
@@ -275,7 +288,7 @@ export function bindLicensingActions(deps) {
     if (!btn) return;
     e.preventDefault();
     const a = btn.dataset.licAction;
-    if (a === 'refresh') return void load();
+    if (a === 'refresh') { if (lc.tn) lc.tn.status = null; return void load(); }
     if (a === 'open-account') return void openAccount(btn);
     if (a === 'mail-enroll') return void enrollMail(btn);
     if (a === 'seat-give') return void seatMail(btn, true);
@@ -283,6 +296,7 @@ export function bindLicensingActions(deps) {
     if (catalogAction(a, btn)) return;
     if (billingAction(a, btn)) return;
     if (pax8Action(a, btn)) return;
+    if (tenantAction(a, btn)) return;
     orderAction(a, btn);
   });
   document.addEventListener('change', (e) => { orderChange(e); catalogInput(e); });

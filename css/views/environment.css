@@ -386,3 +386,29 @@
 .p8-events li { border: 1px solid var(--border); border-radius: var(--radius-ctl); padding: 6px 10px; font-size: .84rem; }
 .p8-events summary { cursor: pointer; }
 .p8-body { max-height: 18rem; overflow: auto; margin: 8px 0 2px; font-size: .74rem; }
+
+/* the customer's Microsoft tenant on Licensing (2026-09-23, licensingTenant.js) */
+.tn-row { display: grid; grid-template-columns: max-content minmax(0, 1fr) auto; gap: 6px 16px; align-items: center; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border); }
+.tn-row-note { margin: 0; }
+.tn-list { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 6px; font-size: .86rem; }
+.tn-list li { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; min-width: 0; }
+.tn-list .ev-code { overflow-wrap: anywhere; }
+.tn-domains { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border); display: grid; gap: 8px; }
+.tn-domains > .acct-card-note { margin: 0; }
+.tn-domain { border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; display: grid; gap: 8px; min-width: 0; }
+.tn-domain-head { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; min-width: 0; }
+.tn-host { font-size: .92rem; overflow-wrap: anywhere; }
+.tn-acts { margin-left: auto; display: inline-flex; gap: 6px; align-items: center; }
+.tn-plan { display: grid; gap: 8px; }
+.tn-plan .acct-card-note { margin: 0; }
+.tn-records td { vertical-align: middle; }
+.tn-val { overflow-wrap: anywhere; word-break: break-all; }
+.tn-warn { display: flex; gap: 8px; align-items: flex-start; color: var(--gold-soft); }
+.tn-warn svg { flex: none; width: 16px; height: 16px; margin-top: 2px; }
+.ev-note.is-bad { color: var(--danger-text, var(--danger)); }
+.acct-tag.is-quiet { color: var(--muted); border: 1px solid var(--border); }
+@media (max-width: 560px) {
+  .tn-row { grid-template-columns: minmax(0, 1fr) auto; }
+  .tn-row .lic-k { grid-column: 1 / -1; }
+  .tn-acts { margin-left: 0; width: 100%; }
+}

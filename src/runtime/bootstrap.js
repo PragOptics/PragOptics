@@ -859,6 +859,8 @@ window.applyPostLoginResolution = applyPostLoginResolution;
       // A card link (2026-09-16, the software's "one button"): /#account?section=environment&card=domains&row=stripe opens that section and scrolls to that card.
       try { const q = new URLSearchParams(String(location.hash || "").split("?")[1] || ""); provider = q.get("connect") || ""; id = q.get("id") || ""; section = q.get("section") || ""; card = q.get("card") || ""; row = q.get("row") || ""; } catch { /* no params */ }
       const fromProvider = provider === "stripe" || provider === "twilio" || provider === "shippo";
+      // Microsoft's answer on connecting a tenant (2026-09-23): /#account?section=licensing&tenant=<outcome>&why=...
+      try { const q = new URLSearchParams(String(location.hash || "").split("?")[1] || ""); if (q.get("tenant")) sessionStorage.setItem("pragoptics_tenant_return", JSON.stringify({ outcome: q.get("tenant"), why: q.get("why") || "" })); } catch { /* the card reads the tenant live anyway */ }
       if (section || card) {
         try { sessionStorage.setItem("pragoptics_open_card", JSON.stringify({ section, card, row })); } catch { /* the section still opens */ }
         if (isSessionActive()) { presetAccountSection(section || "profile"); setAppMode("account"); return; }

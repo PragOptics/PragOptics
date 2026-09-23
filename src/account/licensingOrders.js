@@ -52,7 +52,7 @@ function mailWhere(v, prefix) {
   const e = st.D.escapeHtml, ds = v.mailDomains || [];
   const name = `${prefix ? e(prefix) : 'yourname'}.onmicrosoft.com`;
   if (v.microsoft?.tenantId) return `mailboxes use the domains already in your tenant${ds.length ? `; <strong>${e(ds[0])}</strong> joins it too` : `, and any you add on ${DOMAINS_LINK}`}`;
-  if (ds.length) return `mailboxes start at name@${name} and move to <strong>${e(ds[0])}</strong> when it joins the tenant${ds.length > 1 ? ` (${e(ds.length - 1)} more on ${DOMAINS_LINK})` : ''}`;
+  if (ds.length) return `mailboxes are name@<strong>${e(ds[0])}</strong> once its mail is switched to Microsoft on the tenant card; before that, name@${name}${ds.length > 1 ? ` (${e(ds.length - 1)} more on ${DOMAINS_LINK})` : ''}`;
   return `mailboxes are name@${name} until a domain of yours is added on ${DOMAINS_LINK}`;
 }
 /** The form in two modes (Cameron, 2026-09-22): a new tenant by name, or the id of a tenant they have. */
