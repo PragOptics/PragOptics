@@ -15,6 +15,7 @@
 //   POST v1/environment/licensing/licenses             add a license: the card charged first, then the order at the distributor
 //   PUT  v1/environment/licensing/licenses/{id}        seats: more now, fewer at the period's end
 //   DELETE v1/environment/licensing/licenses/{id}      ends at the period's end
+//   POST v1/environment/licensing/licenses/{id}/keep   an ending taken back before its date
 //   POST   v1/environment/licensing/mailboxes/{userId}  a seat gets its included mailbox (the Kiosk count rises, nothing charged)
 //   DELETE v1/environment/licensing/mailboxes/{userId}  taken back: the count falls at the period's end
 //

@@ -109,6 +109,9 @@ export function licensesHtml() {
         <input class="acct-input lic-qty" type="number" min="1" max="500" value="${e(String(l.quantity))}" id="licQty-${e(l.id)}" aria-label="Seats">
         <button class="btn btn-sm" type="button" data-lic-action="seats" data-line="${e(l.id)}" ${lc.saving ? 'disabled' : ''}>Set seats</button>
         <button class="btn btn-sm is-danger" type="button" data-lic-action="end" data-line="${e(l.id)}" ${lc.saving ? 'disabled' : ''}>End at period end</button>
+      </span>` : canManage && !l.included && l.status === 'ENDING' ? `
+      <span class="lic-acts">
+        <button class="btn btn-sm" type="button" data-lic-action="keep" data-line="${e(l.id)}" ${lc.saving ? 'disabled' : ''}>${lc.saving === l.id ? 'Keeping…' : 'Keep it'}</button>
       </span>` : '';
     return `
       <tr>
@@ -225,6 +228,7 @@ async function confirmAdd() {
       : code === 'MICROSOFT_DETAILS_REQUIRED' ? 'Save the Microsoft details first.'
       : code === 'NO_STRIPE_CUSTOMER' ? 'Add a card on Billing first; the license is charged to it before it is ordered.'
       : code === 'LIVE_LANE_ONLY' ? 'Licenses are managed on your live environment, not the sandbox.'
+      : code === 'LICENSE_ENDING' ? `${ex?.data?.error || 'This license is set to end. Keep it instead, then add seats.'} Keep it is on Your licenses above.`
       : (ex?.data?.error || st.D.friendlyError(ex, 'The license could not be added.'));
     st.D.showError('licAddError', msg);
   }
@@ -261,6 +265,19 @@ async function endLicense(btn) {
   } catch (ex) { lc.saving = ''; st.paint(); st.D.showError('licLinesError', ex?.data?.error || st.D.friendlyError(ex, 'The license could not be ended.')); }
 }
 
+/** An ending taken back before its date: the license bills and renews as before. */
+async function keepLicense(btn) {
+  const id = btn.dataset.line || '';
+  if (!id || lc.saving) return;
+  lc.saving = id; st.D.showError('licLinesError', ''); st.paint();
+  try {
+    const d = await st.D.apiFetch(url(`${LIC_URL}/licenses/${encodeURIComponent(id)}/keep`), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: body({}) });
+    lc.saving = '';
+    lc.lineNote = `${licName(d.license.productName)} continues; it no longer ends.`;
+    await st.load();
+  } catch (ex) { lc.saving = ''; st.paint(); st.D.showError('licLinesError', ex?.data?.error || st.D.friendlyError(ex, 'The license could not be kept.')); }
+}
+
 /** Handles a data-lic-action this module owns; false when it is not one of them. */
 export function orderAction(a, btn) {
   if (a === 'ms-save') { saveMicrosoft(); return true; }
@@ -272,6 +289,7 @@ export function orderAction(a, btn) {
   if (a === 'add-confirm') { confirmAdd(); return true; }
   if (a === 'seats') { setSeats(btn); return true; }
   if (a === 'end') { endLicense(btn); return true; }
+  if (a === 'keep') { keepLicense(btn); return true; }
   return false;
 }
 /** The tenant toggle: a name for a new tenant, or the id of one they have. Typed values stay. */
