@@ -13,6 +13,7 @@
 // licensing.js paints these cards and routes clicks here through orderAction.
 
 import { explainLink } from '../components/explainer.js';
+import { iconBtn, leadBtn, armed, btnLabel } from './cards.js';
 import { LIC_URL, lc, st, url, body, cardHtml, countWord, money, TERM_NAMES, RENEW_WORDS, STATUS_WORDS, loadOffers, billWord, commitWord, ruleWords } from './licensingShared.js';
 
 /* ---------- the Microsoft details: the agreement and the tenant (2026-09-22) ---------- */
@@ -32,7 +33,7 @@ export function microsoftHtml() {
         <div class="lic-fact"><span class="lic-k">Mail</span><span class="lic-v">${mailWhere(v, m.domainPrefix)}</span></div>
         <div class="lic-fact"><span class="lic-k">Agreement</span><span class="lic-v">accepted by ${e(m.mca.firstName)} ${e(m.mca.lastName)}, ${e(m.mca.email)}, ${e(st.D.fmtDate(m.mca.acceptedAt))}</span></div>
       </div>
-      ${canManage ? `<div class="acct-actions-row"><button class="btn btn-sm" type="button" data-lic-action="ms-edit">Change</button></div>` : ''}`;
+      ${canManage ? `<div class="acct-actions-row">${iconBtn({ lic: 'ms-edit' }, 'edit', 'Change the Microsoft details')}</div>` : ''}`;
   } else {
     summary = m.ready ? 'changing' : 'needed before the first license';
     inner = canManage ? msFormHtml(m) : '<p class="acct-card-note">The owner or an admin names the tenant and accepts the Microsoft Customer Agreement before a license can be added.</p>';
@@ -80,8 +81,8 @@ function msFormHtml(m) {
     </div>
     <label class="ev-agree"><input type="checkbox" id="licMsAccept"><span>I accept the <a href="https://www.microsoft.com/licensing/docs/customeragreement" target="_blank" rel="noopener">Microsoft Customer Agreement</a> for my organization.</span></label>
     <div class="acct-actions-row">
-      <button class="btn" type="button" data-lic-action="ms-save" ${lc.saving === 'ms' ? 'disabled' : ''}>${lc.saving === 'ms' ? 'Saving…' : 'Save'}</button>
-      ${lc.msEdit ? '<button class="btn btn-sm" type="button" data-lic-action="ms-cancel">Cancel</button>' : ''}
+      ${leadBtn({ lic: 'ms-save' }, 'check', lc.saving === 'ms' ? 'Saving…' : 'Save', lc.saving === 'ms' ? 'disabled' : '', 'btn-primary')}
+      ${lc.msEdit ? iconBtn({ lic: 'ms-cancel' }, 'x', 'Cancel') : ''}
     </div>`;
 }
 
@@ -107,11 +108,11 @@ export function licensesHtml() {
     const acts = canManage && !l.included && (l.status === 'ORDERED' || l.status === 'ACTIVE') ? `
       <span class="lic-acts">
         <input class="acct-input lic-qty" type="number" min="1" max="500" value="${e(String(l.quantity))}" id="licQty-${e(l.id)}" aria-label="Seats">
-        <button class="btn btn-sm" type="button" data-lic-action="seats" data-line="${e(l.id)}" ${lc.saving ? 'disabled' : ''}>Set seats</button>
-        <button class="btn btn-sm is-danger" type="button" data-lic-action="end" data-line="${e(l.id)}" ${lc.saving ? 'disabled' : ''}>End at period end</button>
+        ${iconBtn({ lic: 'seats' }, 'check', 'Set the seats: more are charged now, fewer at the period end', `data-line="${e(l.id)}" ${lc.saving ? 'disabled' : ''}`, 'btn-primary')}
+        ${iconBtn({ lic: 'end' }, 'calendarX', 'End at the period end; it stays usable until then', `data-line="${e(l.id)}" ${lc.saving ? 'disabled' : ''}`, 'is-risky')}
       </span>` : canManage && !l.included && l.status === 'ENDING' ? `
       <span class="lic-acts">
-        <button class="btn btn-sm" type="button" data-lic-action="keep" data-line="${e(l.id)}" ${lc.saving ? 'disabled' : ''}>${lc.saving === l.id ? 'Keeping…' : 'Keep it'}</button>
+        ${leadBtn({ lic: 'keep' }, 'undo', lc.saving === l.id ? 'Keeping…' : 'Keep it', `data-line="${e(l.id)}" ${lc.saving ? 'disabled' : ''} data-tip="Take the ending back; it bills and renews as before"`)}
       </span>` : '';
     return `
       <tr>
@@ -157,8 +158,8 @@ export function addHtml() {
       <p class="acct-card-note">${chosen ? `Charged now: <strong>${e(total)}</strong> plus any tax, then ${e(RENEW_WORDS[chosen.billingTerm] || 'each term')} until you end it.${rule ? ` ${e(rule.charAt(0).toUpperCase() + rule.slice(1))}.` : ''}` : lc.prices[p.id] === null ? 'This license has no list price to order on; ask Support and it is added by hand.' : 'Reading the price…'}</p>
       <p class="acct-error" id="licAddError" hidden></p>
       <div class="acct-actions-row">
-        <button class="btn" type="button" data-lic-action="add-confirm" ${lc.saving === 'add' || !chosen ? 'disabled' : ''}>${lc.saving === 'add' ? 'Charging and ordering…' : chosen ? `Charge ${e(total)} and order` : 'No price to order on'}</button>
-        <button class="btn btn-sm" type="button" data-lic-action="add-cancel" ${lc.saving === 'add' ? 'disabled' : ''}>Cancel</button>
+        ${leadBtn({ lic: 'add-confirm' }, 'card', lc.saving === 'add' ? 'Charging and ordering…' : chosen ? `Charge ${total} and order` : 'No price to order on', lc.saving === 'add' || !chosen ? 'disabled' : '', 'btn-primary')}
+        ${iconBtn({ lic: 'add-cancel' }, 'x', 'Cancel', lc.saving === 'add' ? 'disabled' : '')}
       </div>
     </div>`;
 }
@@ -191,7 +192,7 @@ function lockForm(which, on, label) {
   const card = which === 'ms' ? document.getElementById('licMsError')?.closest('.acct-card') : null;
   if (!card) return;
   for (const el of card.querySelectorAll('input, select, button')) el.disabled = on;
-  const b = card.querySelector('[data-lic-action="ms-save"]'); if (b) b.textContent = label;
+  const b = card.querySelector('[data-lic-action="ms-save"]'); if (b) btnLabel(b, label);
 }
 async function openAdd(btn) {
   const id = btn.dataset.product || '';
@@ -238,9 +239,12 @@ async function setSeats(btn) {
   if (!id || lc.saving) return;
   const qty = Math.floor(Number(document.getElementById(`licQty-${id}`)?.value));
   if (!Number.isFinite(qty) || qty < 1 || qty > 500) { st.D.showError('licLinesError', 'Seats are a whole number from 1 to 500.'); return; }
+  const cur = Number((lc.view?.licenses || []).find(x => x.id === id)?.quantity || 0);
+  if (qty === cur) { st.D.showError('licLinesError', 'That is the seat count already.'); return; }
+  if (qty > cur && !armed(btn, `Add ${qty - cur} seat${qty - cur === 1 ? '' : 's'}? Charged now`)) return;
   lc.saving = id; st.D.showError('licLinesError', '');
   // the row keeps the typed seat count while it saves: its controls locked in place
-  const tr = btn.closest('tr'); for (const el of tr ? tr.querySelectorAll('input, button') : []) el.disabled = true; btn.textContent = 'Saving…';
+  const tr = btn.closest('tr'); for (const el of tr ? tr.querySelectorAll('input, button') : []) el.disabled = true; btn.classList.add('is-spinning');
   try {
     const d = await st.D.apiFetch(url(`${LIC_URL}/licenses/${encodeURIComponent(id)}`), { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: body({ quantity: qty }) });
     lc.saving = '';
@@ -255,7 +259,7 @@ async function setSeats(btn) {
 async function endLicense(btn) {
   const id = btn.dataset.line || '';
   if (!id || lc.saving) return;
-  if (!btn.dataset.sure) { btn.dataset.sure = '1'; btn.textContent = 'Yes, end it at the period end'; return; }
+  if (!armed(btn, 'End at the period end?')) return;
   lc.saving = id; st.D.showError('licLinesError', ''); st.paint();
   try {
     const d = await st.D.apiFetch(url(`${LIC_URL}/licenses/${encodeURIComponent(id)}`), { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: body({}) });

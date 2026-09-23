@@ -17,6 +17,7 @@ import { tierName } from '../components/tierCopy.js';
 import { explainLink } from '../components/explainer.js';
 import { lc, st, cardHtml, countWord, money, loadOffers, billWord, commitWord, ruleWords, perMonth } from './licensingShared.js';
 import { addHtml, canAdd } from './licensingOrders.js';
+import { leadBtn } from './cards.js';
 
 const PAGE = 20;
 const KINDS = [
@@ -119,7 +120,7 @@ function rowHtml(p) {
             ${requiresHtml(p.id)}
             ${p.sku ? `<div><span class="lic-k">SKU</span><span class="ev-code">${e(p.sku)}</span></div>` : ''}
           </div>
-          ${canAdd() ? (lc.add && lc.add.productId === p.id ? addHtml() : `<div class="acct-actions-row"><button class="btn" type="button" data-lic-action="add-open" data-product="${e(p.id)}" ${lc.saving ? 'disabled' : ''}>Add to my team</button></div>`) : ''}
+          ${canAdd() ? (lc.add && lc.add.productId === p.id ? addHtml() : `<div class="acct-actions-row">${leadBtn({ lic: 'add-open' }, 'plus', 'Add to my team', `data-product="${e(p.id)}" ${lc.saving ? 'disabled' : ''}`, 'btn-primary')}</div>`) : ''}
         </div>` : ''}
     </div>`;
 }
@@ -131,7 +132,7 @@ function listHtml() {
   return `
     <p class="lic-hint lic-cat-count">${e(`${list.length} of ${all.length}`)}</p>
     ${shown.length ? `<div class="lic-list">${shown.map(rowHtml).join('')}</div>` : '<p class="acct-empty">Nothing matches. Clear the search or choose All.</p>'}
-    ${more > 0 ? `<div class="acct-actions-row lic-more"><button class="btn btn-sm" type="button" data-lic-action="cat-more">Show ${Math.min(PAGE, more)} more</button></div>` : ''}`;
+    ${more > 0 ? `<div class="acct-actions-row lic-more">${leadBtn({ lic: 'cat-more' }, 'chevron', `Show ${Math.min(PAGE, more)} more`)}</div>` : ''}`;
 }
 
 export function catalogHtml() {

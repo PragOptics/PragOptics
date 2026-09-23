@@ -28,7 +28,7 @@
 
 import { tierName } from '../components/tierCopy.js';
 import { explainLink } from '../components/explainer.js';
-import { iconBtn, setCardSummary, initCards } from './cards.js';
+import { iconBtn, leadBtn, ico, armed, btnLabel, setCardSummary, initCards } from './cards.js';
 import { LIC_URL, lc, st, url, body, cardHtml, countWord, cap } from './licensingShared.js';
 import { microsoftHtml, licensesHtml, orderAction, orderChange } from './licensingOrders.js';
 import { catalogHtml, catalogAction, catalogInput } from './licensingCatalog.js';
@@ -100,7 +100,7 @@ function accountHtml() {
     summary = `starts on the ${e(tierName(v.minimumTier))} plan`;
     inner = `
       <p class="acct-card-note">Licenses and mailboxes come with the ${e(tierName(v.minimumTier))} plan and above. Your team is on ${e(tierName(v.tier))}.</p>
-      <div class="acct-actions-row"><button class="btn" type="button" data-acct-section="subscription">See the plans</button></div>`;
+      <div class="acct-actions-row"><button class="btn btn-sm btn-lead btn-primary" type="button" data-acct-section="subscription">${ico('layers')}<span>See the plans</span></button></div>`;
   } else if (a) {
     summary = `open${a.status ? ` · ${e(a.status.toLowerCase())}` : ''}`;
     inner = `
@@ -116,7 +116,7 @@ function accountHtml() {
     summary = 'not open yet';
     inner = `
       <p class="acct-card-note">Open your licensing account to add licenses. It is opened with the billing address you already gave, and nothing is charged for opening it.</p>
-      ${canManage ? `${lc.needPhone ? `<div class="ev-reg-form"><div><label class="acct-label" for="licPhone">Phone number for the account</label><input class="acct-input" id="licPhone" type="tel" inputmode="tel" autocomplete="tel" placeholder="+1 555 555 5555"></div></div>` : ''}<div class="acct-actions-row"><button class="btn" type="button" data-lic-action="open-account" ${lc.busy ? 'disabled' : ''}>${lc.busy ? 'Opening…' : lc.needPhone ? 'Open with this number' : 'Open the licensing account'}</button></div>` : '<p class="acct-card-note">The team\'s owner or an admin opens it.</p>'}`;
+      ${canManage ? `${lc.needPhone ? `<div class="ev-reg-form"><div><label class="acct-label" for="licPhone">Phone number for the account</label><input class="acct-input" id="licPhone" type="tel" inputmode="tel" autocomplete="tel" placeholder="+1 555 555 5555"></div></div>` : ''}<div class="acct-actions-row">${leadBtn({ lic: 'open-account' }, 'plus', lc.busy ? 'Opening…' : lc.needPhone ? 'Open with this number' : 'Open the licensing account', lc.busy ? 'disabled' : '', 'btn-primary')}</div>` : '<p class="acct-card-note">The team\'s owner or an admin opens it.</p>'}`;
   }
   return cardHtml({
     key: 'account', icon: 'shield', title: 'Licensing account', summary,
@@ -172,18 +172,18 @@ function seatMailCell(s, on, canManage, e) {
   const busy = lc.seatBusy === s.userId;
   if (s.included) {
     const take = canManage && s.role !== 'owner'
-      ? `<button class="btn btn-sm" type="button" data-lic-action="seat-release" data-user="${e(s.userId)}" ${lc.seatBusy ? 'disabled' : ''}>${busy ? 'Taking back…' : 'Take back'}</button>` : '';
+      ? iconBtn({ lic: 'seat-release' }, 'userMinus', `Take back ${s.email}'s mailbox; the count falls at the period's end`, `data-user="${e(s.userId)}" ${lc.seatBusy ? 'disabled' : ''}`, `is-risky ${busy ? 'is-spinning' : ''}`) : '';
     return `<div class="lic-seat-mail"><span class="acct-tag is-verified">Kiosk included</span>${take}</div>`;
   }
   if (on && canManage && s.status !== 'SUSPENDED')
-    return `<button class="btn btn-sm" type="button" data-lic-action="seat-give" data-user="${e(s.userId)}" ${lc.seatBusy ? 'disabled' : ''}>${busy ? 'Giving…' : 'Give mailbox'}</button>`;
+    return iconBtn({ lic: 'seat-give' }, 'mail', `Give ${s.email} their included mailbox; nothing is charged`, `data-user="${e(s.userId)}" ${lc.seatBusy ? 'disabled' : ''}`, `btn-primary ${busy ? 'is-spinning' : ''}`);
   return '<span class="adm-muted">none</span>';
 }
 
 async function seatMail(btn, give) {
   if (lc.seatBusy) return;
   // taking one back asks twice: the count falls at the period's end, and the person loses the mailbox
-  if (!give && !btn.dataset.sure) { btn.dataset.sure = '1'; btn.textContent = 'Yes, take it back'; return; }
+  if (!give && !armed(btn, 'Take it back?')) return;
   lc.seatBusy = btn.dataset.user; st.D.showError('licSeatError', ''); paint();
   try {
     await st.D.apiFetch(url(`${LIC_URL}/mailboxes/${encodeURIComponent(btn.dataset.user)}`), { method: give ? 'POST' : 'DELETE', headers: { 'Content-Type': 'application/json' }, body: body({}) });
@@ -213,12 +213,12 @@ function enrollHtml() {
     <div class="lic-enroll">
       <p class="acct-card-note">Turn on mail for your team. Your own Kiosk mailbox comes first, included with your plan; nothing is charged.</p>
       <p class="acct-error" id="licEnrollError" hidden></p>
-      <div class="acct-actions-row"><button class="btn" type="button" data-lic-action="mail-enroll" ${lc.busy ? 'disabled' : ''}>${lc.busy ? 'Turning on…' : 'Turn on mail'}</button></div>
+      <div class="acct-actions-row">${leadBtn({ lic: 'mail-enroll' }, 'mail', lc.busy ? 'Turning on…' : 'Turn on mail', lc.busy ? 'disabled' : '', 'btn-primary')}</div>
     </div>`;
 }
 async function enrollMail(btn) {
   if (lc.busy) return;
-  lc.busy = true; btn.disabled = true; btn.textContent = 'Turning on…'; st.D.showError('licEnrollError', '');
+  lc.busy = true; btn.disabled = true; const w = btn.querySelector(':scope > span'); if (w) w.textContent = 'Turning on…'; st.D.showError('licEnrollError', '');
   try {
     await st.D.apiFetch(url(`${LIC_URL}/enroll`), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: body({}) });
     lc.busy = false;
@@ -240,7 +240,7 @@ async function openAccount(btn) {
   const phone = String(document.getElementById('licPhone')?.value || '').trim();
   if (lc.needPhone && !phone) { st.D.showError('licAccountError', 'Give a phone number for the account.'); return; }
   lc.busy = true; lc.note = ''; st.D.showError('licAccountError', '');
-  btn.disabled = true; btn.textContent = 'Opening…';
+  btn.disabled = true; btnLabel(btn, 'Opening…');
   try {
     const d = await st.D.apiFetch(url(`${LIC_URL}/account`), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: body(phone ? { phone } : {}) });
     lc.busy = false;
@@ -260,7 +260,7 @@ async function openAccount(btn) {
       : code === 'DISTRIBUTOR_CANNOT_CREATE' ? 'This account is opened by support on request; write to support@bridgesindust.com and it is done within a business day.'
       : code === 'NOT_CONFIGURED' ? 'Licensing is being set up on the platform. Try again later.'
       : (ex?.data?.error || st.D.friendlyError(ex, 'The account could not be opened.'));
-    btn.disabled = false; btn.textContent = lc.needPhone ? 'Open with this number' : 'Open the licensing account';
+    btn.disabled = false; btnLabel(btn, lc.needPhone ? 'Open with this number' : 'Open the licensing account');
     st.D.showError('licAccountError', msg);
   }
 }

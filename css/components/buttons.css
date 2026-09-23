@@ -248,7 +248,8 @@
   color: var(--danger-text);
   border-color: color-mix(in srgb, var(--danger) 60%, transparent);
   background: color-mix(in srgb, var(--danger) 14%, transparent);
-  font-weight: 700; white-space: nowrap;
+  font-weight: 700; white-space: normal; text-align: left; line-height: 1.25;
+  height: auto; padding-top: 6px; padding-bottom: 6px; max-width: 100%;
   animation: poArmed 1.1s ease-in-out infinite alternate;
 }
 .btn.is-armed:hover {

@@ -1327,18 +1327,13 @@ let subPmCtx = null;     // { stripe, elements } while a card update is open
 function usdCents(cents) {
   const n = Number(cents);
   if (!Number.isFinite(n)) return '';
-  return `$${(n / 100).toFixed(2)}`;
+  return `${n < 0 ? '-' : ''}$${(Math.abs(n) / 100).toFixed(2)}`;
 }
 
-// Two-step confirm for money buttons: first click arms, second fires.
+// Two-step confirm for money buttons: first click arms (the button opens into what will happen, with a Keep-it
+// beside it), second fires. The panel's one confirm (cards.js armed(), 2026-09-23 polish).
 function armConfirm(btn, armedText, onConfirm) {
-  if (btn.dataset.armed) { delete btn.dataset.armed; return void onConfirm(); }
-  btn.dataset.armed = '1';
-  const orig = btn.textContent;
-  btn.textContent = armedText;
-  setTimeout(() => {
-    if (btn.isConnected && btn.dataset.armed) { delete btn.dataset.armed; btn.textContent = orig; }
-  }, 5000);
+  if (armed(btn, armedText, { ms: 8000 })) onConfirm();
 }
 
 function keysOfCurrent(data) {
@@ -1473,18 +1468,16 @@ async function loadUsageCard() {
     const morePath = tier === 'user' ? 'Add an add-on in Plan and add-ons above'
       : tier === 'super' ? 'Contact support@bridgesindust.com for more capacity'
       : 'Upgrade in Plan and add-ons above';
-    host.innerHTML = `
-      <section class="acct-card ${over.length ? 'acct-card-warn' : ''}">
-        <h3 class="acct-card-h">Usage this month</h3>
-        <p class="acct-card-note">${escapeHtml(d.month)} on the ${escapeHtml(tierName(tier))} plan${activeAddons.length
+    const monthWords = /^\d{4}-\d{2}$/.test(String(d.month || '')) ? new Date(`${d.month}-15T12:00:00Z`).toLocaleDateString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' }) : String(d.month || '');
+    const callsPct = d.limits?.apiCalls ? Math.round(100 * (Number(d.usage?.apiCalls) || 0) / d.limits.apiCalls) : null;
+    host.innerHTML = cardHtml({ key: 'billing:usage', icon: 'activity', title: 'Usage this month', summary: escapeHtml(`${monthWords}${callsPct != null ? ` · ${callsPct}% of calls` : ''}`), cls: over.length ? 'acct-card-warn' : '', body: `
+        <p class="acct-card-note">${escapeHtml(monthWords)} on the ${escapeHtml(tierName(tier))} plan${activeAddons.length
           ? `, limits raised by ${activeAddons.length} add-on${activeAddons.length === 1 ? '' : 's'}` : ''}. Each allowance has a ${gracePct}% grace margin.${over.length
           ? ` <span class="acct-tag is-bad">${blocked ? 'past allowance and grace' : 'past allowance'}</span> ${escapeHtml(morePath)}.${blocked
             ? ' Metered platform functions are paused until capacity is added or the month resets; your account, billing, and warranty are unaffected.'
             : ' Nothing is limited yet.'}` : ''}</p>
         ${meterRowHtml('API calls', d.usage.apiCalls, d.limits.apiCalls)}
-        ${meterRowHtml('Storage', d.usage.storageBytes, d.limits.storageBytes, gbFmt)}
-      </section>
-    `;
+        ${meterRowHtml('Storage', d.usage.storageBytes, d.limits.storageBytes, gbFmt)}` });
   } catch (ex) {
     // Endpoint not deployed yet, or a blip: the card simply does not render.
     host.innerHTML = '';
@@ -1517,7 +1510,7 @@ function subNotSubscribedHtml(data) {
               : 'You are on the Free tier. Subscribe for cloud sync, API access with your own keys, and a provisioned workspace.'}</p>
       </div>
       <div class="acct-actions-row">
-        ${status === 'PAYMENT_PENDING' ? '' : `<button class="cta" type="button" data-acct-action="subscribe">${midCheckout ? 'Resume checkout' : 'Subscribe'}</button>`}
+        ${status === 'PAYMENT_PENDING' ? '' : leadBtn({ acct: 'subscribe' }, midCheckout ? 'play' : 'layers', midCheckout ? 'Resume checkout' : 'Subscribe', '', 'btn-primary')}
       </div>
     </section>
   `;
@@ -1550,148 +1543,114 @@ function subManagerHtml(data) {
   const keptAddons = keptAddonKeys().filter(k => strayAddons.includes(k));
   const strayKept = strayAddons.length > 0 && keptAddons.length === strayAddons.length;
 
+  const cardLine = pm ? `${(pm.brand || 'card').toUpperCase()} ending in ${pm.last4 || '????'}${pm.expMonth ? `, expires ${pm.expMonth}/${pm.expYear}` : ''}` : 'no card on file';
+  const invoices = data.invoices || [];
   return `
-    ${data.paymentActionRequired && openInvoice ? `
-      <section class="acct-card acct-card-warn">
-        <h3 class="acct-card-h">Action needed</h3>
+    ${data.paymentActionRequired && openInvoice ? cardHtml({ key: 'billing:action', icon: 'alert', title: 'Action needed', summary: 'your bank asked for authentication', danger: true, body: `
         <p class="acct-card-note">Your bank asked for extra authentication on the latest charge.
         Finish it and the subscription continues untouched.</p>
         <div class="acct-actions-row">
-          <a class="cta" href="${escapeHtml(safeUrl(openInvoice.hostedInvoiceUrl))}" target="_blank" rel="noopener">Finish authentication</a>
-        </div>
-      </section>
-    ` : ''}
-    ${status === 'PAST_DUE' ? `
-      <section class="acct-card acct-card-warn">
-        <h3 class="acct-card-h">Payment past due</h3>
+          <a class="btn btn-sm btn-lead btn-primary" href="${escapeHtml(safeUrl(openInvoice.hostedInvoiceUrl))}" target="_blank" rel="noopener">${ico('external')}<span>Finish authentication</span></a>
+        </div>` }) : ''}
+    ${status === 'PAST_DUE' ? cardHtml({ key: 'billing:pastdue', icon: 'alert', title: 'Payment past due', summary: 'update the card below', danger: true, body: `
         <p class="acct-card-note">The last charge did not go through. Update the card below;
-        the retry happens automatically.</p>
-      </section>
-    ` : ''}
+        the retry happens automatically.</p>` }) : ''}
 
-    <section class="acct-card">
+    <section class="acct-card acct-plan-card">
       <div class="acct-plan">
-        <div>
+        <div class="acct-plan-line">
           <span class="acct-plan-tier">${escapeHtml(tierName(tier))}</span>
           <span class="acct-tag ${status === 'ACTIVE' ? 'is-verified' : 'is-pending'}">${escapeHtml(statusLabel(status))}</span>
           ${sub.cancelAtPeriodEnd ? `<span class="acct-tag is-pending">Ends ${escapeHtml(fmtDate(sub.currentPeriodEnd))}</span>` : ''}
         </div>
+        <p class="acct-plan-price"><strong>${escapeHtml(usdCents(totalCents))}</strong><span>${per}</span>${shape.seats ? `<span class="acct-plan-extra">${shape.seats} extra seat${shape.seats === 1 ? '' : 's'}</span>` : ''}</p>
         <p class="acct-card-note">
-          ${escapeHtml(usdCents(totalCents))}${per}${shape.seats ? ` · ${shape.seats} extra seat${shape.seats === 1 ? '' : 's'}` : ''} ·
           ${sub.cancelAtPeriodEnd
-            ? `runs until ${escapeHtml(fmtDate(sub.currentPeriodEnd))}, then ends`
-            : `renews ${escapeHtml(fmtDate(sub.currentPeriodEnd))}`}${sub.taxEnabled ? ' · sales tax added at your billing address' : ''}${
+            ? `Runs until ${escapeHtml(fmtDate(sub.currentPeriodEnd))}, then ends`
+            : `Renews ${escapeHtml(fmtDate(sub.currentPeriodEnd))}`}${sub.taxEnabled ? ' · sales tax added at your billing address' : ''}${
           data.upcomingInvoice?.amountDueCents != null && !sub.cancelAtPeriodEnd
             ? ` · next charge ${escapeHtml(usdCents(data.upcomingInvoice.amountDueCents))}` : ''}
         </p>
       </div>
     </section>
+    <div id="acctUsageCard"></div>
 
-    ${pending ? `
-      <section class="acct-card acct-card-warn">
-        <h3 class="acct-card-h">Scheduled change</h3>
+    ${pending ? cardHtml({ key: 'billing:pending', icon: 'clock', title: 'Scheduled change', summary: `on ${escapeHtml(fmtDate(pending.effectiveAt))}`, cls: 'acct-card-warn', body: `
         <p class="acct-card-note">On ${escapeHtml(fmtDate(pending.effectiveAt))}: ${escapeHtml(pending.summary || 'your plan changes')}.
         Your current plan runs until then. No charge, no credit.${pendingIsAddonDrop
           ? ' Keeping the add-on cancels this removal; it stays on the plan and keeps billing until you remove it.' : ''}</p>
         <div class="acct-actions-row">
-          <button class="btn" type="button" data-acct-action="sub-keep">${pendingIsAddonDrop ? 'Keep the add-on' : 'Keep my current plan'}</button>
+          ${leadBtn({ acct: 'sub-keep' }, 'undo', pendingIsAddonDrop ? 'Keep the add-on' : 'Keep my current plan')}
         </div>
-        <p class="acct-error" id="acctPendingError" hidden></p>
-      </section>
-    ` : strayAddons.length && strayKept ? `
-      <section class="acct-card">
-        <h3 class="acct-card-h">Add-on kept</h3>
+        <p class="acct-error" id="acctPendingError" hidden></p>` })
+    : strayAddons.length && strayKept ? cardHtml({ key: 'billing:addon', icon: 'tag2', title: 'Add-on kept', summary: escapeHtml(strayAddons.map(k => ADDON_NAME[k] || k).join(', ')), body: `
         <p class="acct-card-note">You chose to keep ${escapeHtml(strayAddons.map(k => ADDON_NAME[k] || k).join(', '))} on the ${escapeHtml(tierName(shape.subType))} plan.
         ${strayRetired ? 'It is no longer offered to new subscribers but stays yours' : 'It does not raise this plan\'s limits'} and keeps billing as before. Remove it at the end of a paid period whenever you like.</p>
         <div class="acct-actions-row">
-          <button class="btn" type="button" data-acct-action="sub-drop-addons"
-            title="Schedules the removal for the end of the paid period. Nothing else on the plan changes.">Remove at period end</button>
+          ${leadBtn({ acct: 'sub-drop-addons' }, 'calendarX', 'Remove at period end', 'data-tip="Schedules the removal for the end of the paid period; nothing else on the plan changes"')}
         </div>
-        <p class="acct-error" id="acctPendingError" hidden></p>
-      </section>
-    ` : strayAddons.length ? `
-      <section class="acct-card acct-card-warn">
-        <h3 class="acct-card-h">${strayRetired ? 'Add-on no longer offered' : 'Add-on not on this plan'}</h3>
+        <p class="acct-error" id="acctPendingError" hidden></p>` })
+    : strayAddons.length ? cardHtml({ key: 'billing:addon', icon: 'tag2', title: strayRetired ? 'Add-on no longer offered' : 'Add-on not on this plan', summary: escapeHtml(strayAddons.map(k => ADDON_NAME[k] || k).join(', ')), cls: 'acct-card-warn', body: `
         <p class="acct-card-note">${escapeHtml(strayAddons.map(k => ADDON_NAME[k] || k).join(', '))}: ${strayRetired
           ? (strayAddons.length === 1
               ? 'this add-on is no longer offered. It stays until you remove it; removal takes effect at the end of the paid period.'
               : 'these add-ons are no longer offered. They stay until you remove them; removal takes effect at the end of the paid period.')
           : `${strayAddons.length === 1 ? 'this does' : 'these do'} not apply to the ${escapeHtml(tierName(shape.subType))} plan, which includes higher limits. Remove ${strayAddons.length === 1 ? 'it' : 'them'} at the end of the paid period and ${strayAddons.length === 1 ? 'it' : 'they'} will not be billed again.`} No charge, no credit.</p>
         <div class="acct-actions-row">
-          <button class="btn" type="button" data-acct-action="sub-drop-addons"
-            title="Schedules the removal for the end of the paid period. Nothing else on the plan changes.">Remove at period end</button>
+          ${leadBtn({ acct: 'sub-drop-addons' }, 'calendarX', 'Remove at period end', 'data-tip="Schedules the removal for the end of the paid period; nothing else on the plan changes"')}
         </div>
-        <p class="acct-error" id="acctPendingError" hidden></p>
-      </section>
-    ` : ''}
+        <p class="acct-error" id="acctPendingError" hidden></p>` }) : ''}
 
-    <section class="acct-card">
-      <h3 class="acct-card-h">Plan and add-ons</h3>
+    ${cardHtml({ key: 'billing:plan', icon: 'sliders', title: 'Plan and add-ons', summary: 'change it here', body: `
       <div id="acctPricing"></div>
       <div class="acct-actions-row">
-        <button class="cta" type="button" id="acctPlanApply" data-acct-action="sub-apply" disabled
-          title="Upgrades charge the difference today and apply once paid. Downgrades and add-on removals take effect at the end of the paid period, with no charge.">Apply changes</button>
+        ${leadBtn({ acct: 'sub-apply' }, 'check', 'Apply changes', 'id="acctPlanApply" disabled data-tip="Upgrades charge the difference today; downgrades and removals take effect at the period end"', 'btn-primary')}
       </div>
       <p class="acct-card-note muted">Upgrades charge the difference today and apply once paid. Downgrades and add-on removals take effect on ${escapeHtml(fmtDate(sub.currentPeriodEnd))}, with no charge and no credit.</p>
       <p class="acct-error" id="acctPlanError" hidden></p>
-      <p class="muted" id="acctPlanMsg" hidden></p>
-    </section>
+      <p class="muted" id="acctPlanMsg" hidden></p>` })}
 
-    <section class="acct-card">
-      <h3 class="acct-card-h">Payment method</h3>
-      ${pm ? `
-        <p class="acct-card-note">${escapeHtml((pm.brand || 'card').toUpperCase())} ending in ${escapeHtml(pm.last4 || '????')}
-        ${pm.expMonth ? `· expires ${escapeHtml(String(pm.expMonth))}/${escapeHtml(String(pm.expYear))}` : ''}</p>
-      ` : `<p class="acct-card-note">No card on file yet.</p>`}
-      <div class="acct-actions-row" id="acctPmActions">
-        <button class="btn" type="button" data-acct-action="pm-update">Update card</button>
+    ${cardHtml({ key: 'billing:card', icon: 'card', title: 'Payment method', summary: escapeHtml(cardLine), body: `
+      <div class="acct-pm-line">
+        ${pm ? `<span class="acct-pm-brand">${escapeHtml((pm.brand || 'card').toUpperCase())}</span><span class="acct-pm-num">•••• ${escapeHtml(pm.last4 || '????')}</span>${pm.expMonth ? `<span class="adm-muted">expires ${escapeHtml(String(pm.expMonth))}/${escapeHtml(String(pm.expYear))}</span>` : ''}` : '<span class="acct-card-note">No card on file yet.</span>'}
+        <span class="act-row acct-pm-acts" id="acctPmActions">${leadBtn({ acct: 'pm-update' }, 'edit', pm ? 'Update card' : 'Add a card')}</span>
       </div>
       <div id="acctPmHost" hidden>
         <div id="acctPmElement"></div>
-        <div class="acct-actions-row">
-          <button class="cta" type="button" data-acct-action="pm-save">Save card</button>
-          <button class="btn" type="button" data-acct-action="pm-cancel">Never mind</button>
+        <div class="acct-actions-row act-row">
+          ${leadBtn({ acct: 'pm-save' }, 'check', 'Save card', '', 'btn-primary')}
+          ${iconBtn({ acct: 'pm-cancel' }, 'x', 'Never mind')}
         </div>
       </div>
       <p class="acct-error" id="acctPmError" hidden></p>
-      <p class="muted" id="acctPmMsg" hidden></p>
-    </section>
+      <p class="muted" id="acctPmMsg" hidden></p>` })}
 
-    <section class="acct-card">
-      <h3 class="acct-card-h">Invoices</h3>
-      ${(data.invoices || []).length ? `
-        <div class="adm-table-scroll">
-          <table class="adm-table adm-table--wrap">
-            <thead><tr><th>Date</th><th>Number</th><th class="adm-num">Total</th><th>Status</th><th></th></tr></thead>
-            <tbody>
-              ${data.invoices.map(i => `
-                <tr>
-                  <td class="adm-muted cell-tight">${escapeHtml(fmtDate(i.createdAt))}</td>
-                  <td class="cell-ellip" title="${escapeHtml(i.number || i.id)}"><code>${escapeHtml(i.number || i.id)}</code></td>
-                  <td class="adm-num cell-tight">${escapeHtml(usdCents(i.totalCents))}</td>
-                  <td class="cell-tight">${invoicePill(i.status)}</td>
-                  <td>${safeUrl(i.hostedInvoiceUrl) ? `<a class="acct-inline-link" href="${escapeHtml(safeUrl(i.hostedInvoiceUrl))}" target="_blank" rel="noopener">View</a>` : ''}
-                      ${safeUrl(i.pdfUrl) ? ` <a class="acct-inline-link" href="${escapeHtml(safeUrl(i.pdfUrl))}" target="_blank" rel="noopener">PDF</a>` : ''}</td>
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>
-        </div>
-      ` : `<p class="acct-card-note">No invoices yet.</p>`}
-    </section>
+    ${cardHtml({ key: 'billing:invoices', icon: 'file', title: 'Invoices', summary: invoices.length ? `${invoices.length} invoice${invoices.length === 1 ? '' : 's'}` : 'none yet', body: invoices.length ? `
+        <ul class="acct-inv-list">
+          ${invoices.map((i, n) => `
+            <li class="acct-inv ${n >= 5 ? 'is-more' : ''}">
+              <span class="acct-inv-date">${escapeHtml(fmtDate(i.createdAt))}</span>
+              <code class="acct-inv-num" title="${escapeHtml(i.number || i.id)}">${escapeHtml(i.number || i.id)}</code>
+              <span class="acct-inv-total">${escapeHtml(usdCents(i.totalCents))}</span>
+              <span class="acct-inv-status">${invoicePill(i.status)}</span>
+              <span class="act-row acct-inv-acts">
+                ${safeUrl(i.hostedInvoiceUrl) ? `<a class="btn btn-sm btn-ico" href="${escapeHtml(safeUrl(i.hostedInvoiceUrl))}" target="_blank" rel="noopener" aria-label="View invoice ${escapeHtml(i.number || '')}" data-tip="View the invoice">${ico('external')}</a>` : ''}
+                ${safeUrl(i.pdfUrl) ? `<a class="btn btn-sm btn-ico" href="${escapeHtml(safeUrl(i.pdfUrl))}" target="_blank" rel="noopener" aria-label="Download invoice ${escapeHtml(i.number || '')} as a PDF" data-tip="Download the PDF">${ico('download')}</a>` : ''}
+              </span>
+            </li>`).join('')}
+        </ul>
+        ${invoices.length > 5 ? `<div class="acct-actions-row acct-inv-more">${leadBtn({ acct: 'inv-more' }, 'chevron', `Show ${invoices.length - 5} more`)}</div>` : ''}` : `<p class="acct-card-note">No invoices yet.</p>` })}
 
-    <section class="acct-card">
-      <h3 class="acct-card-h">${sub.cancelAtPeriodEnd ? 'Resume subscription' : 'Cancel subscription'}</h3>
+    ${cardHtml({ key: 'billing:cancel', icon: 'power', title: sub.cancelAtPeriodEnd ? 'Resume subscription' : 'Cancel subscription', summary: sub.cancelAtPeriodEnd ? `ends ${escapeHtml(fmtDate(sub.currentPeriodEnd))}` : 'at the end of a paid period', danger: !sub.cancelAtPeriodEnd, body: `
       <p class="acct-card-note">${sub.cancelAtPeriodEnd
         ? `The plan is set to end on ${escapeHtml(fmtDate(sub.currentPeriodEnd))}. Resume to keep it running.`
         : 'Canceling keeps everything running until the end of the paid period, then the plan ends. No partial refunds, no surprises.'}</p>
       <div class="acct-actions-row">
         ${sub.cancelAtPeriodEnd
-          ? `<button class="cta" type="button" data-acct-action="sub-resume">Resume</button>`
-          : `<button class="btn" type="button" data-acct-action="sub-cancel">Cancel at period end</button>`}
+          ? leadBtn({ acct: 'sub-resume' }, 'play', 'Resume', '', 'btn-primary')
+          : leadBtn({ acct: 'sub-cancel' }, 'calendarX', 'Cancel at period end', '', 'is-danger')}
       </div>
-      <p class="acct-error" id="acctCancelError" hidden></p>
-    </section>
+      <p class="acct-error" id="acctCancelError" hidden></p>` })}
   `;
 }
 
@@ -1724,7 +1683,7 @@ async function renderSubscription(main) {
     return;
   }
 
-  host.innerHTML = subManagerHtml(subData) + '<div id="acctUsageCard"></div>';
+  host.innerHTML = subManagerHtml(subData);
   loadUsageCard();
 
   // Change-plan surface: the same catalog-driven cards as the wizard,
@@ -1759,18 +1718,18 @@ async function applyPlanChange(btn) {
   const endDate = fmtDate(subData?.subscription?.currentPeriodEnd);
   const per = sel.cadence === 'annual' ? '/yr' : '/mo';
   // The confirm says what will actually happen, per the backend's rule.
-  const armed = kind === 'less'
+  const question = kind === 'less'
     ? `Confirm: ${usdCents(sel.totalCents)}${per} plus sales tax from ${endDate}, no charge now`
     : kind === 'both'
       ? `Confirm: additions charge today; removals on ${endDate}`
       : `Confirm: ${usdCents(sel.totalCents)}${per} plus sales tax, difference charged today`;
-  armConfirm(btn, armed, async () => {
+  armConfirm(btn, question, async () => {
     btn.disabled = true;
     // The unarmed label, not the confirm text the button carried a moment
     // ago: after a refusal the button must read as a fresh Apply, not as a
     // confirm that already fired.
     const orig = 'Apply changes';
-    btn.textContent = 'Applying…';
+    btnLabel(btn, 'Applying…');
     showError('acctPlanError', '');
     try {
       const r = await apiFetch(SUB_UPDATE_URL, {
@@ -1791,7 +1750,7 @@ async function applyPlanChange(btn) {
     } catch (ex) {
       showError('acctPlanError', friendlyError(ex, 'Could not update the plan.'));
       btn.disabled = false;
-      btn.textContent = orig;
+      btnLabel(btn, orig);
     }
   });
 }
@@ -1885,8 +1844,7 @@ async function startPmUpdate(btn) {
 async function savePmUpdate(btn) {
   if (!subPmCtx) return;
   btn.disabled = true;
-  const orig = btn.textContent;
-  btn.textContent = 'Saving…';
+  const orig = btnLabel(btn, 'Saving…');
   showError('acctPmError', '');
   try {
     const { error } = await subPmCtx.stripe.confirmSetup({
@@ -1904,7 +1862,7 @@ async function savePmUpdate(btn) {
     // Stripe.js errors it does not recognise still fall through to ex.message.
     showError('acctPmError', friendlyError(ex, 'Card setup failed.'));
     btn.disabled = false;
-    btn.textContent = orig;
+    btnLabel(btn, orig);
   }
 }
 
@@ -1933,7 +1891,7 @@ async function setCancelState(btn, action) {
       btn.disabled = false;
     }
   };
-  if (action === 'cancel') armConfirm(btn, 'Confirm: end at period close', go);
+  if (action === 'cancel') armConfirm(btn, `End on ${fmtDate(subData?.subscription?.currentPeriodEnd)}?`, go);
   else go();
 }
 
@@ -4093,6 +4051,7 @@ function bindOnce() {
       const a = act.dataset.acctAction;
       if (a === 'logout') return void window.logout?.();
       if (a === 'subscribe') return void (window.openWizardFromMenu?.() || window.setAppMode?.('wizard'));
+      if (a === 'inv-more') { const l = act.closest('.ev-card-body')?.querySelector('.acct-inv-list'); if (l) l.classList.add('is-all'); act.closest('.acct-inv-more')?.remove(); return; }
       if (a === 'sub-apply') return void applyPlanChange(act);
       if (a === 'sub-cancel') return void setCancelState(act, 'cancel');
       if (a === 'sub-resume') return void setCancelState(act, 'resume');
