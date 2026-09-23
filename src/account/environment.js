@@ -29,7 +29,7 @@ import { tierName } from '../components/tierCopy.js';
 import { explainLink, writeClipboard } from '../components/explainer.js';
 import { stripeAppearance } from '../api/stripeAppearance.js';
 import { ensureStripeJs } from '../runtime/stripeLoader.js';
-import { ico, iconBtn, cardHtml as sharedCard, isOpen, setOpen, initCards } from './cards.js';
+import { ico, iconBtn, leadBtn, btnLabel, cardHtml as sharedCard, isOpen, setOpen, initCards } from './cards.js';
 
 const TENANT_URL = `${PRAG_API_BASE}/tenant`;
 const ENV_URL = `${PRAG_API_BASE}/environment`;
@@ -298,7 +298,7 @@ function sandboxSetupHtml(v) {
       <section class="acct-card">
         <h3 class="acct-card-h">Your sandbox is being set up</h3>
         <p class="acct-card-note">${e(sb.note || 'Its own storage account is being created. This takes a moment and finishes on its own.')}</p>
-        <div class="acct-actions-row"><button class="btn btn-sm" type="button" data-env-action="refresh">Check again</button></div>
+        <div class="acct-actions-row">${leadBtn('refresh', 'refresh', 'Check again')}</div>
       </section>`;
   }
   return `
@@ -306,7 +306,7 @@ function sandboxSetupHtml(v) {
       <h3 class="acct-card-h">A place to build and test</h3>
       <p class="acct-card-note">A sandbox is a second environment of your own: its own storage account, its own vault, its own connected accounts. Build and test here with test keys, and nothing touches what your customers use. When you are ready, the software pushes your work live. ${explainLink('environment', 'How your environment works')}</p>
       ${isOwner
-        ? `<div class="acct-actions-row"><button class="btn" type="button" data-env-action="sandbox-setup" ${ev.sandboxBusy ? 'disabled' : ''}>${ev.sandboxBusy ? 'Setting up…' : 'Set up a sandbox'}</button></div>`
+        ? `<div class="acct-actions-row">${leadBtn('sandbox-setup', ev.sandboxBusy ? 'refresh' : 'plus', ev.sandboxBusy ? 'Setting up…' : 'Set up a sandbox', ev.sandboxBusy ? 'disabled' : '', `btn-primary ${ev.sandboxBusy ? 'is-spinning' : ''}`)}</div>`
         : `<p class="acct-card-note ev-note">The owner sets up the sandbox. Once it exists, it shows here for everyone on the team.</p>`}
       <p class="acct-error" id="evSandboxError" hidden></p>
     </section>`;
@@ -363,7 +363,7 @@ function emptyHtml(view) {
       <section class="acct-card">
         <h3 class="acct-card-h">Your environment is being set up.</h3>
         <p class="acct-card-note">It happens on its own within a moment of signing in: a place for your data, your files and your keys, with the allowance your plan carries. Press Refresh, or set it up now.</p>
-        <div class="acct-actions-row"><button class="btn" type="button" data-env-action="provision">Set it up now</button><button class="btn btn-sm" type="button" data-env-action="refresh">Refresh</button></div>
+        <div class="acct-actions-row act-row">${leadBtn('provision', 'zap', 'Set it up now', '', 'btn-primary')}${iconBtn('refresh', 'refresh', 'Refresh')}</div>
         <p class="acct-error" id="evProvError" hidden></p>
       </section>`;
   }
@@ -444,7 +444,7 @@ function summaryHtml(v) {
       <p class="acct-card-note ev-note">${phase === 'PROVISIONING'
         ? `Setup started and did not finish${t.provisionNote ? `: ${e(t.provisionNote)}` : ''}. It completes on its own within minutes; ${isOwner ? 'you can also finish it now.' : 'the owner can also finish it now.'}`
         : `No storage has been set up for this team yet. ${isOwner ? 'It happens on its own when a paid invoice settles; you can also start it now.' : 'The owner starts it, or it happens when their invoice settles.'}`}</p>
-      ${isOwner ? `<div class="acct-actions-row"><button class="btn" type="button" data-env-action="provision">${phase === 'PROVISIONING' ? 'Finish setup' : 'Set up storage'}</button></div>` : ''}
+      ${isOwner ? `<div class="acct-actions-row">${leadBtn('provision', 'database', phase === 'PROVISIONING' ? 'Finish setup' : 'Set up storage', '', 'btn-primary')}</div>` : ''}
       <p class="acct-error" id="evProvError" hidden></p>` : ''}
     </section>`;
 }
@@ -568,7 +568,7 @@ function dataHtml() {
           </tbody>
         </table>
       </div>
-      ${ev.rowsAfter ? `<div class="acct-actions-row ev-note"><button class="btn btn-sm" type="button" data-env-action="data-more" ${ev.rowsLoading ? 'disabled' : ''}>${ev.rowsLoading ? 'Reading…' : 'Next 50 rows'}</button></div>` : ''}`}`;
+      ${ev.rowsAfter ? `<div class="acct-actions-row ev-note">${leadBtn('data-more', ev.rowsLoading ? 'refresh' : 'chevron', ev.rowsLoading ? 'Reading…' : 'Next 50 rows', ev.rowsLoading ? 'disabled' : '', ev.rowsLoading ? 'is-spinning' : '')}</div>` : ''}`}`;
   }
   return cardHtml({
     key: 'data', icon: 'database', title: 'Data', summary,
@@ -620,7 +620,7 @@ function budgetHtml(manage) {
       </table>
     </div>
     <p class="acct-card-note ev-note">${own ? `Every row answers through your <b>${e(own.label || own.provider)}</b> connection on your own account, so only the answer caps hold here.` : `A share is the cents of this month's credit an assistant may spend; Buys is what that share affords at its model and effort, under its answer cap. Shares add up to at most the credit; what is left is the Studio's. ${b.unallocatedCents != null ? `Unallocated now: ${e(dollars(b.unallocatedCents))}.` : ''}`} Each row's monthly cap is also the door's stop, and its share is a second one.</p>
-    ${manage && rows.length ? `<div class="ev-actions"><button class="acct-btn" type="button" data-env-action="budget-save" ${ev.budgetBusy ? 'disabled' : ''}>${ev.budgetBusy ? 'Saving…' : 'Save the rows'}</button><span class="ev-status" id="evBudgetStatus" aria-live="polite"></span></div>` : ''}`;
+    ${manage && rows.length ? `<div class="ev-actions">${leadBtn('budget-save', 'check', ev.budgetBusy ? 'Saving…' : 'Save the rows', ev.budgetBusy ? 'disabled' : '', 'btn-primary')}<span class="ev-status" id="evBudgetStatus" aria-live="polite"></span></div>` : ''}`;
 }
 async function saveBudget(btn) {
   if (ev.budgetBusy) return;
@@ -835,9 +835,10 @@ function domainHtml(d) {
       : `<p class="acct-error ev-dom-note">The registrar account this name was linked through was removed. Link it again under a connected account, or Unlink and manage its records yourself.</p>`;
   }
   const armed = (k) => ev.domArm === `${k}:${d.host}`;
-  const twoStep = (k, label, sure) => armed(k)
-    ? `<button class="btn btn-sm is-danger" type="button" data-env-action="domain-${k}" data-host="${e(d.host)}">${sure}</button><button class="btn btn-sm" type="button" data-env-action="domain-arm-cancel">Cancel</button>`
-    : `<button class="btn btn-sm" type="button" data-env-action="domain-${k}" data-host="${e(d.host)}">${label}</button>`;
+  // the panel's armed look (cards.js armed()), kept by this card's own state: the icon opens into its question
+  const twoStep = (k, icon, tip, sure) => armed(k)
+    ? `<button class="btn btn-sm btn-ico is-armed" type="button" data-env-action="domain-${k}" data-host="${e(d.host)}" aria-label="${e(sure)} Press again to confirm." data-tip="Press again to confirm">${ico(icon)}<span>${e(sure)}</span></button>${iconBtn('domain-arm-cancel', 'x', 'Keep it', '', 'btn-arm-cancel')}`
+    : iconBtn(`domain-${k}`, icon, tip, `data-host="${e(d.host)}"`, 'is-risky');
   return `
     <div class="ev-dom">
       <div class="ev-dom-head">
@@ -848,14 +849,14 @@ function domainHtml(d) {
       </div>
       ${body}
       ${manage ? `
-      <div class="ev-dom-actions">
-        ${verified || (d.hosted && d.hosted.phase !== 'MANAGED') ? '' : `<button class="btn btn-sm" type="button" data-env-action="domain-verify" data-host="${e(d.host)}" ${checking ? 'disabled' : ''}>${checking ? 'Checking…' : 'Verify'}</button>`}
+      <div class="ev-dom-actions act-row">
+        ${verified || (d.hosted && d.hosted.phase !== 'MANAGED') ? '' : leadBtn('domain-verify', checking ? 'refresh' : 'checkCircle', checking ? 'Checking…' : 'Verify', `data-host="${e(d.host)}" ${checking ? 'disabled' : ''} data-tip="Look for the TXT record now"`, `btn-primary ${checking ? 'is-spinning' : ''}`)}
         ${verified && hosted ? (bs === 'BOUND'
-          ? twoStep('unbind', 'Unbind', 'Stop serving here?')
-          : `<button class="btn btn-sm" type="button" data-env-action="domain-bind" data-host="${e(d.host)}" ${busy ? 'disabled' : ''}>${busy ? 'Working…' : bs === 'BINDING' ? 'Check' : bs === 'BIND_FAILED' ? 'Try again' : 'Bind'}</button>`) : ''}
-        ${d.hosted ? twoStep('dns-cancel', 'Hand DNS back', 'Hand it back for sure?') : ''}
-        ${linked ? `<button class="btn btn-sm" type="button" data-env-action="domain-unlink" data-host="${e(d.host)}">Unlink</button>` : ''}
-        ${twoStep('remove', 'Remove', 'Remove for sure?')}
+          ? twoStep('unbind', 'x', 'Unbind: stop serving the software at this domain', 'Stop serving here?')
+          : leadBtn('domain-bind', busy ? 'refresh' : 'link', busy ? 'Working…' : bs === 'BINDING' ? 'Check' : bs === 'BIND_FAILED' ? 'Try again' : 'Bind', `data-host="${e(d.host)}" ${busy ? 'disabled' : ''} data-tip="Serve the software at this domain"`, `btn-primary ${busy ? 'is-spinning' : ''}`)) : ''}
+        ${d.hosted ? twoStep('dns-cancel', 'undo', 'Hand DNS back to where it was', 'Hand DNS back?') : ''}
+        ${linked ? iconBtn('domain-unlink', 'link', 'Unlink: manage its records yourself again', `data-host="${e(d.host)}"`) : ''}
+        ${twoStep('remove', 'trash', 'Remove this domain', 'Remove?')}
       </div>` : ''}
     </div>`;
 }
@@ -869,7 +870,7 @@ function linkDoorHtml(full) {
     <div class="ev-dom-row ev-dom-link">
       <select class="acct-input acct-select" id="evLinkConn" aria-label="Registrar account">${conns.map(c => `<option value="${e(c.id)}">${e(c.label)} (${e(providerLabel(c.provider))})</option>`).join('')}</select>
       <input class="acct-input" type="text" id="evLinkHost" maxlength="253" placeholder="www.example.com" autocomplete="off" spellcheck="false" autocapitalize="off" ${full ? 'disabled' : ''} />
-      <button class="btn" type="button" data-env-action="domain-link" ${full ? 'disabled' : ''}>Link</button>
+      ${leadBtn('domain-link', 'link', 'Link', full ? 'disabled' : '', 'btn-primary')}
     </div>
     <p class="acct-card-note ev-dom-door">A name held in that registrar account. The platform writes its records itself; nothing to paste.</p>
     ${ev.linkNote ? `<p class="acct-card-note">${e(ev.linkNote)}</p>` : ''}`;
@@ -882,7 +883,7 @@ function dnsDoorHtml(full) {
   return `
     <div class="ev-dom-row ev-dom-host-door">
       <input class="acct-input" type="text" id="evDnsHost" maxlength="253" placeholder="example.com" autocomplete="off" spellcheck="false" autocapitalize="off" ${full || s.busy ? 'disabled' : ''} />
-      <button class="btn" type="button" data-env-action="domain-dns-start" ${full || s.busy ? 'disabled' : ''}>${s.busy ? 'Looking it up…' : 'Manage its DNS here'}</button>
+      ${leadBtn('domain-dns-start', s.busy ? 'refresh' : 'globe', s.busy ? 'Looking it up…' : 'Manage its DNS here', full || s.busy ? 'disabled' : '', `btn-primary ${s.busy ? 'is-spinning' : ''}`)}
     </div>
     <p class="acct-card-note ev-dom-door">The domain stays where you bought it. Its settings move here, nothing changes until you say so, and you can hand it back any time.</p>
     ${s.note ? `<p class="acct-card-note">${e(s.note)}</p>` : ''}`;
@@ -919,13 +920,13 @@ function hostedBodyHtml(d) {
   const shown = !!(ev.dnsRecs || {})[d.host];
   const note = (ev.dnsNote || {})[d.host] || '';
   const ns = (h.nameServers || []).map(n => `<li><code>${e(n)}</code> <button class="btn btn-sm btn-ico" type="button" data-env-action="domain-copy" data-text="${e(n)}" aria-label="Copy" data-tip="Copy">${ico('copy')}</button></li>`).join('');
-  const recordsBtn = `<button class="btn btn-sm" type="button" data-env-action="domain-dns-records" data-host="${e(d.host)}">${shown ? 'Hide records' : 'Show records'}</button>`;
+  const recordsBtn = iconBtn('domain-dns-records', shown ? 'eye' : 'list', shown ? 'Hide the records' : 'Show the records', `data-host="${e(d.host)}"`, shown ? 'is-on' : '');
   const more = phase === 'REVIEW' || phase === 'SWITCHING' ? `
       <details class="ev-dom-more"><summary>Add records we did not find</summary>
         <p class="acct-card-note ev-dom-note">Paste a zone file exported from where the domain lives today, or type names we should look up, one per line (for example <code>intranet</code>).</p>
         <textarea class="acct-input ev-dom-zonefile" id="evDnsFile-${e(d.host)}" rows="4" placeholder="Zone file (optional)"></textarea>
         <textarea class="acct-input ev-dom-names" id="evDnsNames-${e(d.host)}" rows="2" placeholder="Names, one per line (optional)"></textarea>
-        <div class="ev-dom-actions"><button class="btn btn-sm" type="button" data-env-action="domain-dns-add" data-host="${e(d.host)}" ${busy ? 'disabled' : ''}>Add</button></div>
+        <div class="ev-dom-actions">${leadBtn('domain-dns-add', 'plus', 'Add', `data-host="${e(d.host)}" ${busy ? 'disabled' : ''}`)}</div>
       </details>` : '';
   let body = '';
   if (phase === 'REVIEW') {
@@ -934,31 +935,31 @@ function hostedBodyHtml(d) {
       ${h.lastError ? `<p class="acct-error ev-dom-note">${e(h.lastError)}</p>` : ''}
       ${hostedRecordsHtml(d.host)}
       ${more}
-      <div class="ev-dom-actions">${recordsBtn}<button class="btn" type="button" data-env-action="domain-dns-switch" data-host="${e(d.host)}" ${busy ? 'disabled' : ''}>${busy ? 'Working…' : 'Switch to PragOptics'}</button></div>`;
+      <div class="ev-dom-actions act-row">${recordsBtn}${leadBtn('domain-dns-switch', busy ? 'refresh' : 'zap', busy ? 'Working…' : 'Switch to PragOptics', `data-host="${e(d.host)}" ${busy ? 'disabled' : ''}`, `btn-primary ${busy ? 'is-spinning' : ''}`)}</div>`;
   } else if (phase === 'SWITCHING') {
     const byPlatform = String(h.switchedBy || '').startsWith('platform:') || String(h.switchedBy || '').startsWith('connection:');
     body = byPlatform ? `
       <p class="acct-card-note ev-dom-note">The nameservers were set at ${e(h.registrar || 'your registrar')}. <b>Checking.</b> This usually takes a few minutes and can take up to a day. Everything keeps working while we wait.</p>
       ${hostedRecordsHtml(d.host)}
-      <div class="ev-dom-actions">${recordsBtn}<button class="btn btn-sm" type="button" data-env-action="domain-dns-check" data-host="${e(d.host)}" ${busy ? 'disabled' : ''}>${busy ? 'Checking…' : 'Check now'}</button></div>` : `
+      <div class="ev-dom-actions act-row">${recordsBtn}${iconBtn('domain-dns-check', 'refresh', busy ? 'Checking…' : 'Check now', `data-host="${e(d.host)}" ${busy ? 'disabled' : ''}`, busy ? 'is-spinning' : '')}</div>` : `
       <p class="acct-card-note ev-dom-note">Sign in at ${e(h.registrar || 'your registrar')} and paste these lines where it says <b>nameservers</b>, replacing what is there. Then press I did it.</p>
       <ul class="ev-dom-ns">${ns}</ul>
       ${h.lastError ? `<p class="acct-error ev-dom-note">${e(h.lastError)}</p>` : ''}
       ${hostedRecordsHtml(d.host)}
       ${more}
-      <div class="ev-dom-actions">${recordsBtn}<button class="btn" type="button" data-env-action="domain-dns-check" data-host="${e(d.host)}" ${busy ? 'disabled' : ''}>${busy ? 'Checking…' : 'I did it'}</button></div>`;
+      <div class="ev-dom-actions act-row">${recordsBtn}${leadBtn('domain-dns-check', busy ? 'refresh' : 'check', busy ? 'Checking…' : 'I did it', `data-host="${e(d.host)}" ${busy ? 'disabled' : ''}`, `btn-primary ${busy ? 'is-spinning' : ''}`)}</div>`;
   } else if (phase === 'MANAGED') {
     body = `
       <p class="acct-card-note ev-dom-note">Managed by PragOptics${h.managedAt ? ` since ${e(D.fmtDate(h.managedAt))}` : ''}. Email, your website and the software's address are set here from now on; the domain itself stays at ${e(h.registrar || 'your registrar')}.</p>
       ${hostedRecordsHtml(d.host)}
-      <div class="ev-dom-actions">${recordsBtn}</div>`;
+      <div class="ev-dom-actions act-row">${recordsBtn}</div>`;
   } else {
     body = `
       <p class="acct-error ev-dom-note">${e(h.lastError || `${d.host} no longer answers from PragOptics.`)}</p>
       <p class="acct-card-note ev-dom-note">Point it back at these nameservers to keep it managed here, or hand it back.</p>
       <ul class="ev-dom-ns">${ns}</ul>
       ${hostedRecordsHtml(d.host)}
-      <div class="ev-dom-actions">${recordsBtn}<button class="btn btn-sm" type="button" data-env-action="domain-dns-check" data-host="${e(d.host)}" ${busy ? 'disabled' : ''}>${busy ? 'Checking…' : 'Check now'}</button></div>`;
+      <div class="ev-dom-actions act-row">${recordsBtn}${iconBtn('domain-dns-check', 'refresh', busy ? 'Checking…' : 'Check now', `data-host="${e(d.host)}" ${busy ? 'disabled' : ''}`, busy ? 'is-spinning' : '')}</div>`;
   }
   if (note) body += `<p class="acct-card-note ev-dom-note">${e(note)}</p>`;
   if ((ev.dnsBack || {})[d.host]) body += `<p class="acct-card-note ev-dom-note">To hand it back, first set these nameservers at ${e(h.registrar || 'your registrar')} again, wait for the change to show, then press Hand DNS back once more.</p><ul class="ev-dom-ns">${(ev.dnsBack[d.host] || []).map(n => `<li><code>${e(n)}</code> <button class="btn btn-sm btn-ico" type="button" data-env-action="domain-copy" data-text="${e(n)}" aria-label="Copy" data-tip="Copy">${ico('copy')}</button></li>`).join('')}</ul>`;
@@ -989,7 +990,7 @@ function domainsHtml() {
     if (ev.domTab === 'connect') door = `
       <div class="ev-dom-row">
         <input class="acct-input" type="text" id="evDomainHost" maxlength="253" placeholder="www.example.com" autocomplete="off" spellcheck="false" autocapitalize="off" ${full ? 'disabled' : ''} />
-        <button class="btn" type="button" data-env-action="domain-add" ${full ? 'disabled' : ''}>Connect</button>
+        ${leadBtn('domain-add', 'plus', 'Connect', full ? 'disabled' : '', 'btn-primary')}
       </div>
       <p class="acct-card-note ev-dom-door">A domain you already own. One TXT record proves it is yours; nothing else changes.${full ? ' This plan is full: remove one to connect another, or move up a plan.' : ''}</p>`;
     else if (ev.domTab === 'link') door = linkDoorHtml(full);
@@ -1032,8 +1033,8 @@ function registrationsHtml() {
             : `Order ${e(String(r.orderId).slice(0, 8))} is placed. The registry usually finishes within a few minutes and this card updates on its own; your card is charged exactly the registrar's price once the name is yours.`}</p>
           ${r.status === 'FAILED' && myRole() === 'owner' ? `
           <div class="ev-dom-actions">
-            <button class="btn btn-sm" type="button" data-env-action="domain-reg-retry" data-order="${e(r.orderId)}" data-host="${e(r.host)}" ${ev.regRetrying === r.orderId ? 'disabled' : ''}>${ev.regRetrying === r.orderId ? 'Trying…' : 'Try again'}</button>
-            ${r.contact ? `<button class="btn btn-sm" type="button" data-env-action="domain-reg-fix" data-order="${e(r.orderId)}" data-host="${e(r.host)}">Fix the contact</button>` : ''}
+            ${leadBtn('domain-reg-retry', 'refresh', ev.regRetrying === r.orderId ? 'Trying…' : 'Try again', `data-order="${e(r.orderId)}" data-host="${e(r.host)}" ${ev.regRetrying === r.orderId ? 'disabled' : ''}`, `btn-primary ${ev.regRetrying === r.orderId ? 'is-spinning' : ''}`)}
+            ${r.contact ? leadBtn('domain-reg-fix', 'edit', 'Fix the contact', `data-order="${e(r.orderId)}" data-host="${e(r.host)}"`) : ''}
           </div>` : ''}
         </div>`).join('')}
     </div>`;
@@ -1050,14 +1051,14 @@ function registerHtml() {
       ${head}
       <div class="ev-dom-row">
         <input class="acct-input" type="text" id="evRegHost" maxlength="253" placeholder="yourname.com" autocomplete="off" spellcheck="false" autocapitalize="off" value="${e(r.host)}" ${r.busy ? 'disabled' : ''} />
-        <button class="btn" type="button" data-env-action="domain-reg-check" ${r.busy ? 'disabled' : ''}>${r.busy ? 'Checking…' : 'Check'}</button>
+        ${leadBtn('domain-reg-check', r.busy ? 'refresh' : 'search', r.busy ? 'Checking…' : 'Check', r.busy ? 'disabled' : '', `btn-primary ${r.busy ? 'is-spinning' : ''}`)}
       </div>
       <p class="acct-card-note ev-dom-door">The registrar's price, passed through with no markup. The name is yours, in your name.</p>
       <p class="acct-error" id="evRegError" ${r.error ? '' : 'hidden'}>${e(r.error)}</p>`;
   }
   if (r.step === 'quoted') {
     if (!q.offered) {
-      return `${head}<p class="acct-card-note"><b>${e(q.host)}</b>: ${e(q.reason || 'not offered here.')}</p><div class="ev-dom-actions"><button class="btn btn-sm" type="button" data-env-action="domain-reg-cancel">Try another</button></div>`;
+      return `${head}<p class="acct-card-note"><b>${e(q.host)}</b>: ${e(q.reason || 'not offered here.')}</p><div class="ev-dom-actions">${leadBtn('domain-reg-cancel', 'undo', 'Try another')}</div>`;
     }
     if (!q.available) {
       // Taken: the registrar's own alternatives, available with prices, one click each.
@@ -1067,18 +1068,18 @@ function registerHtml() {
       <div class="ev-suggest">
         ${sug.map(x => `<button class="btn btn-sm ev-suggest-btn" type="button" data-env-action="domain-reg-suggest" data-host="${e(x.domain)}"><span class="ev-suggest-name">${e(x.domain)}</span><span class="ev-suggest-price">${Number.isInteger(x.priceCents) ? e(money(x.priceCents)) : ''}</span></button>`).join('')}
       </div>` : '';
-      return `${head}<p class="acct-card-note"><b>${e(q.host)}</b> is taken. If it is yours, connect it above instead.</p>${options}<div class="ev-dom-actions"><button class="btn btn-sm" type="button" data-env-action="domain-reg-cancel">Try another</button></div>`;
+      return `${head}<p class="acct-card-note"><b>${e(q.host)}</b> is taken. If it is yours, connect it above instead.</p>${options}<div class="ev-dom-actions">${leadBtn('domain-reg-cancel', 'undo', 'Try another')}</div>`;
     }
     if (q.quoteError) {
       // The registrar would not price the name: its own words, and nothing to buy at a price it will not honor.
-      return `${head}<p class="acct-error"><b>${e(q.host)}</b> is available, but the registrar could not price it right now: ${e(q.quoteError.message || q.quoteError.code || 'no reason given')}</p><div class="ev-dom-actions"><button class="btn btn-sm" type="button" data-env-action="domain-reg-check">Check again</button><button class="btn btn-sm" type="button" data-env-action="domain-reg-cancel">Try another</button></div>`;
+      return `${head}<p class="acct-error"><b>${e(q.host)}</b> is available, but the registrar could not price it right now: ${e(q.quoteError.message || q.quoteError.code || 'no reason given')}</p><div class="ev-dom-actions act-row">${iconBtn('domain-reg-check', 'refresh', 'Check again')}${leadBtn('domain-reg-cancel', 'undo', 'Try another')}</div>`;
     }
     return `
       ${head}
       <p class="acct-card-note"><b>${e(q.host)}</b> is available: <b>${e(money(q.priceCents))}</b> for the first year${q.priceSource === 'azure-live' ? ', Azure’s current price read just now' : /^godaddy-/.test(q.priceSource || '') ? ', GoDaddy’s price right now' : ''}. ${e(q.note || '')}</p>
       <div class="ev-dom-actions">
-        <button class="btn" type="button" data-env-action="domain-reg-continue">Continue</button>
-        <button class="btn btn-sm" type="button" data-env-action="domain-reg-cancel">Try another</button>
+        ${leadBtn('domain-reg-continue', 'check', 'Continue', '', 'btn-primary')}
+        ${leadBtn('domain-reg-cancel', 'undo', 'Try another')}
       </div>`;
   }
   if (r.step === 'contact') {
@@ -1095,7 +1096,7 @@ function registerHtml() {
         ? `<p class="acct-card-note"><b>${e(q.host)}</b> is paid on order ${e(String(r.retryOrderId).slice(0, 8))} and the registry refused the contact. Correct it and try again; nothing is charged again.</p>`
         : `<p class="acct-card-note"><b>${e(q.host)}</b>, ${e(money(q.priceCents))} for the first year, plus any sales tax due at your address. Your card is held for that amount, not charged, until the name is registered; then it is charged exactly what the registrar charged and the rest of the hold is released. The registry records a contact for every domain; privacy protection is on, so the public record shows the registrar's proxy, not you.</p>`}
       <dl class="ev-record ev-registrant" aria-label="Registrant">
-        <dt>Registrant</dt><dd>${e([c2.nameFirst, c2.nameLast].filter(Boolean).join(' '))}${c2.organization ? `, ${e(c2.organization)}` : ''}</dd><dd><button class="btn btn-sm" type="button" data-env-action="domain-reg-edit-contact">Edit</button></dd>
+        <dt>Registrant</dt><dd>${e([c2.nameFirst, c2.nameLast].filter(Boolean).join(' '))}${c2.organization ? `, ${e(c2.organization)}` : ''}</dd><dd>${iconBtn('domain-reg-edit-contact', 'edit', 'Edit the registrant')}</dd>
         <dt>Address</dt><dd>${e(line)}</dd><dd></dd>
         <dt>Contact</dt><dd>${e(c2.email)}, ${e(c2.phone)}</dd><dd></dd>
       </dl>
@@ -1103,8 +1104,8 @@ function registerHtml() {
       ${r.retryOrderId ? '' : `<label class="ev-agree"><input type="checkbox" id="evRegAgree" ${r.agree ? 'checked' : ''} /> <span>I accept the registrar agreements: ${(q.agreements || []).map(a => a.url ? `<a class="acct-inline-link" href="${e(a.url)}" target="_blank" rel="noopener noreferrer">${e(a.title || a.key)}</a>` : e(a.title || a.key)).join(', ')}.</span></label>`}
       <p class="acct-error" id="evRegError" ${r.error ? '' : 'hidden'}>${e(r.error)}</p>
       <div class="ev-dom-actions">
-        <button class="btn" type="button" data-env-action="domain-reg-pay" ${r.busy ? 'disabled' : ''}>${r.busy ? (r.retryOrderId ? 'Trying…' : 'Starting…') : r.retryOrderId ? 'Save and try again' : `Hold ${e(money(q.priceCents))} and register`}</button>
-        <button class="btn btn-sm" type="button" data-env-action="domain-reg-cancel">Cancel</button>
+        ${leadBtn('domain-reg-pay', 'card', r.busy ? (r.retryOrderId ? 'Trying…' : 'Starting…') : r.retryOrderId ? 'Save and try again' : `Hold ${money(q.priceCents)} and register`, r.busy ? 'disabled' : '', 'btn-primary')}
+        ${iconBtn('domain-reg-cancel', 'x', 'Cancel')}
       </div>`;
     }
     return `
@@ -1128,8 +1129,8 @@ function registerHtml() {
       ${r.retryOrderId ? '' : `<label class="ev-agree"><input type="checkbox" id="evRegAgree" ${r.agree ? 'checked' : ''} /> <span>I accept the registrar agreements: ${(q.agreements || []).map(a => a.url ? `<a class="acct-inline-link" href="${e(a.url)}" target="_blank" rel="noopener noreferrer">${e(a.title || a.key)}</a>` : e(a.title || a.key)).join(', ')}.</span></label>`}
       <p class="acct-error" id="evRegError" ${r.error ? '' : 'hidden'}>${e(r.error)}</p>
       <div class="ev-dom-actions">
-        <button class="btn" type="button" data-env-action="domain-reg-pay" ${r.busy ? 'disabled' : ''}>${r.busy ? (r.retryOrderId ? 'Trying…' : 'Starting…') : r.retryOrderId ? 'Save and try again' : `Hold ${e(money(q.priceCents))} and register`}</button>
-        <button class="btn btn-sm" type="button" data-env-action="domain-reg-cancel">Cancel</button>
+        ${leadBtn('domain-reg-pay', 'card', r.busy ? (r.retryOrderId ? 'Trying…' : 'Starting…') : r.retryOrderId ? 'Save and try again' : `Hold ${money(q.priceCents)} and register`, r.busy ? 'disabled' : '', 'btn-primary')}
+        ${iconBtn('domain-reg-cancel', 'x', 'Cancel')}
       </div>`;
   }
   if (r.step === 'paying') {
@@ -1139,15 +1140,15 @@ function registerHtml() {
       <div id="evRegPayEl" class="ev-pay"></div>
       <p class="acct-error" id="evRegError" ${r.error ? '' : 'hidden'}>${e(r.error)}</p>
       <div class="ev-dom-actions">
-        <button class="btn" type="button" data-env-action="domain-reg-confirm" ${r.busy ? 'disabled' : ''}>${r.busy ? (r.order?.hold ? 'Holding…' : 'Paying…') : (r.order?.hold ? 'Confirm the hold' : 'Confirm payment')}</button>
-        <button class="btn btn-sm" type="button" data-env-action="domain-reg-cancel" ${r.busy ? 'disabled' : ''}>Cancel</button>
+        ${leadBtn('domain-reg-confirm', 'lock', r.busy ? (r.order?.hold ? 'Holding…' : 'Paying…') : (r.order?.hold ? 'Confirm the hold' : 'Confirm payment'), r.busy ? 'disabled' : '', 'btn-primary')}
+        ${iconBtn('domain-reg-cancel', 'x', 'Cancel', r.busy ? 'disabled' : '')}
       </div>`;
   }
   if (r.step === 'paid') {
     return `${head}<p class="acct-card-note">${r.order?.hold ? `Your card is held for <b>${e(q.host)}</b>.` : `<b>${e(q.host)}</b> is paid.`} The registry is working; it usually takes a few minutes and this card updates on its own.${r.order?.hold ? ' The charge lands, exactly the registrar\u2019s price, once the name is yours.' : ''}</p>`;
   }
   if (r.step === 'done') {
-    return `${head}<p class="acct-card-note"><b>${e(q.host)}</b> is registered and on the list above.</p><div class="ev-dom-actions"><button class="btn btn-sm" type="button" data-env-action="domain-reg-cancel">Register another</button></div>`;
+    return `${head}<p class="acct-card-note"><b>${e(q.host)}</b> is registered and on the list above.</p><div class="ev-dom-actions">${leadBtn('domain-reg-cancel', 'plus', 'Register another')}</div>`;
   }
   return '';
 }
@@ -1277,7 +1278,7 @@ async function regConfirm() {
   if (!r.stripe || !r.elements) return;
   r.error = ''; r.busy = true;
   const btn = document.querySelector('[data-env-action="domain-reg-confirm"]');
-  if (btn) { btn.disabled = true; btn.textContent = 'Paying…'; }
+  if (btn) { btn.disabled = true; btnLabel(btn, 'Paying…'); }
   try {
     const { error, paymentIntent } = await r.stripe.confirmPayment({
       elements: r.elements,
@@ -1481,15 +1482,14 @@ function connectionsHtml() {
                 <td class="cell-tight" data-th="Status">${connStatusTag(c)}</td>
                 <td class="cell-tight adm-muted" data-th="Checked">${c.verifiedAt ? e(D.fmtDate(c.verifiedAt)) : 'never'}</td>
                 <td class="cell-tight ev-actions-cell">${manage ? (ev.connArm === c.id ? `
-                  <button class="btn btn-sm is-danger" type="button" data-env-action="conn-remove" data-id="${e(c.id)}" data-label="${e(c.label)}" title="The credential is deleted from the vault and anything using it stops on its next call">Remove for sure?</button>
-                  ${iconBtn('conn-remove-cancel', 'x', 'Keep it')}` : `
-                  ${isManagedStripe(c) && (() => { const s = stripeState(c.detail); return s.kind === 'action' || s.kind === 'incomplete' || (s.kind === 'payments' && s.needs.length > 0); })() ? `<button class="btn btn-sm" type="button" data-env-action="conn-stripe-continue" data-id="${e(c.id)}" ${ev.connBusy ? 'disabled' : ''} title="Stripe's own pages for what it still needs">Continue setup</button>` : ''}
-                  ${isManagedTwilio(c) && c.status !== 'ACTIVE' ? `<button class="btn btn-sm" type="button" data-env-action="conn-twilio-start" data-id="${e(c.id)}" ${ev.connBusy ? 'disabled' : ''} title="Twilio's authorization page for PragOptics, on your own Twilio account">${c.detail?.disconnected || c.detail?.declined ? 'Connect again' : 'Authorize at Twilio'}</button>` : ''}
-                  ${isManagedShippo(c) && c.status !== 'ACTIVE' ? `<button class="btn btn-sm" type="button" data-env-action="conn-shippo-start" data-id="${e(c.id)}" ${ev.connBusy ? 'disabled' : ''} title="Shippo's authorization page for PragOptics; sign in or create your Shippo account there">${c.detail?.disconnected || c.detail?.declined ? 'Connect again' : 'Authorize at Shippo'}</button>` : ''}
-                  ${isManagedShopify(c) && c.status !== 'ACTIVE' ? `<button class="btn btn-sm ev-btn-ico" type="button" data-env-action="conn-shopify-link" data-id="${e(c.id)}" data-shop="${e(c.detail?.shop || '')}" ${ev.connBusy ? 'disabled' : ''} title="A fresh link for your supplier; the old one stops working">${ico('send')}<span>Supplier link</span></button>` : ''}
-                  ${isManagedShopify(c) && c.status === 'ACTIVE' ? `<button class="btn btn-sm ev-btn-ico" type="button" data-env-action="conn-shopify-sync" data-id="${e(c.id)}" ${ev.connSyncing === c.id ? 'disabled' : ''} title="Copy the store's products into this environment's data, table supplier_products">${ico('refresh')}<span>${ev.connSyncing === c.id ? 'Syncing…' : 'Sync products'}</span></button>` : ''}
+                  <span class="act-row"><button class="btn btn-sm btn-ico is-armed" type="button" data-env-action="conn-remove" data-id="${e(c.id)}" data-label="${e(c.label)}" aria-label="Remove? The credential is deleted and anything using it stops. Press again to confirm." data-tip="The credential is deleted from the vault and anything using it stops on its next call">${ico('trash')}<span>Remove?</span></button>${iconBtn('conn-remove-cancel', 'x', 'Keep it', '', 'btn-arm-cancel')}</span>` : `<span class="act-row">
+                  ${isManagedStripe(c) && (() => { const s = stripeState(c.detail); return s.kind === 'action' || s.kind === 'incomplete' || (s.kind === 'payments' && s.needs.length > 0); })() ? leadBtn('conn-stripe-continue', 'external', 'Continue setup', `data-id="${e(c.id)}" ${ev.connBusy ? 'disabled' : ''} data-tip="Stripe's own pages for what it still needs"`, 'btn-primary') : ''}
+                  ${isManagedTwilio(c) && c.status !== 'ACTIVE' ? leadBtn('conn-twilio-start', 'external', c.detail?.disconnected || c.detail?.declined ? 'Connect again' : 'Authorize at Twilio', `data-id="${e(c.id)}" ${ev.connBusy ? 'disabled' : ''} data-tip="Twilio's authorization page for PragOptics, on your own Twilio account"`, 'btn-primary') : ''}
+                  ${isManagedShippo(c) && c.status !== 'ACTIVE' ? leadBtn('conn-shippo-start', 'external', c.detail?.disconnected || c.detail?.declined ? 'Connect again' : 'Authorize at Shippo', `data-id="${e(c.id)}" ${ev.connBusy ? 'disabled' : ''} data-tip="Shippo's authorization page for PragOptics; sign in or create your Shippo account there"`, 'btn-primary') : ''}
+                  ${isManagedShopify(c) && c.status !== 'ACTIVE' ? leadBtn('conn-shopify-link', 'send', 'Supplier link', `data-id="${e(c.id)}" data-shop="${e(c.detail?.shop || '')}" ${ev.connBusy ? 'disabled' : ''} data-tip="A fresh link for your supplier; the old one stops working"`) : ''}
+                  ${isManagedShopify(c) && c.status === 'ACTIVE' ? leadBtn('conn-shopify-sync', 'refresh', ev.connSyncing === c.id ? 'Syncing…' : 'Sync products', `data-id="${e(c.id)}" ${ev.connSyncing === c.id ? 'disabled' : ''} data-tip="Copy the store's products into this environment's data, table supplier_products"`, ev.connSyncing === c.id ? 'is-spinning' : '') : ''}
                   ${iconBtn(refreshAction, testing ? 'refresh' : 'check', isManaged(c) ? 'Check status' : 'Test the credential', `data-id="${e(c.id)}" ${testing ? 'disabled' : ''}`, testing ? 'is-spinning' : '')}
-                  ${iconBtn('conn-remove', 'trash', 'Remove', `data-id="${e(c.id)}" data-label="${e(c.label)}"`)}`) : ''}</td>
+                  ${iconBtn('conn-remove', 'trash', 'Remove this connection', `data-id="${e(c.id)}" data-label="${e(c.label)}"`, 'is-risky')}</span>`) : ''}</td>
               </tr>${isManagedShippo(c) && c.status !== 'ACTIVE' && c.lastError && !(ev.rowNote && ev.rowNote.id === c.id) ? `
               <tr class="ev-note-row" data-row="note"><td colspan="5" data-th="Problem"><p class="acct-error ev-row-note">${e(c.lastError)}</p></td></tr>` : ''}${ev.rowNote && ev.rowNote.id === c.id ? `
               <tr class="ev-note-row" data-row="note">
@@ -1522,22 +1522,22 @@ function connectionsHtml() {
     if (pick === 'm:stripe') door = `
         <div class="ev-key-row">
           <input class="acct-input" type="text" id="evStripeBiz" maxlength="120" placeholder="Your business name (optional)" autocomplete="organization" value="${e(ev.connDraft?.stripeBusiness || '')}" />
-          <button class="btn" type="button" data-env-action="conn-stripe-start" ${ev.connBusy ? 'disabled' : ''}>${ev.connBusy ? 'Opening with Stripe…' : 'Set up Stripe'}</button>
+          ${leadBtn('conn-stripe-start', 'external', ev.connBusy ? 'Opening with Stripe…' : 'Set up Stripe', ev.connBusy ? 'disabled' : '', 'btn-primary')}
         </div>
         <p class="acct-card-note ev-dom-door">The platform opens a Stripe account in your name and Stripe walks you through its setup. Your account, your Dashboard, the platform never in your money.</p>`;
     else if (pick === 'm:twilio') door = `
-        <div class="ev-key-row"><button class="btn" type="button" data-env-action="conn-twilio-start" ${ev.connBusy ? 'disabled' : ''}>${ev.connBusy ? 'Opening with Twilio…' : 'Connect your Twilio account'}</button></div>
+        <div class="ev-key-row">${leadBtn('conn-twilio-start', 'external', ev.connBusy ? 'Opening with Twilio…' : 'Connect your Twilio account', ev.connBusy ? 'disabled' : '', 'btn-primary')}</div>
         <p class="acct-card-note ev-dom-door">Approve PragOptics on your own upgraded Twilio account; Twilio bills you directly.</p>`;
     else if (pick === 'm:shippo') door = `
-        <div class="ev-key-row"><button class="btn" type="button" data-env-action="conn-shippo-start" ${ev.connBusy ? 'disabled' : ''}>${ev.connBusy ? 'Opening with Shippo…' : 'Connect your Shippo account'}</button></div>
+        <div class="ev-key-row">${leadBtn('conn-shippo-start', 'external', ev.connBusy ? 'Opening with Shippo…' : 'Connect your Shippo account', ev.connBusy ? 'disabled' : '', 'btn-primary')}</div>
         <p class="acct-card-note ev-dom-door">Sign in or create your Shippo account there and approve PragOptics; Shippo bills you directly for labels.</p>`;
     else if (pick === 'm:shopify') door = `
         <div class="ev-key-row">
           <input class="acct-input" id="evShopifyShop" type="text" inputmode="url" autocomplete="off" placeholder="supplier-name.myshopify.com" aria-label="Your supplier's Shopify store address" value="${e(ev.shopifyShop || '')}">
-          <button class="btn" type="button" data-env-action="conn-shopify-start" ${ev.connBusy ? 'disabled' : ''}>${ev.connBusy ? 'Making the link…' : 'Make the link'}</button>
+          ${leadBtn('conn-shopify-start', 'link', ev.connBusy ? 'Making the link…' : 'Make the link', ev.connBusy ? 'disabled' : '', 'btn-primary')}
         </div>
         <p class="acct-card-note ev-dom-door">Your supplier's store address. You send them the link, they approve, and their products land here for your site. They bill you as they always have.</p>`;
-    else if (picked) door = `${connFieldsHtml(picked)}<div class="ev-key-row"><button class="btn" type="button" data-env-action="conn-add" ${ev.connBusy ? 'disabled' : ''}>${ev.connBusy ? 'Checking with ' + e(picked.label) + '…' : 'Connect'}</button></div>`;
+    else if (picked) door = `${connFieldsHtml(picked)}<div class="ev-key-row">${leadBtn('conn-add', 'plug', ev.connBusy ? `Checking with ${picked.label}…` : 'Connect', ev.connBusy ? 'disabled' : '', 'btn-primary')}</div>`;
     form = `
       <div class="ev-conn-add">
         <div class="ev-key-row">
@@ -1591,7 +1591,7 @@ function keysHtml() {
                 <td class="cell-ellip adm-cell-email" data-th="Made by" title="${e(k.createdByEmail)}">${e(k.createdByEmail || '')}${mine ? ' <span class="adm-muted">(you)</span>' : ''}</td>
                 <td class="cell-tight adm-muted" data-th="Last used">${k.lastUsedAt ? e(D.fmtDate(k.lastUsedAt)) : 'never'}</td>
                 <td class="cell-tight" data-th="Status"><span class="acct-tag ${k.status === 'ACTIVE' ? 'is-verified' : ''}">${e(String(k.status).toLowerCase())}</span></td>
-                <td class="cell-tight ev-actions-cell">${revocable ? `${ev.keyArm === k.keyId ? `<button class="btn btn-sm is-danger" type="button" data-env-action="key-revoke" data-key="${e(k.keyId)}" data-label="${e(k.label || k.prefix)}" title="Every call with it stops on the next request">Revoke for sure?</button>${iconBtn('key-arm-cancel', 'x', 'Keep it')}` : iconBtn('key-revoke', 'trash', 'Revoke', `data-key="${e(k.keyId)}" data-label="${e(k.label || k.prefix)}"`)}` : ''}</td>
+                <td class="cell-tight ev-actions-cell">${revocable ? `${ev.keyArm === k.keyId ? `<span class="act-row"><button class="btn btn-sm btn-ico is-armed" type="button" data-env-action="key-revoke" data-key="${e(k.keyId)}" data-label="${e(k.label || k.prefix)}" aria-label="Revoke? Every call with it stops. Press again to confirm." data-tip="Every call with it stops on the next request">${ico('trash')}<span>Revoke?</span></button>${iconBtn('key-arm-cancel', 'x', 'Keep it', '', 'btn-arm-cancel')}</span>` : iconBtn('key-revoke', 'trash', 'Revoke this key', `data-key="${e(k.keyId)}" data-label="${e(k.label || k.prefix)}"`, 'is-risky')}` : ''}</td>
               </tr>`; }).join('')}
           </tbody>
         </table>
@@ -1602,10 +1602,10 @@ function keysHtml() {
       <div class="ev-key-row">
         <input class="acct-input" type="text" id="evKeyLabel" maxlength="60" placeholder="What will hold it, e.g. build server" autocomplete="off" spellcheck="false" />
         <div class="ev-scopes" role="group" aria-label="What the key may do">
-          <label><input type="checkbox" id="evScopeRead" checked /> read</label>
-          <label><input type="checkbox" id="evScopeWrite" checked /> write</label>
+          <label class="acct-chip" data-tip="The key may read data and files"><input type="checkbox" id="evScopeRead" checked />${ico('eye', 14)}<span>Read</span></label>
+          <label class="acct-chip" data-tip="The key may write data and files"><input type="checkbox" id="evScopeWrite" checked />${ico('edit', 14)}<span>Write</span></label>
         </div>
-        <button class="btn" type="button" data-env-action="key-make">Make a key</button>
+        ${leadBtn('key-make', 'key', 'Make a key', '', 'btn-primary')}
       </div>
       <p class="acct-card-note ev-dom-door">A key lets a program use this environment as you: data and files, nothing else. Each member holds up to ten.</p>
       <p class="acct-error" id="evKeyError" hidden></p>
@@ -1658,7 +1658,7 @@ async function provision() {
 // is downloaded instead, with its real filename.
 async function openFile(name, btn, mode = 'open') {
   D.showError('evFileError', '');
-  const orig = btn.textContent; btn.disabled = true; btn.textContent = mode === 'open' ? 'Opening…' : 'Fetching…';
+  const origTip = btn.getAttribute('data-tip'); btn.disabled = true; btn.classList.add('is-spinning'); btn.setAttribute('data-tip', mode === 'open' ? 'Opening…' : 'Fetching…');
   let objectUrl = '';
   try {
     const d = await post(`${ENV_URL}/files/download-url`, { name });
@@ -1682,7 +1682,7 @@ async function openFile(name, btn, mode = 'open') {
     }
   } catch (ex) { D.showError('evFileError', errText(ex, mode === 'open' ? 'Could not open that file.' : 'Could not download that file.')); }
   finally {
-    btn.disabled = false; btn.textContent = orig;
+    btn.disabled = false; btn.classList.remove('is-spinning'); if (origTip) btn.setAttribute('data-tip', origTip);
     // The blob lives long enough for the tab or the save to take it.
     if (objectUrl) setTimeout(() => URL.revokeObjectURL(objectUrl), 120000);
   }

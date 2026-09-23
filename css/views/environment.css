@@ -26,9 +26,7 @@
 /* keys */
 .ev-key-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 12px; }
 .ev-key-row .acct-input { flex: 1 1 260px; min-width: 0; }
-.ev-scopes { display: flex; gap: 14px; align-items: center; font-size: .86rem; color: var(--muted); }
-.ev-scopes label { display: inline-flex; gap: 6px; align-items: center; cursor: pointer; }
-.ev-scopes input { accent-color: var(--brand-600); width: 15px; height: 15px; margin: 0; }
+.ev-scopes { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
 .ev-key-result {
   margin-top: 12px; padding: 12px 14px; border-radius: var(--radius-ctl);
   border: 1px solid color-mix(in srgb, var(--brand-600) 32%, transparent);
@@ -368,3 +366,6 @@
   .ev-kv-list { grid-template-columns: 1fr; gap: 2px; }
   .ev-kv-k { padding-top: 6px; }
 }
+/* the environment's rows of actions hold their icons on one line (2026-09-23 polish) */
+.ev-actions-cell .act-row { flex-wrap: nowrap; justify-content: flex-end; }
+.ev-dom-actions.act-row { display: flex; }
