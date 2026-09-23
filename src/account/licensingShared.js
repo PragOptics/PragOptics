@@ -12,7 +12,7 @@ export const LIC_URL = `${PRAG_API_BASE}/environment/licensing`;
 const TEAM_KEY = 'pragoptics_team_id';
 
 /** The tab's state: the view read, what is busy, the prices read per product, the add box, the note under the licenses. */
-export const lc = { view: null, busy: false, note: '', prices: {}, requires: {}, pricing: '', add: null, saving: '', msEdit: false, lineNote: '', needPhone: false, msMode: '' };
+export const lc = { view: null, busy: false, note: '', prices: {}, requires: {}, pricing: '', add: null, saving: '', msEdit: false, lineNote: '', needPhone: false, msMode: '', bill: null };
 /** The deps the panel hands in (apiFetch, escapeHtml, showError, friendlyError, fmtDate) and the section's paint and load. */
 export const st = { D: null, paint: () => {}, load: async () => {} };
 
