@@ -87,6 +87,9 @@ function msFormHtml(m) {
 
 /* ---------- the licenses held ---------- */
 
+/** A license's name without the distributor's program suffix ("[New Commerce Experience]"). */
+function licName(n) { return String(n || '').replace(/\s*\[New Commerce Experience\]\s*/i, ' ').trim(); }
+
 export function licensesHtml() {
   const e = st.D.escapeHtml, v = lc.view;
   if (!v.eligible || !v.account) return '';
@@ -109,7 +112,7 @@ export function licensesHtml() {
       </span>` : '';
     return `
       <tr>
-        <td data-th="License"><span class="lic-name">${e(String(l.productName || '').replace(/\s*\[New Commerce Experience\]\s*/i, ' ').trim())}</span>${l.sku ? `<br><span class="ev-code">${e(l.sku)}</span>` : ''}</td>
+        <td data-th="License"><span class="lic-name">${e(licName(l.productName))}</span>${l.sku ? `<br><span class="ev-code">${e(l.sku)}</span>` : ''}</td>
         <td class="cell-tight" data-th="Seats">${e(String(l.quantity))}${pending}</td>
         <td class="cell-tight" data-th="Price">${l.included ? '<span class="acct-tag is-primary">included</span><br><span class="adm-muted">with your plan, follows your seats</span>' : `${e(money((l.listCents || 0) / 100))} <span class="adm-muted">${e(TERM_NAMES[l.billingTerm] || l.billingTerm || '')}</span>${commit}`}</td>
         <td class="cell-tight" data-th="Status"><span class="acct-tag ${tag}">${e(l.included && l.status === 'FAILED' ? 'refused, nothing charged' : (STATUS_WORDS[l.status] || String(l.status || '').toLowerCase()))}${when}</span>${l.error ? `<br><span class="adm-muted lic-desc">${e(l.error)}</span>` : ''}</td>
@@ -213,7 +216,7 @@ async function confirmAdd() {
   try {
     const d = await st.D.apiFetch(url(`${LIC_URL}/licenses`), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: body((() => { const o = (lc.prices[lc.add.productId] || []).find(x => x.key === lc.add.key) || {}; return { productId: lc.add.productId, billingTerm: o.billingTerm || 'Monthly', commitmentMonths: o.commitmentMonths ?? null, quantity: lc.add.quantity }; })()) });
     lc.saving = ''; lc.add = null;
-    lc.lineNote = `${d.license.productName} ordered: ${countWord(d.license.quantity, 'seat', 'seats')}. It activates within a few hours; this list shows it active when Microsoft has it.`;
+    lc.lineNote = `${licName(d.license.productName)} ordered: ${countWord(d.license.quantity, 'seat', 'seats')}. It activates within a few hours; this list shows it active when Microsoft has it.`;
     await st.load();
   } catch (ex) {
     lc.saving = ''; st.paint();
@@ -238,7 +241,7 @@ async function setSeats(btn) {
     const d = await st.D.apiFetch(url(`${LIC_URL}/licenses/${encodeURIComponent(id)}`), { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: body({ quantity: qty }) });
     lc.saving = '';
     const l = d.license;
-    lc.lineNote = l.pendingQuantity != null && l.pendingQuantity !== l.quantity ? `${l.productName}: ${countWord(l.pendingQuantity, 'seat', 'seats')} from the end of the paid period.` : `${l.productName}: ${countWord(l.quantity, 'seat', 'seats')}, charged and applied.`;
+    lc.lineNote = l.pendingQuantity != null && l.pendingQuantity !== l.quantity ? `${licName(l.productName)}: ${countWord(l.pendingQuantity, 'seat', 'seats')} from the end of the paid period.` : `${licName(l.productName)}: ${countWord(l.quantity, 'seat', 'seats')}, charged and applied.`;
     await st.load();
   } catch (ex) {
     lc.saving = ''; st.paint();
@@ -253,7 +256,7 @@ async function endLicense(btn) {
   try {
     const d = await st.D.apiFetch(url(`${LIC_URL}/licenses/${encodeURIComponent(id)}`), { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: body({}) });
     lc.saving = '';
-    lc.lineNote = `${d.license.productName} ends on ${st.D.fmtDate(d.license.cancelAt)}; it stays usable until then.`;
+    lc.lineNote = `${licName(d.license.productName)} ends on ${st.D.fmtDate(d.license.cancelAt)}; it stays usable until then.`;
     await st.load();
   } catch (ex) { lc.saving = ''; st.paint(); st.D.showError('licLinesError', ex?.data?.error || st.D.friendlyError(ex, 'The license could not be ended.')); }
 }

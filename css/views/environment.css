@@ -293,6 +293,7 @@ html[data-theme="dark"] .btn.is-danger, :root:not([data-theme="light"]) .btn.is-
 .lic-enroll { display: grid; gap: 8px; margin-bottom: 12px; padding: 12px 14px; border: 1px solid color-mix(in srgb, var(--brand-600) 35%, var(--border)); border-radius: 12px; }
 .lic-enroll .acct-card-note, .lic-enroll .acct-actions-row { margin: 0; }
 .lic-mail-on { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.lic-seat-mail { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 /* the operator's licensing charges: each subscription, its items, a charge with no license in red */
 .lic-bill { display: grid; gap: 10px; margin: 10px 0; }
 .lic-bill-sub { border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; display: grid; gap: 8px; }

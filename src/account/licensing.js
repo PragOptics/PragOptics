@@ -15,13 +15,15 @@
 //   POST v1/environment/licensing/licenses             add a license: the card charged first, then the order at the distributor
 //   PUT  v1/environment/licensing/licenses/{id}        seats: more now, fewer at the period's end
 //   DELETE v1/environment/licensing/licenses/{id}      ends at the period's end
+//   POST   v1/environment/licensing/mailboxes/{userId}  a seat gets its included mailbox (the Kiosk count rises, nothing charged)
+//   DELETE v1/environment/licensing/mailboxes/{userId}  taken back: the count falls at the period's end
 //
 // Follows the Team section's choice of team (the same sessionStorage key).
 // This module is the section: the read, the head, the account and the
 // mailboxes. The Microsoft details, the licenses held and the add flow live
 // in licensingOrders.js; the catalog with its search, kinds, filters and
 // cards in licensingCatalog.js; the state and helpers all share are in
-// licensingShared.js. Creating a mailbox is the next slice.
+// licensingShared.js. The person and the mailbox address in the tenant are the next slice.
 
 import { tierName } from '../components/tierCopy.js';
 import { explainLink } from '../components/explainer.js';
@@ -34,7 +36,7 @@ import { billingHtml, billingAction } from './licensingBilling.js';
 
 export async function renderLicensing(main, deps) {
   st.D = deps; st.paint = paint; st.load = load;
-  lc.view = null; lc.busy = false; lc.note = ''; lc.pricing = ''; lc.add = null; lc.saving = ''; lc.msEdit = false; lc.lineNote = ''; lc.needPhone = false; lc.msMode = ''; lc.bill = null;
+  lc.view = null; lc.busy = false; lc.note = ''; lc.pricing = ''; lc.add = null; lc.saving = ''; lc.msEdit = false; lc.lineNote = ''; lc.needPhone = false; lc.msMode = ''; lc.bill = null; lc.seatBusy = '';
   initCards();
   main.innerHTML = `
     <header class="acct-sec-head has-explain"><h2 class="acct-sec-title">Licensing</h2>${explainLink('licensing', 'How licenses and mailboxes work')}</header>
@@ -70,7 +72,6 @@ function paint() {
 
 function summaryHtml() {
   const e = st.D.escapeHtml, v = lc.view;
-  const seats = v.seats || [], boxes = v.mailboxes || [];
   const state = !v.eligible ? `<span class="acct-tag">${e(tierName(v.minimumTier))} plan and above</span>`
     : v.account ? '<span class="acct-tag is-verified">account open</span>'
     : v.distributor?.configured ? '<span class="acct-tag is-pending">no account yet</span>'
@@ -81,7 +82,7 @@ function summaryHtml() {
         <div class="ev-id">
           <div class="ev-tags"><span class="acct-tag is-primary">${e(tierName(v.tier))}</span>${state}</div>
           <h3 class="acct-card-h ev-name">Microsoft 365 for your team</h3>
-          <p class="ev-owner adm-muted">${e(countWord(seats.length, 'seat', 'seats'))} · ${e(countWord(boxes.length, 'mailbox', 'mailboxes'))} · a mailbox per seat included, other licenses at Microsoft's list price</p>
+          <p class="ev-owner adm-muted">${e(mailSummary(v))} · a mailbox per seat included, other licenses at Microsoft's list price</p>
         </div>
         <div class="ev-actions">${iconBtn({ lic: 'refresh' }, 'refresh', 'Refresh')}</div>
       </div>
@@ -128,8 +129,8 @@ function accountHtml() {
 function mailboxesHtml() {
   const e = st.D.escapeHtml, v = lc.view;
   const seats = v.seats || [], domains = v.mailDomains || [];
-  const boxes = (v.mailboxes || []).length;
-  const summary = `${countWord(seats.length, 'seat', 'seats')} · ${countWord(boxes, 'mailbox', 'mailboxes')}`;
+  const summary = mailSummary(v);
+  const on = includedLine();
   const m = v.microsoft || {};
   const tenant = m.tenantId ? 'your tenant' : m.domainPrefix ? `${m.domainPrefix}.onmicrosoft.com` : 'your tenant name';
   const domainLine = domains.length
@@ -144,16 +145,54 @@ function mailboxesHtml() {
               <tr>
                 <td class="cell-ellip" data-th="Person" title="${e(s.email)}">${e(s.email)}${s.status === 'SUSPENDED' ? ' <span class="acct-tag is-pending">suspended</span>' : ''}</td>
                 <td class="cell-tight" data-th="Role">${e(cap(s.role))}</td>
-                <td class="cell-tight" data-th="Mailbox">${s.mailbox ? `<span class="ev-code">${e(s.mailbox)}</span>` : '<span class="adm-muted">none</span>'}</td>
+                <td class="cell-tight" data-th="Mailbox">${seatMailCell(s, on, v.canManage, e)}</td>
               </tr>`).join('')}
           </tbody>
         </table>
-      </div>`;
+      </div>
+      <p class="acct-error" id="licSeatError" hidden></p>`;
   return cardHtml({
     key: 'mailboxes', icon: 'mail', title: 'Mailboxes', summary,
     explain: explainLink('licensing', 'A mailbox for every seat'),
     body: `${enrollHtml()}${domainLine}${table}`
   });
+}
+
+/** Seats, and how many hold their included mailbox. */
+function mailSummary(v) {
+  const seats = v.seats || [];
+  const held = seats.filter(x => x.included || x.mailbox).length;
+  return `${countWord(seats.length, 'seat', 'seats')} · ${held} included`;
+}
+
+/** One seat's mailbox: the address once it exists, the included Kiosk it holds, or the button that gives it one. */
+function seatMailCell(s, on, canManage, e) {
+  if (s.mailbox) return `<span class="ev-code">${e(s.mailbox)}</span>`;
+  const busy = lc.seatBusy === s.userId;
+  if (s.included) {
+    const take = canManage && s.role !== 'owner'
+      ? `<button class="btn btn-sm" type="button" data-lic-action="seat-release" data-user="${e(s.userId)}" ${lc.seatBusy ? 'disabled' : ''}>${busy ? 'Taking back…' : 'Take back'}</button>` : '';
+    return `<div class="lic-seat-mail"><span class="acct-tag is-verified">Kiosk included</span>${take}</div>`;
+  }
+  if (on && canManage && s.status !== 'SUSPENDED')
+    return `<button class="btn btn-sm" type="button" data-lic-action="seat-give" data-user="${e(s.userId)}" ${lc.seatBusy ? 'disabled' : ''}>${busy ? 'Giving…' : 'Give mailbox'}</button>`;
+  return '<span class="adm-muted">none</span>';
+}
+
+async function seatMail(btn, give) {
+  if (lc.seatBusy) return;
+  // taking one back asks twice: the count falls at the period's end, and the person loses the mailbox
+  if (!give && !btn.dataset.sure) { btn.dataset.sure = '1'; btn.textContent = 'Yes, take it back'; return; }
+  lc.seatBusy = btn.dataset.user; st.D.showError('licSeatError', ''); paint();
+  try {
+    await st.D.apiFetch(url(`${LIC_URL}/mailboxes/${encodeURIComponent(btn.dataset.user)}`), { method: give ? 'POST' : 'DELETE', headers: { 'Content-Type': 'application/json' }, body: body({}) });
+    lc.seatBusy = '';
+    await load();
+  } catch (ex) {
+    lc.seatBusy = ''; paint();
+    const code = ex?.data?.code;
+    st.D.showError('licSeatError', code === 'MAIL_NOT_ON' ? 'Turn on the team\'s mail first.' : code === 'NOT_A_SEAT' ? 'A viewer has no seat, so no included mailbox.' : code === 'LIVE_LANE_ONLY' ? 'Mailboxes are managed on your live environment, not the sandbox.' : (ex?.data?.error || st.D.friendlyError(ex, give ? 'The mailbox could not be given.' : 'The mailbox could not be taken back.')));
+  }
 }
 
 /* ---------- turning on the team's mail (2026-09-22): the included Kiosk, at the platform's cost ---------- */
@@ -163,7 +202,10 @@ function enrollHtml() {
   const e = st.D.escapeHtml, v = lc.view;
   if (!v.eligible || !v.account) return '';
   const on = includedLine();
-  if (on) return `<p class="acct-card-note lic-mail-on"><span class="acct-tag ${on.status === 'ACTIVE' ? 'is-verified' : 'is-pending'}">${on.status === 'ACTIVE' ? 'mail on' : 'turning on'}</span> ${e(String(on.quantity))} included Kiosk ${on.quantity === 1 ? 'mailbox' : 'mailboxes'}, nothing charged.</p>`;
+  if (on) {
+    const falls = on.pendingQuantity != null && on.pendingQuantity < on.quantity ? ` Falls to ${e(String(on.pendingQuantity))}${on.pendingAt ? ` on ${e(st.D.fmtDate(on.pendingAt))}` : ' at the period\'s end'}.` : '';
+    return `<p class="acct-card-note lic-mail-on"><span class="acct-tag ${on.status === 'ACTIVE' ? 'is-verified' : 'is-pending'}">${on.status === 'ACTIVE' ? 'mail on' : 'turning on'}</span> ${e(String(on.quantity))} included Kiosk ${on.quantity === 1 ? 'mailbox' : 'mailboxes'}, nothing charged.${falls}</p>`;
+  }
   if (!v.microsoft?.ready) return '<p class="acct-card-note">Save the Microsoft details above, then turn on your team\'s mail here.</p>';
   if (!v.canManage) return '<p class="acct-card-note">The owner or an admin turns on the team\'s mail.</p>';
   return `
@@ -234,6 +276,8 @@ export function bindLicensingActions(deps) {
     if (a === 'refresh') return void load();
     if (a === 'open-account') return void openAccount(btn);
     if (a === 'mail-enroll') return void enrollMail(btn);
+    if (a === 'seat-give') return void seatMail(btn, true);
+    if (a === 'seat-release') return void seatMail(btn, false);
     if (catalogAction(a, btn)) return;
     if (billingAction(a, btn)) return;
     orderAction(a, btn);
@@ -246,5 +290,5 @@ export function bindLicensingActions(deps) {
 export function refreshLicensingSummaries() {
   if (!lc.view) return;
   const v = lc.view;
-  setCardSummary('licensing:mailboxes', `${countWord((v.seats || []).length, 'seat', 'seats')} · ${countWord((v.mailboxes || []).length, 'mailbox', 'mailboxes')}`);
+  setCardSummary('licensing:mailboxes', mailSummary(v));
 }
