@@ -109,7 +109,7 @@ export function licensesHtml() {
       </span>` : '';
     return `
       <tr>
-        <td data-th="License"><span class="lic-name">${e(l.productName)}</span>${l.sku ? `<br><span class="ev-code">${e(l.sku)}</span>` : ''}</td>
+        <td data-th="License"><span class="lic-name">${e(String(l.productName || '').replace(/\s*\[New Commerce Experience\]\s*/i, ' ').trim())}</span>${l.sku ? `<br><span class="ev-code">${e(l.sku)}</span>` : ''}</td>
         <td class="cell-tight" data-th="Seats">${e(String(l.quantity))}${pending}</td>
         <td class="cell-tight" data-th="Price">${l.included ? '<span class="acct-tag is-primary">included</span><br><span class="adm-muted">with your plan, follows your seats</span>' : `${e(money((l.listCents || 0) / 100))} <span class="adm-muted">${e(TERM_NAMES[l.billingTerm] || l.billingTerm || '')}</span>${commit}`}</td>
         <td class="cell-tight" data-th="Status"><span class="acct-tag ${tag}">${e(l.included && l.status === 'FAILED' ? 'refused, nothing charged' : (STATUS_WORDS[l.status] || String(l.status || '').toLowerCase()))}${when}</span>${l.error ? `<br><span class="adm-muted lic-desc">${e(l.error)}</span>` : ''}</td>
