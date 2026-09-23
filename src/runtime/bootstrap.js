@@ -1148,6 +1148,12 @@ function pollUntilResolvedSubmit() {
     pragopticsToken,
     setDnaMode,
     onResolved: (ping) => {
+      // a paid plan just settled: the panel offers the team's mail once (2026-09-23, the ruling of 2026-09-22:
+      // the owner turns mail on deliberately; the wizard offers it once)
+      try {
+        const paid = ["user", "partner", "super"].includes(String(ping?.user?.tier || "").toLowerCase());
+        if (paid && String(ping?.billingProfile?.status || "").toUpperCase() === "ACTIVE") sessionStorage.setItem("pragoptics_offer_mail", "1");
+      } catch { /* the Licensing tab still carries Turn on mail */ }
       applyPostLoginResolution({ ping });
       window.setConsoleAuthenticated?.();
     }

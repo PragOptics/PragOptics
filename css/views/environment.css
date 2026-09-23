@@ -372,3 +372,17 @@
 /* the AI budget's row controls: the panel's fields, compact (they had no style and showed as the browser's own) */
 .ev-budget-in { min-width: 0; width: 100%; font-size: .84rem; }
 .ev-budget-num { max-width: 7rem; }
+/* the operator's Pax8 card (2026-09-23) */
+.p8-report { margin-top: 12px; }
+.p8-list { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 6px; }
+.p8-list li { padding: 8px 10px; border-radius: var(--radius-ctl); border: 1px solid var(--border); font-size: .86rem; line-height: 1.45; }
+.p8-list li.is-warn { border-color: color-mix(in srgb, var(--gold-soft) 45%, transparent); background: color-mix(in srgb, var(--gold-soft) 8%, transparent); }
+.p8-list li.is-bad { border-color: color-mix(in srgb, var(--danger) 45%, transparent); background: color-mix(in srgb, var(--danger) 7%, transparent); }
+.p8-ok { color: var(--brand-600); font-weight: 700; margin: 8px 0 0; }
+.p8-hook { margin: 12px 0 8px; }
+.p8-test { max-width: 26rem; }
+.p8-events-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 16px; }
+.p8-events { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 6px; }
+.p8-events li { border: 1px solid var(--border); border-radius: var(--radius-ctl); padding: 6px 10px; font-size: .84rem; }
+.p8-events summary { cursor: pointer; }
+.p8-body { max-height: 18rem; overflow: auto; margin: 8px 0 2px; font-size: .74rem; }

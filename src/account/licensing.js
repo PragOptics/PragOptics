@@ -33,11 +33,12 @@ import { LIC_URL, lc, st, url, body, cardHtml, countWord, cap } from './licensin
 import { microsoftHtml, licensesHtml, orderAction, orderChange } from './licensingOrders.js';
 import { catalogHtml, catalogAction, catalogInput } from './licensingCatalog.js';
 import { billingHtml, billingAction } from './licensingBilling.js';
+import { pax8Html, pax8Action } from './licensingPax8.js';
 
 
 export async function renderLicensing(main, deps) {
   st.D = deps; st.paint = paint; st.load = load;
-  lc.view = null; lc.busy = false; lc.note = ''; lc.pricing = ''; lc.add = null; lc.saving = ''; lc.msEdit = false; lc.lineNote = ''; lc.needPhone = false; lc.msMode = ''; lc.bill = null; lc.seatBusy = '';
+  lc.view = null; lc.busy = false; lc.note = ''; lc.pricing = ''; lc.add = null; lc.saving = ''; lc.msEdit = false; lc.lineNote = ''; lc.needPhone = false; lc.msMode = ''; lc.bill = null; lc.seatBusy = ''; lc.p8 = null;
   initCards();
   main.innerHTML = `
     <header class="acct-sec-head has-explain"><h2 class="acct-sec-title">Licensing</h2>${explainLink('licensing', 'How licenses and mailboxes work')}</header>
@@ -66,7 +67,7 @@ async function load() {
 function paint() {
   const host = document.getElementById('licBody');
   if (!host || !lc.view) return;
-  host.innerHTML = `${summaryHtml()}<div class="ev-cards">${accountHtml()}${microsoftHtml()}${licensesHtml()}${catalogHtml()}${mailboxesHtml()}${billingHtml()}</div>`;
+  host.innerHTML = `${summaryHtml()}<div class="ev-cards">${accountHtml()}${microsoftHtml()}${licensesHtml()}${catalogHtml()}${mailboxesHtml()}${billingHtml()}${pax8Html()}</div>`;
 }
 
 /* ---------- the head ---------- */
@@ -281,6 +282,7 @@ export function bindLicensingActions(deps) {
     if (a === 'seat-release') return void seatMail(btn, false);
     if (catalogAction(a, btn)) return;
     if (billingAction(a, btn)) return;
+    if (pax8Action(a, btn)) return;
     orderAction(a, btn);
   });
   document.addEventListener('change', (e) => { orderChange(e); catalogInput(e); });

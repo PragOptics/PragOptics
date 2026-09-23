@@ -465,10 +465,39 @@ async function setStarfieldPreference(value) {
   }
 }
 
+/* ---------- the one-time mail offer (2026-09-23) ---------- */
+// Right after a paid plan settles, the wizard sets a flag for this browser session; Profile opens with the offer
+// until it is answered. Set up mail goes to Licensing (the account, the Microsoft details, then Turn on mail); Not now
+// puts it away. Either answer is kept for this account in this browser, so it is offered once.
+function mailOfferKey() { return `pragoptics_mail_offer_done:${cachedPing()?.user?.userId || cachedPing()?.user?.email || ''}`; }
+function mailOfferWanted() {
+  try { return sessionStorage.getItem('pragoptics_offer_mail') === '1' && localStorage.getItem(mailOfferKey()) !== '1'; } catch { return false; }
+}
+function mailOfferDone() {
+  try { localStorage.setItem(mailOfferKey(), '1'); sessionStorage.removeItem('pragoptics_offer_mail'); } catch { /* shown again next session */ }
+  document.getElementById('acctMailOffer')?.remove();
+}
+function mailOfferHtml() {
+  if (!mailOfferWanted() || !TEAM_ON) return '';
+  return `
+    <section class="acct-card acct-offer" id="acctMailOffer">
+      <span class="ev-card-ico">${ico('mail')}</span>
+      <div class="acct-offer-main">
+        <h3 class="acct-card-h">Mail for your team</h3>
+        <p class="acct-card-note">Your plan includes an Exchange Online mailbox for every seat, nothing extra to pay. It is set up on Licensing: open the licensing account, name your Microsoft tenant, then Turn on mail.</p>
+        <div class="acct-actions-row act-row">
+          ${leadBtn({ acct: 'mail-offer-go' }, 'mail', 'Set up mail', '', 'btn-primary')}
+          ${iconBtn({ acct: 'mail-offer-later' }, 'x', 'Not now; it stays on the Licensing tab')}
+        </div>
+      </div>
+    </section>`;
+}
+
 async function renderProfile(main) {
   const theme = getTheme(), stars = getStarfield();
   main.innerHTML = `
     <header class="acct-sec-head"><h2 class="acct-sec-title">Profile</h2></header>
+    ${mailOfferHtml()}
     <div class="acct-grid">
     ${cardHtml({ key: 'profile:emails', icon: 'mail', title: 'Email addresses', summary: 'loading', body: `
       <ul class="acct-alias-list" id="acctAliasList"><li class="acct-loading">Loading…</li></ul>
@@ -4065,6 +4094,8 @@ function bindOnce() {
       if (a === 'pm-update') return void startPmUpdate(act);
       if (a === 'pm-save') return void savePmUpdate(act);
       if (a === 'pm-cancel') return void cancelPmUpdate();
+      if (a === 'mail-offer-go') { mailOfferDone(); return void showSection('licensing'); }
+      if (a === 'mail-offer-later') return void mailOfferDone();
       if (a === 'phone-start') return void startPhone();
       if (a === 'phone-reverify') {
         const input = document.getElementById('acctNewPhone');
