@@ -17,7 +17,7 @@ Everyone else in a team seat (an admin, a developer or a member) sees Licensing 
 
 ## The licensing account
 
-Before the first license, your business needs a licensing account. The owner creates it once, under your business's legal name, not a person's name. When your billing details on Billing carry a business name, the name box starts with it; the owner checks it, changes it there if it is wrong, and confirms it before anything is created. It uses the billing address you gave on Billing, and nothing is charged. The business name can be changed later on the same card; that change does not touch your billing details.
+Before the first license, your business needs a licensing account. The owner creates it once, under your business's legal name, not a person's name. When your billing details on Billing carry a business name, the name box starts with it; the owner checks it, changes it there if it is wrong, and confirms it before anything is created. The owner also gives your business's own website: the account is filed under its domain, and a domain can carry one licensing account, so a website another business already uses is refused with a note under the box. It uses the billing address you gave on Billing, and nothing is charged. The business name can be changed later on the same card; that change does not touch your billing details.
 
 ## Your Microsoft tenant
 

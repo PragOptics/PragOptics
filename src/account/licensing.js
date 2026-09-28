@@ -200,6 +200,11 @@ function accountHtml() {
             ? "Filled in from the business name in your billing details. Check it is your business's legal name and change it here if it is not. It is not your own name. You confirm it before the account is created."
             : "Type your business's legal name. It is not your own name. You confirm it before the account is created. A business name added to your billing details on Billing is filled in here."}</p>
         </div>
+        <div class="lic-span">
+          <label class="acct-label" for="licWebsite">Your business's website</label>
+          <input class="acct-input" id="licWebsite" type="url" inputmode="url" autocomplete="url" data-keep value="${e(kept('licWebsite', ''))}" placeholder="yourbusiness.com" aria-describedby="licWebHint">
+          <p class="lic-hint" id="licWebHint">Your licensing account is filed under your website's domain, so it must be your business's own website.</p>
+        </div>
         ${lc.needPhone ? `<div class="lic-span"><label class="acct-label" for="licPhone">Phone number for the account</label><input class="acct-input" id="licPhone" type="tel" inputmode="tel" autocomplete="tel" data-keep value="${e(kept('licPhone', ''))}" placeholder="+1 555 555 5555"></div>` : ''}
       </div>
       <div class="acct-actions-row">${leadBtn({ lic: 'open-account' }, 'plus', 'Create licensing account', '', 'btn-primary')}</div>
@@ -215,20 +220,28 @@ function accountHtml() {
   });
 }
 
-/** The name as typed in the box (spaces run together), and the phone when one was asked for. */
+/** The name as typed in the box (spaces run together), the website, and the phone when one was asked for. */
 function accountInput() {
   return {
     name: String(kept('licBizName', document.getElementById('licBizName')?.value || '') || '').trim().replace(/\s+/g, ' '),
+    website: String(kept('licWebsite', document.getElementById('licWebsite')?.value || '') || '').trim(),
     phone: lc.needPhone ? String(kept('licPhone', document.getElementById('licPhone')?.value || '') || '').trim() : ''
   };
 }
 
-/** "Create licensing account": the name checked here, then the owner confirms it by name before anything is sent. */
+/** Back to the account form with the server's sentence, the named box focused (the website or the phone refused). */
+function backToBox(id) {
+  return (ex) => { lc.acctConfirm = ''; queueMicrotask(() => document.getElementById(id)?.focus()); return ex.data.error; };
+}
+
+/** "Create licensing account": the name and website checked here, then the owner confirms the name before anything is sent. */
 function askAccount() {
-  const { name, phone } = accountInput();
+  const { name, website, phone } = accountInput();
   lc.err.account = ''; setNote('account', '');
   if (!name) { lc.err.account = 'Give your business\'s name. It goes on your Microsoft licensing account.'; st.paint(); document.getElementById('licBizName')?.focus(); return; }
   if (name.length > 160) { lc.err.account = 'The business name is at most 160 characters.'; st.paint(); document.getElementById('licBizName')?.focus(); return; }
+  if (!website) { lc.err.account = 'Give your business\'s website. Your licensing account is filed under its domain.'; st.paint(); document.getElementById('licWebsite')?.focus(); return; }
+  if (/\s/.test(website) || !website.replace(/^[a-z][a-z0-9+.-]*:\/\//i, '').split('/')[0].includes('.')) { lc.err.account = 'That is not a website address. Give it as yourbusiness.com or https://yourbusiness.com.'; st.paint(); document.getElementById('licWebsite')?.focus(); return; }
   if (lc.needPhone && !phone) { lc.err.account = 'Give a phone number for the account.'; st.paint(); document.getElementById('licPhone')?.focus(); return; }
   lc.acctConfirm = name;
   st.paint();
@@ -237,11 +250,11 @@ function askAccount() {
 
 async function openAccount() {
   const name = lc.acctConfirm;
-  const { phone } = accountInput();
+  const { website, phone } = accountInput();
   if (!name) return;
   lc.err.account = ''; setNote('account', '');
   await send('account', 'Creating…', async () => {
-    try { await call(`${LIC_URL}/account`, 'POST', { businessName: name, ...(phone ? { phone } : {}) }); }
+    try { await call(`${LIC_URL}/account`, 'POST', { businessName: name, website, ...(phone ? { phone } : {}) }); }
     catch (ex) {
       // the account needs a phone and none is on the billing profile or the owner's Profile: asked for here, back on
       // the name box, and the owner confirms again
@@ -249,7 +262,7 @@ async function openAccount() {
       if (ex?.data?.code === 'PHONE_REQUIRED' || ex?.data?.code === 'PHONE_INVALID') { lc.needPhone = true; lc.acctConfirm = ''; lc.err.account = ex.data.error || 'Licensing needs a phone number for the account.'; return; }
       throw ex;
     }
-    lc.needPhone = false; lc.acctConfirm = ''; forget('licBizName', 'licPhone');
+    lc.needPhone = false; lc.acctConfirm = ''; forget('licBizName', 'licWebsite', 'licPhone');
     setNote('account', `Your licensing account is created as ${name}.`);
     await st.load();
   }, {
@@ -261,6 +274,8 @@ async function openAccount() {
       // the server did not take the name: back to the box, where it is changed
       NAME_REQUIRED: (ex) => { lc.acctConfirm = ''; return ex.data.error; },
       NAME_TOO_LONG: (ex) => { lc.acctConfirm = ''; return ex.data.error; },
+      // the website (2026-09-28): missing, not an address, or its domain already filed at the distributor; back to the box
+      WEBSITE_REQUIRED: backToBox('licWebsite'), WEBSITE_INVALID: backToBox('licWebsite'), WEBSITE_TAKEN: backToBox('licWebsite'),
       LIVE_LANE_ONLY: 'Licensing is managed on your live environment, not the sandbox.'
     }
   });
