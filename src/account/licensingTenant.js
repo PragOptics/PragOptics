@@ -176,7 +176,9 @@ function connectionHtml(m, p) {
   // decision 16: a tenant PragOptics has Microsoft make (a new name, no ID yet) is connected by PragOptics, never by the
   // customer: nothing to do before the first order, and nothing to do while it is being connected after it. The server
   // says platformConnecting for the same case (2026-09-28); either counts.
-  if (!t?.connected && (t?.platformConnecting || (m.domainPrefix && !m.tenantId))) {
+  // A tenant Microsoft has MADE (its id recorded) is also the customer's to connect, with the administrator login the
+  // distributor mailed them when it made it (2026-09-28); the server says canConnect for that case and falls through below.
+  if (!t?.connected && !t?.canConnect && (t?.platformConnecting || (m.domainPrefix && !m.tenantId))) {
     const words = t?.platformConnecting || ordered(lc.view, m)
       ? 'Your Microsoft tenant is being connected by PragOptics. Your team\'s mailboxes are made once it is; nothing is needed from you.'
       : `${m.domainPrefix}.onmicrosoft.com is made by your first order of mail or a license, then connected by PragOptics. Nothing to do here yet.`;
@@ -191,7 +193,10 @@ function connectionHtml(m, p) {
     const who = t.named ? `<span class="ev-code">${e(t.named)}</span>` : 'your tenant';
     if (p.readOnly) return `<div class="lic-admin">${head}${lost}<p class="acct-card-note">Not connected. ${e(sentence(lc.view?.readOnlyWhy || 'Licensing is read-only right now.'))}</p></div>`;
     if (!canDomains()) return `<div class="lic-admin">${head}${lost}<p class="acct-card-note">Not connected yet. The owner, or a role with Connect your Microsoft tenant and set up its mail, connects ${who}: they sign in at Microsoft as its administrator and approve PragOptics for your organization.</p></div>`;
-    return `<div class="lic-admin">${head}${lost}${ro}
+    // a tenant the distributor made for this team: the customer holds its administrator login (mailed to them with the
+    // order) and may connect with it now, while PragOptics keeps trying to connect it on its own
+    const made = t.madeByPlatform ? `<p class="acct-card-note">Microsoft made ${who} for you. Its administrator login${t.adminLogin ? `, <span class="ev-code">${e(t.adminLogin)}</span>,` : ''} was emailed to you with the order. PragOptics is also connecting it on its own; connect it yourself now and nothing waits.</p>` : '';
+    return `<div class="lic-admin">${head}${lost}${ro}${made}
       <p class="acct-card-note">Connect ${who} so PragOptics can make each seat's mailbox, add your domains to it and switch your mail. You sign in at Microsoft as an administrator of that tenant, approve PragOptics for your organization, and come back here. The link works once and for ten minutes.</p>
       <div class="acct-actions-row">${reqLead('tn-connect', { lic: 'tn-connect' }, 'external', t.lost ? 'Connect it again' : 'Connect your tenant', 'Opening Microsoft…', '', 'btn-primary')}</div>
     </div>`;
