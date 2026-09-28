@@ -333,7 +333,9 @@ export function armed(btn, word, { keep = 'Keep it', ms = 6000 } = {}) {
   armedBtn = btn; btn.dataset.armed = '1';
   btn._armHtml = btn.innerHTML; btn._armTip = btn.getAttribute('data-tip'); btn._armLabel = btn.getAttribute('aria-label');
   const svg = btn.querySelector('svg');
-  btn.innerHTML = `${svg ? svg.outerHTML : ''}<span>${esc(word)}</span>`;
+  // an icon-only button is square, so the question inside it would wrap one letter per line and hide the button (seen on the
+  // Tenants desk, 2026-09-28): it keeps its icon and says the question through its tooltip and label instead
+  btn.innerHTML = btn.classList.contains('btn-ico') ? (svg ? svg.outerHTML : '') : `${svg ? svg.outerHTML : ''}<span>${esc(word)}</span>`;
   btn.setAttribute('aria-label', `${word} Press again to confirm.`);
   btn.setAttribute('data-tip', 'Press again to confirm');
   btn.classList.add('is-armed');
