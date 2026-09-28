@@ -245,7 +245,8 @@ async function openAccount() {
     catch (ex) {
       // the account needs a phone and none is on the billing profile or the owner's Profile: asked for here, back on
       // the name box, and the owner confirms again
-      if (ex?.data?.code === 'PHONE_REQUIRED') { lc.needPhone = true; lc.acctConfirm = ''; lc.err.account = ex.data.error || 'Licensing needs a phone number for the account.'; return; }
+      // PHONE_INVALID (2026-09-28): the billing phone is in a form the distributor refuses; the same phone box opens with the server's words
+      if (ex?.data?.code === 'PHONE_REQUIRED' || ex?.data?.code === 'PHONE_INVALID') { lc.needPhone = true; lc.acctConfirm = ''; lc.err.account = ex.data.error || 'Licensing needs a phone number for the account.'; return; }
       throw ex;
     }
     lc.needPhone = false; lc.acctConfirm = ''; forget('licBizName', 'licPhone');
