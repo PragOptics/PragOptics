@@ -1206,6 +1206,22 @@ async function forgetPartnerCenter(btn) {
   finally { done(); }
 }
 
+/* The environment's Microsoft tenant on its row (2026-09-28; backend adminTenants microsoft): its name, and for a tenant the
+ * platform made, where the automatic connect stands, in words, so the desk says what the platform is doing right now. */
+const AUTO_WORDS = {
+  'waiting-relationship': 'waiting for the admin relationship from the distributor', approving: 'approving the admin relationship', assigning: 'assigning the roles',
+  assigned: 'roles assigned; consenting the app', consented: 'app consented; reading the tenant', connected: 'connected', retrying: 'retrying next hour', 'needs-operator': 'stopped: see Needs attention'
+};
+function tenantLineHtml(t) {
+  const m = t.microsoft;
+  if (!m) return '';
+  const e = D.escapeHtml;
+  const state = m.connected ? `connected${m.consentBy === 'platform' ? ' by the platform' : ''}` : m.madeByPlatform ? (AUTO_WORDS[m.autoConnect?.status] || (m.tenantId ? 'made; connecting on the next pass' : 'ordered; waiting for Microsoft')) : (m.tenantId ? 'not connected' : 'named');
+  const cls = m.connected ? 'is-verified' : m.autoConnect?.status === 'needs-operator' ? 'is-bad' : 'is-pending';
+  const err = !m.connected && m.autoConnect?.error ? ` title="${e(m.autoConnect.error)}"` : '';
+  return `<div class="adm-muted tn-ms"><span class="acct-tag ${cls}"${err}>tenant: ${e(state)}</span> <span class="ev-code">${e(m.name)}</span></div>`;
+}
+
 function realOrdersLineHtml(d, rows) {
   const ro = d?.realOrders;
   if (!ro?.available) return '';
@@ -1285,7 +1301,7 @@ export async function renderTenants(main, deps) {
           <tbody>
             ${rows.map(t => `
               <tr>
-                <td class="cell-ellip" title="${e(t.environmentId)}">${e(t.organizationName || 'Unnamed')}<div class="adm-muted"><code>${e(String(t.environmentId).slice(0, 8))}</code></div>${t.realOrders?.armed ? '<div><span class="acct-tag is-bad" title="Real orders are on: this environment\'s orders are placed at Pax8 and billed to PragOptics">real orders</span></div>' : ''}</td>
+                <td class="cell-ellip" title="${e(t.environmentId)}">${e(t.organizationName || 'Unnamed')}<div class="adm-muted"><code>${e(String(t.environmentId).slice(0, 8))}</code></div>${t.realOrders?.armed ? '<div><span class="acct-tag is-bad" title="Real orders are on: this environment\'s orders are placed at Pax8 and billed to PragOptics">real orders</span></div>' : ''}${tenantLineHtml(t)}</td>
                 <td class="cell-ellip adm-cell-email" title="${e(t.ownerEmail)}">${e(t.ownerEmail || '')}${t.ownerStatus && t.ownerStatus !== 'ACTIVE' ? ` <span class="acct-tag is-pending">${e(String(t.ownerStatus).toLowerCase())}</span>` : ''}</td>
                 <td class="cell-tight"><span class="adm-tier adm-tier-${e(t.tier)}">${e(tierName(t.tier))}</span></td>
                 <td class="cell-tight">${storageCell(t)}</td>
