@@ -284,4 +284,13 @@
 }
 .btn.btn-sm { min-height: var(--ctl-h); }
 .btn.btn-ico, .btn.btn-sm.btn-ico { width: var(--ctl-h); min-width: var(--ctl-h); height: var(--ctl-h); min-height: var(--ctl-h); }
+
+/* THE CHOSEN SIDE (2026-09-24, decision 40): a .btn that is the pressed side of a toggle (aria-pressed) or the open tab
+   of a tablist (aria-selected) reads as chosen, one tint everywhere: the Builds card's file tabs and its No wrap, and
+   the same values the Appearance choice carries (account.css .acct-seg). After the hover rules, so it holds on hover. */
+.btn:is([aria-pressed="true"], [aria-selected="true"]) {
+  color: var(--brand-600);
+  border-color: color-mix(in srgb, var(--brand-600) 55%, transparent);
+  background: color-mix(in srgb, var(--brand-600) 12%, transparent);
+}
 .adm-live-word { width: 8.5rem; flex: 0 0 auto; }

@@ -8,6 +8,7 @@
 // keep working.
 
 import { presetAccountSection } from '../account/account.js';
+import { accessToken } from '../runtime/session.js';
 
 function cachedPing() {
   try { return JSON.parse(sessionStorage.getItem('pragoptics_ping') || 'null'); }
@@ -19,7 +20,7 @@ function hasLiveSession() {
   // ping in place, so the ping alone is not evidence of a live session.
   try {
     if (typeof window.isAccessTokenValid === 'function') return window.isAccessTokenValid();
-    return !!JSON.parse(sessionStorage.getItem('pragoptics_tokens') || 'null')?.access_token;
+    return !!accessToken();
   } catch { return false; }
 }
 

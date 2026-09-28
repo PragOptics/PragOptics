@@ -1,6 +1,7 @@
 // /src/components/footer.js
 import { LANE } from '../runtime/config.js';
 import { isPlatformOperator } from '../runtime/lane.js';
+import { accessToken } from '../runtime/session.js';
 import { getTheme, toggleTheme } from '../runtime/theme.js';
 import { sunSvg, moonSvg, LIGHT_LABEL, DARK_LABEL } from './themeMarks.js';
 
@@ -16,6 +17,15 @@ export function initFooter() {
       // Same-tab in-app navigation (symmetric with the header "Documentation"
       // entry) so doc entrants always have a visible way back.
       window.location.href = "/docs/";
+    });
+  }
+
+  // Report a site (2026-09-24, the community standards): the report form, signed in or not, loaded when first asked for.
+  const reportLink = document.querySelector("[data-report-site]");
+  if (reportLink) {
+    reportLink.addEventListener("click", (e) => {
+      e.preventDefault();
+      openReportSite();
     });
   }
 
@@ -90,6 +100,20 @@ export function initFooter() {
   env.addEventListener("keydown", (e) => {
     if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openReturnToLive(); }
   });
+}
+
+/**
+ * The Report a site form (src/account/report.js openConductReport), opened from the footer and from the address
+ * /#report. A signed-in visitor's session rides along so the report records who sent it; nobody needs one.
+ */
+export async function openReportSite() {
+  try {
+    const m = await import("../account/report.js");
+    await m.openConductReport({ token: accessToken() });
+  } catch {
+    // the module did not load (offline, a stale page): the plain way to report still works
+    window.location.href = "mailto:support@bridgesindust.com?subject=Report%20a%20site";
+  }
 }
 
 // Drop this browser back to the live lane: remove the dev override (so the

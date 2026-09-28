@@ -13,6 +13,7 @@
 import { lines, subtotal, removeItem, subscribe } from './cart.js';
 import { formatPrice, ALL_PRODUCTS, SHOP_LIVE } from './products.js';
 import { LANE, PRAG_API_BASE, ORDERS_CLAIM_LIVE } from '../runtime/config.js';
+import { accessToken } from '../runtime/session.js';
 import { tierCardsHtml, bindTierCards, loadPublicPrices } from '../components/tierCards.js';
 import { stripeAppearance } from '../api/stripeAppearance.js';
 import { ensureStripeJs } from '../runtime/stripeLoader.js';
@@ -173,10 +174,7 @@ function friendlyError(err, fallback) {
 }
 
 function getAccessToken() {
-  try {
-    const t = JSON.parse(sessionStorage.getItem('pragoptics_tokens') || 'null');
-    return t?.access_token || null;
-  } catch { return null; }
+  return accessToken() || null;
 }
 
 function pingEmail() {

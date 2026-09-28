@@ -45,6 +45,14 @@
 
             <div class="row">
               <div class="form-field">
+                <label for="bpBusinessName">Business Name (optional)</label>
+                  <input id="bpBusinessName" type="text" maxlength="150" autocomplete="organization" aria-describedby="bpBusinessHint">
+                  <small class="muted" id="bpBusinessHint">Leave it empty if you subscribe as a person. When given, your invoices are made out to it.</small>
+              </div>
+            </div>
+
+            <div class="row">
+              <div class="form-field">
                 <label for="bpEmail">Email</label>
                   <input id="bpEmail" type="email" required inputmode="email">
               </div>

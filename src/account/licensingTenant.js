@@ -1,276 +1,623 @@
 // src/account/licensingTenant.js
 //
-// The customer's Microsoft tenant on the Licensing tab (2026-09-23): connecting it (its administrator approves
-// PragOptics once at Microsoft), each seat's person and mailbox in it, the team's domain added to it, and mail
-// switched over. Every call is the platform's own route; the backend proves the approval with the tenant itself.
+// The team's Microsoft tenant on the Licensing tab (Part 1, 2026-09-23; Part 2, 2026-09-27; Cameron's decisions 1, 2,
+// 7, 15, 16 and 17). One card: the tenant's name, where it stands, and (Part 2) the connection into it and what runs
+// through it: each seat's person, the team's domains, the mail switch. A second card, My mailbox, is each person's own.
 //
-//   GET  v1/environment/licensing/tenant                         the tenant read live
-//   POST v1/environment/licensing/tenant/connect                 -> { url }   Microsoft's approval page
-//   POST v1/environment/licensing/tenant/seats/sync              every seat's person and mailbox
-//   POST v1/environment/licensing/tenant/domains                 { host }   a proven domain added and verified
-//   POST v1/environment/licensing/tenant/domains/{host}/verify   Microsoft checks again
-//   GET  v1/environment/licensing/tenant/domains/{host}/mail     what switching mail writes
-//   POST v1/environment/licensing/tenant/domains/{host}/mail     { confirm: true }   the switch
-//   POST v1/environment/licensing/tenant/domains/{host}/mail/confirm   records added by hand, seen
+//   PART 2, THE CONNECTION (decision 15; GET v1/environment/licensing/tenant, read once per load into lc.tn): the owner,
+//   or a role with "Connect your Microsoft tenant and set up its mail", presses Connect your tenant; the page goes to Microsoft's sign-in for the
+//   named tenant, then Microsoft's approval page for that same tenant, and comes back here with the outcome in the
+//   address (bootstrap.js keeps it; resetTenant reads it once). A tenant PragOptics made is connected by PragOptics
+//   (decision 16): the card says so and offers nothing. Connected, the card shows the organization, its licenses in use,
+//   Bring every seat up to date ("Give out mailboxes and licenses"), and each verified domain: Add to tenant, its TXT
+//   with Copy when the DNS is managed elsewhere, Check again, then Switch mail to Microsoft, which first shows exactly what
+//   is written (an existing SPF merged, never doubled; mail going elsewhere named) and asks twice. A read-only lane says
+//   so and shows what each step would do.
+//     POST .../tenant/connect -> { url }     POST .../tenant/seats/sync     POST .../tenant/domains { host }
+//     POST .../tenant/domains/{host}/verify   GET/POST .../tenant/domains/{host}/mail { confirm }   POST .../mail/confirm
+//   MY MAILBOX (decision 17): the signed-in person's own address and state; their first password waits for them alone,
+//   shown once (the server deletes its copy before it answers; this page holds it in memory only, never in storage) with
+//   Copy and I have kept it; Reset my password sets a new one in Microsoft and it waits here once more. Admins never see
+//   or set anyone's password.
+//     GET .../tenant/mailbox   POST .../tenant/mailbox/password -> { password, address }   POST .../tenant/mailbox/reset
 //
-// Microsoft sends the administrator back to /#account?section=licensing&tenant=<outcome>; bootstrap.js keeps the
-// outcome in sessionStorage (pragoptics_tenant_return) and this card reads it once. licensing.js paints the card
-// and routes its clicks here.
+//   The owner names the tenant: a new one PragOptics has Microsoft make (name.onmicrosoft.com), or the ID of one the
+//   business already has. The name box takes 3 to 27 letters and digits, says so under the box, and never changes
+//   what was typed; the server asks Microsoft whether the name is free and refuses a taken one ("That name is already
+//   taken at Microsoft. Choose another."), shown under the box.
+//   Once mail or a license is ordered the name is fixed (decision 1): the card shows it locked and says why.
+//   A tenant PragOptics is having made reads "Your Microsoft tenant is being set up by PragOptics." until the hourly
+//   check finds it at Microsoft; then its name and ID show (decision 7). 24 hours without it: "Microsoft has not
+//   created your tenant yet. We are looking into it." (decision 2). The sentences are the server's (describe()).
+//
+//   POST v1/environment/licensing/microsoft { domainPrefix } | { tenantId }   the owner; 409 TENANT_NAME_TAKEN,
+//        400 TENANT_NAME_INVALID, 400 TENANT_ID_INVALID, 409 TENANT_LOCKED, 503 TENANT_LOOKUP_FAILED
+//
+//   YOUR ADMINISTRATOR ACCOUNT (2026-09-24, decision 29): under the facts of a tenant PragOptics made, once Microsoft
+//   has it and before the handover at leaving, the owner can ask for an administrator account of their own. The
+//   sign-in name box carries the tenant's suffix and is checked as typed, never rewritten; asked, the card says so and
+//   offers Withdraw; made, it names the account; not made, it gives the reason and the box again. PragOptics makes it
+//   by hand; nothing is written in Microsoft from here. Anyone but the owner sees nothing of it.
+//     POST   v1/environment/licensing/tenant/admin-account { signInName }   DELETE the same address withdraws
+//   THE FIRST PASSWORD (decision 37(3)): made, the card offers Show the first password once. The answer is the only copy
+//   (the server deletes its own before it answers): it is held in this page's memory alone, never in browser storage,
+//   shown in a read-only box with Copy, and gone when the owner presses I have kept it, leaves the tab or reloads.
+//   Microsoft asks for a new password at the first sign-in, and the card says so.
+//     POST   v1/environment/licensing/tenant/admin-account/password   -> { password, signIn }   once
+//
+// licensing.js paints the card and routes its clicks here.
 
-import { iconBtn, leadBtn, armed, btnLabel, ico } from './cards.js';
-import { LIC_URL, lc, st, url, body, cardHtml, countWord } from './licensingShared.js';
+import { iconBtn, leadBtn, ico, copyButton, armed } from './cards.js';
+import { LIC_URL, lc, st, url, cardHtml, perms, call, send, reqLead, reqIcon, errHtml, noteHtml, setNote, kept, forget, sentence, showsLicensing, dayWord, countWord } from './licensingShared.js';
 
-const T_URL = `${LIC_URL}/tenant`;
-const RETURN_KEY = 'pragoptics_tenant_return';
-const OUTCOME_WORDS = {
-  declined: 'The approval was not given at Microsoft.',
-  mismatch: 'That approval was for a different tenant.',
-  expired: 'That approval link had expired. Start again.',
-  unproven: 'Microsoft did not let PragOptics into the tenant.',
-  missing: 'That environment no longer exists.',
-  failed: 'Something went wrong on the way back from Microsoft.'
-};
-
-function ts() { return lc.tn || (lc.tn = { status: null, loading: false, busy: '', plans: {}, note: '', noteBad: false, seats: null, returned: false }); }
-
-/** Microsoft's answer, kept by bootstrap.js when the administrator came back; read once. */
-function takeReturn() {
-  let r = null;
-  try { r = JSON.parse(sessionStorage.getItem(RETURN_KEY) || 'null'); sessionStorage.removeItem(RETURN_KEY); } catch { r = null; }
-  if (!r || !r.outcome) return;
-  const t = ts();
-  t.returned = true;
-  if (r.outcome === 'connected') { t.note = 'Your tenant is connected.'; t.noteBad = false; }
-  else { t.note = `${OUTCOME_WORDS[r.outcome] || 'The tenant was not connected.'}${r.why ? ` ${r.why}` : ''}`; t.noteBad = true; }
+const SIGNIN_RULE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
+const SIGNIN_WORDS = 'Use 1 to 64 letters, digits, dots, dashes or underscores, starting with a letter or digit.';
+/** first.last from the owner's own name, only when that already fits the rule. */
+function signInSuggestion(m) {
+  const a = m.accepter || {};
+  const s = `${String(a.firstName || '').trim()}.${String(a.lastName || '').trim()}`.toLowerCase();
+  return a.hasName && SIGNIN_RULE.test(s) && !s.endsWith('.') ? s : '';
 }
 
-/** The live read, once per visit to the tab; a paint follows. */
-async function ensureStatus() {
-  const t = ts();
-  if (t.status || t.loading) return;
-  t.loading = true;
-  try { const d = await st.D.apiFetch(url(T_URL)); t.status = d.tenant || null; }
-  // a lane whose backend has no tenant routes yet answers 404: the card stays away
-  catch (ex) { t.status = ex?.status === 404 && !ex?.data?.code ? { absent: true } : { error: ex?.data?.error || st.D.friendlyError(ex, 'The tenant could not be read.') }; }
-  finally { t.loading = false; st.paint(); }
-  if (t.returned) {
-    t.returned = false;
-    requestAnimationFrame(() => document.querySelector('[data-card="licensing:tenant"]')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+const RETURN_KEY = 'pragoptics_tenant_return';
+// the administrator account's first password once it was shown (decision 37(3)): this page's memory only
+let shown = null;
+// the person's own first mailbox password once shown (decision 17): this page's memory only, never storage
+let mbShown = null;
+const NAME_RULE = /^[A-Za-z0-9]{3,27}$/;
+const ID_RULE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const NAME_HINT = '3 to 27 letters and digits: no spaces, dots or dashes. Microsoft makes your tenant as this name followed by .onmicrosoft.com. The name is fixed once mail or a license is ordered.';
+// Back from Microsoft (decision 15): what the callback put in the address, in the card's words. The server's own `why`
+// is a plain sentence and wins when it is there.
+const RETURN_SAID = {
+  connected: 'Your Microsoft tenant is connected. PragOptics can now make each seat\'s mailbox and add your domains.',
+  declined: 'You did not approve PragOptics at Microsoft, so nothing was connected.',
+  mismatch: 'That sign-in or approval was for a different Microsoft organization than the one named here, so nothing was connected.',
+  taken: 'That Microsoft organization is already connected elsewhere, so nothing was connected. PragOptics has been told.',
+  unproven: 'Microsoft did not finish the approval, so nothing was connected. Start again.',
+  expired: 'That link had already been used or had expired, so nothing was connected. Start again.',
+  missing: 'That environment no longer exists.',
+  failed: 'Microsoft did not finish the approval, so nothing was connected. Start again.',
+  later: 'Nothing was changed in your Microsoft tenant.'
+};
+
+/**
+ * Someone came back from Microsoft (bootstrap.js keeps the answer in sessionStorage): the card says once what came of
+ * it. The tenant read (lc.tn) and any mail plan open are dropped with the visit; the first passwords too.
+ */
+export function resetTenant() {
+  lc.tnEdit = false; lc.tnMode = '';
+  shown = null; mbShown = null;   // a first password shown on an earlier visit to the tab is gone with it
+  lc.tn = null; lc.tnPlan = {}; lc.tnErr = '';
+  let r = null;
+  try { r = JSON.parse(sessionStorage.getItem(RETURN_KEY) || 'null'); sessionStorage.removeItem(RETURN_KEY); } catch { r = null; }
+  if (r && r.outcome) {
+    const good = r.outcome === 'connected';
+    setNote('tenant', good ? RETURN_SAID.connected : sentence(r.why || RETURN_SAID[r.outcome] || RETURN_SAID.failed), !good);
   }
 }
 
-export function resetTenant() { lc.tn = null; takeReturn(); }
+/**
+ * The tenant read live (the connection, its licenses, its domains) and the caller's own mailbox, once per load of the
+ * tab, only when the tenant is named. A lane without the route, or one where the read fails, leaves the Part 1 facts
+ * standing and says so in the card; nothing else waits on it.
+ */
+export async function loadTenantStatus(v) {
+  const m = v?.microsoft || {};
+  if (!v?.account || !(m.tenantId || m.domainPrefix)) { lc.tn = null; return; }
+  try { lc.tn = await st.D.apiFetch(url(`${LIC_URL}/tenant`)); lc.tnErr = ''; }
+  catch (ex) {
+    lc.tn = null;
+    lc.tnErr = ex?.status === 404 && !ex?.data?.code ? '' : (ex?.data?.error || st.D.friendlyError(ex, 'Your Microsoft tenant could not be read right now.'));
+  }
+}
+function tn() { return lc.tn?.tenant || null; }
+/** May this person connect the tenant, add domains and switch mail (decision 4: the owner, or a role given "Connect your Microsoft tenant and set up its mail")? */
+function canDomains() { const p = perms(); return p.canManageDomainsMail !== undefined ? !!p.canManageDomainsMail : (!!p.isOwner && !p.readOnly); }
+
+function modeOf(m) { return lc.tnMode || (m.tenantId && !m.domainPrefix ? 'existing' : 'new'); }
+/** The first label of a verified domain as a suggestion for the box, only when it already fits the rule as it is. */
+function suggestion(v) { const d = String((v.mailDomains || [])[0] || '').split('.')[0]; return NAME_RULE.test(d) ? d.toLowerCase() : ''; }
 
 export function tenantHtml() {
-  const v = lc.view, m = v?.microsoft || {};
-  if (!v?.eligible || !v.account || !m.ready) return '';
-  const e = st.D.escapeHtml, t = ts(), s = t.status;
-  if (!s && !t.loading) queueMicrotask(ensureStatus);
-  if (s?.absent) return '';
-  const on = !!(s ? s.connected : m.connected);
-  const named = m.tenantId || (m.domainPrefix ? `${m.domainPrefix}.onmicrosoft.com` : 'your tenant');
-  const summary = t.loading && !s ? 'reading…' : on ? e(s?.orgName || m.orgName || 'connected') : s?.lost ? 'removed at Microsoft' : 'not connected';
-  const note = t.note ? `<p class="acct-card-note ev-note ${t.noteBad ? 'is-bad' : ''}">${e(t.note)}</p>` : '';
+  const v = lc.view;
+  if (!showsLicensing() || !v.account) return '';
+  const e = st.D.escapeHtml, m = v.microsoft || {}, p = perms();
+  const named = !!(m.tenantId || m.domainPrefix);
+  const summary = !named ? 'not named yet' : m.domainPrefix ? `${m.domainPrefix}.onmicrosoft.com` : 'your own tenant';
+  const editing = p.canNameTenant && (!named || lc.tnEdit);
   let inner;
-  if (s?.error && !on) inner = `<p class="acct-card-note">${e(s.error)}</p>`;
-  else if (!on) inner = notConnectedHtml(v, s, named, e);
-  else inner = connectedHtml(v, s || {}, e);
+  if (editing) inner = formHtml(v, m);
+  else if (!named) inner = p.isOwner
+    ? `<p class="acct-card-note">${e(v.readOnlyWhy || 'The tenant cannot be named right now.')}</p>`
+    : '<p class="acct-card-note">The owner names your Microsoft tenant here: a new one Microsoft makes for your business, or one your business already has.</p>';
+  else inner = factsHtml(m, p);
   return cardHtml({
-    key: 'tenant', icon: 'building', title: 'Your Microsoft tenant', summary,
-    body: `<p class="acct-error" id="licTnError" hidden></p>${note}${inner}`
+    key: 'tenant', icon: 'building', title: 'Your Microsoft tenant', summary: e(summary),
+    body: `${noteHtml('tenant')}${errHtml('tenant')}${inner}`
   });
 }
 
-function notConnectedHtml(v, s, named, e) {
-  if (s && s.configured === false) return '<p class="acct-card-note">Tenant access is being set up on the platform. Nothing to do on your side; this card opens on its own.</p>';
-  const t = ts();
-  return `
-    ${s?.lost ? '<p class="acct-card-note"><span class="acct-tag is-bad">removed at Microsoft</span> The tenant\'s administrator removed PragOptics. Connect it again and the seats pick up where they were.</p>' : ''}
-    <p class="acct-card-note">Connect <strong>${e(named)}</strong> and PragOptics makes each seat's person and mailbox in it, adds your domain to it and switches your mail when you say so. An administrator of the tenant approves it once at Microsoft, and can remove it there at any time.</p>
-    ${v.canManage
-      ? `<div class="acct-actions-row">${leadBtn({ lic: 'tn-connect' }, t.busy === 'connect' ? 'refresh' : 'link', t.busy === 'connect' ? 'Opening Microsoft…' : 'Connect your tenant', t.busy === 'connect' ? 'disabled' : '', t.busy === 'connect' ? 'is-spinning' : 'btn-primary')}</div>`
-      : '<p class="acct-card-note">The owner or an admin connects it.</p>'}`;
+/** The tenant as it stands: its name (locked once ordered), its ID once Microsoft has it, and the server's words. */
+function factsHtml(m, p) {
+  const e = st.D.escapeHtml;
+  const lock = m.locked ? `<span class="lic-state is-quiet">${ico('lock', 12)}fixed</span>` : '';
+  const rows = [];
+  if (m.domainPrefix) rows.push(`<div class="lic-fact"><span class="lic-k">Tenant name</span><span class="lic-v"><span class="ev-code">${e(m.domainPrefix)}.onmicrosoft.com</span> ${lock}</span></div>`);
+  if (m.tenantId) rows.push(`<div class="lic-fact"><span class="lic-k">Tenant ID</span><span class="lic-v"><span class="ev-code">${e(m.tenantId)}</span>${!m.domainPrefix ? ` ${lock}` : ''}</span></div>`);
+  if (!m.domainPrefix && m.tenantId) rows.push('<div class="lic-fact"><span class="lic-k">Made by</span><span class="lic-v">your business, before PragOptics</span></div>');
+  // the server's sentence for where the tenant stands: being set up, not made yet, or made when mail is turned on
+  const state = m.tenantFound ? '' : m.tenantDelayed
+    ? `<p class="acct-card-note ev-note is-bad">${e(sentence(m.tenantText))}</p>`
+    : m.domainPrefix && m.tenantText ? `<p class="acct-card-note ev-note">${e(sentence(m.tenantText))}</p>` : '';
+  const why = m.locked && m.lockedText ? `<p class="lic-hint">${e(sentence(m.lockedText))}</p>` : m.domainPrefix && !m.locked ? '<p class="lic-hint">The name can change until mail or a license is ordered.</p>' : '';
+  const edit = p.canNameTenant && !m.locked ? `<div class="acct-actions-row">${iconBtn({ lic: 'tn-edit' }, 'edit', 'Change the tenant')}</div>` : '';
+  return `<div class="lic-facts">${rows.join('')}</div>${state}${why}${edit}${connectionHtml(m, p)}${adminAskHtml(m, p)}`;
 }
 
-function connectedHtml(v, s, e) {
-  const t = ts(), m = v.microsoft || {};
-  const lic = (s.licenses || []).filter(l => l.enabled > 0);
-  const facts = `
-    <div class="lic-facts">
-      <div class="lic-fact"><span class="lic-k">Organization</span><span class="lic-v">${e(s.orgName || m.orgName || '')}</span></div>
-      <div class="lic-fact"><span class="lic-k">Tenant id</span><span class="lic-v ev-code">${e(s.tenantId || '')}</span></div>
-      <div class="lic-fact"><span class="lic-k">Approved</span><span class="lic-v">${e(st.D.fmtDate(s.consentAt || m.consentAt))}</span></div>
-      ${lic.length ? `<div class="lic-fact"><span class="lic-k">Licenses</span><span class="lic-v">${lic.map(l => `${e(l.name)}: ${e(String(l.consumed))} of ${e(String(l.enabled))} in use`).join('<br>')}</span></div>` : ''}
+/* ---------- Part 2: the connection into the tenant, and what runs through it ---------- */
+
+/** The connection section: nothing until the tenant is named; then where the connection stands and what it carries. */
+function connectionHtml(m, p) {
+  const e = st.D.escapeHtml;
+  const head = '<h4 class="lic-sub">The connection</h4>';
+  if (lc.tnErr) return `<div class="lic-admin">${head}<p class="acct-card-note ev-note is-bad">${e(sentence(lc.tnErr))}</p></div>`;
+  const t = tn();
+  if (!t) return lc.tn === null && lc.view ? '' : `<div class="lic-admin">${head}<p class="acct-card-note">Reading your tenant at Microsoft…</p></div>`;
+  // decision 16: PragOptics connects the tenant it made; the customer has nothing to do here
+  if (t.platformConnecting) return `<div class="lic-admin">${head}<p class="acct-card-note">Your Microsoft tenant is being connected by PragOptics. Your team's mailboxes are made once it is; nothing is needed from you.</p></div>`;
+  if (!t.configured) return `<div class="lic-admin">${head}<p class="acct-card-note">Connecting your tenant is being set up. Look again soon.</p></div>`;
+  const ro = t.writes === false ? '<p class="acct-card-note ev-note">This lane reads your tenant and shows what each step would do; nothing is written from here.</p>' : '';
+  if (!t.connected) {
+    const lost = t.lost ? `<p class="acct-card-note ev-note is-bad">${e(sentence(t.why || 'Your administrator removed PragOptics from the tenant.'))}</p>` : '';
+    const who = t.named ? `<span class="ev-code">${e(t.named)}</span>` : 'your tenant';
+    if (p.readOnly) return `<div class="lic-admin">${head}${lost}<p class="acct-card-note">Not connected. ${e(sentence(lc.view?.readOnlyWhy || 'Licensing is read-only right now.'))}</p></div>`;
+    if (!canDomains()) return `<div class="lic-admin">${head}${lost}<p class="acct-card-note">Not connected yet. The owner, or a role with Connect your Microsoft tenant and set up its mail, connects ${who}: they sign in at Microsoft as its administrator and approve PragOptics for your organization.</p></div>`;
+    return `<div class="lic-admin">${head}${lost}${ro}
+      <p class="acct-card-note">Connect ${who} so PragOptics can make each seat's mailbox, add your domains to it and switch your mail. You sign in at Microsoft as an administrator of that tenant, approve PragOptics for your organization, and come back here. The link works once and for ten minutes.</p>
+      <div class="acct-actions-row">${reqLead('tn-connect', { lic: 'tn-connect' }, 'external', t.lost ? 'Connect it again' : 'Connect your tenant', 'Opening Microsoft…', '', 'btn-primary')}</div>
     </div>`;
-  const readOnly = s.writes === false ? '<p class="acct-card-note"><span class="acct-tag is-pending">read only</span> This lane reads your tenant and shows what it would do. It makes nothing there.</p>' : '';
-  const sync = t.seats ? seatsResultHtml(t.seats, e) : '';
-  const seatsRow = v.canManage ? `
-    <div class="tn-row">
-      <span class="lic-k">Seats</span>
-      <span class="acct-card-note tn-row-note">Each seat with its included mailbox gets its person here. A seat waits while Microsoft adds the license.</span>
-      ${iconBtn({ lic: 'tn-sync' }, 'refresh', 'Bring every seat up to date in the tenant', t.busy === 'sync' ? 'disabled' : '', t.busy === 'sync' ? 'is-spinning' : '')}
-    </div>${sync}` : '';
-  return `${readOnly}${facts}${seatsRow}${domainsHtml(v, s, e)}`;
-}
-
-function seatsResultHtml(r, e) {
-  if (!r.seats?.length) return '<p class="acct-card-note">No seat holds its included mailbox yet. Give one from Mailboxes below.</p>';
-  const word = { ready: 'ready', waiting: 'waiting for Microsoft', failed: 'not made', planned: 'would be made' };
-  return `<ul class="tn-list">${r.seats.map(x => `<li><span class="ev-code">${e(x.address || x.email)}</span> <span class="acct-tag ${x.state === 'ready' ? 'is-verified' : x.state === 'failed' ? 'is-bad' : 'is-pending'}">${e(word[x.state] || x.state)}</span>${x.why ? ` <span class="adm-muted">${e(x.why)}</span>` : ''}${x.planned ? ` <span class="adm-muted">${e(x.planned)}</span>` : ''}</li>`).join('')}</ul>`;
-}
-
-/* ---------- domains and mail ---------- */
-
-function domainsHtml(v, s, e) {
-  const hosts = v.mailDomains || [];
-  const ours = new Map((s.domains || []).map(d => [d.host, d]));
-  const theirs = new Map((s.tenantDomains || []).map(d => [d.host, d]));
-  if (!hosts.length) return `<div class="tn-row"><span class="lic-k">Domains</span><span class="acct-card-note tn-row-note">Add your domain on <a href="#account?section=environment&card=domains" data-acct-section="environment">Environment</a> first; then it joins the tenant here.</span></div>`;
-  const rows = hosts.map(h => domainRowHtml(h, ours.get(h), theirs.get(h), v.canManage, e)).join('');
-  return `
-    <div class="tn-domains">
-      <span class="lic-k">Domains</span>
-      <p class="acct-card-note">Switch your domain's mail before giving seats their mailboxes, so each address is on your domain from the start.</p>
-      ${rows}
-    </div>`;
-}
-
-function domainRowHtml(host, ours, theirs, canManage, e) {
-  const t = ts(), busy = (k) => t.busy === `${k}:${host}`;
-  const d = ours || (theirs ? { host, state: theirs.verified ? 'verified' : 'verifying' } : null);
-  const plan = t.plans[host];
-  let tag, acts = '', extra = '';
-  if (!d) {
-    tag = '<span class="acct-tag is-quiet">not in the tenant</span>';
-    if (canManage) acts = leadBtn({ lic: 'tn-dom-add' }, busy('add') ? 'refresh' : 'plus', busy('add') ? 'Adding…' : 'Add to the tenant', `data-host="${e(host)}" ${t.busy ? 'disabled' : ''}`, busy('add') ? 'is-spinning' : 'btn-primary');
-  } else if (d.state === 'planned') {
-    tag = `<span class="acct-tag is-pending">would be added</span> <span class="adm-muted">${e(d.planned || '')}</span>`;
-  } else if (d.state !== 'verified') {
-    tag = '<span class="acct-tag is-pending">verifying</span>';
-    if (canManage) acts = iconBtn({ lic: 'tn-dom-verify' }, 'checkCircle', 'Ask Microsoft to check the record again', `data-host="${e(host)}" ${t.busy ? 'disabled' : ''}`, busy('verify') ? 'is-spinning' : '');
-    if (d.txt && !d.written) extra = `<p class="acct-card-note">Add this record where ${e(host)}'s DNS is managed, then check again:</p>${recordsHtml([d.txt], e)}`;
-    else if (d.why) extra = `<p class="acct-card-note adm-muted">${e(d.why)} DNS changes can take up to an hour.</p>`;
-  } else if (d.mailAt) {
-    tag = `<span class="acct-tag is-verified">mail on Microsoft</span> <span class="adm-muted">since ${e(st.D.fmtDate(d.mailAt))}</span>`;
-  } else {
-    tag = '<span class="acct-tag is-verified">in the tenant</span>';
-    if (canManage && !plan) acts = leadBtn({ lic: 'tn-mail-plan' }, busy('plan') ? 'refresh' : 'mail', busy('plan') ? 'Reading…' : 'Switch mail to Microsoft', `data-host="${e(host)}" ${t.busy ? 'disabled' : ''}`, busy('plan') ? 'is-spinning' : '');
-    if (plan) extra = planHtml(host, plan, canManage, e);
   }
+  const facts = [
+    `<div class="lic-fact"><span class="lic-k">Organization</span><span class="lic-v">${e(t.orgName || t.tenantId)}</span></div>`,
+    `<div class="lic-fact"><span class="lic-k">Tenant ID</span><span class="lic-v"><span class="ev-code">${e(t.tenantId)}</span></span></div>`,
+    t.consentAt ? `<div class="lic-fact"><span class="lic-k">Connected</span><span class="lic-v">${e(dayWord(t.consentAt))}</span></div>` : ''
+  ].join('');
+  const err = t.error ? `<p class="acct-card-note ev-note is-bad">${e(sentence(t.error))}</p>` : '';
+  return `<div class="lic-admin">${head}${ro}<div class="lic-facts">${facts}</div>${err}${licensesInUseHtml(t)}${seatsHtml(t, p)}${domainsHtml(t)}</div>`;
+}
+
+/** The licenses the tenant holds at Microsoft, and how many are in use: read live. */
+function licensesInUseHtml(t) {
+  const e = st.D.escapeHtml;
+  const list = Array.isArray(t.licenses) ? t.licenses : null;
+  if (!list) return '';
+  if (!list.length) return '<p class="lic-hint">Microsoft shows no licenses in this tenant yet.</p>';
+  return `<div class="lic-facts lic-facts--tight">${list.map(l => `<div class="lic-fact"><span class="lic-k">${e(l.name)}</span><span class="lic-v">${e(`${l.consumed} of ${l.enabled} in use`)}${l.available > 0 ? ` <span class="lic-state is-quiet">${e(countWord(l.available, 'free', 'free'))}</span>` : ''}</span></div>`).join('')}</div>`;
+}
+
+/** Each seat's person and license, brought up to date now ("Give out mailboxes and licenses"); the hourly pass does it too. */
+function seatsHtml(t, p) {
+  const e = st.D.escapeHtml;
+  const can = p.canAssign;
+  const note = t.writes === false ? 'shows what it would make' : 'makes each seat\'s person and gives the license';
   return `
-    <div class="tn-domain" data-row="${e(host)}">
-      <div class="tn-domain-head"><strong class="tn-host">${e(host)}</strong>${tag}<span class="tn-acts">${acts}</span></div>
-      ${extra}
+    <p class="acct-card-note">Every seat with a mailbox gets its person in the tenant and its license, checked every hour. ${can ? `Bring every seat up to date ${note} now.` : 'The owner, or a role with Give out mailboxes and licenses, can bring them up to date now.'}</p>
+    ${can ? `<div class="acct-actions-row">${reqLead('tn-sync', { lic: 'tn-sync' }, 'refresh', 'Bring every seat up to date', 'Checking every seat…')}</div>` : ''}`;
+}
+
+/** The team's verified domains against the tenant: each added, verified, then its mail switched, one deliberate step at a time. */
+function domainsHtml(t) {
+  const e = st.D.escapeHtml, v = lc.view;
+  const hosts = v.mailDomains || [];
+  const inTenant = Array.isArray(t.domains) ? t.domains : [];
+  const head = '<h4 class="lic-sub lic-sub--gap">Your domains</h4>';
+  if (!hosts.length) return `${head}<p class="acct-card-note">No verified domain yet. Add and verify one on the Domains tab; then it can join your tenant here and carry your mail.</p>`;
+  const can = canDomains();
+  const rows = hosts.map(host => {
+    const d = inTenant.find(x => x.host === host) || null;
+    const plan = lc.tnPlan[host] || null;
+    let state, actions = '';
+    if (!d) {
+      state = '<span class="lic-state is-quiet">Not in your tenant</span>';
+      if (can) actions = reqIcon(`tn-dom:${host}`, { lic: 'tn-dom-add' }, 'userPlus', `Add ${host} to your tenant`, 'Adding…', `data-host="${e(host)}"`, 'btn-primary');
+    } else if (d.state !== 'verified') {
+      state = `<span class="lic-state is-pending">${e(d.planned ? sentence(d.planned) : 'Waiting for Microsoft to see the record')}</span>`;
+      if (can) actions = reqIcon(`tn-dom:${host}`, { lic: 'tn-dom-verify' }, 'refresh', `Check ${host} again at Microsoft`, 'Checking…', `data-host="${e(host)}"`);
+    } else if (d.mailAt) {
+      state = `<span class="lic-state is-verified">${ico('check', 12)}${e(`Mail goes to Microsoft since ${dayWord(d.mailAt)}`)}</span>`;
+    } else {
+      state = `<span class="lic-state is-verified">${ico('check', 12)}In your tenant</span>`;
+      if (can && !plan) actions = reqIcon(`tn-dom:${host}`, { lic: 'tn-mail-plan' }, 'mail', `Switch ${host}'s mail to Microsoft: see what changes first`, 'Reading the plan…', `data-host="${e(host)}"`, 'btn-primary');
+    }
+    const txt = d && d.state !== 'verified' && d.txt && !d.written ? `
+      <div class="lic-txt">
+        <p class="lic-hint">Add this TXT record where ${e(host)}'s DNS is managed, then Check again. Microsoft looks for it to prove the domain is yours.</p>
+        <div class="lic-pw-row"><input class="acct-input ev-code" id="licTxt-${e(host)}" type="text" readonly value="${e(d.txt.value)}" autocomplete="off" spellcheck="false">${iconBtn({ lic: 'tn-dom-copy' }, 'copy', 'Copy the record', `data-host="${e(host)}"`)}</div>
+      </div>` : '';
+    const why = d && d.why && d.state !== 'verified' ? `<p class="lic-hint">${e(sentence(d.why))}</p>` : '';
+    return `<li class="lic-dom"><div class="lic-dom-row"><span class="ev-code lic-dom-host">${e(host)}</span>${state}${actions ? `<span class="lic-dom-act">${actions}</span>` : ''}</div>${why}${txt}${plan ? planHtml(host, plan, t) : ''}</li>`;
+  }).join('');
+  return `${head}<p class="acct-card-note">A verified domain joins your tenant first; then its mail can be switched to Microsoft, which is shown in full and confirmed before anything is written.</p>${errHtml('tenant-domains')}<ul class="lic-dom-list">${rows}</ul>`;
+}
+
+/** Exactly what switching the domain's mail writes, against what the domain has now, before the person confirms it. */
+function planHtml(host, plan, t) {
+  const e = st.D.escapeHtml;
+  const rec = (w) => w.type === 'MX' ? `MX ${w.name} -> ${w.exchange} (priority ${w.preference})` : w.type === 'CNAME' ? `CNAME ${w.name} -> ${w.target}` : `TXT ${w.name}: ${w.value}`;
+  const writes = (plan.writes || []).map(w => `<li><span class="ev-code">${e(rec(w))}</span></li>`).join('');
+  const shows = (plan.shows || []).map(s => `<li><span class="ev-code">${e(rec(s))}</span><p class="lic-hint">${e(sentence(s.why))}${s.replaces ? ` It replaces <span class="ev-code">${e(s.replaces)}</span>.` : ''}</p></li>`).join('');
+  const notes = (plan.notes || []).map(n => `<p class="acct-card-note ev-note">${e(sentence(n))}</p>`).join('');
+  const self = plan.managed === 'self';
+  const words = self
+    ? `${host}'s DNS is managed elsewhere, so add these records there yourself. When they are in, press I have added them; the switch is recorded once Microsoft's mail server answers for the domain.`
+    : `PragOptics writes these records for ${host}. Mail sent to ${host} then goes to Microsoft; what is already in the old mailboxes stays there until it is moved.`;
+  const act = t.writes === false
+    ? '<p class="lic-hint">A read-only lane: nothing is written from here.</p>'
+    : self
+      ? reqLead(`tn-mail:${host}`, { lic: 'tn-mail-confirm' }, 'check', 'I have added them', 'Checking DNS…', `data-host="${e(host)}"`, 'btn-primary')
+      : reqLead(`tn-mail:${host}`, { lic: 'tn-mail-switch' }, 'mail', 'Switch mail to Microsoft', 'Switching…', `data-host="${e(host)}"`, 'btn-primary is-risky');
+  return `
+    <div class="lic-plan" role="group" aria-label="What switching ${e(host)}'s mail changes">
+      <p class="acct-card-note">${e(words)}</p>
+      ${writes ? `<p class="lic-hint">${self ? 'Records to add' : 'Records PragOptics writes'}</p><ul class="lic-plan-list">${writes}</ul>` : '<p class="lic-hint">Nothing to write: the records are already in place.</p>'}
+      ${shows ? `<p class="lic-hint">Replace yourself</p><ul class="lic-plan-list">${shows}</ul>` : ''}
+      ${notes}
+      <div class="acct-actions-row">${act}${iconBtn({ lic: 'tn-mail-cancel' }, 'x', 'Not now', `data-host="${e(host)}"`)}</div>
     </div>`;
 }
 
-/** Records in a table; `copy` puts a copy button on each, for records the customer adds by hand. */
-function recordsHtml(recs, e, copy = true) {
-  const val = (r) => r.value || r.target || (r.exchange ? `${r.exchange} (priority ${r.preference ?? 0})` : '');
-  return `
-    <div class="adm-table-scroll">
-      <table class="adm-table adm-table--wrap lic-table tn-records">
-        <thead><tr><th>Type</th><th>Name</th><th>Value</th>${copy ? '<th></th>' : ''}</tr></thead>
-        <tbody>${recs.map(r => `
-          <tr>
-            <td class="cell-tight" data-th="Type">${e(r.type)}</td>
-            <td data-th="Name"><span class="ev-code">${e(r.name)}</span></td>
-            <td data-th="Value"><span class="ev-code tn-val">${e(val(r))}</span></td>
-            ${copy ? `<td class="cell-tight">${iconBtn({ lic: 'tn-copy' }, 'copy', 'Copy the value', `data-copy="${e(r.value || r.target || r.exchange || '')}"`)}</td>` : ''}
-          </tr>`).join('')}</tbody>
-      </table>
-    </div>`;
+/* ---------- Part 2 actions ---------- */
+
+const LANE_CODES = { LIVE_LANE_ONLY: 'Licensing is managed on your live environment, not the sandbox.', TENANT_NOT_CONNECTED: 'Connect your Microsoft tenant first.', SCOPE_REQUIRED: (ex) => ex?.data?.error || 'Your role cannot do this. The owner can turn it on for your role on the Team tab.', PLAN_ENDED: 'Your plan ended, so nothing changes in your tenant.' };
+
+/** Decision 15: to Microsoft's sign-in for the named tenant; the answer comes back to this card. */
+async function connectTenant() {
+  lc.err.tenant = ''; setNote('tenant', '');
+  await send('tn-connect', 'Opening Microsoft…', async () => {
+    const d = await call(`${LIC_URL}/tenant/connect`, 'POST');
+    if (!d || typeof d.url !== 'string' || !/^https:\/\/login\.microsoftonline\.com\//.test(d.url)) throw new Error('Microsoft\'s sign-in page could not be opened.');
+    // the page leaves for Microsoft; the button stays turning until it does, and says so if the page never left
+    window.location.assign(d.url);
+    await new Promise((_, reject) => setTimeout(() => reject(new Error('Microsoft\'s page did not open. Try again.')), 15000));
+  }, {
+    errKey: 'tenant', fallback: 'Microsoft\'s sign-in page could not be opened.',
+    codes: { ...LANE_CODES, PLATFORM_TENANT_CONNECTS: 'Your Microsoft tenant is being connected by PragOptics.', MICROSOFT_DETAILS_REQUIRED: 'Name your Microsoft tenant first.', MS_NOT_CONFIGURED: 'Connecting your tenant is being set up. Look again soon.', UNKNOWN_ORIGIN: 'Open this page at pragoptics.com and try again.' }
+  });
 }
 
-function planHtml(host, p, canManage, e) {
-  const t = ts(), busy = (k) => t.busy === `${k}:${host}`;
-  const self = p.managed === 'self';
-  const writes = p.writes || [];
-  const notes = (p.notes || []).map(n => `<p class="acct-card-note tn-warn">${ico('alert')}<span>${e(n)}</span></p>`).join('');
-  const shows = (p.shows || []).length ? `<p class="acct-card-note">${e(p.shows[0].why)}</p>${recordsHtml(p.shows, e)}<p class="acct-card-note adm-muted">It replaces <span class="ev-code">${e(p.shows[0].replaces)}</span>.</p>` : '';
-  const head = self
-    ? `<p class="acct-card-note">${e(host)}'s DNS is managed outside PragOptics. Add these records there, then confirm:</p>`
-    : `<p class="acct-card-note">Switching writes ${e(countWord(writes.length, 'record', 'records'))} to ${e(host)}'s DNS. Mail for ${e(host)} goes to Microsoft from then on.</p>`;
-  const act = !canManage ? '' : self
-    ? leadBtn({ lic: 'tn-mail-confirm' }, busy('confirm') ? 'refresh' : 'checkCircle', busy('confirm') ? 'Checking…' : 'The records are in', `data-host="${e(host)}" ${t.busy ? 'disabled' : ''}`, busy('confirm') ? 'is-spinning' : 'btn-primary')
-    : leadBtn({ lic: 'tn-mail-go' }, busy('go') ? 'refresh' : 'mail', busy('go') ? 'Switching…' : 'Switch mail', `data-host="${e(host)}" ${t.busy ? 'disabled' : ''}`, busy('go') ? 'is-spinning' : 'btn-primary is-risky');
+/** Every seat with a mailbox: its person and license, now. */
+async function syncSeats() {
+  lc.err.tenant = ''; setNote('tenant', '');
+  await send('tn-sync', 'Checking every seat…', async () => {
+    const d = await call(`${LIC_URL}/tenant/seats/sync`, 'POST');
+    const seats = d?.seats || [];
+    const ready = seats.filter(s => s.state === 'ready').length, waiting = seats.filter(s => s.state === 'waiting').length, planned = seats.filter(s => s.state === 'planned').length, failed = seats.filter(s => s.state === 'failed').length;
+    const parts = [];
+    if (ready) parts.push(`${countWord(ready, 'seat is', 'seats are')} ready`);
+    if (waiting) parts.push(`${countWord(waiting, 'seat waits', 'seats wait')} for Microsoft's license (the next hourly check gives it)`);
+    if (planned) parts.push(`${countWord(planned, 'seat would be', 'seats would be')} made on a lane that writes`);
+    if (failed) parts.push(`${countWord(failed, 'seat could', 'seats could')} not be made; we are looking into it`);
+    setNote('tenant', seats.length ? `${parts.join('; ')}.` : 'No seat holds a mailbox yet. Give people their mailboxes on the Mailboxes card.', failed > 0);
+    await st.load();
+  }, { errKey: 'tenant', fallback: 'The seats could not be checked right now.', codes: LANE_CODES });
+}
+
+async function domainAction(btn, what) {
+  const host = String(btn.dataset.host || '');
+  if (!host || lc.busy) return;
+  lc.err['tenant-domains'] = ''; setNote('tenant', '');
+  const key = `tn-dom:${host}`;
+  await send(key, what === 'add' ? 'Adding…' : 'Checking…', async () => {
+    const d = what === 'add' ? await call(`${LIC_URL}/tenant/domains`, 'POST', { host }) : await call(`${LIC_URL}/tenant/domains/${encodeURIComponent(host)}/verify`, 'POST');
+    const dom = d?.domain || {};
+    setNote('tenant', dom.state === 'verified' ? `${host} is in your tenant and verified.` : dom.planned ? sentence(dom.planned) : dom.written ? `${host} is added. Microsoft's record was written for you; Microsoft usually sees it within the hour. Check again then.` : `${host} is added. Add the TXT record shown, then Check again.`);
+    await st.load();
+  }, { errKey: 'tenant-domains', fallback: what === 'add' ? 'The domain could not be added.' : 'The domain could not be checked.', codes: { ...LANE_CODES, DOMAIN_NOT_VERIFIED: 'Verify the domain on the Domains tab first.', DOMAIN_NOT_ADDED: 'Add the domain to your tenant first.' } });
+}
+
+/** What switching the domain's mail writes, read and shown first; nothing is written by this. */
+async function mailPlan(btn) {
+  const host = String(btn.dataset.host || '');
+  if (!host || lc.busy) return;
+  lc.err['tenant-domains'] = '';
+  await send(`tn-dom:${host}`, 'Reading the plan…', async () => {
+    const d = await st.D.apiFetch(url(`${LIC_URL}/tenant/domains/${encodeURIComponent(host)}/mail`));
+    lc.tnPlan[host] = d?.mail || { writes: [], shows: [], notes: [] };
+  }, { errKey: 'tenant-domains', fallback: 'The mail plan could not be read.', codes: { ...LANE_CODES, DOMAIN_NOT_VERIFIED_IN_TENANT: 'Verify the domain in your tenant first.' } });
+}
+
+/** The switch itself (asked twice: the plan was read, and the button asks again), or a self-managed domain's records confirmed. */
+async function mailSwitch(btn, confirmOnly) {
+  const host = String(btn.dataset.host || '');
+  if (!host || lc.busy) return;
+  if (!confirmOnly && !armed(btn, 'Switch mail?')) return;
+  lc.err['tenant-domains'] = ''; setNote('tenant', '');
+  await send(`tn-mail:${host}`, confirmOnly ? 'Checking DNS…' : 'Switching…', async () => {
+    const d = confirmOnly ? await call(`${LIC_URL}/tenant/domains/${encodeURIComponent(host)}/mail/confirm`, 'POST') : await call(`${LIC_URL}/tenant/domains/${encodeURIComponent(host)}/mail`, 'POST', { confirm: true });
+    const mail = d?.mail || {};
+    delete lc.tnPlan[host];
+    setNote('tenant', mail.switched ? `Mail for ${host} goes to Microsoft now.${mail.written ? ` ${countWord(mail.written, 'record was', 'records were')} written.` : ''} DNS changes can take up to an hour to reach everyone.` : mail.planned ? sentence(mail.planned) : `The records for ${host} are shown above; add them where its DNS is managed, then press I have added them.`);
+    if (!mail.switched && !mail.planned) lc.tnPlan[host] = mail;
+    await st.load();
+  }, { errKey: 'tenant-domains', fallback: 'The mail switch could not be made.', codes: { ...LANE_CODES, MX_NOT_SEEN: (ex) => ex?.data?.error || 'The domain does not point its mail at Microsoft yet. DNS changes can take up to an hour.', CONFIRM_REQUIRED: 'Read the plan and confirm the switch.' } });
+}
+
+function copyTxt(btn) {
+  const box = document.getElementById(`licTxt-${btn.dataset.host || ''}`);
+  if (box) copyButton(btn, box.value, { select: () => box });
+}
+
+/* ---------- decision 17: My mailbox, the person's own ---------- */
+
+/** The signed-in person's own mailbox card; nothing when they hold no seat with a mailbox. */
+export function myMailboxHtml() {
+  const v = lc.view, mine = lc.tn?.mine;
+  if (!showsLicensing() || !v?.account || !mine || !mine.seat) return '';
+  const e = st.D.escapeHtml, t = tn() || {};
+  const STATE = { ready: ['is-verified', 'Ready'], waiting: ['is-pending', 'Waiting for Microsoft\'s license'], 'waiting-license': ['is-pending', 'Waiting for Microsoft\'s license'], failed: ['is-bad', 'Not made yet. We are looking into it.'], planned: ['is-pending', 'Waiting'] };
+  const [cls, word] = !mine.connected ? ['is-pending', 'Waiting for your Microsoft tenant'] : STATE[mine.state] || ['is-pending', 'Waiting for your Microsoft tenant'];
+  const address = mine.address ? `<span class="ev-code">${e(mine.address)}</span>` : '<span class="adm-muted">Your address is made with your mailbox</span>';
+  const pw = mbShown && mbShown.address === mine.address ? mbShown : null;
+  let first = '';
+  if (pw) first = `
+      <div class="lic-pw" role="group" aria-label="Your first password">
+        <label class="acct-label" for="licMbPw">Your first password</label>
+        <div class="lic-pw-row"><input class="acct-input ev-code" id="licMbPw" type="text" readonly value="${e(pw.password)}" autocomplete="off" spellcheck="false" autocapitalize="off">${iconBtn({ lic: 'mb-pw-copy' }, 'copy', 'Copy the password')}</div>
+        <p class="acct-card-note ev-note is-bad">Copy it now and keep it somewhere safe until you sign in. It is not kept anywhere any more, so it cannot be shown again. Microsoft asks you to choose your own password the first time you sign in.</p>
+        <div class="acct-actions-row">${leadBtn({ lic: 'mb-pw-hide' }, 'check', 'I have kept it: hide it')}</div>
+      </div>`;
+  else if (mine.firstPasswordWaiting) first = `
+      <p class="acct-card-note">Your first password is waiting for you. It is shown once, then deleted, so have somewhere safe to keep it before you press. Microsoft asks you to choose your own password the first time you sign in.</p>
+      <div class="acct-actions-row">${reqLead('mb-pw', { lic: 'mb-pw' }, 'lock', 'Show my first password', 'Getting it…', '', 'btn-primary')}</div>`;
+  else if (mine.firstPasswordFailed) first = '<p class="acct-card-note ev-note is-bad">Your first password could not be kept for you. Reset it below and a new one waits here.</p>';
+  else if (mine.firstPasswordShownAt) first = `<p class="acct-card-note">You saw your first password on ${e(dayWord(mine.firstPasswordShownAt))}; it is no longer kept. If you did not keep it, reset it below.</p>`;
+  // a seat that is the person's own existing Microsoft account (created: false from the server) is not the platform's
+  // to reset: their organization manages that password, so no Reset row, and the ready-state note says so
+  const own = mine.created === false;
+  const reset = mine.hasMailbox && !own && (t.writes !== false) ? `<div class="acct-actions-row">${reqLead('mb-reset', { lic: 'mb-reset' }, 'key', 'Reset my password', 'Resetting…', '', 'is-risky')}</div>` : '';
+  return cardHtml({
+    key: 'mailbox-mine', icon: 'mail', title: 'My mailbox', summary: e(mine.address || word),
+    body: `
+      ${noteHtml('mailbox-mine')}${errHtml('mailbox-mine')}
+      <div class="lic-facts">
+        <div class="lic-fact"><span class="lic-k">Address</span><span class="lic-v">${address}</span></div>
+        <div class="lic-fact"><span class="lic-k">State</span><span class="lic-v"><span class="lic-state ${cls}">${e(mine.state === 'failed' && mine.why ? sentence(mine.why) : word)}</span></span></div>
+      </div>
+      ${mine.state === 'ready' ? `<p class="acct-card-note">Sign in at <a href="https://outlook.office.com" target="_blank" rel="noopener noreferrer">outlook.office.com</a>, or in the Outlook app on your phone. ${own ? 'This is your own Microsoft account, so your password is managed by your organization, not reset here.' : 'Nobody at PragOptics, and no administrator on your team, can see or set your password: it is yours alone.'}</p>` : ''}
+      ${first}
+      ${reset}`
+  });
+}
+
+async function showMyPassword() {
+  lc.err['mailbox-mine'] = ''; setNote('mailbox-mine', '');
+  await send('mb-pw', 'Getting it…', async () => {
+    const d = await call(`${LIC_URL}/tenant/mailbox/password`, 'POST');
+    mbShown = d && typeof d.password === 'string' ? { password: d.password, address: String(d.address || '') } : null;
+    await st.load();
+  }, { errKey: 'mailbox-mine', fallback: 'The password could not be shown right now. Try again in a moment.', codes: LANE_CODES });
+  if (!mbShown && lc.err['mailbox-mine']) { try { await st.load(); } catch { /* the card keeps its sentence */ } }
+  if (mbShown) requestAnimationFrame(() => document.getElementById('licMbPw')?.select());
+}
+function copyMyPassword(btn) {
+  const box = document.getElementById('licMbPw');
+  if (box) copyButton(btn, box.value, { select: () => box });
+}
+async function resetMyPassword(btn) {
+  if (!armed(btn, 'Reset it?')) return;
+  lc.err['mailbox-mine'] = ''; setNote('mailbox-mine', '');
+  mbShown = null;
+  await send('mb-reset', 'Resetting…', async () => {
+    const d = await call(`${LIC_URL}/tenant/mailbox/reset`, 'POST');
+    setNote('mailbox-mine', d?.planned ? 'A read-only lane: nothing was reset.' : 'Your password was reset. A new first password waits here for you, shown once.');
+    await st.load();
+  }, { errKey: 'mailbox-mine', fallback: 'The password could not be reset right now.', codes: { ...LANE_CODES, NO_MAILBOX: 'You have no mailbox to reset yet.', NOT_PLATFORM_ACCOUNT: 'This is your own Microsoft account, so your password is managed by your organization, not reset here.' } });
+}
+
+/** Decision 29: the owner's own administrator account in the tenant PragOptics made. The owner only; '' otherwise. */
+function adminAskHtml(m, p) {
+  const a = m.adminAsk || {};
+  if (!p.isOwner || !a.offered) return '';
+  const e = st.D.escapeHtml;
+  const suffix = a.suffix || (m.domainPrefix ? `@${m.domainPrefix}.onmicrosoft.com` : '');
+  const head = '<h4 class="lic-sub">Your administrator account</h4>';
+  if (a.state === 'asked') {
+    return `<div class="lic-admin">${head}
+      <p class="acct-card-note">You asked for <span class="ev-code">${e(a.signIn)}</span>${a.askedAt ? ` on ${e(dayWord(a.askedAt))}` : ''}. PragOptics makes it by hand in Microsoft; you get an email when it is ready, and its first password waits here for you, shown once.</p>
+      ${a.canWithdraw ? `<div class="acct-actions-row">${reqLead('tn-admin-withdraw', { lic: 'tn-admin-withdraw' }, 'x', 'Withdraw the request', 'Withdrawing…')}</div>` : ''}
+    </div>`;
+  }
+  if (a.state === 'ready') {
+    // decision 37(3): the first password waits here for the owner, shown once and then deleted on the server
+    const pw = shown && shown.signIn === a.signIn ? shown : null;
+    const first = pw ? `
+      <div class="lic-pw" role="group" aria-label="The first password">
+        <label class="acct-label" for="licTnAdminPw">First password</label>
+        <div class="lic-pw-row"><input class="acct-input ev-code" id="licTnAdminPw" type="text" readonly value="${e(pw.password)}" autocomplete="off" spellcheck="false" autocapitalize="off">${iconBtn({ lic: 'tn-admin-pw-copy' }, 'copy', 'Copy the password')}</div>
+        <p class="acct-card-note ev-note is-bad">Copy it now and keep it somewhere safe until you sign in. It is not kept anywhere any more, so it cannot be shown again. Microsoft asks you to choose a new password the first time you sign in.</p>
+        <div class="acct-actions-row">${leadBtn({ lic: 'tn-admin-pw-hide' }, 'check', 'I have kept it: hide it')}</div>
+      </div>` : a.passwordWaiting ? `
+      <p class="acct-card-note">Its first password is waiting for you. It is shown once, then deleted, so have somewhere safe to keep it before you press. Microsoft asks you to choose a new password the first time you sign in.</p>
+      <div class="acct-actions-row">${reqLead('tn-admin-pw', { lic: 'tn-admin-pw' }, 'lock', 'Show the first password', 'Getting it…', '', 'btn-primary')}</div>`
+      : a.passwordShownAt ? `<p class="acct-card-note">You saw its first password on ${e(dayWord(a.passwordShownAt))}; it is no longer kept. If you did not keep it, write to support@bridgesindust.com and PragOptics sets a new one.</p>` : '';
+    return `<div class="lic-admin">${head}
+      <p class="acct-card-note">Your administrator account: <span class="ev-code">${e(a.signIn)}</span>${a.readyAt ? `, made ${e(dayWord(a.readyAt))}` : ''}. Sign in at <a href="https://admin.microsoft.com" target="_blank" rel="noopener noreferrer">admin.microsoft.com</a>.</p>
+      ${first}
+    </div>`;
+  }
+  const acc = m.accepter || {};
+  const who = acc.hasName ? `${acc.firstName} ${acc.lastName}` : '';
+  const err = lc.err['tenant-admin'] ? `<p class="lic-field-err" id="licTnAdminErr" role="alert">${e(lc.err['tenant-admin'])}</p>` : '';
+  const needName = !acc.hasName;
+  return `<div class="lic-admin">${head}
+    ${a.state === 'refused' ? `<p class="acct-card-note ev-note is-bad">PragOptics could not make <span class="ev-code">${e(a.signIn)}</span>: ${e(sentence(a.reason))} You can ask again.</p>` : ''}
+    <p class="acct-card-note">PragOptics keeps an administrator account in this tenant so your licenses and mail keep working; you never need its sign-in. The tenant is yours, so you can have an administrator account of your own, with full control of the tenant (Microsoft calls it Global Administrator). When it is made, its first password waits on this card for you, shown once, and never by email.</p>
+    ${a.canAsk ? `
+      <label class="acct-label" for="licTnAdminName">Sign-in name</label>
+      <div class="lic-suffix ${err ? 'is-bad' : ''}"><input class="acct-input" id="licTnAdminName" type="text" data-keep value="${e(kept('licTnAdminName', signInSuggestion(m)))}" maxlength="64" spellcheck="false" autocapitalize="off" autocomplete="off" aria-describedby="licTnAdminHint${err ? ' licTnAdminErr' : ''}"><span>${e(suffix)}</span></div>
+      ${err}
+      <p class="lic-hint" id="licTnAdminHint">1 to 64 letters, digits, dots, dashes or underscores.${who ? ` The account is made in your name, ${e(who)}.` : ''}</p>
+      ${needName ? '<p class="acct-card-note ev-note is-bad">Add your first and last name on Profile, then ask. The account is made in your name.</p>' : ''}
+      <p class="acct-card-note">Changes you make yourself in Microsoft that stop what PragOptics manages, such as removing its administrator account or the licenses it placed, are yours to put right.</p>
+      <div class="acct-actions-row">${reqLead('tn-admin-ask', { lic: 'tn-admin-ask' }, 'userPlus', 'Ask for an administrator account', 'Asking…', needName ? 'disabled data-tip="Add your first and last name on Profile first"' : '', 'btn-primary')}</div>` : ''}
+  </div>`;
+}
+
+async function askAdmin() {
+  const typed = String(kept('licTnAdminName', document.getElementById('licTnAdminName')?.value || '')).trim();
+  lc.err['tenant-admin'] = ''; lc.err.tenant = ''; setNote('tenant', '');
+  // checked as typed, never rewritten; the server checks it again
+  if (!SIGNIN_RULE.test(typed) || typed.endsWith('.')) { lc.err['tenant-admin'] = SIGNIN_WORDS; st.paint(); document.getElementById('licTnAdminName')?.focus(); return; }
+  await send('tn-admin-ask', 'Asking…', async () => {
+    try { await call(`${LIC_URL}/tenant/admin-account`, 'POST', { signInName: typed }); }
+    catch (ex) { if (ex?.data?.code === 'SIGNIN_INVALID') { lc.err['tenant-admin'] = ex.data.error; return; } throw ex; }
+    forget('licTnAdminName');
+    setNote('tenant', 'Asked. PragOptics makes the account by hand; you get an email when it is ready.');
+    await st.load();
+  }, {
+    errKey: 'tenant', fallback: 'The request could not be sent.',
+    codes: { LIVE_LANE_ONLY: 'Licensing is managed on your live environment, not the sandbox.' }
+  });
+  if (lc.err['tenant-admin']) document.getElementById('licTnAdminName')?.focus();
+}
+/** Decision 37(3): the first password, once. The server deletes its copy before it answers; this page keeps it in memory. */
+async function showPassword() {
+  lc.err.tenant = ''; setNote('tenant', '');
+  await send('tn-admin-pw', 'Getting it…', async () => {
+    const d = await call(`${LIC_URL}/tenant/admin-account/password`, 'POST');
+    shown = d && typeof d.password === 'string' ? { password: d.password, signIn: String(d.signIn || '') } : null;
+    await st.load();
+  }, {
+    errKey: 'tenant', fallback: 'The password could not be shown right now. Try again in a moment.',
+    codes: { LIVE_LANE_ONLY: 'Licensing is managed on your live environment, not the sandbox.' }
+  });
+  // a refusal (already shown, no longer kept) changes what the card offers: read it again
+  if (!shown && lc.err.tenant) { try { await st.load(); } catch { /* the card keeps its sentence */ } }
+  if (shown) requestAnimationFrame(() => document.getElementById('licTnAdminPw')?.select());
+}
+/** The password to the clipboard (cards.js copyButton); where the browser refuses, its box is selected for the keyboard. */
+function copyPassword(btn) {
+  const box = document.getElementById('licTnAdminPw');
+  if (!box) return;
+  copyButton(btn, box.value, { select: () => box });
+}
+
+async function withdrawAdmin() {
+  lc.err.tenant = ''; setNote('tenant', '');
+  await send('tn-admin-withdraw', 'Withdrawing…', async () => {
+    await call(`${LIC_URL}/tenant/admin-account`, 'DELETE');
+    setNote('tenant', 'Withdrawn. You can ask again at any time.');
+    await st.load();
+  }, { errKey: 'tenant', fallback: 'The request could not be withdrawn.' });
+}
+
+/** The owner's form in two modes (2026-09-22): a new tenant by name, or the ID of a tenant the business has. */
+function formHtml(v, m) {
+  const e = st.D.escapeHtml, mode = modeOf(m), named = !!(m.tenantId || m.domainPrefix);
+  // switching the form's mode sends nothing; while the save is out the form waits with it
+  const saving = lc.busy === 'tn-save';
+  const tab = (k, label) => `<button class="ev-tab ${mode === k ? 'is-on' : ''}" type="button" role="tab" aria-selected="${mode === k}" data-lic-action="tn-mode" data-mode="${k}" ${saving && mode !== k ? 'disabled data-tip="Waiting for the answer: saving the tenant"' : ''}>${label}</button>`;
+  const nameErr = lc.err['tenant-name'] ? `<p class="lic-field-err" id="licTnNameErr" role="alert">${e(lc.err['tenant-name'])}</p>` : '';
   return `
-    <div class="tn-plan">
-      ${head}${writes.length ? recordsHtml(writes, e, self) : ''}${shows}${notes}
-      <div class="acct-actions-row act-row">${act}${iconBtn({ lic: 'tn-mail-cancel' }, 'x', 'Not now', `data-host="${e(host)}"`)}</div>
+    <p class="acct-card-note">Your licenses and mailboxes live in a Microsoft tenant: your business's own space at Microsoft. Name a new one, or give the ID of one your business already has.</p>
+    <div class="ev-tabs lic-ms-tabs" role="tablist" aria-label="Your Microsoft tenant">${tab('new', 'New tenant')}${tab('existing', 'We have one')}</div>
+    <div class="lic-tn-form">
+      <div id="licTnNameWrap" ${mode === 'existing' ? 'hidden' : ''}>
+        <label class="acct-label" for="licTnName">Tenant name</label>
+        <div class="lic-suffix ${nameErr ? 'is-bad' : ''}"><input class="acct-input" id="licTnName" type="text" data-keep value="${e(kept('licTnName', m.domainPrefix || suggestion(v)))}" placeholder="yourbusiness" spellcheck="false" autocapitalize="off" autocomplete="off" aria-describedby="licTnNameHint${nameErr ? ' licTnNameErr' : ''}"><span>.onmicrosoft.com</span></div>
+        ${nameErr}
+        <p class="lic-hint" id="licTnNameHint">${e(NAME_HINT)}</p>
+      </div>
+      <div id="licTnIdWrap" ${mode === 'existing' ? '' : 'hidden'}>
+        <label class="acct-label" for="licTnId">Tenant ID</label>
+        <input class="acct-input" id="licTnId" type="text" data-keep value="${e(kept('licTnId', m.tenantId && !m.domainPrefix ? m.tenantId : ''))}" placeholder="00000000-0000-0000-0000-000000000000" spellcheck="false" autocapitalize="off" autocomplete="off" aria-describedby="licTnIdHint">
+        <p class="lic-hint" id="licTnIdHint">Your business's Microsoft tenant ID. It looks like 6eda43f3-fbf0-4e2b-9978-b543d9dd31e3. Licenses you add join that tenant.</p>
+      </div>
+    </div>
+    <div class="acct-actions-row">
+      ${reqLead('tn-save', { lic: 'tn-save' }, 'check', mode === 'existing' ? 'Save the tenant ID' : 'Save the name', mode === 'existing' ? 'Saving…' : 'Asking Microsoft…', '', 'btn-primary')}
+      ${named && !saving ? iconBtn({ lic: 'tn-cancel' }, 'x', 'Keep it as it is') : ''}
     </div>`;
 }
 
 /* ---------- actions ---------- */
 
-async function run(key, fn, errText) {
-  const t = ts();
-  if (t.busy) return;
-  t.busy = key; st.D.showError('licTnError', ''); st.paint();
-  try { await fn(); }
-  catch (ex) {
-    const code = ex?.data?.code;
-    t.busy = ''; st.paint();
-    st.D.showError('licTnError', code === 'TENANT_NOT_CONNECTED' ? 'Connect the tenant first.'
-      : code === 'MS_NOT_CONFIGURED' ? 'Tenant access is being set up on the platform. Try again later.'
-      : code === 'DOMAIN_NOT_VERIFIED' ? 'Verify the domain on Environment first.'
-      : code === 'MX_NOT_SEEN' ? ex.data.error
-      : (ex?.data?.error || st.D.friendlyError(ex, errText)));
-    return;
+async function saveTenant() {
+  const m = lc.view?.microsoft || {};
+  const mode = modeOf(m);
+  lc.err['tenant-name'] = ''; lc.err.tenant = ''; setNote('tenant', '');
+  let payload;
+  if (mode === 'new') {
+    const typed = String(kept('licTnName', document.getElementById('licTnName')?.value || '')).trim();
+    // the rule, checked as typed: never rewritten (a trailing .onmicrosoft.com is allowed, as the server allows it)
+    if (!NAME_RULE.test(typed.replace(/\.onmicrosoft\.com$/i, ''))) { lc.err['tenant-name'] = 'Use 3 to 27 letters and digits: no spaces, dots, dashes or other characters.'; st.paint(); document.getElementById('licTnName')?.focus(); return; }
+    payload = { domainPrefix: typed };
+  } else {
+    const typed = String(kept('licTnId', document.getElementById('licTnId')?.value || '')).trim();
+    if (!ID_RULE.test(typed)) { lc.err.tenant = 'A Microsoft tenant ID looks like 6eda43f3-fbf0-4e2b-9978-b543d9dd31e3.'; st.paint(); document.getElementById('licTnId')?.focus(); return; }
+    payload = { tenantId: typed };
   }
-  t.busy = ''; st.paint();
+  await send('tn-save', mode === 'new' ? 'Asking Microsoft…' : 'Saving…', async () => {
+    try { await call(`${LIC_URL}/microsoft`, 'POST', payload); }
+    catch (ex) {
+      // a name Microsoft already has, or one outside the rule: said under the box, where it was typed
+      if (ex?.data?.code === 'TENANT_NAME_TAKEN' || ex?.data?.code === 'TENANT_NAME_INVALID') { lc.err['tenant-name'] = ex.data.error; return; }
+      throw ex;
+    }
+    lc.tnEdit = false; lc.tnMode = ''; forget('licTnName', 'licTnId');
+    setNote('tenant', mode === 'new' ? `Saved: ${String(payload.domainPrefix).replace(/\.onmicrosoft\.com$/i, '').toLowerCase()}.onmicrosoft.com.` : 'Saved: licenses you add join that tenant.');
+    await st.load();
+  }, {
+    errKey: 'tenant', fallback: 'The tenant could not be saved.',
+    codes: { LIVE_LANE_ONLY: 'Licensing is managed on your live environment, not the sandbox.' }
+  });
+  if (lc.err['tenant-name']) document.getElementById('licTnName')?.focus();
 }
-const post = (path, payload = {}) => st.D.apiFetch(url(`${T_URL}${path}`), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: body(payload) });
-const hostPath = (btn) => `/domains/${encodeURIComponent(btn.dataset.host)}`;
-async function reread() { const t = ts(); const d = await st.D.apiFetch(url(T_URL)); t.status = d.tenant || t.status; }
+
+/** Switch the form's mode in place, so what was typed stays. */
+function setMode(mode) {
+  lc.tnMode = mode === 'existing' ? 'existing' : 'new';
+  const has = lc.tnMode === 'existing';
+  const n = document.getElementById('licTnNameWrap'), t = document.getElementById('licTnIdWrap');
+  if (n) n.hidden = has; if (t) t.hidden = !has;
+  for (const b of document.querySelectorAll('[data-lic-action="tn-mode"]')) { const on = b.dataset.mode === lc.tnMode; b.classList.toggle('is-on', on); b.setAttribute('aria-selected', String(on)); }
+  lc.err.tenant = ''; lc.err['tenant-name'] = '';
+  st.paint();
+}
+
+/** Open the name box with a message under it (Turn on mail found the name taken at Microsoft). */
+export function reopenTenant(message) {
+  lc.tnEdit = true; lc.tnMode = 'new'; lc.err['tenant-name'] = message || '';
+  st.paint();
+  requestAnimationFrame(() => document.querySelector('[data-card="licensing:tenant"]')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+}
 
 /** Handles a data-lic-action this module owns; false when it is not one of them. */
 export function tenantAction(a, btn) {
-  const t = ts();
-  if (a === 'tn-connect') {
-    run('connect', async () => { const d = await post('/connect'); window.location.assign(d.url); }, 'Microsoft could not be opened.');
-    return true;
-  }
-  if (a === 'tn-sync') {
-    run('sync', async () => { t.seats = await post('/seats/sync'); await st.load(); }, 'The seats could not be brought up to date.');
-    return true;
-  }
-  if (a === 'tn-dom-add') {
-    run(`add:${btn.dataset.host}`, async () => { await post('/domains', { host: btn.dataset.host }); await reread(); }, 'The domain could not be added.');
-    return true;
-  }
-  if (a === 'tn-dom-verify') {
-    run(`verify:${btn.dataset.host}`, async () => { await post(`${hostPath(btn)}/verify`); await reread(); }, 'Microsoft could not check the domain.');
-    return true;
-  }
-  if (a === 'tn-mail-plan') {
-    run(`plan:${btn.dataset.host}`, async () => { const d = await st.D.apiFetch(url(`${T_URL}${hostPath(btn)}/mail`)); t.plans[btn.dataset.host] = d.mail; }, 'The mail records could not be read.');
-    return true;
-  }
-  if (a === 'tn-mail-cancel') { delete t.plans[btn.dataset.host]; st.paint(); return true; }
-  if (a === 'tn-mail-go') {
-    // mail for the domain moves on this press: asked twice
-    if (!armed(btn, 'Switch now?')) return true;
-    const host = btn.dataset.host;
-    run(`go:${host}`, async () => {
-      const d = await post(`${hostPath(btn)}/mail`, { confirm: true });
-      if (d.mail?.switched) { delete t.plans[host]; t.note = `Mail for ${host} now goes to Microsoft.`; t.noteBad = false; }
-      else { t.plans[host] = d.mail; if (d.mail?.planned) { t.note = d.mail.planned; t.noteBad = false; } }
-      await reread();
-    }, 'Mail could not be switched.');
-    return true;
-  }
-  if (a === 'tn-mail-confirm') {
-    const host = btn.dataset.host;
-    run(`confirm:${host}`, async () => { await post(`${hostPath(btn)}/mail/confirm`); delete t.plans[host]; t.note = `Mail for ${host} now goes to Microsoft.`; t.noteBad = false; await reread(); }, 'The records could not be checked.');
-    return true;
-  }
-  if (a === 'tn-copy') {
-    (async () => {
-      try { await navigator.clipboard.writeText(btn.dataset.copy || ''); btn.innerHTML = ico('check'); btn.setAttribute('data-tip', 'Copied'); btn.classList.add('is-done'); }
-      catch { btnLabel(btn, 'Select and copy it'); }
-    })();
-    return true;
-  }
+  if (a === 'tn-save') { saveTenant(); return true; }
+  if (a === 'tn-mode') { setMode(btn.dataset.mode); return true; }
+  if (a === 'tn-edit') { lc.tnEdit = true; lc.err.tenant = ''; lc.err['tenant-name'] = ''; setNote('tenant', ''); st.paint(); document.getElementById('licTnName')?.focus(); return true; }
+  if (a === 'tn-cancel') { lc.tnEdit = false; lc.tnMode = ''; lc.err.tenant = ''; lc.err['tenant-name'] = ''; forget('licTnName', 'licTnId'); st.paint(); return true; }
+  if (a === 'tn-admin-ask') { askAdmin(); return true; }
+  if (a === 'tn-admin-withdraw') { withdrawAdmin(); return true; }
+  if (a === 'tn-admin-pw') { showPassword(); return true; }
+  if (a === 'tn-admin-pw-copy') { copyPassword(btn); return true; }
+  if (a === 'tn-admin-pw-hide') { shown = null; setNote('tenant', 'Hidden. The password is not kept anywhere any more.'); st.paint(); return true; }
+  // Part 2: the connection, the seats, the domains and the mail switch
+  if (a === 'tn-connect') { connectTenant(); return true; }
+  if (a === 'tn-sync') { syncSeats(); return true; }
+  if (a === 'tn-dom-add') { domainAction(btn, 'add'); return true; }
+  if (a === 'tn-dom-verify') { domainAction(btn, 'verify'); return true; }
+  if (a === 'tn-dom-copy') { copyTxt(btn); return true; }
+  if (a === 'tn-mail-plan') { mailPlan(btn); return true; }
+  if (a === 'tn-mail-switch') { mailSwitch(btn, false); return true; }
+  if (a === 'tn-mail-confirm') { mailSwitch(btn, true); return true; }
+  if (a === 'tn-mail-cancel') { delete lc.tnPlan[btn.dataset.host || '']; st.paint(); return true; }
+  // decision 17: the person's own mailbox
+  if (a === 'mb-pw') { showMyPassword(); return true; }
+  if (a === 'mb-pw-copy') { copyMyPassword(btn); return true; }
+  if (a === 'mb-pw-hide') { mbShown = null; setNote('mailbox-mine', 'Hidden. The password is not kept anywhere any more.'); st.paint(); return true; }
+  if (a === 'mb-reset') { resetMyPassword(btn); return true; }
   return false;
 }

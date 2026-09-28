@@ -4,6 +4,8 @@ import { fetchJson } from "../api/client.js";
 import { getPricingSelection } from "../wizard/index.js";
 import { stripeAppearance } from "./stripeAppearance.js";
 import { ensureStripeJs } from "../runtime/stripeLoader.js";
+import { busy } from "../account/cards.js";
+import { cardErrorWords } from "./stripeWords.js";
 
 export async function handleBillingProfile({
   e,
@@ -54,6 +56,8 @@ export async function handleBillingProfile({
 
   const payload = {
     customerName,
+    // decision 24: optional; invoices are made out to it when given (the server checks it, at most 150 characters)
+    businessName: String(document.getElementById("bpBusinessName")?.value || "").replace(/\s+/g, " ").trim(),
     primaryEmail: document.getElementById("bpEmail")?.value?.trim(),
     phone: document.getElementById("bpPhone")?.value?.trim() || "",
     addressLine1: document.getElementById("bpAddr1")?.value?.trim(),
@@ -142,20 +146,33 @@ export async function startPaymentStep({
   paymentEl.mount("#payment-element");
 
   document.getElementById("payNowBtn").disabled = false;
-  document.getElementById("payNowBtn").onclick = async () => {
+  document.getElementById("payNowBtn").onclick = async (ev) => {
+    const btn = ev?.currentTarget || document.getElementById("payNowBtn");
+    if (btn?.disabled) return;
     const msg = document.getElementById("payMsg");
     msg.textContent = "Saving payment method…";
+    // standing rule c: the button waits for Stripe's answer, saying so, and Back waits with it (a second press would
+    // confirm the same card twice)
+    const done = busy(btn, "Saving your card…", { hold: [...document.querySelectorAll("#step4 [data-wizard-nav]")], why: "Wait for your card being saved" });
 
-    const { error } = await stripe.confirmSetup({
-      elements,
-      confirmParams: {
-        return_url: `${location.origin}${location.pathname}?post=subscribe`
-      },
-      redirect: "if_required"
-    });
+    let error = null;
+    try {
+      ({ error } = await stripe.confirmSetup({
+        elements,
+        confirmParams: {
+          return_url: `${location.origin}${location.pathname}?post=subscribe`
+        },
+        redirect: "if_required"
+      }));
+    } catch (ex) {
+      error = ex;
+    } finally {
+      done();
+    }
 
     if (error) {
-      msg.textContent = error.message || "Setup error.";
+      // the site's own sentence, never Stripe's text or a browser's ("Failed to fetch")
+      msg.textContent = cardErrorWords(error, { doing: "save" });
       return;
     }
 

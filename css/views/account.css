@@ -398,3 +398,37 @@ select.acct-input { background-color: var(--surface-deep); }
 .acct-offer .ev-card-ico { flex: none; }
 .acct-offer-main { min-width: 0; }
 .acct-offer .acct-card-note { margin-bottom: 12px; }
+
+/* the name on the account (Profile, 2026-09-23): two fields side by side where the card is wide, stacked on a phone */
+.acct-name-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr)); gap: 0 12px; }
+.acct-name-field { display: block; min-width: 0; }
+.acct-name-field .acct-input { display: block; width: 100%; box-sizing: border-box; }
+.acct-name-field .acct-input:disabled { opacity: .6; cursor: not-allowed; }
+.acct-input[aria-invalid="true"] { border-color: color-mix(in srgb, var(--danger) 60%, transparent); }
+.acct-name-actions { align-items: center; flex-wrap: wrap; margin-top: 12px; }
+
+/* closing an account with licenses still under commitment (decision 19): each license, then the final bill's total */
+.ca-commit { margin: 12px 0 4px; padding: 12px; border: 1px solid color-mix(in srgb, var(--danger) 30%, var(--border)); border-radius: var(--radius-ctl); background: var(--surface-3); }
+.ca-commit-h { margin: 0 0 4px; font-size: .92rem; font-weight: 800; color: var(--card-title, var(--ink)); }
+.ca-commit .acct-modal-note { margin-bottom: 4px; }
+.ca-commit-list { list-style: none; margin: 8px 0 0; padding: 0; }
+.ca-commit-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 8px 0; border-top: 1px solid var(--border); }
+.ca-commit-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ca-commit-name { color: var(--ink); font-size: .88rem; font-weight: 700; overflow-wrap: anywhere; }
+.ca-commit-meta { color: var(--muted); font-size: .8rem; line-height: 1.4; }
+.ca-commit-amt { flex: none; color: var(--ink); font-size: .9rem; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ca-commit-row.is-less .ca-commit-name, .ca-commit-row.is-less .ca-commit-amt { color: var(--muted); font-weight: 600; }
+.ca-commit-total { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding-top: 10px; border-top: 1px solid var(--border); color: var(--ink); font-size: .9rem; }
+.ca-commit-total strong { font-size: 1.05rem; font-variant-numeric: tabular-nums; }
+.ca-code-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+.ca-code-row .acct-modal-hint { margin: 0; }
+.ca-error-acts { margin-top: 8px; }
+.ca-error-acts[hidden] { display: none; }
+
+/* Report a site or an account (2026-09-24, src/account/report.js openConductReport): the two kinds side by side, and
+   the field a person never sees (a bot fills it) kept off screen and out of the tab order. */
+.rp-what { border: 0; margin: 4px 0 6px; padding: 0; display: flex; flex-wrap: wrap; gap: 6px 18px; min-width: 0; }
+.rp-what legend { padding: 0; margin-bottom: 4px; }
+.rp-what .um-check { display: inline-flex; align-items: center; gap: 6px; font-size: .9rem; }
+.rp-conduct .acct-modal-hint { margin-top: 4px; }
+.rp-hp { position: absolute; left: -10000px; top: auto; width: 1px; height: 1px; overflow: hidden; }

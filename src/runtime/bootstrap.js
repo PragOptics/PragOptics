@@ -1,7 +1,7 @@
     /*bootsrap.js*/
     
     import { initDnaSwirl, registerLegacyGlobals } from './router.js';
-    import { logout } from './session.js';
+    import { logout, accessToken } from './session.js';
     import { openLoginModal, closeLoginModal } from '../ui/login.modal.js';
     import { submitNativeLogin } from '../auth/native.js';
     import { initStarfield } from '../components/starfield.js';
@@ -40,9 +40,10 @@
     import { addItem as cartAddItem } from '../shop/cart.js';
     import { initCheckoutView, onCheckoutEnter } from '../shop/checkout.js';
     import { initWarrantyView, onWarrantyEnter } from '../warranty/warranty.js';
-    import { initBuildsView } from '../builds/builds.js';
+    import { initBuildsView, onBuildsEnter } from '../builds/builds.js';
     import { initAdminView, onAdminEnter, refreshAdminNav } from '../admin/admin.js';
     import { initAccountView, onAccountEnter, presetAccountSection } from '../account/account.js';
+    import { busy } from '../account/cards.js';
     import { initJoinView, onJoinEnter } from '../team/join.js';
     import { PRAG_API_BASE, LANE, STUDIO_URL } from "./config.js";
     import { consumeLaneSigninFlag, consumeLaneVerifier, consumeLaneHandoff } from './lane.js';
@@ -133,6 +134,7 @@
       if (mode !== 'wizard') endFinalizeVeil();
       if (mode === 'checkout') onCheckoutEnter();
       if (mode === 'warranty') onWarrantyEnter();
+      if (mode === 'builds') onBuildsEnter();
       if (mode === 'admin') onAdminEnter();
       if (mode === 'account') onAccountEnter();
       if (mode === 'join') onJoinEnter();
@@ -287,6 +289,11 @@
     if (/^#handoff=/.test(String(location.hash || ""))) {
       try { sessionStorage.removeItem("pragoptics_tokens"); sessionStorage.removeItem("pragoptics_ping"); } catch { /* nothing inherited */ }
     }
+
+    // A provider's or Microsoft's answer in the address is kept BEFORE the rehydrate below enters the panel: that entry
+    // rewrites the address to #account?section=<id>, and the answer (Microsoft's confirm ticket with it) was gone before
+    // routeToAccountOnLoad read it (captureAccountReturn says how).
+    captureAccountReturn();
 
     // ✅ Rehydrate API console auth state from stored ping/token
     try {
@@ -583,6 +590,13 @@ function applyPostLoginResolution({ ping, force = false }) {
       window.dispatchEvent(new CustomEvent("pragoptics:join-resume"));
       return;
     }
+    // A sign-in that started on the Builds board (its Sign in, decision 34: a build opens only signed in) goes back to
+    // the board, where the rows now open (builds.js onBuildsEnter, from onEnterMode).
+    if (back === "builds-board") {
+      clearBillingLandingOnly();
+      setAppMode("builds");
+      return;
+    }
     // A provider sent the customer back (Stripe's setup) while the session had
     // lapsed: the sign-in lands on the Environment section, where the card
     // reads the stashed return and catches up.
@@ -799,6 +813,8 @@ window.applyPostLoginResolution = applyPostLoginResolution;
       else if (/^#join/i.test(String(location.hash || ""))) { setAppMode("join"); setTimeout(() => window.pragJoin?.(), 50); }
       // Guest order tracking short link (the confirmation email): /#track
       else if (/^#track/i.test(String(location.hash || ""))) { setAppMode("checkout"); setTimeout(() => window.pragTrackOrder?.(), 50); }
+      // Report a site or an account (2026-09-24, the community standards): /#report opens the form over the landing, signed in or not
+      else if (/^#report/i.test(String(location.hash || ""))) import("../components/footer.js").then((m) => m.openReportSite()).catch(() => {});
       // The account panel: /#account (and a provider's return, /?connect=stripe&id=...#account).
       // Signed in, it opens the panel; signed out, the sign-in modal opens and the
       // sign-in lands on the section the return needs.
@@ -835,7 +851,7 @@ window.applyPostLoginResolution = applyPostLoginResolution;
       const more = /^[A-Za-z0-9_=&-]{1,120}$/.test(String(extra || "")) ? String(extra) : "";   // "install=<buildId>" from the Builds page
       let target = more ? `${base}/#${more}` : base;
       try {
-        const token = JSON.parse(sessionStorage.getItem("pragoptics_tokens") || "null")?.access_token || "";
+        const token = accessToken();
         const res = await fetch(`${PRAG_API_BASE}/auth/software/handoff`, { method: "POST", headers: { Authorization: `Bearer ${token}` } });
         const d = res.ok ? await res.json() : null;
         if (d?.code) target = `${base}/#handoff=${encodeURIComponent(d.code)}&api=${encodeURIComponent(PRAG_API_BASE)}&lane=${encodeURIComponent(LANE)}${more ? "&" + more : ""}`;
@@ -853,22 +869,102 @@ window.applyPostLoginResolution = applyPostLoginResolution;
       setTimeout(() => { openLoginModal("login"); }, 50);
     }
 
+    /**
+     * The answers that come back in the address, kept in sessionStorage for the section that reads them, and taken out
+     * of the address at once (2026-09-24 walk). A load with a live session enters the panel from the rehydrate, before
+     * routeFromHash runs, and the panel rewrites the address to #account?section=<id> (account.js showSection); read
+     * after that, every one of these was gone, and Microsoft's sign-in was never finished. So this runs first (above the
+     * rehydrate) and again from routeToAccountOnLoad (a studio handoff sets the address later); a second run finds nothing.
+     *   /#account?connect=stripe|twilio|shippo|microsoft&id=<row>&outcome=...  -> pragoptics_connect_return (environment.js
+     *     handleProviderReturn). Microsoft's finished sign-in comes back as outcome=confirm with a one-use ticket that only
+     *     the signed-in person who pressed Connect can post (environment.js confirmMicrosoftConnect): the ticket is kept
+     *     with that return only, so it survives signing in first. The address becomes #account?section=environment, so
+     *     the rehydrate's landing (enterConsole) and the sign-in both open Environment, and the ticket is not left on screen.
+     *   /#account?section=licensing&tenant=<outcome>&why=...  -> pragoptics_tenant_return (licensingTenant.js)
+     *   /#account?section=attention&approval=microsoft&outcome=...[&emailed=1|0]  -> pragoptics_approval_return (the desk)
+     *   /#account?...&team=<environment id>|own  -> pragoptics_team_id (the studio's door names the team its calls reach;
+     *     own is the person's own environment, no team picked). The tab's own copy was carried over when the studio
+     *     opened it (stale, or none), so the door's team is set before any section reads it. A team this account cannot
+     *     open is forgotten by the section's own read (team.js fetchView, environment.js fetchView, account.js ensureTeamRole).
+     * Nothing is taken out of the address when sessionStorage refuses it: the address still carries it then.
+     */
+    function captureAccountReturn() {
+      const hash = String(location.hash || "");
+      if (!/^#account/i.test(hash)) return;
+      let q;
+      try { q = new URLSearchParams(hash.split("?")[1] || ""); } catch { return; }
+      let took = false;
+      try {
+        const team = q.get("team");
+        if (team !== null) {
+          if (team === "own") sessionStorage.removeItem("pragoptics_team_id");
+          else if (/^[A-Za-z0-9_-]{1,64}$/.test(team)) sessionStorage.setItem("pragoptics_team_id", team);
+          q.delete("team"); took = true;
+        }
+      } catch { /* the tab's own team stays, and the address still names the door's */ }
+      try {
+        if (q.get("tenant")) {
+          sessionStorage.setItem("pragoptics_tenant_return", JSON.stringify({ outcome: q.get("tenant"), why: q.get("why") || "" }));
+          q.delete("tenant"); q.delete("why"); took = true;
+        }
+      } catch { /* the card reads the tenant live anyway */ }
+      try {
+        // the desk's two Microsoft pages: Approve at Microsoft (approval=microsoft) and Connect this tenant (approval=tenant)
+        const approval = q.get("approval");
+        if (approval === "microsoft" || approval === "tenant") {
+          const emailed = q.get("emailed");
+          sessionStorage.setItem("pragoptics_approval_return", JSON.stringify({ kind: approval, outcome: q.get("outcome") || "", ...(emailed === "1" || emailed === "0" ? { emailed: emailed === "1" } : {}) }));
+          q.delete("approval"); q.delete("outcome"); q.delete("emailed"); took = true;
+        }
+      } catch { /* the desk still lists where the item stands */ }
+      try {
+        const provider = q.get("connect") || "", id = q.get("id") || "";
+        if (["stripe", "twilio", "shippo", "microsoft"].includes(provider) && id) {
+          const outcome = q.get("outcome") || "return";
+          const ticket = provider === "microsoft" && outcome === "confirm" ? String(q.get("ticket") || "") : "";
+          sessionStorage.setItem("pragoptics_connect_return", JSON.stringify({ provider, id, outcome, ...(ticket ? { ticket } : {}) }));
+          q.delete("connect"); q.delete("id"); q.delete("outcome"); q.delete("ticket");
+          if (!q.get("section")) q.set("section", "environment");
+          took = true;
+        }
+      } catch { /* the address still carries it */ }
+      // A card link (the studio's "Open Connected accounts" door when its one-time code could not be made): the card and
+      // its row are kept here too, before the rehydrate's entry rewrites the address to #account?section=<id> and the
+      // section consumes pragoptics_open_card. The address keeps them (routeToAccountOnLoad reads the same ones).
+      try {
+        const card = q.get("card") || "";
+        if (card) sessionStorage.setItem("pragoptics_open_card", JSON.stringify({ section: q.get("section") || "", card, row: q.get("row") || "" }));
+      } catch { /* routeToAccountOnLoad keeps it from the address */ }
+      if (!took) return;
+      const rest = q.toString();
+      try { history.replaceState(null, "", `#account${rest ? `?${rest}` : ""}`); } catch { /* read from the kept copy either way */ }
+    }
+
     function routeToAccountOnLoad() {
-      let provider = "", id = "", section = "", card = "", row = "";
+      // a provider's return, a tenant answer, the desk's approval answer or the studio door's team: kept, and the address
+      // left naming the section (the handoff sets the address after the first capture ran)
+      captureAccountReturn();
+      let provider = "", section = "", card = "", row = "";
       // The return rides in the hash (/#account?connect=stripe&id=...): the site strips a query string on load and keeps the hash.
       // A card link (2026-09-16, the software's "one button"): /#account?section=environment&card=domains&row=stripe opens that section and scrolls to that card.
-      try { const q = new URLSearchParams(String(location.hash || "").split("?")[1] || ""); provider = q.get("connect") || ""; id = q.get("id") || ""; section = q.get("section") || ""; card = q.get("card") || ""; row = q.get("row") || ""; } catch { /* no params */ }
-      const fromProvider = provider === "stripe" || provider === "twilio" || provider === "shippo";
-      // Microsoft's answer on connecting a tenant (2026-09-23): /#account?section=licensing&tenant=<outcome>&why=...
-      try { const q = new URLSearchParams(String(location.hash || "").split("?")[1] || ""); if (q.get("tenant")) sessionStorage.setItem("pragoptics_tenant_return", JSON.stringify({ outcome: q.get("tenant"), why: q.get("why") || "" })); } catch { /* the card reads the tenant live anyway */ }
+      try { const q = new URLSearchParams(String(location.hash || "").split("?")[1] || ""); provider = q.get("connect") || ""; section = q.get("section") || ""; card = q.get("card") || ""; row = q.get("row") || ""; } catch { /* no params */ }
+      // Microsoft 365 (2026-09-23): the sign-in and the administrator's approval both come back as connect=microsoft.
+      // Kept by captureAccountReturn, a return reads section=environment here; one still in the address (sessionStorage
+      // refused it) lands on Environment below, where handleProviderReturn reads it from the address.
+      const fromProvider = provider === "stripe" || provider === "twilio" || provider === "shippo" || provider === "microsoft";
       if (section || card) {
-        try { sessionStorage.setItem("pragoptics_open_card", JSON.stringify({ section, card, row })); } catch { /* the section still opens */ }
+        // only a named card is kept: an address the panel already rewrote to its bare section must not overwrite the card
+        // captureAccountReturn kept before that (a section with no card opens no card either way)
+        if (card) { try { sessionStorage.setItem("pragoptics_open_card", JSON.stringify({ section, card, row })); } catch { /* the section still opens */ } }
+        else {
+          // a card kept for another section (a link never finished) does not open later on its own
+          try { const kept = JSON.parse(sessionStorage.getItem("pragoptics_open_card") || "null"); if (kept && kept.section !== section) sessionStorage.removeItem("pragoptics_open_card"); } catch { /* nothing kept */ }
+        }
         if (isSessionActive()) { presetAccountSection(section || "profile"); setAppMode("account"); return; }
         try { sessionStorage.setItem("pragoptics_return_to", section || "profile"); } catch { /* falls back to Profile after sign-in */ }
         setTimeout(() => { openLoginModal("login"); }, 50);
         return;
       }
-      if (fromProvider && id) { try { sessionStorage.setItem("pragoptics_connect_return", JSON.stringify({ provider, id, outcome: (new URLSearchParams(String(location.hash || "").split("?")[1] || "")).get("outcome") || "return" })); } catch { /* the query still carries it */ } }
       if (isSessionActive()) {
         presetAccountSection(fromProvider ? "environment" : "profile");
         setAppMode("account");
@@ -1126,25 +1222,51 @@ function showWizardFlow() {
   flow.style.display = "block";   // ✅ DO NOT clear innerHTML
 }
 
-function handleBillingProfileSubmit(e) {
-  return handleBillingProfile({
-    e,
-    getStoredTokens,
-    pragopticsToken,
-    buildRequestedSubscription,
-    BILLING_PROFILE_URL,
-    CHECKOUT_SESSION_URL,
-    PING_URL,
-    setDnaMode,
-    gotoStep4,
-    gotoStep5,
-    pollUntilResolved: pollUntilResolvedSubmit,
-    startPaymentStep
-  });
+/* THE WIZARD'S REQUEST BUTTONS (standing rule c, 2026-09-23): Create Billing Profile and Refresh Status are disabled
+ * while their request is out, say what they are doing, and come back with their label on the answer, a refusal
+ * included (the panel's one helper, src/account/cards.js busy()). A refusal is said in the server's own sentence;
+ * a page of markup or a long provider text is never shown, a plain sentence stands in for it. Save Payment Method is
+ * held the same way where it is wired (src/api/billing.js startPaymentStep). */
+function wizardErrorText(err, fallback) {
+  if (err instanceof TypeError) return "Could not reach PragOptics. Check that you are online, then try again.";
+  const m = String(err?.message || "").trim();
+  return m && m.length <= 300 && !/[<>]/.test(m) && !/^\d{3}\b/.test(m) ? m : fallback;
 }
 
+async function handleBillingProfileSubmit(e) {
+  const form = e?.target?.closest?.("#billingProfileForm") || document.getElementById("billingProfileForm");
+  const btn = e?.submitter || form?.querySelector('button[type="submit"]') || null;
+  if (btn?.disabled) { e?.preventDefault?.(); return; }
+  // Back waits too: leaving the step while the profile is being created would strand its answer
+  const done = busy(btn, "Creating your billing profile…", { hold: form ? [...form.querySelectorAll("[data-wizard-nav]")] : [], why: "Wait for your billing profile being created" });
+  try {
+    await handleBillingProfile({
+      e,
+      getStoredTokens,
+      pragopticsToken,
+      buildRequestedSubscription,
+      BILLING_PROFILE_URL,
+      CHECKOUT_SESSION_URL,
+      PING_URL,
+      setDnaMode,
+      gotoStep4,
+      gotoStep5,
+      pollUntilResolved: pollUntilResolvedSubmit,
+      startPaymentStep
+    });
+  } catch (err) {
+    showStatusModal({ mode: "error", message: wizardErrorText(err, "Your billing profile could not be created. Nothing was charged; try again in a moment.") });
+  } finally {
+    done();
+  }
+}
+
+let wizardPoll = null;   // the one status check out, shared by every caller
 function pollUntilResolvedSubmit() {
-  return pollUntilResolved({
+  if (wizardPoll) return wizardPoll;
+  const btn = document.querySelector('[data-wizard-action="poll"]');
+  const done = busy(btn, "Checking your subscription…");
+  wizardPoll = pollUntilResolved({
     PING_URL,
     getStoredTokens,
     pragopticsToken,
@@ -1159,7 +1281,13 @@ function pollUntilResolvedSubmit() {
       applyPostLoginResolution({ ping });
       window.setConsoleAuthenticated?.();
     }
+  }).catch((err) => {
+    setDnaMode("idle", "Could not check your subscription", wizardErrorText(err, "Press Refresh Status to check again."));
+  }).finally(() => {
+    wizardPoll = null;
+    done();
   });
+  return wizardPoll;
 }
 
 

@@ -10,6 +10,7 @@
 // eligibility, quotes shipping itself, and only the Stripe webhook engages the
 // redemption.
 import { PRAG_API_BASE } from '../runtime/config.js';
+import { accessToken } from '../runtime/session.js';
 import { getProduct } from '../shop/products.js';
 
 const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTVWXYZ23456789';
@@ -22,11 +23,7 @@ function formatCode(raw) {
 function codeLen(v) {
   return String(v || '').toUpperCase().split('').filter(c => CODE_ALPHABET.includes(c)).length;
 }
-function esc(s) {
-  return String(s ?? '').replace(/[&<>"']/g, c => ({
-    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
-  }[c]));
-}
+import { esc } from '../ui/words.js';   // the site's one HTML escape
 function isEmail(s) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(String(s || '').trim());
 }
@@ -57,8 +54,7 @@ const state = {
 };
 
 function getAccessToken() {
-  try { return JSON.parse(sessionStorage.getItem('pragoptics_tokens') || 'null')?.access_token || null; }
-  catch { return null; }
+  return accessToken() || null;
 }
 function isSignedIn() { return !!getAccessToken(); }
 function pingEmail() {

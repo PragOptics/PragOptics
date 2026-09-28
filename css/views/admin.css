@@ -731,6 +731,10 @@ select.adm-select option:checked, select.adm-input option:checked {
 .nt-result { font-size: .84rem; }
 .nt-notice-named { margin: 10px 0; }
 .nt-message { width: 100%; min-width: 0; box-sizing: border-box; resize: vertical; margin-top: 8px; font: inherit; line-height: 1.5; }
+/* Tell every owner about the new agreement (decision 37(4), src/account/agreementNotice.js): a label over each box */
+.nt-ag-field { display: grid; gap: 4px; margin: 0 0 10px; min-width: 0; }
+.nt-ag-field .nt-message { margin-top: 0; }
+#agVersion { max-width: 12rem; width: 100%; box-sizing: border-box; }
 #ntSubject { width: 100%; min-width: 0; box-sizing: border-box; margin-top: 10px; }
 
 /* ---- Reports desk ---- */
@@ -762,6 +766,11 @@ select.adm-select option:checked, select.adm-input option:checked {
 .um-field .adm-label { margin-top: 0; }
 .um-field .um-checks { min-height: 36px; align-items: center; }
 .um-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+/* decision 19: a closing account's license commitments, shown before the operator confirms the close */
+.um-close-bill { margin-top: 10px; padding: 10px 12px; border: 1px solid color-mix(in srgb, var(--danger) 35%, transparent); border-radius: var(--radius-ctl); min-width: 0; }
+.um-close-bill .acct-modal-note { margin: 0 0 6px; }
+.um-close-bill .acct-modal-note:last-child { margin-bottom: 0; }
+.um-close-lines { margin: 0 0 6px; padding-left: 18px; font-size: .84rem; line-height: 1.45; overflow-wrap: anywhere; }
 .um .adm-input { margin: 0; }
 @media (max-width: 30rem) { .um-grid2 { grid-template-columns: minmax(0, 1fr); } }
 
@@ -812,3 +821,121 @@ select.adm-select option:checked, select.adm-input option:checked {
 .adm-raw { margin: 10px 0 0; padding: 10px 12px; border: 1px solid var(--border); border-radius: 9px; background: var(--surface-deep); font: .78rem/1.5 ui-monospace, "Cascadia Code", Consolas, monospace; color: var(--ink); white-space: pre; overflow-x: auto; user-select: all; }
 /* a second heading inside an operator card stands clear of the controls above it (2026-09-23 polish) */
 .adm-card h4.adm-card-h { margin-top: 20px; }
+
+/* ---- Needs attention desk (2026-09-23, src/account/needsAttentionDesk.js) ----
+   One card per item, phone first: the kind and when it was last seen on the top
+   line, what happened in ink, the facts in a grid that folds to two columns on
+   a phone (the ids take a full row), the detail in a scrolling mono block, the
+   note the last action came back with, then the item's actions as worded
+   buttons that go full width on a phone. Tokens only, so both themes hold. */
+.na-tools { align-items: center; }
+/* the Open and Resolved tabs are controls a finger presses: the panel's control height (36px, 40px under a finger) */
+.na-desk .adm-tabs { align-items: stretch; }
+.na-desk .adm-tab {
+  display: inline-flex; align-items: center; justify-content: center;
+  box-sizing: border-box; min-height: var(--ctl-h); padding: 0 14px; font-size: .82rem;
+}
+.na-desk .adm-tab:disabled { cursor: progress; opacity: .6; }
+.na-desk .adm-tab:disabled:hover { background: transparent; color: var(--muted); }
+.na-flash {
+  margin: 0 0 12px; padding: 8px 10px; border-radius: 7px;
+  border: 1px solid color-mix(in srgb, var(--brand-600) 35%, transparent);
+  background: color-mix(in srgb, var(--brand-600) 10%, transparent);
+  color: var(--ink); font-size: .84rem; line-height: 1.5; overflow-wrap: anywhere;
+}
+.na-card { margin-bottom: 12px; min-width: 0; }
+.na-card.is-resolved { background: transparent; }
+.na-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-bottom: 8px; }
+.na-ago { font-size: .78rem; }
+.na-title { margin: 0 0 12px; font-weight: 700; color: var(--ink); font-size: .98rem; line-height: 1.4; overflow-wrap: anywhere; }
+.na-facts { display: grid; grid-template-columns: repeat(auto-fill, minmax(8rem, 1fr)); gap: 10px 16px; margin: 0 0 12px; }
+.na-facts > div { min-width: 0; }
+.na-facts .na-wide { grid-column: 1 / -1; }
+.na-facts dt { margin: 0 0 3px; font-size: .64rem; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; color: var(--muted); }
+.na-facts dd { margin: 0; color: var(--ink); font-size: .84rem; line-height: 1.4; overflow-wrap: anywhere; }
+.na-id { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.na-id code {
+  min-width: 0; flex: 0 1 auto;
+  font: .8rem/1.4 ui-monospace, "Cascadia Code", Consolas, monospace;
+  color: var(--ink); overflow-wrap: anywhere; word-break: break-all; user-select: all;
+}
+.na-id .btn-ico.is-done { color: var(--brand-600); }
+.na-detail {
+  margin: 0 0 12px; padding: 10px 12px;
+  border: 1px solid var(--border); border-radius: 9px; background: var(--surface-deep);
+  font: .78rem/1.5 ui-monospace, "Cascadia Code", Consolas, monospace; color: var(--ink);
+  white-space: pre-wrap; overflow-wrap: anywhere; max-height: 18rem; overflow: auto;
+}
+.na-nodetail { margin: 0 0 12px; font-size: .82rem; }
+.na-env { display: grid; gap: 4px; min-width: 0; }
+.na-env-name { font-weight: 700; color: var(--card-title); overflow-wrap: anywhere; }
+.na-by-platform { font-style: italic; }
+/* Recorded data and History fold open from a line as tall as any control, the chevron turning with them */
+.na-fold { margin: 0 0 12px; }
+.na-fold > summary {
+  display: flex; align-items: center; gap: 8px; list-style: none;
+  box-sizing: border-box; min-height: var(--ctl-h); padding: 0 10px 0 6px; margin: 0 0 4px;
+  border-radius: var(--radius-ctl); cursor: pointer; color: var(--muted); font-size: .84rem; font-weight: 600;
+  -webkit-user-select: none; user-select: none;
+}
+.na-fold > summary::-webkit-details-marker { display: none; }
+.na-fold > summary:hover { color: var(--ink); background: color-mix(in srgb, var(--ink) 5%, transparent); }
+.na-fold > summary:focus-visible { outline: 2px solid var(--brand-600); outline-offset: 1px; }
+.na-fold > summary .ev-ico { flex: none; transform: rotate(-90deg); transition: transform 140ms ease; }
+.na-fold[open] > summary .ev-ico { transform: none; }
+.na-fold .na-detail { margin-bottom: 0; }
+@media (prefers-reduced-motion: reduce) { .na-fold > summary .ev-ico { transition: none; } }
+.na-hist-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.na-hist-row { padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius-ctl); background: var(--surface-3); min-width: 0; }
+.na-hist-top { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.na-hist-what { font-weight: 700; color: var(--ink); font-size: .86rem; }
+.na-hist-meta { margin-top: 2px; font-size: .78rem; overflow-wrap: anywhere; }
+.na-hist-note { margin: 6px 0 0; color: var(--ink); font-size: .82rem; line-height: 1.45; overflow-wrap: anywhere; white-space: pre-wrap; }
+.na-note {
+  margin: 0 0 12px; padding: 8px 10px 8px 12px;
+  border-left: 3px solid var(--gold-soft); border-radius: 0 7px 7px 0;
+  background: color-mix(in srgb, var(--gold-soft) 9%, transparent);
+  color: var(--ink); font-size: .84rem; line-height: 1.5; overflow-wrap: anywhere;
+}
+.na-card.is-resolved .na-note { border-left-color: var(--brand-600); background: color-mix(in srgb, var(--brand-600) 8%, transparent); }
+.na-k { display: block; margin-bottom: 2px; font-size: .64rem; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; color: var(--muted); }
+.na-card .na-err { margin: 0 0 12px; }
+/* Attach's subscription id (src/account/needsAttentionDesk.js attachBoxHtml): full width, the rule under it */
+.na-input { display: grid; gap: 4px; margin: 0 0 10px; max-width: 32rem; min-width: 0; }
+.na-input .na-k { margin-bottom: 0; }
+.na-input .adm-input { width: 100%; min-width: 0; box-sizing: border-box; }
+.na-input-hint { font-size: .78rem; line-height: 1.4; }
+.na-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.na-actions .btn-lead { white-space: normal; text-align: left; }
+@media (max-width: 30rem) {
+  .na-actions .btn-lead { flex: 1 1 100%; justify-content: center; text-align: center; }
+  .na-card { padding: 14px 14px 16px; }
+}
+
+/* Licensing waiting on the role (src/account/account.js waitForLicensingRole): Try again stands clear of the reason above it */
+.lic-role-retry { margin-top: 12px; }
+
+/* Closing (2026-09-24): a report's and an ask's form on the Needs attention desk, and the Community standards window
+   (src/account/needsAttentionDesk.js, src/account/conductDesk.js). The panel's own controls; nothing new but the layout. */
+.na-form { display: grid; gap: 2px; margin: 0 0 6px; min-width: 0; }
+.na-choice { border: 0; margin: 0 0 10px; padding: 0; min-width: 0; display: grid; gap: 6px; }
+.na-choice legend { padding: 0; margin-bottom: 4px; }
+.na-choice label { display: flex; align-items: flex-start; gap: 8px; font-size: .86rem; color: var(--ink); line-height: 1.4; cursor: pointer; }
+.na-choice input { margin-top: 3px; flex: none; }
+.na-suffix-row { display: flex; align-items: center; gap: 8px; min-width: 0; flex-wrap: wrap; }
+.na-suffix-row .adm-input { flex: 1 1 12rem; }
+.na-suffix-row .adm-muted { font-size: .82rem; overflow-wrap: anywhere; }
+.na-confirm { margin: 4px 0 10px; }
+.cd .cd-lane { margin: 0 0 12px; min-width: 0; }
+.cd .cd-lane-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-bottom: 6px; }
+.cd .cd-lane-head .um-sec-h { margin: 0; }
+.cd .cd-sites { list-style: none; margin: 0 0 8px; padding: 0; display: grid; gap: 8px; }
+.cd .cd-site { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius-ctl); background: var(--surface-3); min-width: 0; }
+.cd .cd-site-main { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; min-width: 0; flex: 1 1 14rem; }
+.cd .cd-site-name { font-weight: 700; color: var(--ink); overflow-wrap: anywhere; }
+.cd .cd-site-addr { font-size: .8rem; overflow-wrap: anywhere; min-width: 0; }
+.cd .cd-site .um-actions { margin: 0; }
+@media (max-width: 560px) {
+  .cd .cd-site .um-actions, .cd .cd-site .um-actions .btn-lead { width: 100%; }
+  .cd .cd-site .um-actions .btn-lead { justify-content: center; }
+}

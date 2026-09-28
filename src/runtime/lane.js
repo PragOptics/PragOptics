@@ -27,6 +27,7 @@
 // fresh on the target lane, so nothing runs stale.
 
 import { PRAG_API_BASE } from './config.js';
+import { accessToken } from './session.js';
 
 const OVERRIDE_KEY = 'pragoptics_lane_override';
 const SIGNIN_FLAG = 'pragoptics_lane_signin_v1';
@@ -57,8 +58,7 @@ export function isPlatformOperator() {
 }
 
 function currentToken() {
-  try { return JSON.parse(sessionStorage.getItem('pragoptics_tokens') || 'null')?.access_token || null; }
-  catch { return null; }
+  return accessToken() || null;
 }
 
 function landOnTarget(lane, { handoff, verifier } = {}) {

@@ -151,6 +151,11 @@
 .btn.is-spinning .ev-ico { animation: evSpin 900ms linear infinite; }
 @keyframes evSpin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .btn.is-spinning .ev-ico { animation: none; } }
+/* the panel's one busy helper (src/account/cards.js busy()): a picker or a field whose request is out gets a turning
+   word beside it, the way a button turns its own icon */
+.busy-note { display: inline-flex; align-items: center; gap: 6px; margin-left: 8px; color: var(--muted); font-size: .8rem; font-weight: 600; white-space: nowrap; vertical-align: middle; }
+.busy-note .ev-ico { flex: none; width: 14px; height: 14px; color: var(--brand-600); animation: evSpin 900ms linear infinite; }
+@media (prefers-reduced-motion: reduce) { .busy-note .ev-ico { animation: none; } }
 .ev-actions-cell .btn + .btn { margin-left: 4px; }
 .ev-owner { margin: 2px 0 0; font-size: .84rem; }
 .ev-more { border: 0; background: transparent; color: var(--brand-600); font: inherit; font-size: .76rem; font-weight: 700; cursor: pointer; padding: 0 0 0 6px; }
@@ -288,7 +293,6 @@
 .lic-more { margin-top: 10px; justify-content: center; }
 .lic-enroll { display: grid; gap: 8px; margin-bottom: 12px; padding: 12px 14px; border: 1px solid color-mix(in srgb, var(--brand-600) 35%, var(--border)); border-radius: 12px; }
 .lic-enroll .acct-card-note, .lic-enroll .acct-actions-row { margin: 0; }
-.lic-mail-on { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .lic-seat-mail { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 /* the operator's licensing charges: each subscription, its items, a charge with no license in red */
 .lic-bill { display: grid; gap: 10px; margin: 10px 0; }
@@ -303,11 +307,17 @@
 }
 .lic-bill-item.is-orphan { background: color-mix(in srgb, #d0342c 8%, transparent); }
 
-/* the licenses held, on a phone: the seat box and the two buttons take the row */
+/* the licenses held, wide: each column keeps room for its words (a state is a sentence), nothing forced to one line */
+@container (min-width: 641px) {
+  .lic-table td[data-th="License"] { min-width: 7.5rem; }
+  .lic-table td.lic-seats-cell { min-width: 5.5rem; max-width: 11rem; }
+  .lic-table td[data-th="Status"] { min-width: 8.5rem; }
+  .lic-table td[data-th="Given to"] { min-width: 8.5rem; }
+}
+/* the licenses held, on a phone: the license-seat box and its buttons on one line, an armed question wrapping under */
 @container (max-width: 640px) {
-  .lic-acts { display: grid; grid-template-columns: 80px 1fr; gap: 8px; width: 100%; }
-  .lic-acts .lic-qty { width: 100%; }
-  .lic-acts .is-danger { grid-column: 1 / -1; }
+  .lic-acts { display: flex; flex-wrap: wrap; gap: 8px; width: 100%; }
+  .lic-acts .lic-qty { width: 88px; }
 }
 @media (max-width: 640px) {
   .lic-cat-selects { grid-template-columns: 1fr 1fr; }
@@ -369,6 +379,10 @@
 /* the environment's rows of actions hold their icons on one line (2026-09-23 polish) */
 .ev-actions-cell .act-row { flex-wrap: nowrap; justify-content: flex-end; }
 .ev-dom-actions.act-row { display: flex; }
+/* on a phone a row with two worded doors (a Microsoft 365 row waiting on an approval) wraps them instead of running off the card */
+@container (max-width: 640px) {
+  .account .ev-actions-cell .act-row { flex-wrap: wrap; justify-content: flex-start; max-width: 100%; }
+}
 /* the AI budget's row controls: the panel's fields, compact (they had no style and showed as the browser's own) */
 .ev-budget-in { min-width: 0; width: 100%; font-size: .84rem; }
 .ev-budget-num { max-width: 7rem; }
@@ -387,28 +401,116 @@
 .p8-events summary { cursor: pointer; }
 .p8-body { max-height: 18rem; overflow: auto; margin: 8px 0 2px; font-size: .74rem; }
 
-/* the customer's Microsoft tenant on Licensing (2026-09-23, licensingTenant.js) */
-.tn-row { display: grid; grid-template-columns: max-content minmax(0, 1fr) auto; gap: 6px 16px; align-items: center; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border); }
-.tn-row-note { margin: 0; }
-.tn-list { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 6px; font-size: .86rem; }
-.tn-list li { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; min-width: 0; }
-.tn-list .ev-code { overflow-wrap: anywhere; }
-.tn-domains { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border); display: grid; gap: 8px; }
-.tn-domains > .acct-card-note { margin: 0; }
-.tn-domain { border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; display: grid; gap: 8px; min-width: 0; }
-.tn-domain-head { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; min-width: 0; }
-.tn-host { font-size: .92rem; overflow-wrap: anywhere; }
-.tn-acts { margin-left: auto; display: inline-flex; gap: 6px; align-items: center; }
-.tn-plan { display: grid; gap: 8px; }
-.tn-plan .acct-card-note { margin: 0; }
-.tn-records td { vertical-align: middle; }
-.tn-val { overflow-wrap: anywhere; word-break: break-all; }
-.tn-warn { display: flex; gap: 8px; align-items: flex-start; color: var(--gold-soft); }
-.tn-warn svg { flex: none; width: 16px; height: 16px; margin-top: 2px; }
+/* ---- Licensing, Part 1 (2026-09-23): the words a state is in, the tab's notes, the tenant's name box, the owner's
+   requests, who holds a bought license. Tokens only, so both themes hold; phone width first. ---- */
+
+/* a Licensing card's title gives way on a phone, so its (i) and its fold stay on the title's line */
+[data-card^="licensing:"] > .ev-card-head .ev-card-title { flex: 0 1 auto; min-width: 0; max-width: calc(100% - 120px); }
+/* a form's button row stands clear of the hint above it */
+[data-card^="licensing:"] .ev-reg-form + .acct-actions-row, [data-card^="licensing:"] .lic-tn-form + .acct-actions-row { margin-top: 14px; }
+[data-card^="licensing:"] .lic-hint + .acct-actions-row, [data-card^="licensing:"] .lic-facts + .acct-actions-row { margin-top: 10px; }
+[data-card^="licensing:"] .ev-note + .lic-facts, [data-card^="licensing:"] .acct-error + .lic-facts { margin-top: 12px; }
+
+/* a state in words: a sentence in a soft pill, green only when the thing exists (decision 11) */
+.lic-state { display: inline-flex; align-items: center; gap: 5px; max-width: 100%; padding: 3px 9px; border-radius: 7px; border: 1px solid var(--border); background: color-mix(in srgb, var(--ink) 4%, transparent); color: var(--ink); font-size: .8rem; font-weight: 600; line-height: 1.4; overflow-wrap: anywhere; }
+.lic-state .ev-ico { width: 12px; height: 12px; flex: none; }
+.lic-state.is-verified { color: var(--brand-cyan); border-color: color-mix(in srgb, var(--brand-cyan) 30%, transparent); background: color-mix(in srgb, var(--brand-cyan) 9%, transparent); }
+.lic-state.is-pending { color: var(--gold-soft); border-color: color-mix(in srgb, var(--gold-soft) 32%, transparent); background: color-mix(in srgb, var(--gold-soft) 10%, transparent); }
+.lic-state.is-bad { color: var(--danger-text); border-color: color-mix(in srgb, var(--danger) 40%, transparent); background: color-mix(in srgb, var(--danger) 8%, transparent); }
+.lic-state.is-quiet { color: var(--muted); }
+.lic-state .ev-code { color: inherit; }
+.lic-table .lic-state { display: flex; width: fit-content; }
+.lic-table .lic-state + .lic-state, .lic-count + .lic-state { margin-top: 6px; }
+.lic-hint-inline { display: block; margin-top: 4px; font-size: .78rem; line-height: 1.4; color: var(--muted); }
+.lic-count { display: block; font-weight: 700; font-size: 1rem; color: var(--card-title, var(--ink)); }
+.lic-sku { font-size: .74rem; color: var(--muted); overflow-wrap: anywhere; }
+.lic-links { display: block; font-size: .84rem; }
+.lic-mail-on { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 0 0 12px; }
+
+/* the tab's notes under the head: the test lane, and read only while paused or after the plan ended */
+.lic-banner { display: flex; gap: 10px; align-items: flex-start; margin: 10px 0 0; padding: 10px 14px; border-radius: 12px; border: 1px solid var(--border); color: var(--ink); font-size: .88rem; line-height: 1.45; }
+.lic-banner .ev-ico { flex: none; width: 16px; height: 16px; margin-top: 2px; }
+.lic-banner.is-test { border-color: color-mix(in srgb, var(--brand-600) 40%, transparent); background: color-mix(in srgb, var(--brand-600) 8%, transparent); }
+.lic-banner.is-test .ev-ico { color: var(--brand-600); }
+.lic-banner.is-paused { border-color: color-mix(in srgb, var(--gold-soft) 45%, transparent); background: color-mix(in srgb, var(--gold-soft) 10%, transparent); }
+.lic-banner.is-paused .ev-ico { color: var(--gold-soft); }
+.lic-role { margin-top: 6px; }
+
+/* the licensing account: the business name changed in place, and the name confirmed before the account is made */
+.lic-inline-form { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.lic-inline-form .acct-input { flex: 1 1 14rem; min-width: 0; }
+.lic-v .btn-ico { vertical-align: middle; margin-left: 6px; }
+.lic-confirm { display: grid; gap: 10px; padding: 12px 14px; border: 1px solid color-mix(in srgb, var(--brand-600) 35%, var(--border)); border-radius: 12px; background: color-mix(in srgb, var(--brand-600) 5%, transparent); }
+.lic-confirm .acct-card-note, .lic-confirm .acct-actions-row, .lic-confirm .lic-hint { margin: 0; }
+.lic-confirm strong { color: var(--card-title, var(--ink)); overflow-wrap: anywhere; }
+
+/* the tenant's name box: the rule under it, a refusal under it in red (decision 2) */
+.lic-tn-form { display: grid; gap: 4px; margin: 10px 0 12px; }
+.lic-tn-form > * { min-width: 0; }
+.lic-tn-form .acct-label { margin: 0 0 4px; }
+.lic-suffix.is-bad { border-color: color-mix(in srgb, var(--danger) 60%, transparent); }
+.lic-field-err { margin: 6px 0 0; font-size: .82rem; font-weight: 600; color: var(--danger-text); }
+
+/* who holds a bought license (MINE M10) */
+.lic-holders { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; justify-items: start; min-width: 0; }
+.lic-holder { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; min-width: 0; }
+.lic-holder .ev-code { font-size: .8rem; overflow-wrap: anywhere; }
+.lic-give { display: flex; gap: 6px; align-items: center; width: 100%; max-width: 22rem; }
+.lic-give .acct-input { flex: 1 1 0; width: auto; min-width: 0; }
+
+/* the owner's requests and each person's own (decision 4) */
+.lic-reqs { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 10px; }
+.lic-req { display: grid; gap: 8px; min-width: 0; padding: 12px 14px; border: 1px solid var(--border); border-radius: 12px; }
+.lic-req.is-open { border-color: color-mix(in srgb, var(--gold-soft) 40%, var(--border)); }
+.lic-req-head { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; min-width: 0; }
+.lic-req-kind { font-weight: 700; font-size: .9rem; color: var(--card-title, var(--ink)); }
+.lic-req-who { font-size: .82rem; color: var(--muted); overflow-wrap: anywhere; }
+.lic-req-when { font-size: .8rem; margin-left: auto; }
+.lic-req-sum { margin: 0; font-size: .9rem; line-height: 1.5; overflow-wrap: anywhere; }
+.lic-req-price { display: block; font-size: .84rem; line-height: 1.45; color: var(--muted); }
+.lic-req-price strong { color: var(--card-title, var(--ink)); }
+.lic-req-why { margin: 0; font-size: .84rem; color: var(--muted); overflow-wrap: anywhere; }
+.lic-req-decline { display: grid; gap: 6px; }
+.lic-req-decline .acct-label { margin: 0; font-size: .8rem; color: var(--muted); }
+.lic-req .acct-actions-row, .lic-req .lic-hint { margin: 0; }
+.lic-past .lic-reqs { margin-top: 10px; }
+@container (max-width: 640px) {
+  .lic-req-when { margin-left: 0; flex-basis: 100%; }
+  .lic-req .acct-actions-row .btn-lead { flex: 1 1 auto; justify-content: center; }
+}
+
 .ev-note.is-bad { color: var(--danger-text, var(--danger)); }
 .acct-tag.is-quiet { color: var(--muted); border: 1px solid var(--border); }
+
+/* Your administrator account (2026-09-24, decision 29, src/account/licensingTenant.js): under the tenant's facts. On a
+   phone the tenant's long suffix sits under the box rather than squeezing it. */
+.lic-admin { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border); min-width: 0; }
+.lic-admin .lic-sub { margin: 0 0 6px; font-size: .92rem; color: var(--card-title, var(--ink)); }
 @media (max-width: 560px) {
-  .tn-row { grid-template-columns: minmax(0, 1fr) auto; }
-  .tn-row .lic-k { grid-column: 1 / -1; }
-  .tn-acts { margin-left: 0; width: 100%; }
+  .lic-admin .lic-suffix { flex-wrap: wrap; }
+  .lic-admin .lic-suffix .acct-input { flex: 1 1 100%; }
+  .lic-admin .lic-suffix span { flex: 1 1 100%; border-left: 0; border-top: 1px solid var(--border); padding: 6px 12px; white-space: normal; overflow-wrap: anywhere; }
+}
+/* the first password, shown once (decision 37(3)): the read-only box and its Copy button on one line, the box taking
+   the room; it never overflows a phone */
+.lic-pw { margin-top: 10px; min-width: 0; }
+.lic-pw-row { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.lic-pw-row .acct-input { flex: 1 1 auto; min-width: 0; font-size: .95rem; letter-spacing: .02em; }
+/* Pax8 Part 2 (2026-09-27, licensingTenant.js): the connection under the tenant's facts, its licenses in use, and each
+   verified domain as a row (host, state, one action), with Microsoft's TXT and the mail plan folding out under the row.
+   On a phone the row wraps and the action drops under the host. */
+.lic-sub--gap { margin-top: 14px; }
+.lic-facts--tight { margin-top: 8px; }
+.lic-dom-list { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 8px; }
+.lic-dom { padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; min-width: 0; }
+.lic-dom-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; min-width: 0; }
+.lic-dom-host { overflow-wrap: anywhere; }
+.lic-dom-act { margin-left: auto; display: inline-flex; gap: 6px; }
+.lic-txt { margin-top: 8px; min-width: 0; }
+.lic-plan { margin-top: 10px; padding: 10px 12px; border-radius: 10px; background: color-mix(in srgb, var(--ink) 4%, transparent); min-width: 0; }
+.lic-plan-list { margin: 4px 0 8px; padding-left: 18px; display: grid; gap: 4px; }
+.lic-plan-list li { overflow-wrap: anywhere; }
+.lic-plan-list .lic-hint { margin: 2px 0 0; }
+@media (max-width: 560px) {
+  .lic-dom-act { margin-left: 0; flex: 1 1 100%; }
 }

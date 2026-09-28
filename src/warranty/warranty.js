@@ -17,7 +17,7 @@
 import { HARDWARE, getProduct } from '../shop/products.js';
 import { renderTransfer, cancelTransfer } from './transfer.js';
 import { renderRedeem, cancelRedeem } from './redeem.js';
-import { inlineVideoHtml, bindInlineVideo, hasVideoSource } from '../components/videoOverlay.js';
+import { inlineVideoHtml, bindInlineVideo, hasVideoSource, openVideoOverlay } from '../components/videoOverlay.js';
 import { openLoginModal } from '../ui/login.modal.js';
 
 // The printed code alphabet (no I/L/O/U/0/1, so nothing is mistaken while
@@ -38,6 +38,7 @@ function codeLen(v) {
 
 const WARRANTY_API_LIVE = true;  // live: POST /warranty/register deployed to blue 2026-08-29
 import { PRAG_API_BASE } from '../runtime/config.js';
+import { accessToken } from '../runtime/session.js';
 const WARRANTY_REGISTER_URL = `${PRAG_API_BASE}/warranty/register`;
 
 const INTENT_KEY = 'pragoptics_warranty_intent_v1'; // consumed by the account-creation path
@@ -239,12 +240,8 @@ function successHtml(p, withAccount, { linked = false } = {}) {
 function isSignedIn() {
   try {
     if (typeof window.isAccessTokenValid === 'function') return window.isAccessTokenValid();
-    return !!JSON.parse(sessionStorage.getItem('pragoptics_tokens') || 'null')?.access_token;
+    return !!accessToken();
   } catch { return false; }
-}
-function accessToken() {
-  try { return JSON.parse(sessionStorage.getItem('pragoptics_tokens') || 'null')?.access_token || ''; }
-  catch { return ''; }
 }
 function sessionEmail() {
   try { return JSON.parse(sessionStorage.getItem('pragoptics_ping') || 'null')?.user?.email || ''; }

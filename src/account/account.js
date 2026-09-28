@@ -23,8 +23,16 @@ import { renderTeam, renderTenants, bindTeamActions } from './team.js';
 import { renderEnvironment, bindEnvironmentActions } from './environment.js';
 import { renderLicensing, bindLicensingActions } from './licensing.js';
 import { renderBuildsQueue, renderMyBuilds } from './buildsDesk.js';
+import { renderNeedsAttention } from './needsAttentionDesk.js';
+import { renderAgreementNotice } from './agreementNotice.js';
+import { billingDetailsHtml, editBillingDetails, cancelBillingDetails, saveBillingDetails } from './billingDetails.js';
 import { explainLink } from '../components/explainer.js';
-import { cardHtml, iconBtn, leadBtn, btnLabel, armed, ico, setCardSummary, initCards, openCardOf, packGrid } from './cards.js';
+import { cardHtml, iconBtn, leadBtn, btnLabel, armed, ico, setCardSummary, initCards, openCardOf, packGrid, busy, hold, copyButton, openModal } from './cards.js';
+import { closeBillOf, closeChargeWord } from './closeBill.js';
+import { accessToken } from '../runtime/session.js';
+import { dayWord, money, cents, esc as escapeHtml } from '../ui/words.js';
+import { writeClipboard } from '../ui/clipboard.js';
+import { cardErrorWords } from '../api/stripeWords.js';
 import { applyTheme, getTheme, applyStarfield, getStarfield } from '../runtime/theme.js';
 import { sunSvg, moonSvg, LIGHT_LABEL, DARK_LABEL } from '../components/themeMarks.js';
 import { syncUserTheme, rememberUserTheme, rememberUserPreference } from '../runtime/userTheme.js';
@@ -45,6 +53,9 @@ const RESET_2FA_URL = `${PRAG_API_BASE}/auth/2fa/reset`;
 const PASSKEY_LIST_URL = `${PRAG_API_BASE}/auth/passkey/list`;
 const PASSKEY_REMOVE_URL = `${PRAG_API_BASE}/auth/passkey/remove`;
 const CLOSE_ACCOUNT_URL = `${PRAG_API_BASE}/auth/account/close`;
+const CLOSE_SUMMARY_URL = `${PRAG_API_BASE}/auth/account/close/summary`;
+const PREFS_URL = `${PRAG_API_BASE}/account/preferences`;
+const BILLING_DETAILS_URL = `${PRAG_API_BASE}/billing/profile/details`;   // decision 24: the Billing details card
 
 const SUB_URL        = `${PRAG_API_BASE}/billing/subscription`;
 const SUB_UPDATE_URL = `${PRAG_API_BASE}/billing/subscription/update`;
@@ -95,11 +106,8 @@ let activeSection = 'profile';
 // Small cache so switching sections does not re-hit the API every click.
 const cache = { users: null };
 
-function escapeHtml(s) {
-  return String(s ?? '').replace(/[&<>"']/g, c => ({
-    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
-  }[c]));
-}
+// escapeHtml is the platform's one HTML escape (src/ui/words.js esc), imported above under the name this file has
+// always passed to its sections as deps.escapeHtml.
 
 // Third-party URLs (Stripe invoices, Shippo labels and tracking) become
 // clickable links here. escapeHtml stops attribute breakout but not a
@@ -118,15 +126,11 @@ function cachedPing() {
 function hasLiveSession() {
   try {
     if (typeof window.isAccessTokenValid === 'function') return window.isAccessTokenValid();
-    return !!JSON.parse(sessionStorage.getItem('pragoptics_tokens') || 'null')?.access_token;
+    return !!accessToken();
   } catch { return false; }
 }
 function isAdmin() {
   return hasLiveSession() && cachedPing()?.user?.isAdmin === true;
-}
-function accessToken() {
-  try { return JSON.parse(sessionStorage.getItem('pragoptics_tokens') || 'null')?.access_token || ''; }
-  catch { return ''; }
 }
 // The primary address as the server last reported it. cachedPing() is a
 // snapshot taken at sign-in and is NEVER refreshed when the primary changes,
@@ -306,6 +310,7 @@ const ICONS = {
   environment:  '<ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.66 3.58 3 8 3s8-1.34 8-3V5"/><path d="M4 12c0 1.66 3.58 3 8 3s8-1.34 8-3"/>',
   licensing:    '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/>',
   ai:           '<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>',
+  attention:    '<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
   support:      '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M9 10a3 3 0 0 1 6 0c0 2-3 2-3 4"/><path d="M12 17h.01"/>'
 };
 
@@ -322,6 +327,7 @@ const ACCOUNT_SECTIONS = [
 
 const INTERNAL_SECTIONS = [
   { id: 'overview',   label: 'Overview' },
+  { id: 'attention',  label: 'Needs attention' },
   { id: 'users',      label: 'Users' },
   { id: 'tenants',    label: 'Tenants' },
   { id: 'buildsqueue', label: 'Builds' },
@@ -348,6 +354,113 @@ function allSections() {
   return isAdmin() ? [...customerSections(), ...internalSections()] : customerSections();
 }
 
+/* LICENSING IS FOR MEMBERS AND ABOVE (2026-09-23, Part 1: "viewers never see the Licensing tab"). The role that
+ * counts is the person's role on the team they are looking at (the Team tab's pick, sessionStorage
+ * pragoptics_team_id; none picked is their default team). Below member (a viewer, a guest) there is no Licensing:
+ * the licensing read routes answer member and above.
+ *
+ * The ping carries no team role (its user.role is the platform's Users table, where every customer is a viewer), so
+ * the role is read from the team view, GET v1/tenant, the call Team and Environment make: once when the panel mounts
+ * unless the ping already says the person owns the team in view, and again from every later read of that view
+ * through the panel (a switch of team on the Team tab). While the role is NOT known the Licensing entry stays hidden,
+ * and opening Licensing by its address waits for the role before it reads anything (a viewer never sees the entry
+ * or the member-only reads failing). A read that fails leaves the role unknown; the next visit to Licensing asks
+ * again, with a Try again on the page. A person with no team at all keeps the entry: the Licensing page itself says
+ * what is missing (being set up, or the plan it starts on). */
+const TEAM_PICK_KEY = 'pragoptics_team_id';
+const TEAM_VIEW_URL = `${PRAG_API_BASE}/tenant`;
+const TEAM_RANK = { owner: 5, admin: 4, developer: 3, member: 2, viewer: 1, guest: 0 };
+// role: the membership's role on that team, or 'none' when the view answered that the person has no team at all
+let teamRole = { userId: '', teamId: '', role: '' };
+let roleRead = null, roleReadKey = '', roleReadError = '', licRoleWait = 0;
+function pickedTeamId() { try { return sessionStorage.getItem(TEAM_PICK_KEY) || ''; } catch { return ''; } }
+function pingUserId() { return String(cachedPing()?.user?.userId || ''); }
+/** The role on the team in view, or null while it is not known. */
+function roleInView() {
+  const u = cachedPing()?.user || {};
+  const picked = pickedTeamId();
+  if (u.environmentId && (!picked || picked === u.environmentId)) return 'owner';
+  return teamRole.role && teamRole.userId === pingUserId() && teamRole.teamId === picked ? teamRole.role : null;
+}
+/** Known, and below member: this person has no Licensing on the team in view. */
+function licensingBlocked() {
+  const r = roleInView();
+  return r !== null && r !== 'none' && (TEAM_RANK[r] ?? -1) < TEAM_RANK.member;
+}
+/** The entry in the sidebar: hidden while the role is unknown, and for anyone below member. */
+function licensingHidden() { return TEAM_ON && (roleInView() === null || licensingBlocked()); }
+/** Every answer from the team view says the role on the team it was asked about (no tenant= is the default team). */
+function noteTeamView(url, options, data) {
+  if (String(options?.method || 'GET').toUpperCase() !== 'GET') return;
+  let u; try { u = new URL(url); } catch { return; }
+  if (`${u.origin}${u.pathname}` !== TEAM_VIEW_URL) return;
+  const role = data?.tenant ? String(data?.membership?.role || '').toLowerCase() : 'none';
+  teamRole = { userId: pingUserId(), teamId: u.searchParams.get('tenant') || '', role: role || 'unknown' };
+  roleReadError = '';
+  syncLicensingNav();
+}
+async function viewApiFetch(url, options = {}) {
+  const data = await apiFetch(url, options);
+  noteTeamView(url, options, data);
+  return data;
+}
+/**
+ * Read the role on the team in view, once per (person, team) while it is not known; callers share the read that is
+ * out. A remembered team this account can no longer open (left, removed: 403 or 404) is forgotten for the default
+ * team, as the Team tab does. Never throws; a failure leaves the role unknown and its sentence in roleReadError.
+ */
+function ensureTeamRole() {
+  if (!TEAM_ON || !hasLiveSession() || roleInView() !== null) return Promise.resolve();
+  const picked = pickedTeamId();
+  const key = `${pingUserId()}|${picked}`;
+  if (roleRead && roleReadKey === key) return roleRead;
+  roleReadKey = key;
+  const read = (async () => {
+    try { await viewApiFetch(picked ? `${TEAM_VIEW_URL}?tenant=${encodeURIComponent(picked)}` : TEAM_VIEW_URL); }
+    catch (ex) {
+      if (picked && (ex?.status === 403 || ex?.status === 404)) {
+        try { sessionStorage.removeItem(TEAM_PICK_KEY); } catch { /* fine */ }
+        try { await viewApiFetch(TEAM_VIEW_URL); return; } catch (ex2) { ex = ex2; }
+      }
+      roleReadError = ex?.sessionInvalidated ? '' : ((ex?.status === 403 && ex?.data?.error) || friendlyError(ex, 'Could not check your role on this team.'));
+    } finally {
+      if (roleRead === read) { roleRead = null; roleReadKey = ''; }
+    }
+  })();
+  roleRead = read;
+  return read;
+}
+function syncLicensingNav() {
+  const li = document.querySelector('.adm-nav-item[data-acct-section="licensing"]')?.closest('li');
+  if (li) li.hidden = licensingHidden();
+  if (licensingBlocked() && mounted && activeSection === 'licensing') showSection('profile');
+}
+/**
+ * Licensing was asked for (its entry, its address, a link) while the role on the team in view is not known: the
+ * page says it is loading, reads the role, then opens Licensing, or moves a viewer to Profile. A read that failed
+ * says so with a Try again that turns and says "Checking…" while it reads.
+ */
+function waitForLicensingRole(main) {
+  const seq = ++licRoleWait;
+  const head = `<header class="acct-sec-head"><h2 class="acct-sec-title">Licensing</h2></header>`;
+  const retry = document.getElementById('licRoleRetry');
+  if (retry && main.contains(retry)) {
+    // the panel's one busy helper (cards.js); the answer paints the page anew, the button with it
+    busy(retry, 'Checking…');
+    showError('licRoleError', '');
+  } else {
+    main.innerHTML = `${head}<p class="acct-loading">Loading…</p>`;
+  }
+  ensureTeamRole().then(() => {
+    if (seq !== licRoleWait || !mounted || activeSection !== 'licensing' || !hasLiveSession()) return;
+    if (roleInView() !== null) return void showSection('licensing');
+    main.innerHTML = `${head}
+      <p class="acct-error" id="licRoleError" role="alert"></p>
+      <div class="acct-actions-row lic-role-retry">${leadBtn({ acct: 'lic-role-retry' }, 'refresh', 'Try again', 'id="licRoleRetry"', 'btn-primary')}</div>`;
+    showError('licRoleError', roleReadError || 'Could not check your role on this team.');
+  });
+}
+
 function icon(id) {
   return `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor"
             stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[id] || ''}</svg>`;
@@ -357,7 +470,7 @@ function navItemsHtml(sections) {
   // title carries the label to the icon-only responsive rail, where the text
   // span is hidden and the glyph is all a user gets.
   return sections.map(s => `
-    <li><button class="adm-nav-item ${s.id === activeSection ? 'is-active' : ''}" type="button"
+    <li ${s.id === 'licensing' && licensingHidden() ? 'hidden' : ''}><button class="adm-nav-item ${s.id === activeSection ? 'is-active' : ''}" type="button"
         data-acct-section="${s.id}" aria-current="${s.id === activeSection ? 'page' : 'false'}"
         title="${escapeHtml(s.label)}" aria-label="${escapeHtml(s.label)}">
       <span class="adm-nav-ico">${icon(s.id)}</span><span>${escapeHtml(s.label)}</span>
@@ -432,18 +545,22 @@ function aliasRowHtml(a) {
 // it here at once, remember it, and keep the cached ping honest so a re-sync
 // never undoes the click. A save that fails leaves the theme applied for this
 // browser and says so.
-async function setThemePreference(theme) {
+async function setThemePreference(theme, btn = null) {
+  if (btn?.disabled) return;
   const t = theme === 'light' ? 'light' : 'dark';
   applyTheme(t);
-  document.querySelectorAll('[data-acct-action="theme-set"]').forEach(b => b.setAttribute('aria-pressed', b.dataset.theme === t ? 'true' : 'false'));
+  const both = [...document.querySelectorAll('[data-acct-action="theme-set"]')];
+  both.forEach(b => b.setAttribute('aria-pressed', b.dataset.theme === t ? 'true' : 'false'));
   showError('acctThemeError', '');
+  // the pressed button says it is saving; the other waits for the answer
+  const done = busy(btn, 'Saving…', { hold: both.filter(b => b !== btn), why: 'Wait for the theme being saved' });
   try {
-    await apiFetch(`${PRAG_API_BASE}/account/preferences`, { method: 'POST', body: JSON.stringify({ theme: t }) });
+    await apiFetch(PREFS_URL, { method: 'POST', body: JSON.stringify({ theme: t }) });
     rememberUserTheme(t);
   } catch (ex) {
     if (ex?.status === 404) { showError('acctThemeError', 'Applied here. This lane does not remember the choice yet.'); return; }
     showError('acctThemeError', friendlyError(ex, 'Applied here, but the choice could not be saved to your account.'));
-  }
+  } finally { done(); }
 }
 
 // The starfield switch, remembered on the account beside the theme; the
@@ -454,14 +571,21 @@ async function setStarfieldPreference(value) {
   applyStarfield(v);
   document.querySelectorAll('[data-acct-action="starfield-set"]').forEach(b => b.setAttribute('aria-pressed', b.dataset.starfield === v ? 'true' : 'false'));
   const sw = document.getElementById('acctStarsSwitch');
-  if (sw) { sw.checked = v === 'on'; const t = sw.closest('.ev-switch')?.querySelector('.ev-switch-text'); if (t) t.textContent = `Starfield ${v}`; }
+  const word = sw?.closest('.ev-switch')?.querySelector('.ev-switch-text');
+  if (sw) sw.checked = v === 'on';
   showError('acctThemeError', '');
+  // the switch waits for its save and says so in its own words
+  if (sw) sw.disabled = true;
+  if (word) word.textContent = 'Saving…';
   try {
-    await apiFetch(`${PRAG_API_BASE}/account/preferences`, { method: 'POST', body: JSON.stringify({ starfield: v }) });
+    await apiFetch(PREFS_URL, { method: 'POST', body: JSON.stringify({ starfield: v }) });
     rememberUserPreference('starfield', v);
   } catch (ex) {
     if (ex?.status === 404 || ex?.status === 400) { showError('acctThemeError', 'Applied here. This lane does not remember the stars choice yet.'); return; }
     showError('acctThemeError', friendlyError(ex, 'Applied here, but the choice could not be saved to your account.'));
+  } finally {
+    if (sw) sw.disabled = false;
+    if (word) word.textContent = `Starfield ${v}`;
   }
 }
 
@@ -493,12 +617,118 @@ function mailOfferHtml() {
     </section>`;
 }
 
+/* ---------- the name on the account (2026-09-23, finding F16) ----------
+ * The person's first and last name, read and saved through v1/account/preferences: GET answers firstName, lastName
+ * and hasName; POST { firstName, lastName } saves both parts together. An agreement the person accepts for their
+ * business (the Microsoft Customer Agreement on Licensing) records this name; nobody types a name anywhere else. The
+ * server checks each part (1 to 60 characters: letters of any alphabet, spaces, hyphens, apostrophes and periods,
+ * starting with a letter) and names the part it refuses (400 NAME_INVALID with `field`); the same rule runs here first,
+ * so a slip is said before anything is sent. What was typed is never rewritten beyond trimming its spaces. */
+const NAME_MAX = 60;
+const NAME_RE = /^[\p{L}][\p{L}\p{M} .'’-]*$/u;
+let savedName = null;   // { firstName, lastName } as the account holds it; null until read, or on a lane without it
+function squeezeName(v) { return String(v ?? '').replace(/\s+/g, ' ').trim(); }
+function nameProblem(v, word) {
+  if (!v) return `Give your ${word}.`;
+  if (v.length > NAME_MAX || !NAME_RE.test(v)) return `Your ${word} can have letters, spaces, hyphens, apostrophes and periods, up to ${NAME_MAX} characters, starting with a letter.`;
+  return '';
+}
+function nameCardHtml() {
+  return cardHtml({ key: 'profile:name', icon: 'user', title: 'Your name', summary: 'loading', body: `
+      <div class="acct-name-fields">
+        <label class="acct-name-field"><span class="acct-label">First name</span>
+          <input class="acct-input" id="acctFirstName" type="text" autocomplete="given-name" spellcheck="false"></label>
+        <label class="acct-name-field"><span class="acct-label">Last name</span>
+          <input class="acct-input" id="acctLastName" type="text" autocomplete="family-name" spellcheck="false"></label>
+      </div>
+      <div class="acct-add-row acct-name-actions">
+        ${leadBtn({ acct: 'name-save' }, 'check', 'Save name', '', 'btn-primary')}
+        <span class="ev-status" id="acctNameStatus" aria-live="polite"></span>
+      </div>
+      <p class="acct-card-note ev-dom-door">Letters, spaces, hyphens, apostrophes and periods, up to ${NAME_MAX} characters each. Agreements you accept for your business, such as the Microsoft Customer Agreement, record this name.</p>
+      <p class="acct-error" id="acctNameError" hidden></p>` });
+}
+function nameSummary() {
+  const n = savedName;
+  setCardSummary('profile:name', n && n.firstName && n.lastName ? escapeHtml(`${n.firstName} ${n.lastName}`) : 'not given yet');
+}
+function setNameStatus(text) { const el = document.getElementById('acctNameStatus'); if (el) el.textContent = text || ''; }
+/** The fields and Save stay shut, their tip saying why (a lane without the name, or a read that failed). */
+function shutName(why) {
+  for (const el of [document.getElementById('acctFirstName'), document.getElementById('acctLastName'), document.querySelector('[data-acct-action="name-save"]')]) {
+    if (!el) continue;
+    el.disabled = true;
+    el.setAttribute('data-tip', why);
+  }
+}
+async function loadName() {
+  const first = document.getElementById('acctFirstName'), last = document.getElementById('acctLastName');
+  const save = document.querySelector('[data-acct-action="name-save"]');
+  if (!first || !last) return;
+  showError('acctNameError', '');
+  // nothing is typed over and nothing is saved until the name the account holds is on screen
+  const done = busy(save, 'Reading your name…', { hold: [first, last], why: 'Reading your name…' });
+  let d = null, failed = null;
+  try { d = await apiFetch(PREFS_URL); } catch (ex) { failed = ex; }
+  finally { done(); }
+  if (!first.isConnected) return;
+  if (failed) {
+    setCardSummary('profile:name', 'not read');
+    showError('acctNameError', failed?.sessionInvalidated ? '' : friendlyError(failed, 'Could not read your name.'));
+    shutName('Your name could not be read; open Profile again to read it');
+    return;
+  }
+  // a lane whose preferences carry no name keeps the fields shut rather than offering a save it would refuse
+  if (!d || !('firstName' in d || 'hasName' in d)) {
+    savedName = null;
+    setCardSummary('profile:name', 'not on this lane');
+    showError('acctNameError', 'This lane does not keep a name on the account yet. Deploy the backend that carries it, then reload.');
+    shutName('This lane does not keep a name on the account yet');
+    return;
+  }
+  savedName = { firstName: String(d.firstName || ''), lastName: String(d.lastName || '') };
+  first.value = savedName.firstName;
+  last.value = savedName.lastName;
+  nameSummary();
+}
+async function saveName(btn) {
+  const first = document.getElementById('acctFirstName'), last = document.getElementById('acctLastName');
+  if (!first || !last || btn.disabled) return;
+  showError('acctNameError', ''); setNameStatus('');
+  first.removeAttribute('aria-invalid'); last.removeAttribute('aria-invalid');
+  const firstName = squeezeName(first.value), lastName = squeezeName(last.value);
+  const bad = nameProblem(firstName, 'first name') ? [first, nameProblem(firstName, 'first name')]
+    : nameProblem(lastName, 'last name') ? [last, nameProblem(lastName, 'last name')] : null;
+  if (bad) { showError('acctNameError', bad[1]); bad[0].setAttribute('aria-invalid', 'true'); bad[0].focus(); return; }
+  if (savedName && firstName === savedName.firstName && lastName === savedName.lastName) { setNameStatus('That is already the name on your account.'); return; }
+  const done = busy(btn, 'Saving…', { hold: [first, last], why: 'Wait for your name being saved' });
+  let wrong = null;
+  try {
+    const r = await apiFetch(PREFS_URL, { method: 'POST', body: JSON.stringify({ firstName, lastName }) });
+    savedName = { firstName: String(r?.firstName ?? firstName), lastName: String(r?.lastName ?? lastName) };
+    first.value = savedName.firstName;
+    last.value = savedName.lastName;
+    // the cached ping follows, so the rest of the panel reads the name the account now holds
+    rememberUserPreference('firstName', savedName.firstName);
+    rememberUserPreference('lastName', savedName.lastName);
+    rememberUserPreference('hasName', true);
+    nameSummary();
+    setNameStatus('Saved.');
+  } catch (ex) {
+    const field = String(ex?.data?.field || '');
+    wrong = field === 'firstName' ? first : field === 'lastName' ? last : null;
+    showError('acctNameError', ex?.sessionInvalidated ? '' : (ex?.data?.error || friendlyError(ex, 'Your name could not be saved. Nothing changed.')));
+  } finally { done(); }
+  if (wrong) { wrong.setAttribute('aria-invalid', 'true'); wrong.focus(); }
+}
+
 async function renderProfile(main) {
   const theme = getTheme(), stars = getStarfield();
   main.innerHTML = `
     <header class="acct-sec-head"><h2 class="acct-sec-title">Profile</h2></header>
     ${mailOfferHtml()}
     <div class="acct-grid">
+    ${nameCardHtml()}
     ${cardHtml({ key: 'profile:emails', icon: 'mail', title: 'Email addresses', summary: 'loading', body: `
       <ul class="acct-alias-list" id="acctAliasList"><li class="acct-loading">Loading…</li></ul>
       <div class="acct-add-row">
@@ -549,7 +779,7 @@ async function renderProfile(main) {
       <p class="acct-card-note ev-dom-door">Remembered on your account, so the site looks the same wherever you sign in.</p>
       <p class="acct-error" id="acctThemeError" hidden></p>` })}
     ${cardHtml({ key: 'profile:close', icon: 'alert', title: 'Close account', summary: 'permanent', danger: true, body: `
-      <p class="acct-card-note ev-dom-door">Closing is permanent: it signs you out everywhere, removes your sign-in, and ends any subscription now, with no refund for the rest of a paid period. To keep service until the period ends, cancel on Billing instead.</p>
+      <p class="acct-card-note ev-dom-door">Closing is permanent: it signs you out everywhere, removes your sign-in, and ends any subscription of yours now, with no refund for the rest of a paid period. If you own your environment, closing also takes down every site it published, and a Microsoft license still under commitment is paid to the end of its commitment on your final bill; the amount is shown before you confirm. If you are a member of someone else's team, only your own sign-in goes: the team keeps its environment and its sites as they are. To keep service until the period ends, cancel on Billing instead.</p>
       <div class="acct-add-row">
         ${leadBtn({ acct: 'close-account' }, 'alert', 'Close my account', 'data-tip="Opens a confirmation step; nothing changes until you confirm there"', 'is-danger')}
       </div>
@@ -558,20 +788,45 @@ async function renderProfile(main) {
     ${platformLaneCardHtml()}
   `;
   packGrid(main.querySelector('.acct-grid'));
+  const nameRead = loadName();
   const aliasData = await loadAliases();
   await loadPhone(aliasData);
   await loadPasskeys();
   await loadNotifyPrefs();
+  await nameRead;
 }
 
 /* ---------- close account ---------- */
 
-// A code goes to the primary address first (the same request-code flow the
-// alias removal uses), then the confirmation modal collects the rest. The POST
-// happens inside the modal so a wrong password or code keeps it open with the
-// server's own reason; only a success replaces the section.
-async function closeAccount() {
+// What closing would charge is read first (decision 19, Cameron 2026-09-23): an owner holding a Microsoft license still
+// under commitment sees each one, with its license seats, its commitment end and what is left of it, and the total
+// that goes on the final bill, before confirming anything. PragOptics never absorbs a commitment. Then a code goes to
+// the primary address (the same request-code flow the alias removal uses), and the confirmation modal collects the
+// rest. The POST happens inside the modal so a wrong password or code keeps it open with the server's own reason;
+// only a success replaces the section.
+//
+//   GET  v1/auth/account/close/summary -> { owner, lines: [{ lineId, name, seats, termWord, commitmentEndsAt,
+//        remainingCents, remainingText }], totalCents, totalText, paidCents, confirmNeeded, sentence }
+//   POST v1/auth/account/close { password, code, requestId, confirm: "CLOSE", acceptRemainingCents }
+//        -> { ok, closed, finalChargeCents }
+async function closeAccount(btn) {
+  if (btn?.disabled) return;
   showError('acctCloseError', '');
+  let done = busy(btn, 'Checking what closing charges…');
+  let summary = null;
+  try {
+    summary = await apiFetch(CLOSE_SUMMARY_URL);
+  } catch (ex) {
+    // a lane without the read closes as before: its close route asks for no amount to be confirmed, and a route that
+    // does asks with the amount itself (the modal shows it then)
+    if (ex?.status !== 404) {
+      done();
+      showError('acctCloseError', ex?.sessionInvalidated ? '' : (ex?.data?.error || friendlyError(ex, 'Could not read what closing would charge. Nothing was changed; try again.')));
+      return;
+    }
+  }
+  done();
+  done = busy(btn, 'Sending the code…');
   let requestId = '';
   try {
     const r = await apiFetch(REQUEST_CODE_URL, { method: 'POST', body: JSON.stringify({ email: currentEmail(), purpose: 'close' }) });
@@ -579,22 +834,25 @@ async function closeAccount() {
   } catch (ex) {
     showError('acctCloseError', friendlyError(ex, 'Could not send the confirmation code.'));
     return;
-  }
-  const closed = await closeAccountPrompt({ email: currentEmail(), requestId });
-  if (!closed) return;
+  } finally { done(); }
+  const result = await closeAccountPrompt({ email: currentEmail(), requestId, summary });
+  if (result === 'billing') { showSection('subscription'); return; }
+  if (!result) return;
   const main = document.getElementById('acctMain');
-  if (main) main.innerHTML = accountClosedHtml();
+  if (main) main.innerHTML = accountClosedHtml(result.finalChargeCents);
   // The session behind this panel is gone; the next entry must rebuild from
   // whatever signs in next, never from this shell.
   mounted = false;
   cache.users = null;
 }
 
-function accountClosedHtml() {
+function accountClosedHtml(finalChargeCents = 0) {
+  const charged = Number(finalChargeCents) > 0;
   return `
     <div class="acct-closed">
       <section class="acct-card acct-closed-card">
         <h2 class="acct-sec-title">Your account is closed.</h2>
+        ${charged ? `<p class="acct-card-note">Your final bill of ${escapeHtml(usdCents(finalChargeCents))}, for the rest of your Microsoft license commitments and the sales tax on it, was charged to the card on file. The closing email lists it.</p>` : ''}
         <p class="acct-card-note">Thank you for using PragOptics™.</p>
         <button class="cta" type="button" data-acct-action="logout">Done</button>
       </section>
@@ -602,18 +860,72 @@ function accountClosedHtml() {
   `;
 }
 
-// Resolves true once the server confirms the close, null on cancel. The
-// confirm button stays disabled until every proof is present: the export
-// acknowledgement, the literal word CLOSE, the password, and the emailed code.
-function closeAccountPrompt({ email, requestId }) {
-  return new Promise((resolve) => {
-    let hostEl = document.getElementById('acctCloseAccount');
-    if (!hostEl) { hostEl = document.createElement('div'); hostEl.id = 'acctCloseAccount'; hostEl.className = 'acct-modal-host'; document.body.appendChild(hostEl); }
-    hostEl.innerHTML = `
+/** The licenses a closing account still owes, and the total for the final bill, as the closing modal shows them. */
+function closeCommitHtml(s) {
+  const total = Math.max(0, Math.round(Number(s?.totalCents) || 0));
+  if (!total) return '';
+  const lines = (Array.isArray(s.lines) ? s.lines : []).filter(l => l && Number(l.remainingCents) > 0);
+  const gross = lines.reduce((n, l) => n + Math.round(Number(l.remainingCents) || 0), 0);
+  // the money plan (2026-09-24): sales tax at the owner's address, from Stripe's own preview of the final bill (37(12))
+  const tax = Math.max(0, Math.round(Number(s.taxCents) || 0));
+  const subtotal = Number.isFinite(Number(s.subtotalCents)) ? Math.round(Number(s.subtotalCents)) : total - tax;
+  // an earlier try to close that already charged part of it: what it took comes off (the server's total is net of it)
+  const before = Math.max(0, gross - subtotal);
+  const totalText = String(s.totalText || usdCents(total));
+  return `
+    <section class="ca-commit" aria-labelledby="caCommitH">
+      <h4 class="ca-commit-h" id="caCommitH">Microsoft licenses still under commitment</h4>
+      <p class="acct-modal-note">Each is paid for until its commitment ends. Closing now puts the rest of each on your final bill, with anything still owed and sales tax, charged to the card on file before anything is closed.</p>
+      <ul class="ca-commit-list">
+        ${lines.map(l => {
+          const seats = Math.max(0, Number(l.seats) || 0);
+          // decision 21: a failed license payment still owed; decision 38: the included mailboxes' annual term past the plan
+          const meta = l.owed ? 'what its failed payment left owed'
+            : [`${seats} license seat${seats === 1 ? '' : 's'}`, l.termWord ? String(l.termWord) : '', dayWord(l.commitmentEndsAt) ? `${l.included ? "Microsoft's term ends" : 'commitment ends'} ${dayWord(l.commitmentEndsAt)}` : ''].filter(Boolean).join(' · ');
+          return `
+          <li class="ca-commit-row">
+            <div class="ca-commit-main"><span class="ca-commit-name">${escapeHtml(l.name || 'Microsoft license')}</span><span class="ca-commit-meta">${escapeHtml(meta)}</span></div>
+            <span class="ca-commit-amt">${escapeHtml(String(l.remainingText || usdCents(l.remainingCents)))}</span>
+          </li>`;
+        }).join('')}
+        ${before > 0 ? `
+          <li class="ca-commit-row is-less">
+            <div class="ca-commit-main"><span class="ca-commit-name">Already charged by an earlier try to close</span></div>
+            <span class="ca-commit-amt">-${escapeHtml(usdCents(before))}</span>
+          </li>` : ''}
+        ${tax > 0 ? `
+          <li class="ca-commit-row">
+            <div class="ca-commit-main"><span class="ca-commit-name">Sales tax</span><span class="ca-commit-meta">at your billing address</span></div>
+            <span class="ca-commit-amt">${escapeHtml(usdCents(tax))}</span>
+          </li>` : ''}
+      </ul>
+      <div class="ca-commit-total"><span>Charged on your final bill</span><strong>${escapeHtml(totalText)}</strong></div>
+      <label class="acct-check" for="caAcceptCharge">
+        <input type="checkbox" id="caAcceptCharge">
+        <span>I accept the final charge of ${escapeHtml(totalText)}${tax > 0 ? ', sales tax included,' : ''} to the card on file</span>
+      </label>
+    </section>`;
+}
+
+/**
+ * Who a closing touches, in the owner's own words (the summary's owner: the Users row's environment is theirs). The
+ * closing takes down only the sites of the environment the account owns (agreement 13.3; the backend's owner check), so
+ * a team member reads that the team keeps its environment and sites. `owner` null: a lane without the summary read.
+ */
+function closeWhoWords(owner) {
+  if (owner === true) return 'Every site your environment published is taken down.';
+  if (owner === false) return 'Only your own sign-in goes: a team you belong to keeps its environment and its sites as they are.';
+  return 'If you own your environment, every site it published is taken down. A team you belong to keeps its environment and its sites as they are.';
+}
+
+/** The closing modal: the permanence, who it touches, the final bill (closeCommitHtml), the proofs and the button. */
+function closePromptHtml({ email, s, goWord, owner }) {
+  return `
       <div class="acct-modal-mask" data-ca-close></div>
       <div class="acct-modal is-wide" role="dialog" aria-modal="true" aria-label="Close your account">
         <h3 class="acct-modal-h">Close your account</h3>
-        <p class="acct-modal-note">This is permanent. You are signed out everywhere, your sign-in is removed, and any subscription ends now. There is no refund for the rest of a paid period.</p>
+        <p class="acct-modal-note">This is permanent. You are signed out everywhere, your sign-in is removed, and any subscription ends now. There is no refund for the rest of a paid period. ${escapeHtml(closeWhoWords(owner))}</p>
+        <div id="caCommit">${closeCommitHtml(s)}</div>
         <label class="acct-check" for="caExported">
           <input type="checkbox" id="caExported">
           <span>I have exported anything I want to keep</span>
@@ -624,59 +936,113 @@ function closeAccountPrompt({ email, requestId }) {
         <input class="acct-input" id="caPass" type="password" autocomplete="current-password" placeholder="Your password">
         <label class="acct-label" for="caCode">Verification code</label>
         <input class="acct-input" id="caCode" type="text" inputmode="numeric" autocomplete="one-time-code" placeholder="6-digit code" maxlength="6">
-        <p class="acct-modal-note acct-modal-hint">We emailed a code to ${escapeHtml(email)}.</p>
+        <div class="ca-code-row">
+          <p class="acct-modal-note acct-modal-hint" id="caCodeNote">We emailed a code to ${escapeHtml(email)}.</p>
+          <button class="btn btn-sm btn-ghost" type="button" data-ca-resend>Send a new code</button>
+        </div>
         <p class="acct-error" id="caError" hidden></p>
+        <div class="acct-actions-row ca-error-acts" id="caErrorActs" hidden></div>
         <div class="acct-modal-actions">
           <button class="btn btn-ghost" type="button" data-ca-close>Cancel</button>
           <button class="cta btn-danger-solid" type="button" data-ca-confirm disabled
-            title="Enabled once the box is checked and CLOSE, your password, and the code are filled in">Close my account</button>
+            title="Enabled once the boxes are checked and CLOSE, your password, and the code are filled in">${escapeHtml(goWord)}</button>
         </div>
       </div>`;
-    hostEl.hidden = false;
-    const exported = hostEl.querySelector('#caExported');
-    const word = hostEl.querySelector('#caConfirm');
-    const pass = hostEl.querySelector('#caPass');
-    const code = hostEl.querySelector('#caCode');
-    const er = hostEl.querySelector('#caError');
-    const go = hostEl.querySelector('[data-ca-confirm]');
-    const ready = () => exported.checked && word.value === 'CLOSE' && pass.value.length > 0 && /^\d{6}$/.test(code.value.trim());
-    let busy = false;
-    function onInput() { if (!busy) go.disabled = !ready(); }
-    async function onClick(e) {
-      if (e.target.closest('[data-ca-close]')) { if (!busy) close(null); return; }
-      if (!e.target.closest('[data-ca-confirm]') || busy || !ready()) return;
-      busy = true;
-      go.disabled = true;
-      const orig = go.textContent;
-      go.textContent = 'Closing…';
-      er.hidden = true;
-      try {
-        await apiFetch(CLOSE_ACCOUNT_URL, {
-          method: 'POST',
-          body: JSON.stringify({ password: pass.value, code: code.value.trim(), requestId, confirm: 'CLOSE' })
-        });
-        close(true);
-      } catch (ex) {
-        er.textContent = friendlyError(ex, 'Could not close your account.', { passwordFlow: true });
-        er.hidden = false;
-        busy = false;
-        go.textContent = orig;
-        go.disabled = !ready();
-      }
+}
+
+// Resolves { finalChargeCents } once the server confirms the close, 'billing' when the person goes to Billing to fix
+// the card, null on cancel. The confirm button stays disabled until every proof is present: the export
+// acknowledgement, the literal word CLOSE, the password, the emailed code, and, when licenses are still under
+// commitment, the acceptance of the final charge. The amount accepted is the one on screen, sent as
+// acceptRemainingCents; when it moved since it was read, the server answers with the new one (before it checks the
+// password or the code, so the code stays good) and the modal shows it to accept again. The pieces: the markup
+// (closePromptHtml), a new code (sendNewCode), the close (submitClose) and its refusals (applyCloseRefusal), sharing
+// one ctx; the host and its listeners are cards.js openModal's.
+function closeAccountPrompt({ email, requestId, summary = null }) {
+  return new Promise((resolve) => {
+    const ctx = { email, requestId, working: false, s: summary && Number(summary.totalCents) > 0 ? summary : null };
+    ctx.totalOf = () => Math.max(0, Math.round(Number(ctx.s?.totalCents) || 0));
+    ctx.goWord = () => (ctx.totalOf() > 0 ? closeChargeWord(ctx.s, { owner: true }) : 'Close my account');
+    const owner = summary && typeof summary.owner === 'boolean' ? summary.owner : null;
+    const m = openModal('acctCloseAccount', closePromptHtml({ email, s: ctx.s, goWord: ctx.goWord(), owner }), { onClick, onInput, onChange: onInput, focus: '#caConfirm' });
+    const $ = m.$;
+    Object.assign(ctx, {
+      $, go: $('[data-ca-confirm]'), cancel: $('.acct-modal-actions [data-ca-close]'), resend: $('[data-ca-resend]'),
+      code: $('#caCode'), note: $('#caCodeNote'),
+      close: (val) => { m.close(); resolve(val); }
+    });
+    ctx.accepted = () => ctx.totalOf() === 0 || $('#caAcceptCharge')?.checked === true;
+    ctx.ready = () => $('#caExported').checked && $('#caConfirm').value === 'CLOSE' && $('#caPass').value.length > 0 && /^\d{6}$/.test(ctx.code.value.trim()) && ctx.accepted();
+    ctx.say = (msg) => { const er = $('#caError'); er.textContent = msg || ''; er.hidden = !msg; };
+    ctx.sayActs = (html) => { const acts = $('#caErrorActs'); acts.innerHTML = html || ''; acts.hidden = !html; };
+    ctx.paintCommit = () => { $('#caCommit').innerHTML = closeCommitHtml(ctx.s); ctx.go.textContent = ctx.goWord(); ctx.go.disabled = !ctx.ready(); };
+    function onInput() { if (!ctx.working) ctx.go.disabled = !ctx.ready(); }
+    function onClick(e) {
+      if (e.target.closest('[data-ca-close]')) { if (!ctx.working) ctx.close(null); return; }
+      if (e.target.closest('[data-ca-billing]')) { if (!ctx.working) ctx.close('billing'); return; }
+      const again = e.target.closest('[data-ca-resend]');
+      if (again) return void sendNewCode(again, ctx);
+      if (e.target.closest('[data-ca-confirm]') && !ctx.working && ctx.ready()) submitClose(ctx);
     }
-    // Same discipline as the other prompts: the host outlives the prompt, so
-    // every listener comes off in close() or the next open runs two of them.
-    const close = (val) => {
-      hostEl.removeEventListener('click', onClick);
-      hostEl.removeEventListener('input', onInput);
-      hostEl.removeEventListener('change', onInput);
-      hostEl.hidden = true; hostEl.innerHTML = ''; resolve(val);
-    };
-    word.focus();
-    hostEl.addEventListener('click', onClick);
-    hostEl.addEventListener('input', onInput);
-    hostEl.addEventListener('change', onInput);
   });
+}
+
+/** A new code to the primary address: the last one expired, or a refused charge used it up. */
+async function sendNewCode(btn, ctx) {
+  if (ctx.working || btn.disabled) return;
+  ctx.say(''); ctx.sayActs('');
+  const done = busy(btn, 'Sending…');
+  try {
+    const r = await apiFetch(REQUEST_CODE_URL, { method: 'POST', body: JSON.stringify({ email: ctx.email, purpose: 'close' }) });
+    ctx.requestId = r?.requestId || ctx.requestId;
+    ctx.code.value = '';
+    ctx.note.textContent = `We emailed a new code to ${ctx.email}.`;
+    ctx.code.focus();
+  } catch (ex) {
+    ctx.say(friendlyError(ex, 'Could not send a new code.'));
+  } finally { done(); ctx.go.disabled = !ctx.ready(); }
+}
+
+/** The close itself, the button busy and Cancel and Send a new code held while it is out. */
+async function submitClose(ctx) {
+  ctx.working = true;
+  ctx.say(''); ctx.sayActs('');
+  const total = ctx.totalOf();
+  const done = busy(ctx.go, total > 0 ? 'Charging and closing…' : 'Closing…', { hold: [ctx.cancel, ctx.resend], why: 'Wait for the answer' });
+  try {
+    const r = await apiFetch(CLOSE_ACCOUNT_URL, {
+      method: 'POST',
+      body: JSON.stringify({ password: ctx.$('#caPass').value, code: ctx.code.value.trim(), requestId: ctx.requestId, confirm: 'CLOSE', ...(total > 0 ? { acceptRemainingCents: total } : {}) })
+    });
+    done();
+    ctx.close({ finalChargeCents: Number(r?.finalChargeCents) || 0 });
+  } catch (ex) {
+    done();
+    ctx.working = false;
+    applyCloseRefusal(ex, ctx);
+  }
+}
+
+/** A refused close: a final bill that moved is shown to accept again; a spent code is cleared; a card problem offers Billing. */
+function applyCloseRefusal(ex, ctx) {
+  const bill = ex?.status === 409 ? closeBillOf(ex) : null;
+  if (bill) {
+    // the amount on screen was not the one the server holds now: the new one replaces it, to accept again
+    ctx.s = bill.totalCents > 0 ? { ...bill, lines: bill.lines.length ? bill.lines : (ctx.s?.lines || []) } : null;
+    ctx.paintCommit();
+  }
+  // The route checks the amount before the password and the code, so a code survives that answer. A refusal after both
+  // proofs (the final charge declined or not taken, an amount that moved while it was being charged, the plan not
+  // ended) used the code up: the field clears and a new code is one press away.
+  const spent = ex?.status === 402 || ex?.status >= 500 || (bill && !bill.beforeProofs);
+  if (spent) {
+    ctx.code.value = '';
+    ctx.note.textContent = 'That code was used. Press Send a new code for another, then close again.';
+  }
+  ctx.say(friendlyError(ex, 'Could not close your account.', { passwordFlow: true }));
+  const code = ex?.data?.code;
+  if (code === 'CARD_DECLINED' || code === 'NO_PAYMENT_METHOD') ctx.sayActs(leadBtn({ ca: 'billing' }, 'card', 'Open Billing', 'data-ca-billing', 'btn-primary'));
+  ctx.go.disabled = !ctx.ready();
 }
 
 /* ---------- mobile number ---------- */
@@ -728,27 +1094,35 @@ async function loadPhone(known = null) {
   }
 }
 
-async function startPhone() {
+async function startPhone(btn = null) {
+  if (btn?.disabled) return;
   const input = document.getElementById('acctNewPhone');
   const phone = (input?.value || '').trim();
   showError('acctPhoneError', '');
   if (!phone) { showError('acctPhoneError', 'Enter a mobile number.'); return; }
+  let done = busy(btn, 'Texting a code…');
   try {
     const started = await apiFetch(PHONE_START_URL, { method: 'POST', body: JSON.stringify({ phone }) });
+    done();
     const su = await stepUp({ title: 'Confirm your number', note: `Enter the code we texted to ${phone}.`, needCode: true });
     if (!su) return;
+    done = busy(btn, 'Confirming…');
     await apiFetch(PHONE_CONFIRM_URL, { method: 'POST', body: JSON.stringify({ requestId: started.requestId, code: su.code }) });
     if (input) input.value = '';
     await loadPhone();
   } catch (ex) { showError('acctPhoneError', friendlyError(ex, 'Could not verify that number.')); }
+  finally { done(); }
 }
 
-async function removePhone() {
+async function removePhone(btn = null) {
+  if (btn?.disabled) return;
   showError('acctPhoneError', '');
+  const done = busy(btn, 'Removing…');
   try {
     await apiFetch(PHONE_REMOVE_URL, { method: 'POST', body: JSON.stringify({}) });
     await loadPhone();
   } catch (ex) { showError('acctPhoneError', friendlyError(ex, 'Could not remove that number.')); }
+  finally { done(); }
 }
 
 /* ---------- notifications (the customer's own preferences) ---------- */
@@ -850,6 +1224,15 @@ function supportRequest() {
 // its own accounts. When the two accounts are linked the switch is seamless
 // (the source lane vouches for you, no password); otherwise it opens sign-in
 // on the target. Either way the session comes back fresh; nothing runs stale.
+/** A lane switch: the handoff is asked for before the page moves; the pressed lane says so, the other waits. */
+function laneSwitch(btn, lane, attr) {
+  if (btn.disabled) return;
+  const other = [...document.querySelectorAll(`[${attr}="lane-live"], [${attr}="lane-dev"]`)].filter(b => b !== btn);
+  const done = busy(btn, 'Switching…', { hold: other, why: 'Wait for the lane switch' });
+  // the page moves to the other lane on the answer; should it stay (a failure the switch could not recover), the buttons come back
+  Promise.resolve(switchLane(lane)).finally(done);
+}
+
 /** Live | Dev as the environment's pill switch (2026-09-23 polish): the lane in use is filled; the other switches. */
 function laneSwitchHtml(attr) {
   const opt = (k, label, tip) => `<button class="ev-lane ${LANE === k ? 'is-on' : ''}" type="button" role="tab" aria-selected="${LANE === k}" ${attr}="lane-${k}" ${LANE === k ? 'disabled' : ''} data-tip="${escapeHtml(LANE === k ? `You are on the ${k} lane` : tip)}">${label}</button>`;
@@ -957,13 +1340,15 @@ function stepUp({ title, note, needCode }) {
 
 /* ---------- email actions ---------- */
 
-async function addAlias() {
+async function addAlias(btn = null) {
+  if (btn?.disabled) return;
   const input = document.getElementById('acctNewEmail');
   const address = (input?.value || '').trim();
   showError('acctProfileError', '');
   if (!address) { showError('acctProfileError', 'Enter an email address to add.'); return; }
   const su = await stepUp({ title: 'Add an email', note: `Confirm it is you, then we will send a code to ${address}.`, needCode: false });
   if (!su) return;
+  const done = busy(btn, 'Adding…');
   try {
     const claimId = (crypto.randomUUID?.() || String(Date.now()));
     await apiFetch(ALIASES_URL, { method: 'POST', body: JSON.stringify({ address, password: su.password, claimId }) });
@@ -971,25 +1356,33 @@ async function addAlias() {
     await loadAliases();
     showError('acctProfileError', `Check ${address} for a verification code, then use "Enter code".`);
   } catch (ex) { showError('acctProfileError', friendlyError(ex, 'Could not add that address.', { passwordFlow: true })); }
+  finally { done(); }
 }
 
-async function verifyAlias(aliasId, claimId) {
+async function verifyAlias(aliasId, claimId, btn = null) {
+  if (btn?.disabled) return;
   const su = await stepUp({ title: 'Verify this email', note: 'Enter the code we emailed to that address.', needCode: true });
   if (!su) return;
+  const done = busy(btn, 'Verifying…');
   try {
     // requestId flow: the add call returned/queued a code; the backend confirm
     // matches on (claimId, code). requestId is carried by the backend per claim.
     await apiFetch(`${ALIASES_URL}/confirm`, { method: 'POST', body: JSON.stringify({ claimId, code: su.code, password: su.password }) });
     await loadAliases();
   } catch (ex) { showError('acctProfileError', friendlyError(ex, 'That code did not verify.')); }
+  finally { done(); }
 }
 
-async function makePrimary(aliasId) {
+async function makePrimary(aliasId, btn = null) {
+  if (btn?.disabled) return;
   showError('acctProfileError', '');
   // set-primary needs an OTP sent to the CURRENT primary first.
+  let done = busy(btn, 'Sending the code…');
   try { await apiFetch(REQUEST_CODE_URL, { method: 'POST', body: JSON.stringify({ email: currentEmail(), purpose: 'primary-change' }) }); } catch { /* uniform */ }
+  done();
   const su = await stepUp({ title: 'Make this your primary', note: `We emailed a code to your current primary (${currentEmail()}). Enter it to confirm.`, needCode: true });
   if (!su) return;
+  done = busy(btn, 'Making it primary…');
   try {
     await apiFetch(`${ALIASES_URL}/primary`, { method: 'POST', body: JSON.stringify({ aliasId, password: su.password, code: su.code }) });
     await loadAliases();
@@ -999,12 +1392,15 @@ async function makePrimary(aliasId) {
     // Primary drives the sidebar title; re-render the shell brand.
     const t = document.querySelector('.adm-side-title'); if (t) t.textContent = currentEmail();
   } catch (ex) { showError('acctProfileError', friendlyError(ex, 'Could not change your primary address.', { passwordFlow: true })); }
+  finally { done(); }
 }
 
-async function resetTwoFactor() {
+async function resetTwoFactor(btn = null) {
+  if (btn?.disabled) return;
   showError('acct2faError', '');
   const su = await resetTwoFactorPrompt();
   if (!su) return;
+  const done = busy(btn, 'Resetting the authenticator…');
   try {
     const data = await apiFetch(RESET_2FA_URL, {
       method: 'POST',
@@ -1020,7 +1416,7 @@ async function resetTwoFactor() {
     }
   } catch (ex) {
     showError('acct2faError', friendlyError(ex, 'Could not reset your authenticator.', { passwordFlow: true }));
-  }
+  } finally { done(); }
 }
 
 // Current password + a CURRENT authenticator or recovery code, resolved to
@@ -1156,7 +1552,8 @@ function showRecoveryCodesModal(codes) {
       </div>`;
     hostEl.hidden = false;
     function onClick(e) {
-      if (e.target.closest('[data-rc-copy]')) { navigator.clipboard?.writeText(codes.join('\n')).catch(() => {}); e.target.textContent = 'Copied'; return; }
+      const rc = e.target.closest('[data-rc-copy]');
+      if (rc) { copyButton(rc, codes.join('\n'), { select: () => hostEl.querySelector('.acct-alias-list') }); return; }
       if (e.target.closest('[data-rc-done]')) { hostEl.removeEventListener('click', onClick); hostEl.hidden = true; hostEl.innerHTML = ''; resolve(); }
     }
     hostEl.addEventListener('click', onClick);
@@ -1167,36 +1564,43 @@ function showRecoveryCodesModal(codes) {
 // passkey module passes is ignored here.
 const passkeyPost = (path, _token, body) => apiFetch(`${PRAG_API_BASE}${path}`, { method: 'POST', body: JSON.stringify(body || {}) });
 
-async function addPasskey() {
+async function addPasskey(btn = null) {
+  if (btn?.disabled) return;
   showError('acct2faError', '');
   if (!passkeySupported()) { showError('acct2faError', 'This device or browser does not support passkeys.'); return; }
   const su = await passkeyPrompt({ title: 'Add a passkey', note: 'Confirm it’s you with your password, then your device will ask for your fingerprint, face, or PIN.', withName: true });
   if (!su) return;
+  const done = busy(btn, 'Adding the passkey…');
   try {
-    const done = await registerPasskey({ post: passkeyPost, token: '', name: su.name, extra: { currentPassword: su.password } });
-    if (Array.isArray(done.recoveryCodes) && done.recoveryCodes.length) await showRecoveryCodesModal(done.recoveryCodes);
+    const made = await registerPasskey({ post: passkeyPost, token: '', name: su.name, extra: { currentPassword: su.password } });
+    done();
+    if (Array.isArray(made.recoveryCodes) && made.recoveryCodes.length) await showRecoveryCodesModal(made.recoveryCodes);
     await loadPasskeys();
   } catch (ex) {
     showError('acct2faError', ex?.data?.error || friendlyError(ex, 'Could not add that passkey.', { passwordFlow: true }));
-  }
+  } finally { done(); }
 }
 
-async function removePasskey(credentialId) {
+async function removePasskey(credentialId, btn = null) {
+  if (btn?.disabled) return;
   showError('acct2faError', '');
   const su = await passkeyPrompt({ title: 'Remove this passkey', note: 'Confirm it’s you with your password. Your last second factor cannot be removed.', withName: false });
   if (!su) return;
+  const done = busy(btn, 'Removing…');
   try {
     await apiFetch(PASSKEY_REMOVE_URL, { method: 'POST', body: JSON.stringify({ credentialId, currentPassword: su.password }) });
     await loadPasskeys();
   } catch (ex) {
     showError('acct2faError', ex?.data?.error || friendlyError(ex, 'Could not remove that passkey.', { passwordFlow: true }));
-  }
+  } finally { done(); }
 }
 
-async function changePassword() {
+async function changePassword(btn = null) {
+  if (btn?.disabled) return;
   showError('acctPasswordError', '');
   const su = await changePasswordPrompt();
   if (!su) return;
+  const done = busy(btn, 'Changing…');
   try {
     const data = await apiFetch(CHANGE_PW_URL, {
       method: 'POST',
@@ -1212,7 +1616,7 @@ async function changePassword() {
     showError('acctPasswordError', 'Password changed. Other devices have been signed out.');
   } catch (ex) {
     showError('acctPasswordError', friendlyError(ex, 'Could not change your password.', { passwordFlow: true }));
-  }
+  } finally { done(); }
 }
 
 // A three-field prompt (current + new + confirm) with the same live rules the
@@ -1260,15 +1664,20 @@ function changePasswordPrompt() {
   });
 }
 
-async function removeAlias(aliasId) {
+async function removeAlias(aliasId, btn = null) {
+  if (btn?.disabled) return;
   showError('acctProfileError', '');
+  let done = busy(btn, 'Sending the code…');
   try { await apiFetch(REQUEST_CODE_URL, { method: 'POST', body: JSON.stringify({ email: currentEmail(), purpose: 'alias-remove' }) }); } catch { /* uniform */ }
+  done();
   const su = await stepUp({ title: 'Remove this email', note: `We emailed a code to your primary (${currentEmail()}). Enter it to confirm removal.`, needCode: true });
   if (!su) return;
+  done = busy(btn, 'Removing…');
   try {
     await apiFetch(`${ALIASES_URL}/remove`, { method: 'POST', body: JSON.stringify({ aliasId, password: su.password, code: su.code }) });
     await loadAliases();
   } catch (ex) { showError('acctProfileError', friendlyError(ex, 'Could not remove that address.', { passwordFlow: true })); }
+  finally { done(); }
 }
 
 /* ---------- my products (registered warranties) ---------- */
@@ -1503,14 +1912,24 @@ async function loadUsageCard() {
       : 'Upgrade in Plan and add-ons above';
     const monthWords = /^\d{4}-\d{2}$/.test(String(d.month || '')) ? new Date(`${d.month}-15T12:00:00Z`).toLocaleDateString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' }) : String(d.month || '');
     const callsPct = d.limits?.apiCalls ? Math.round(100 * (Number(d.usage?.apiCalls) || 0) / d.limits.apiCalls) : null;
+    // decision 22: connected domains beside API calls and storage; a standing count, not monthly, no grace margin.
+    // A lane whose answer carries no domain number shows nothing about domains.
+    const domLimit = d.limits?.domains;
+    const domUsed = d.usage?.domains;
+    const domainsHtml = domLimit === undefined || domLimit === null ? ''
+      : Number(domLimit) <= 0 ? `<p class="acct-card-note">Connected domains: none on the Free plan. Connecting a domain starts on the User plan.</p>`
+      : domUsed === null || domUsed === undefined ? `<p class="acct-card-note">Connected domains: the count could not be read right now.</p>`
+      : `${meterRowHtml('Connected domains', Number(domUsed) || 0, Number(domLimit))}
+        <p class="acct-card-note">Connected domains count what is connected now. They do not reset each month and have no grace margin.</p>`;
     host.innerHTML = cardHtml({ key: 'billing:usage', icon: 'activity', title: 'Usage this month', summary: escapeHtml(`${monthWords}${callsPct != null ? ` · ${callsPct}% of calls` : ''}`), cls: over.length ? 'acct-card-warn' : '', body: `
         <p class="acct-card-note">${escapeHtml(monthWords)} on the ${escapeHtml(tierName(tier))} plan${activeAddons.length
-          ? `, limits raised by ${activeAddons.length} add-on${activeAddons.length === 1 ? '' : 's'}` : ''}. Each allowance has a ${gracePct}% grace margin.${over.length
+          ? `, limits raised by ${activeAddons.length} add-on${activeAddons.length === 1 ? '' : 's'}` : ''}. API calls and storage each have a ${gracePct}% grace margin.${over.length
           ? ` <span class="acct-tag is-bad">${blocked ? 'past allowance and grace' : 'past allowance'}</span> ${escapeHtml(morePath)}.${blocked
             ? ' Metered platform functions are paused until capacity is added or the month resets; your account, billing, and warranty are unaffected.'
             : ' Nothing is limited yet.'}` : ''}</p>
         ${meterRowHtml('API calls', d.usage.apiCalls, d.limits.apiCalls)}
-        ${meterRowHtml('Storage', d.usage.storageBytes, d.limits.storageBytes, gbFmt)}` });
+        ${meterRowHtml('Storage', d.usage.storageBytes, d.limits.storageBytes, gbFmt)}
+        ${domainsHtml}` });
   } catch (ex) {
     // Endpoint not deployed yet, or a blip: the card simply does not render.
     host.innerHTML = '';
@@ -1546,6 +1965,7 @@ function subNotSubscribedHtml(data) {
         ${status === 'PAYMENT_PENDING' ? '' : leadBtn({ acct: 'subscribe' }, midCheckout ? 'play' : 'layers', midCheckout ? 'Resume checkout' : 'Subscribe', '', 'btn-primary')}
       </div>
     </section>
+    ${billingDetailsHtml(cachedPing()?.billingProfile)}
   `;
 }
 
@@ -1658,6 +2078,8 @@ function subManagerHtml(data) {
       <p class="acct-error" id="acctPmError" hidden></p>
       <p class="muted" id="acctPmMsg" hidden></p>` })}
 
+    ${billingDetailsHtml(cachedPing()?.billingProfile)}
+
     ${cardHtml({ key: 'billing:invoices', icon: 'file', title: 'Invoices', summary: invoices.length ? `${invoices.length} invoice${invoices.length === 1 ? '' : 's'}` : 'none yet', body: invoices.length ? `
         <ul class="acct-inv-list">
           ${invoices.map((i, n) => `
@@ -1743,49 +2165,112 @@ async function renderSubscription(main) {
   }
 }
 
+/* THE EXACT CHARGE ON A PLAN CHANGE (the money plan, item 2e, 2026-09-24; decisions 37(8) and 37(12)). An upgrade, an
+ * add-on or more seats is charged today (the backend's always_invoice), so the Confirm names the amount, sales tax
+ * included, from Stripe's own preview of that change, read just before the button arms:
+ *   POST v1/billing/subscription/quote { subType, cadence, addons, seats }
+ *     -> { quote: { subtotalCents, taxCents, totalCents, prorationDate, perPeriodCents? } }
+ * and the press sends it back with the change as { expectedTotalCents, prorationDate }: the server charges nothing
+ * unless the charge is still that amount (409 AMOUNT_CHANGED answers the new quote, and nothing is charged).
+ * Stripe's page (https://docs.stripe.com/api/invoices/create_preview, read 2026-09-24): a preview of a subscription
+ * update shows its prorations, and "to ensure that the actual proration is calculated exactly the same as the
+ * previewed proration, you should pass the subscription_details.proration_date parameter when doing the actual
+ * subscription update"; proration_date must fall within the current period, and proration_behavior cannot be "none".
+ * A change charged nothing today (fewer, removals only) reads no quote. A lane without the quote route (404) keeps the
+ * words it had, which name no amount; the route is the backend's to add (functions/billingSubscription.js). */
+const SUB_QUOTE_URL = `${PRAG_API_BASE}/billing/subscription/quote`;
+function planBody(sel) { return { subType: sel.subType, cadence: sel.cadence, addons: sel.addons, seats: sel.seats || 0 }; }
+/** Stripe's preview of what the change charges today, or null on a lane without the route. Throws when the route could not answer. */
+async function quotePlanChange(sel) {
+  try {
+    const d = await apiFetch(SUB_QUOTE_URL, { method: 'POST', body: JSON.stringify(planBody(sel)) });
+    const q = d?.quote;
+    return q && Number.isFinite(Number(q.totalCents)) ? q : null;
+  } catch (ex) {
+    if (ex?.status === 404 && !ex?.data?.code) return null;
+    throw ex;
+  }
+}
+/** "charge $50.66 today ($46.80 plus $3.86 sales tax)", or "charge $46.80 today" with no tax on it, or "no charge today". */
+function chargeTodayWords(q) {
+  const total = Math.round(Number(q.totalCents) || 0), tax = Math.max(0, Math.round(Number(q.taxCents) || 0));
+  if (total <= 0) return 'no charge today';
+  const sub = Number.isFinite(Number(q.subtotalCents)) ? Math.round(Number(q.subtotalCents)) : total - tax;
+  return tax > 0 ? `charge ${usdCents(total)} today (${usdCents(sub)} plus ${usdCents(tax)} sales tax)` : `charge ${usdCents(total)} today`;
+}
+
+/**
+ * The charge a press would take: read on the press that arms (the button busy while it is out) and kept on the button
+ * for the press that confirms, so the amount confirmed is the amount shown. Answers { quote } (quote null: nothing
+ * charged today, or a lane without the route), or null when it could not be read (the error is shown, nothing charged).
+ */
+async function planQuoteFor(btn, sel, kind) {
+  if (kind === 'less') return { quote: null };
+  if (btn.dataset.armed === '1') {
+    try { return { quote: btn.dataset.planQuote ? JSON.parse(btn.dataset.planQuote) : null }; } catch { return { quote: null }; }
+  }
+  const done = busy(btn, 'Working out the exact charge…');
+  try {
+    const quote = await quotePlanChange(sel);
+    btn.dataset.planQuote = quote ? JSON.stringify(quote) : '';
+    return { quote };
+  } catch (ex) {
+    if (!ex?.sessionInvalidated) showError('acctPlanError', ex?.data?.code === 'TAX_LOCATION' ? friendlyError(ex, 'Your billing address is needed for sales tax.') : 'The exact charge could not be worked out right now. Try again in a moment. Nothing was charged.');
+    return null;
+  } finally { done(); }
+}
+/** The Confirm's words: what will actually happen, per the backend's rule, with the amount charged today when it is known. */
+function planQuestion(kind, sel, quote, endDate) {
+  const per = sel.cadence === 'annual' ? '/yr' : '/mo';
+  const next = Number.isFinite(Number(quote?.perPeriodCents)) ? Number(quote.perPeriodCents) : sel.totalCents;
+  if (kind === 'less') return `Confirm: ${usdCents(sel.totalCents)}${per} plus sales tax from ${endDate}, no charge now`;
+  if (kind === 'both') return quote ? `Confirm: ${chargeTodayWords(quote)} for the additions; removals on ${endDate}` : `Confirm: additions charge today; removals on ${endDate}`;
+  return quote ? `Confirm: ${chargeTodayWords(quote)}, then ${usdCents(next)}${per} plus sales tax` : `Confirm: ${usdCents(sel.totalCents)}${per} plus sales tax, difference charged today`;
+}
+/**
+ * The change, sent with the amount shown. Applying… while it is out; after a refusal the button reads as a fresh Apply,
+ * not as a confirm that already fired. On success it stays waiting: the section is drawn again from the new subscription.
+ */
+async function submitPlanChange(btn, sel, quote, endDate) {
+  const done = busy(btn, 'Applying…');
+  delete btn.dataset.planQuote;
+  try {
+    const r = await apiFetch(SUB_UPDATE_URL, {
+      method: 'POST',
+      body: JSON.stringify({ ...planBody(sel), ...(quote ? { expectedTotalCents: Math.round(Number(quote.totalCents) || 0), prorationDate: quote.prorationDate } : {}) })
+    });
+    const msg = document.getElementById('acctPlanMsg');
+    const when = r?.effectiveAt ? fmtDate(r.effectiveAt) : endDate;
+    const text = r?.applied === 'scheduled'
+      ? `Scheduled. Your current plan runs until ${when}; the new plan starts then. No charge, no credit.`
+      : r?.applied === 'both'
+        ? `Additions applied; the difference settles today. Removals take effect on ${when}.`
+        : r?.applied === 'none'
+          ? 'No change to make.'
+          : 'Plan updated. The difference settles today; your tier follows the paid invoice.';
+    if (msg) { msg.textContent = text; msg.hidden = false; }
+    setTimeout(() => { const m = document.getElementById('acctMain'); if (m && activeSection === 'subscription') renderSubscription(m); }, 1800);
+  } catch (ex) {
+    done();
+    // the charge moved since it was shown: nothing was charged; the next press reads it again
+    const moved = ex?.status === 409 && ex?.data?.code === 'AMOUNT_CHANGED' && quote;
+    const now = Number(ex?.data?.quote?.totalCents);
+    showError('acctPlanError', moved && Number.isFinite(now)
+      ? `The charge is now ${usdCents(now)}, not ${usdCents(quote.totalCents)}. Check it and press again. Nothing was charged.`
+      : friendlyError(ex, 'Could not update the plan.'));
+  }
+}
+
 async function applyPlanChange(btn) {
   const sel = subPricing?.get();
-  if (!sel?.subType) return;
+  if (!sel?.subType || btn.disabled) return;
   const live = shapeOfItems(subData?.subscription?.items || []);
   const kind = changeKind(live, { subType: sel.subType, cadence: sel.cadence, addons: sel.addons, seats: sel.seats });
   const endDate = fmtDate(subData?.subscription?.currentPeriodEnd);
-  const per = sel.cadence === 'annual' ? '/yr' : '/mo';
-  // The confirm says what will actually happen, per the backend's rule.
-  const question = kind === 'less'
-    ? `Confirm: ${usdCents(sel.totalCents)}${per} plus sales tax from ${endDate}, no charge now`
-    : kind === 'both'
-      ? `Confirm: additions charge today; removals on ${endDate}`
-      : `Confirm: ${usdCents(sel.totalCents)}${per} plus sales tax, difference charged today`;
-  armConfirm(btn, question, async () => {
-    btn.disabled = true;
-    // The unarmed label, not the confirm text the button carried a moment
-    // ago: after a refusal the button must read as a fresh Apply, not as a
-    // confirm that already fired.
-    const orig = 'Apply changes';
-    btnLabel(btn, 'Applying…');
-    showError('acctPlanError', '');
-    try {
-      const r = await apiFetch(SUB_UPDATE_URL, {
-        method: 'POST',
-        body: JSON.stringify({ subType: sel.subType, cadence: sel.cadence, addons: sel.addons, seats: sel.seats || 0 })
-      });
-      const msg = document.getElementById('acctPlanMsg');
-      const when = r?.effectiveAt ? fmtDate(r.effectiveAt) : endDate;
-      const text = r?.applied === 'scheduled'
-        ? `Scheduled. Your current plan runs until ${when}; the new plan starts then. No charge, no credit.`
-        : r?.applied === 'both'
-          ? `Additions applied; the difference settles today. Removals take effect on ${when}.`
-          : r?.applied === 'none'
-            ? 'No change to make.'
-            : 'Plan updated. The difference settles today; your tier follows the paid invoice.';
-      if (msg) { msg.textContent = text; msg.hidden = false; }
-      setTimeout(() => { const m = document.getElementById('acctMain'); if (m && activeSection === 'subscription') renderSubscription(m); }, 1800);
-    } catch (ex) {
-      showError('acctPlanError', friendlyError(ex, 'Could not update the plan.'));
-      btn.disabled = false;
-      btnLabel(btn, orig);
-    }
-  });
+  showError('acctPlanError', '');
+  const q = await planQuoteFor(btn, sel, kind);
+  if (!q) return;
+  armConfirm(btn, planQuestion(kind, sel, q.quote, endDate), () => submitPlanChange(btn, sel, q.quote, endDate));
 }
 
 // Drop a scheduled period-end change; the live plan is untouched.
@@ -1806,10 +2291,11 @@ function isAddonDrop(cur, pending) {
 }
 
 async function keepCurrentPlan(btn) {
-  btn.disabled = true;
+  if (btn.disabled) return;
   showError('acctPendingError', '');
   const live = shapeOfItems(subData?.subscription?.items || []);
   const wasAddonDrop = isAddonDrop(live, subData?.pendingChange);
+  const done = busy(btn, 'Keeping it…');
   try {
     await apiFetch(SUB_UPDATE_URL, { method: 'POST', body: JSON.stringify({ cancelPending: true }) });
     if (wasAddonDrop) rememberKeptAddons(strayAddonKeys(live));
@@ -1817,8 +2303,7 @@ async function keepCurrentPlan(btn) {
     if (m && activeSection === 'subscription') renderSubscription(m);
   } catch (ex) {
     showError('acctPendingError', friendlyError(ex, 'Could not cancel the scheduled change.'));
-    btn.disabled = false;
-  }
+  } finally { done(); }
 }
 
 // Schedule the removal of add-ons that do not belong on this plan (or are no
@@ -1832,8 +2317,8 @@ async function dropStrayAddons(btn) {
   const addons = {};
   for (const k of Object.keys(live.addons)) addons[k] = !!live.addons[k] && !stray.includes(k);
   armConfirm(btn, `Confirm: remove on ${fmtDate(subData?.subscription?.currentPeriodEnd)}`, async () => {
-    btn.disabled = true;
     showError('acctPendingError', '');
+    const done = busy(btn, 'Scheduling the removal…');
     try {
       await apiFetch(SUB_UPDATE_URL, {
         method: 'POST',
@@ -1843,15 +2328,14 @@ async function dropStrayAddons(btn) {
       if (m && activeSection === 'subscription') renderSubscription(m);
     } catch (ex) {
       showError('acctPendingError', friendlyError(ex, 'Could not schedule the removal.'));
-      btn.disabled = false;
-    }
+    } finally { done(); }
   });
 }
 
 async function startPmUpdate(btn) {
   // In-flight guard: every extra click would mint another SetupIntent.
   if (btn?.disabled || subPmCtx) return;
-  if (btn) btn.disabled = true;
+  const done = busy(btn, 'Opening the card form…');
   showError('acctPmError', '');
   const hostWrap = document.getElementById('acctPmHost');
   const actions = document.getElementById('acctPmActions');
@@ -1870,8 +2354,7 @@ async function startPmUpdate(btn) {
     if (actions) actions.hidden = true;
   } catch (ex) {
     showError('acctPmError', friendlyError(ex, 'Could not start the card update.'));
-    if (btn) btn.disabled = false;
-  }
+  } finally { done(); }
 }
 
 async function savePmUpdate(btn) {
@@ -1885,7 +2368,8 @@ async function savePmUpdate(btn) {
       confirmParams: { return_url: `${location.origin}${location.pathname}?post=pm` },
       redirect: 'if_required'
     });
-    if (error) throw new Error(error.message || 'Card setup failed.');
+    // the site's own sentence for what Stripe answered, never Stripe's own text
+    if (error) throw Object.assign(new Error(cardErrorWords(error, { doing: 'save' })), { plain: true });
     const msg = document.getElementById('acctPmMsg');
     if (msg) { msg.textContent = 'Card saved. It becomes the default within a few seconds.'; msg.hidden = false; }
     subPmCtx = null;
@@ -1893,7 +2377,9 @@ async function savePmUpdate(btn) {
   } catch (ex) {
     // friendlyError so a session that died mid-setup stays quiet here too; the
     // Stripe.js errors it does not recognise still fall through to ex.message.
-    showError('acctPmError', friendlyError(ex, 'Card setup failed.'));
+    // (a session that died mid-setup stays quiet: friendlyError answers ''; anything else is the site's own sentence,
+    // never Stripe.js's text or a browser's)
+    showError('acctPmError', ex?.plain ? ex.message : ex?.sessionInvalidated ? friendlyError(ex, '') : cardErrorWords(ex, { doing: 'save' }));
     btn.disabled = false;
     btnLabel(btn, orig);
   }
@@ -1912,17 +2398,17 @@ function cancelPmUpdate() {
 }
 
 async function setCancelState(btn, action) {
+  if (btn.disabled) return;
   const go = async () => {
-    btn.disabled = true;
     showError('acctCancelError', '');
+    const done = busy(btn, action === 'cancel' ? 'Scheduling the end…' : 'Resuming…');
     try {
       await apiFetch(SUB_CANCEL_URL, { method: 'POST', body: JSON.stringify({ action }) });
       const m = document.getElementById('acctMain');
       if (m && activeSection === 'subscription') renderSubscription(m);
     } catch (ex) {
       showError('acctCancelError', friendlyError(ex, 'Could not update the subscription.'));
-      btn.disabled = false;
-    }
+    } finally { done(); }
   };
   if (action === 'cancel') armConfirm(btn, `End on ${fmtDate(subData?.subscription?.currentPeriodEnd)}?`, go);
   else go();
@@ -1996,7 +2482,8 @@ async function renderOrders(main) {
     const okEl = document.getElementById('acctClaimOk');
     okEl.hidden = true;
     if (!orderId) { showError('acctClaimError', 'Enter your order number.'); return; }
-    btn.disabled = true;
+    if (btn.disabled) return;
+    const done = busy(btn, 'Linking…');
     try {
       await apiFetch(ORDERS_CLAIM_URL, { method: 'POST', body: JSON.stringify({ orderId }) });
       input.value = '';
@@ -2014,9 +2501,7 @@ async function renderOrders(main) {
         ? ''
         : (ex?.data?.error || friendlyError(ex, 'That order could not be linked. Check the number, and that the order email is verified on your account.'));
       showError('acctClaimError', msg);
-    } finally {
-      btn.disabled = false;
-    }
+    } finally { done(); }
   };
   btn.addEventListener('click', doClaim);
   input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); doClaim(); } });
@@ -2097,14 +2582,13 @@ async function renderAdminAi(main) {
   const host = document.getElementById('admAiBody');
   try {
     const d = await apiFetch(ADMIN_AI_URL);
-    const dollars = (c) => `$${(Number(c || 0) / 100).toFixed(2)}`;
     const cap = d.cap || {}, p = d.provider || {};
     const pct = Number(cap.percent || 0);
     const cls = pct >= 95 ? 'is-hot' : pct >= 70 ? 'is-warn' : '';
     host.innerHTML = `
       <div class="adm-stat-grid">
-        ${statCard(dollars(cap.totalCents), `Spent in ${escapeHtml(d.month || '')}`)}
-        ${statCard(dollars(cap.capCents), 'Platform ceiling', 'AI_PLATFORM_CAP_CENTS', pct >= 80 ? 'amber' : '')}
+        ${statCard(cents(cap.totalCents), `Spent in ${escapeHtml(d.month || '')}`)}
+        ${statCard(cents(cap.capCents), 'Platform ceiling', 'AI_PLATFORM_CAP_CENTS', pct >= 80 ? 'amber' : '')}
         ${statCard(nFmt(cap.totalCalls), 'Calls this month')}
         ${statCard(escapeHtml(p.configured ? p.name : 'not configured'), 'Provider', p.configured ? `${(p.lanes || []).length} lanes, default ${escapeHtml(p.defaultLane || '')}` : 'AI_PROVIDER and AI_API_KEY', p.configured ? '' : 'amber')}
       </div>
@@ -2136,8 +2620,8 @@ async function renderAdminAi(main) {
                 <tr>
                   <td class="adm-cell-email cell-ellip" title="${escapeHtml(r.email || r.userId)}">${escapeHtml(r.email || r.userId)}</td>
                   <td>${tierPill(r.tier)}</td>
-                  <td class="adm-num ${over ? 'adm-money-neg' : ''}">${escapeHtml(dollars(r.usedCents))}</td>
-                  <td class="adm-num">${escapeHtml(dollars(r.limitCents))}${r.callLimit ? ` · ${escapeHtml(String(r.callLimit))} calls` : ''}</td>
+                  <td class="adm-num ${over ? 'adm-money-neg' : ''}">${escapeHtml(cents(r.usedCents))}</td>
+                  <td class="adm-num">${escapeHtml(cents(r.limitCents))}${r.callLimit ? ` · ${escapeHtml(String(r.callLimit))} calls` : ''}</td>
                   <td class="adm-num">${escapeHtml(nFmt(r.calls))}</td>
                   <td class="adm-muted">${escapeHtml(Object.entries(r.byLane || {}).map(([k, v]) => `${k} ${v.calls}`).join(', '))}</td>
                 </tr>`; }).join('')}
@@ -2258,7 +2742,6 @@ async function loadAdminUsage() {
 async function loadAdminCosts(force) {
   const host = document.getElementById('admCostBlock');
   if (!host) return;
-  const money = (n) => '$' + Number(n || 0).toFixed(2);
   try {
     const d = await apiFetch(force ? `${ADMIN_COSTS_URL}?refresh=1` : ADMIN_COSTS_URL);
     if (d && d.ok === false && d.needsSetup) {
@@ -2404,6 +2887,12 @@ function roleLabel(key) {
 // a roster that went stale is refused by the server rather than acted on. On
 // { ok, user } the row is swapped in place and the table repainted; the
 // roster is never re-fetched for a single change.
+/** An account the server answered with, into the roster and its rows. */
+function keepUserRow(user) {
+  const i = (cache.users || []).findIndex(u => u.userId === user.userId);
+  if (i >= 0) cache.users[i] = user; else (cache.users ||= []).push(user);
+  renderUserRows();
+}
 async function patchUser(row, patch) {
   showError('admUsersError', '');
   showError('umError', '');
@@ -2412,12 +2901,7 @@ async function patchUser(row, patch) {
       method: 'POST',
       body: JSON.stringify({ userId: row.userId, expectEmail: row.email, ...patch })
     });
-    if (r?.ok && r.user) {
-      const i = (cache.users || []).findIndex(u => u.userId === row.userId);
-      if (i >= 0) cache.users[i] = r.user; else (cache.users ||= []).push(r.user);
-      renderUserRows();
-      return r.user;
-    }
+    if (r?.ok && r.user) { keepUserRow(r.user); return r.user; }
     throw new Error('The server did not return the updated account.');
   } catch (ex) {
     const msg = friendlyError(ex, 'Could not update that account.');
@@ -2485,6 +2969,7 @@ function userManageHtml(u, { self }) {
         <section class="um-sec">
           <div class="um-sec-h">Account status</div>
           <p class="acct-modal-note">Suspending blocks sign-in and revokes every session. Billing continues. Reactivating restores sign-in.</p>
+          <p class="acct-modal-note">For a breach of the community standards, use Community standards: it also holds the team's environment.</p>
           <div class="um-actions">
             ${status === 'SUSPENDED'
               ? `<button class="btn btn-sm btn-lead" type="button" data-um-status="ACTIVE" ${lock || 'title="Click twice to confirm."'}>${ico('play')}<span>Reactivate</span></button>`
@@ -2501,10 +2986,18 @@ function userManageHtml(u, { self }) {
           </div>
         </section>
       `}
+      <section class="um-sec">
+        <div class="um-sec-h">Community standards</div>
+        <p class="acct-modal-note">Take this account's published sites down, suspend it for the community standards (its environment is held for its whole team), or close it for cause. Each is recorded and the owner is emailed.</p>
+        <div class="um-actions">
+          <button class="btn btn-sm btn-lead" type="button" data-um-conduct ${self ? `disabled data-tip="${lockTitle}"` : ''}>${ico('shield')}<span>Open community standards</span></button>
+        </div>
+      </section>
       <section class="um-sec um-sec--danger">
         <div class="um-sec-h">Close account</div>
-        <p class="acct-modal-note">Permanent. Ends any subscription now, removes the sign-in, and signs the account out everywhere. Type the account email to enable the button.</p>
+        <p class="acct-modal-note">Permanent. Ends any subscription now, removes the sign-in, and signs the account out everywhere. An account still holding Microsoft license commitments is shown what is left of them first, and closes only once that amount is charged on the customer's final bill. Type the account email to enable the button.</p>
         <input class="adm-input" id="umCloseEmail" type="email" autocomplete="off" spellcheck="false" placeholder="${escapeHtml(email)}" ${lock} aria-label="Type the account email to confirm">
+        <div class="um-close-bill" id="umCloseBill" role="status" aria-live="polite" hidden></div>
         <div class="um-actions">
           <button class="btn btn-sm btn-lead is-danger" type="button" data-um-close-account disabled
             data-tip="${self ? lockTitle : 'Enabled once the email above matches this account'}">${ico('power')}<span>Close account</span></button>
@@ -2518,90 +3011,130 @@ function userManageHtml(u, { self }) {
   `;
 }
 
+/**
+ * The final bill of the account being closed from the Users desk (decision 19), as the server answered the close: its
+ * sentence, each license with what is left of it, the sales tax when the answer names it (37(12)), and the press that
+ * confirms it.
+ */
+function closeBillHtml(bill) {
+  const taxCents = Math.max(0, Math.round(Number(bill.taxCents) || 0));
+  const lines = (bill.lines || []).map(l => `<li>${escapeHtml(l.name || 'A license')}, ${escapeHtml(String(l.seats))} license seat${Number(l.seats) === 1 ? '' : 's'}, to ${escapeHtml(fmtDate(l.commitmentEndsAt))}: ${escapeHtml(l.remainingText || '')}</li>`).join('')
+    + (taxCents > 0 ? `<li>Sales tax: ${escapeHtml(usdCents(taxCents))}</li>` : '');
+  return `<p class="acct-modal-note">${escapeHtml(bill.sentence)}</p>${lines ? `<ul class="um-close-lines">${lines}</ul>` : ''}<p class="acct-modal-note">Press <strong>${escapeHtml(closeChargeWord(bill))}</strong> to charge it on the customer's final bill and close the account. If the card is declined, nothing is closed.</p>`;
+}
+/** The bill above the Close button (or none), and the button's word for it. */
+function paintCloseBill(um) {
+  const box = um.$('#umCloseBill');
+  const btn = um.$('[data-um-close-account]');
+  if (btn && !um.working) btnLabel(btn, um.closeBill ? closeChargeWord(um.closeBill) : 'Close account');
+  if (!box) return;
+  box.innerHTML = um.closeBill ? closeBillHtml(um.closeBill) : '';
+  box.hidden = !um.closeBill;
+}
+/** Whether the email typed to enable the close is this account's. */
+function closeMatches(um) {
+  const typed = (um.$('#umCloseEmail')?.value || '').trim().toLowerCase();
+  return !!typed && typed === String(um.row.email || '').trim().toLowerCase();
+}
+/** One change to the account (role, flags, status, phone freeze, second-factor reset), its button busy while it is out; the window repaints from the answer. */
+async function runPatch(btn, patch, um) {
+  if (um.working) return;
+  um.working = true;
+  const done = busy(btn, 'Working…');
+  const fresh = await patchUser(um.row, patch);
+  um.working = false;
+  done();
+  if (fresh) { um.row = fresh; um.paint(); }
+}
+/**
+ * The close: one request, its button busy while it is out. Closing an admin drops the admin flag in the same request; an
+ * account with license commitments answers the amount first (closeBillOf), shown above the button, and the next press
+ * confirms it with acceptRemainingCents (decision 19).
+ */
+async function runClose(btn, um) {
+  if (um.working) return;
+  um.working = true;
+  showError('admUsersError', ''); showError('umError', '');
+  const patch = um.row.isAdmin ? { status: 'CLOSED', isAdmin: false } : { status: 'CLOSED' };
+  if (um.closeBill) patch.acceptRemainingCents = um.closeBill.totalCents;
+  const done = busy(btn, um.closeBill ? 'Charging and closing…' : 'Closing…');
+  try {
+    const r = await apiFetch(USER_PATCH_URL, { method: 'POST', body: JSON.stringify({ userId: um.row.userId, expectEmail: um.row.email, ...patch }) });
+    if (!(r?.ok && r.user)) throw new Error('The server did not return the updated account.');
+    keepUserRow(r.user);
+    um.working = false; done();
+    um.close();
+  } catch (ex) {
+    um.working = false; done();
+    const bill = closeBillOf(ex);
+    if (bill) { um.closeBill = bill; paintCloseBill(um); return; }
+    const msg = friendlyError(ex, 'Could not close that account.');
+    showError('admUsersError', msg); showError('umError', msg);
+    paintCloseBill(um);
+  }
+}
+/** The Manage account window's buttons: each a selector and what its press does, looked up by the window's one click listener. */
+const USER_MANAGE_ACTIONS = [
+  ['[data-um-save]', (btn, um) => {
+    const patch = {};
+    const roleEl = um.$('#umRole'), adminEl = um.$('#umAdmin'), devEl = um.$('#umDev');
+    if (roleEl && !roleEl.disabled && roleEl.value !== String(um.row.role || '')) patch.role = roleEl.value;
+    if (adminEl && !adminEl.disabled && adminEl.checked !== (um.row.isAdmin === true)) patch.isAdmin = adminEl.checked;
+    if (devEl && devEl.checked !== (um.row.isDev === true)) patch.isDev = devEl.checked;
+    if (!Object.keys(patch).length) { showError('umError', 'Nothing to save: the role and flags match the account.'); return; }
+    runPatch(btn, patch, um);
+  }],
+  ['[data-um-status]', (btn, um) => {
+    const next = btn.dataset.umStatus;
+    armConfirm(btn, `Confirm: ${next === 'ACTIVE' ? 'reactivate' : 'suspend'} ${um.row.email || ''}`, () => runPatch(btn, { status: next }, um));
+  }],
+  ['[data-um-unfreeze]', (btn, um) => runPatch(btn, { phoneChangesFrozen: false }, um)],
+  // the community standards (2026-09-24): its own window over this one; the roster reloads after an action
+  ['[data-um-conduct]', (btn, um) => {
+    if (um.working) return;
+    const done = busy(btn, 'Opening…');
+    import('./conductDesk.js')
+      .then(mod => mod.openConduct({ userId: um.row.userId, deps: { apiFetch, escapeHtml, friendlyError, fmtDate, cachedPing }, onChange: () => { um.close(); try { renderUsers(document.getElementById('acctMain')); } catch { /* the roster reloads on the next visit */ } } }))
+      .catch(() => showError('umError', 'Could not open Community standards. Reload and try again.'))
+      .finally(() => done());
+  }],
+  ['[data-um-2fa-reset]', (btn, um) => {
+    const reason = (um.$('#umResetReason')?.value || '').trim();
+    if (reason.length < 8) { showError('umError', 'Enter the reason first: the support ticket or a note, at least 8 characters.'); return; }
+    armConfirm(btn, `Confirm: reset the second factor of ${um.row.email || ''}`, () => runPatch(btn, { secondFactorReset: true, reason }, um));
+  }],
+  ['[data-um-close-account]', (btn, um) => {
+    if (!closeMatches(um)) { showError('umError', 'Type the account email exactly to enable the close.'); return; }
+    runClose(btn, um);
+  }]
+];
+
 function openUserManage(userId, email) {
-  let row = (cache.users || []).find(u => u.userId === userId)
+  const row = (cache.users || []).find(u => u.userId === userId)
     || (cache.users || []).find(u => String(u.email || '').toLowerCase() === String(email || '').toLowerCase());
   if (!row) { showError('admUsersError', 'Roster is out of date for this account. Reload and try again.'); return; }
-  let hostEl = document.getElementById('admUserManage');
-  if (!hostEl) { hostEl = document.createElement('div'); hostEl.id = 'admUserManage'; hostEl.className = 'acct-modal-host'; document.body.appendChild(hostEl); }
   const me = cachedPing()?.user || {};
   const self = (!!me.userId && me.userId === row.userId)
     || (!!me.email && String(me.email).toLowerCase() === String(row.email || '').toLowerCase());
-
-  let busy = false;
-  const paint = () => { hostEl.innerHTML = userManageHtml(row, { self }); };
-  paint();
-  hostEl.hidden = false;
-
-  const closeMatches = () => {
-    const typed = (hostEl.querySelector('#umCloseEmail')?.value || '').trim().toLowerCase();
-    return !!typed && typed === String(row.email || '').trim().toLowerCase();
-  };
+  // um: the account in the window, whether a request is out, and the final bill a close answered (decision 19)
+  const um = { row, self, working: false, closeBill: null };
+  const m = openModal('admUserManage', userManageHtml(row, { self }), { onClick, onInput });
+  Object.assign(um, {
+    $: m.$, close: m.close,
+    paint: () => { m.host.innerHTML = userManageHtml(um.row, { self }); if (um.closeBill) paintCloseBill(um); }
+  });
   function onInput(e) {
     if (e.target?.id !== 'umCloseEmail' || self) return;
-    const b = hostEl.querySelector('[data-um-close-account]');
-    if (b) b.disabled = busy || !closeMatches();
-  }
-  async function run(btn, patch, { closeOnSuccess = false } = {}) {
-    if (busy) return;
-    busy = true;
-    const orig = btnLabel(btn);
-    btn.disabled = true;
-    btnLabel(btn, 'Working…');
-    const fresh = await patchUser(row, patch);
-    busy = false;
-    if (fresh) {
-      row = fresh;
-      if (closeOnSuccess) return close();
-      paint();
-      return;
-    }
-    btn.disabled = false;
-    btnLabel(btn, orig);
+    const b = um.$('[data-um-close-account]');
+    if (b && !b.hasAttribute('aria-busy')) b.disabled = um.working || !closeMatches(um);
   }
   function onClick(e) {
-    if (e.target.closest('[data-um-close]')) { if (!busy) close(); return; }
-    const save = e.target.closest('[data-um-save]');
-    if (save) {
-      const patch = {};
-      const roleEl = hostEl.querySelector('#umRole');
-      const adminEl = hostEl.querySelector('#umAdmin');
-      const devEl = hostEl.querySelector('#umDev');
-      if (roleEl && !roleEl.disabled && roleEl.value !== String(row.role || '')) patch.role = roleEl.value;
-      if (adminEl && !adminEl.disabled && adminEl.checked !== (row.isAdmin === true)) patch.isAdmin = adminEl.checked;
-      if (devEl && devEl.checked !== (row.isDev === true)) patch.isDev = devEl.checked;
-      if (!Object.keys(patch).length) { showError('umError', 'Nothing to save: the role and flags match the account.'); return; }
-      return void run(save, patch);
-    }
-    const st = e.target.closest('[data-um-status]');
-    if (st && !st.disabled) {
-      const next = st.dataset.umStatus;
-      const verb = next === 'ACTIVE' ? 'reactivate' : 'suspend';
-      return void armConfirm(st, `Confirm: ${verb} ${row.email || ''}`, () => run(st, { status: next }));
-    }
-    const unfreeze = e.target.closest('[data-um-unfreeze]');
-    if (unfreeze) return void run(unfreeze, { phoneChangesFrozen: false });
-    const tfa = e.target.closest('[data-um-2fa-reset]');
-    if (tfa && !tfa.disabled) {
-      const reason = (hostEl.querySelector('#umResetReason')?.value || '').trim();
-      if (reason.length < 8) { showError('umError', 'Enter the reason first: the support ticket or a note, at least 8 characters.'); return; }
-      return void armConfirm(tfa, `Confirm: reset the second factor of ${row.email || ''}`, () => run(tfa, { secondFactorReset: true, reason }));
-    }
-    const closeBtn = e.target.closest('[data-um-close-account]');
-    if (closeBtn && !closeBtn.disabled) {
-      if (!closeMatches()) { showError('umError', 'Type the account email exactly to enable the close.'); return; }
-      // Closing an admin needs the admin flag dropped in the same request.
-      const patch = row.isAdmin ? { status: 'CLOSED', isAdmin: false } : { status: 'CLOSED' };
-      return void run(closeBtn, patch, { closeOnSuccess: true });
+    if (e.target.closest('[data-um-close]')) { if (!um.working) um.close(); return; }
+    for (const [sel, run] of USER_MANAGE_ACTIONS) {
+      const btn = e.target.closest(sel);
+      if (btn) { if (!btn.disabled) run(btn, um); return; }
     }
   }
-  const close = () => {
-    hostEl.removeEventListener('click', onClick);
-    hostEl.removeEventListener('input', onInput);
-    hostEl.hidden = true; hostEl.innerHTML = '';
-  };
-  hostEl.addEventListener('click', onClick);
-  hostEl.addEventListener('input', onInput);
 }
 
 async function renderUsers(main) {
@@ -2833,6 +3366,7 @@ function ntRoleRemove(btn) {
   const label = ntLabel(key);
   armConfirm(btn, 'remove?', async () => {
     showError('ntError', '');
+    const done = busy(btn, 'Removing…');
     try {
       const res = await apiFetch(ADMIN_ROLES_REMOVE_URL, { method: 'POST', body: JSON.stringify({ key }) });
       ntApplyRoles(res);
@@ -2840,7 +3374,7 @@ function ntRoleRemove(btn) {
       if (out) out.textContent = `Removed ${label}.`;
     } catch (ex) {
       showError('ntError', friendlyError(ex, 'Could not remove the role.'));
-    }
+    } finally { done(); }
   });
 }
 
@@ -2849,7 +3383,10 @@ async function renderNotify(main) {
     <header class="adm-sec-head"><h2 class="adm-sec-title">Notifications</h2></header>
     <p class="adm-error" id="ntError" hidden></p>
     <div id="ntBody"><p class="adm-note">Loading…</p></div>
+    <div id="agNoticeHost"></div>
   `;
+  // decision 37(4): a material agreement change emailed to every owner, whatever their news setting (agreementNotice.js)
+  renderAgreementNotice(document.getElementById('agNoticeHost'), { apiFetch, escapeHtml, friendlyError }).catch(() => {});
   try {
     await refreshNotify();
   } catch (ex) {
@@ -3057,7 +3594,8 @@ function admOrderRowHtml(o) {
   const paid = String(o.status).toUpperCase() === 'PAID';
   const physical = !!(o.shipCarrier || o.shippingCents || o.shipRateCents);
   const dash = '<span class="adm-muted">—</span>';
-  const money = (cents) => (cents == null ? dash : escapeHtml(usdCents(cents)));
+  // a cell: the amount, or the dash when the order has none (not the shared money/cents formatters, which it must not shadow)
+  const amt = (c) => (c == null ? dash : escapeHtml(usdCents(c)));
   const net = odNet(o);
   const taxBad = o.taxStatus === 'uncalculated';
   const taxTitle = taxBad ? 'Sales tax was NOT calculated on this order. Remit it by hand.' : (o.taxSummary ? `Stripe Tax: ${o.taxSummary}` : (o.taxCents ? 'Sales tax' : 'No taxable goods'));
@@ -3070,10 +3608,10 @@ function admOrderRowHtml(o) {
       <td class="adm-muted cell-tight" title="${escapeHtml(fmtDate(o.createdAt))}">${escapeHtml(fmtDay(o.createdAt))}</td>
       <td class="adm-cell-email cell-ellip od-ellip" title="${escapeHtml(o.email || '')}">${escapeHtml(o.email || '')}</td>
       <td class="cell-ellip od-ellip" title="${escapeHtml(orderLinesLabel(o.lines))}">${escapeHtml(orderLinesLabel(o.lines))}</td>
-      <td class="adm-num cell-tight">${money(o.goodsCents)}</td>
-      <td class="adm-num cell-tight" title="${escapeHtml(shipTitle)}">${o.shippingCents ? money(o.shippingCents) : (physical ? '<span class="adm-muted">Free</span>' : dash)}</td>
-      <td class="adm-num cell-tight ${taxBad ? 'od-bad' : ''}" title="${escapeHtml(taxTitle)}">${taxBad ? 'none' : (o.taxCents ? money(o.taxCents) : dash)}</td>
-      <td class="adm-num cell-tight">${money(o.totalCents)}${o.refundedCents ? `<div class="adm-muted adm-money-neg">-${escapeHtml(usdCents(o.refundedCents))}</div>` : ''}</td>
+      <td class="adm-num cell-tight">${amt(o.goodsCents)}</td>
+      <td class="adm-num cell-tight" title="${escapeHtml(shipTitle)}">${o.shippingCents ? amt(o.shippingCents) : (physical ? '<span class="adm-muted">Free</span>' : dash)}</td>
+      <td class="adm-num cell-tight ${taxBad ? 'od-bad' : ''}" title="${escapeHtml(taxTitle)}">${taxBad ? 'none' : (o.taxCents ? amt(o.taxCents) : dash)}</td>
+      <td class="adm-num cell-tight">${amt(o.totalCents)}${o.refundedCents ? `<div class="adm-muted adm-money-neg">-${escapeHtml(usdCents(o.refundedCents))}</div>` : ''}</td>
       <td class="adm-num cell-tight adm-muted od-cost" title="Stripe processing fee">${o.stripeFeeCents == null ? dash : '-' + escapeHtml(usdCents(o.stripeFeeCents))}</td>
       <td class="adm-num cell-tight adm-muted od-cost" title="${escapeHtml(labelTitle)}">${o.labelCostCents == null ? (o.labelUrl ? '?' : dash) : '-' + escapeHtml(usdCents(o.labelCostCents))}</td>
       <td class="adm-num cell-tight" title="${escapeHtml(netTitle)}">${net == null ? dash : escapeHtml(usdCents(net))}</td>
@@ -3285,20 +3823,17 @@ async function buyOrderLabel(btn) {
   const orderId = btn.dataset.order;
   if (!orderId) return;
   armConfirm(btn, 'Confirm: buy label', async () => {
-    btn.disabled = true;
-    const orig = btnLabel(btn);
-    btnLabel(btn, 'Buying…');
+    // the icon and the words come back as they were on a refusal (busy() keeps the button's own markup)
+    const done = busy(btn, 'Buying…');
     showError('admOrdersError', '');
     try {
       const res = await apiFetch(ADMIN_ORDER_LABEL_URL, { method: 'POST', body: JSON.stringify({ orderId }) });
       const lu = safeUrl(res.labelUrl); if (lu) window.open(lu, '_blank', 'noopener');
       const active = document.querySelector('[data-adm-orders].is-active')?.dataset.admOrders || '';
-      loadAdminOrders(active);
+      await loadAdminOrders(active);
     } catch (ex) {
       showError('admOrdersError', friendlyError(ex, 'Label purchase failed.'));
-      btn.disabled = false;
-      btnLabel(btn, orig);
-    }
+    } finally { done(); }
   });
 }
 
@@ -3377,11 +3912,11 @@ async function renderPayments(main) {
   const host = document.getElementById('admPayBody');
   try {
     const d = await apiFetch(STRIPE_OVERVIEW_URL);
-    const money = (arr) => (arr || []).map(b => `${usdCents(b.amountCents)} ${escapeHtml(b.currency)}`).join(' · ') || '$0.00';
+    const balances = (arr) => (arr || []).map(b => `${usdCents(b.amountCents)} ${escapeHtml(b.currency)}`).join(' · ') || '$0.00';
     host.innerHTML = `
       <div class="adm-stat-grid">
-        ${statCard(money(d.balance?.available), 'Available balance')}
-        ${statCard(money(d.balance?.pending), 'Pending balance')}
+        ${statCard(balances(d.balance?.available), 'Available balance')}
+        ${statCard(balances(d.balance?.pending), 'Pending balance')}
         ${statCard(d.activeSubscriptions ?? '—', 'Active subscriptions')}
         ${statCard(d.livemode === false ? 'TEST' : d.livemode === true ? 'LIVE' : '—', 'Stripe mode',
           '', d.livemode === false ? 'amber' : d.livemode === true ? 'teal' : '')}
@@ -3720,11 +4255,7 @@ async function mint(btn) {
 function copyCodes(btn) {
   const codes = [...document.querySelectorAll('#admCodeList code')].map(c => c.textContent).join('\n');
   if (!codes) return;
-  navigator.clipboard?.writeText(codes).then(() => {
-    const original = btnLabel(btn);
-    btnLabel(btn, 'Copied');
-    setTimeout(() => { btnLabel(btn, original); }, 1200);
-  }).catch(() => { /* clipboard blocked; codes are on screen anyway */ });
+  copyButton(btn, codes, { select: () => document.getElementById('admCodeList') });
 }
 
 /* ---------- catalog (lane mirror) ---------- */
@@ -3878,6 +4409,11 @@ let lastCatalogSync = null;
 // key. Copies to the clipboard; when the browser refuses, the text is shown so
 // it can be selected by hand.
 async function copyCatalogList(btn) {
+  if (btn.disabled) return;
+  const done = busy(btn, 'Gathering the list…');
+  try { await copyCatalogListNow(); } finally { done(); }
+}
+async function copyCatalogListNow() {
   const ping = cachedPing();
   const rows = (ping?.productCatalog || []).filter(r => String(r.active) !== 'false')
     .map(r => `${r.lookupKey}  ${usdCents(r.amount)}  ${r.interval || 'one-time'}`).sort();
@@ -3914,7 +4450,7 @@ async function copyCatalogList(btn) {
   const out = document.getElementById('admCatalogSyncResult');
   const raw = document.getElementById('admCatalogRaw');
   let copied = false;
-  try { await navigator.clipboard.writeText(text); copied = true; } catch { copied = false; }
+  try { await writeClipboard(text); copied = true; } catch { copied = false; }
   if (raw) { raw.textContent = text; raw.hidden = copied; }
   if (out) out.textContent = copied ? `Copied ${lines.length} lines.` : 'The browser refused the clipboard; the list is shown below to select and copy.';
 }
@@ -3991,8 +4527,8 @@ async function catalogImport(btn) {
     if (word !== 'live') { showError('admCatalogError', 'This imports into the LIVE Stripe account. Type live in the box beside the button, then press Import.'); document.getElementById('admImportLiveWord')?.focus(); return; }
     confirm = 'live';
   }
-  btn.disabled = true;
-  btnLabel(btn, 'Importing…');
+  if (btn.disabled) return;
+  const done = busy(btn, 'Importing…');
   try {
     const data = await apiFetch(CATALOG_IMPORT_URL, {
       method: 'POST',
@@ -4007,18 +4543,18 @@ async function catalogImport(btn) {
     showError('admCatalogError', '');
   } catch (ex) {
     showError('admCatalogError', friendlyError(ex, 'Import failed.'));
-    btn.disabled = false;
-    btnLabel(btn, `Import into ${LANE}`);
-  }
+  } finally { done(); }
 }
 
 /* ================================================================
    ROUTING / BEHAVIOUR
    ================================================================ */
 
-// What the Team module borrows from this panel, so it carries no second copy.
+// What the Team module borrows from this panel, so it carries no second copy. Its fetch notes the role each read
+// of the team view answers with, so the Licensing entry follows the team in view (licensingHidden above);
+// teamPicked is called when the Team tab changes the team in view, so the entry hides until that team's role is read.
 function teamDeps() {
-  return { apiFetch, escapeHtml, friendlyError, showError, fmtDate, cachedPing };
+  return { apiFetch: viewApiFetch, escapeHtml, friendlyError, showError, fmtDate, cachedPing, teamPicked: syncLicensingNav };
 }
 
 function showSection(id) {
@@ -4026,6 +4562,8 @@ function showSection(id) {
   // and nobody lands on Team while it is off for this lane.
   if (cachedPing() && !isAdmin() && INTERNAL_SECTIONS.some(s => s.id === id)) id = 'profile';
   if (!TEAM_ON && TEAM_IDS.has(id)) id = 'profile';
+  // below member on the team in view there is no Licensing (a stale link, the address bar)
+  if (id === 'licensing' && TEAM_ON && licensingBlocked()) id = 'profile';
   activeSection = id;
   // The section rides in the hash (2026-09-21, Cameron: a reload sent him to the landing): replaceState never fires
   // hashchange, and on load /#account?section=<id> opens exactly this section (runtime/bootstrap.js routeToAccountOnLoad).
@@ -4037,6 +4575,10 @@ function showSection(id) {
   });
   const main = document.getElementById('acctMain');
   if (!main) return;
+  // the role on the team in view is not known yet: nothing of Licensing is read until it is
+  if (id === 'licensing' && TEAM_ON && roleInView() === null) return void waitForLicensingRole(main);
+  // a role read that failed (or a team picked since) is asked again on the next section; Team and Environment read the view themselves
+  if (TEAM_ON && id !== 'team' && id !== 'environment' && roleInView() === null) ensureTeamRole();
   consumeOpenCard(id);
   if (id === 'profile')      return void renderProfile(main);
   if (id === 'products')     return void renderProducts(main);
@@ -4050,6 +4592,7 @@ function showSection(id) {
   if (id === 'users')        return void renderUsers(main);
   if (id === 'tenants')      return void renderTenants(main, teamDeps());
   if (id === 'buildsqueue')  return void renderBuildsQueue(main, teamDeps());
+  if (id === 'attention')    return void renderNeedsAttention(main, teamDeps());
   if (id === 'notify')       return void renderNotify(main);
   if (id === 'reports')      return void renderReports(main);
   if (id === 'support')      return void renderSupport(main);
@@ -4084,7 +4627,14 @@ function bindOnce() {
       e.preventDefault();
       const a = act.dataset.acctAction;
       if (a === 'logout') return void window.logout?.();
-      if (a === 'subscribe') return void (window.openWizardFromMenu?.() || window.setAppMode?.('wizard'));
+      if (a === 'subscribe') {
+        if (act.disabled) return;
+        // the wizard reads the account's state first: the button waits for that answer, saying so
+        const opening = window.openWizardFromMenu?.();
+        if (!opening) return void window.setAppMode?.('wizard');
+        const done = busy(act, 'Opening…');
+        return void Promise.resolve(opening).finally(done);
+      }
       if (a === 'inv-more') { const l = act.closest('.ev-card-body')?.querySelector('.acct-inv-list'); if (l) l.classList.add('is-all'); act.closest('.acct-inv-more')?.remove(); return; }
       if (a === 'sub-apply') return void applyPlanChange(act);
       if (a === 'sub-cancel') return void setCancelState(act, 'cancel');
@@ -4096,29 +4646,34 @@ function bindOnce() {
       if (a === 'pm-cancel') return void cancelPmUpdate();
       if (a === 'mail-offer-go') { mailOfferDone(); return void showSection('licensing'); }
       if (a === 'mail-offer-later') return void mailOfferDone();
-      if (a === 'phone-start') return void startPhone();
+      if (a === 'lic-role-retry') return void showSection('licensing');
+      if (a === 'phone-start') return void startPhone(act);
       if (a === 'phone-reverify') {
+        if (act.disabled) return;
         const input = document.getElementById('acctNewPhone');
         if (input) input.value = act.dataset.phone || '';
-        return void startPhone();
+        return void startPhone(act);
       }
-      if (a === 'phone-remove') { if (!armed(act, 'Remove?')) return; return void removePhone(); }
+      if (a === 'phone-remove') { if (act.disabled || !armed(act, 'Remove?')) return; return void removePhone(act); }
       if (a === 'report-anomaly') return void reportAnomaly();
       if (a === 'support-request') return void supportRequest();
       if (a === 'notify-save') return void saveNotifyPrefs(act);
-      if (a === 'theme-set') return void setThemePreference(act.dataset.theme);
+      if (a === 'theme-set') return void setThemePreference(act.dataset.theme, act);
       if (a === 'starfield-set') return void setStarfieldPreference(act.dataset.starfield);
-      if (a === 'close-account') return void closeAccount();
-      if (a === 'add-alias') return void addAlias();
-      if (a === 'change-password') return void changePassword();
-      if (a === 'reset-2fa') return void resetTwoFactor();
-      if (a === 'add-passkey') return void addPasskey();
-      if (a === 'remove-passkey') return void removePasskey(String(act.dataset.cred || ''));
-      if (a === 'make-primary') return void makePrimary(act.dataset.alias);
-      if (a === 'remove-alias') return void removeAlias(act.dataset.alias);
-      if (a === 'verify-alias') return void verifyAlias(act.dataset.alias, act.dataset.claim);
-      if (a === 'lane-live') return void switchLane('live');
-      if (a === 'lane-dev') return void switchLane('dev');
+      if (a === 'name-save') return void saveName(act);
+      if (a === 'bd-edit') return void editBillingDetails();
+      if (a === 'bd-cancel') { if (act.disabled) return; return void cancelBillingDetails(); }
+      if (a === 'bd-save') return void saveBillingDetails(act, { apiFetch, url: BILLING_DETAILS_URL });
+      if (a === 'close-account') return void closeAccount(act);
+      if (a === 'add-alias') return void addAlias(act);
+      if (a === 'change-password') return void changePassword(act);
+      if (a === 'reset-2fa') return void resetTwoFactor(act);
+      if (a === 'add-passkey') return void addPasskey(act);
+      if (a === 'remove-passkey') return void removePasskey(String(act.dataset.cred || ''), act);
+      if (a === 'make-primary') return void makePrimary(act.dataset.alias, act);
+      if (a === 'remove-alias') return void removeAlias(act.dataset.alias, act);
+      if (a === 'verify-alias') return void verifyAlias(act.dataset.alias, act.dataset.claim, act);
+      if (a === 'lane-live' || a === 'lane-dev') return void laneSwitch(act, a === 'lane-live' ? 'live' : 'dev', 'data-acct-action');
       if (a === 'redeem-product') {
         try { sessionStorage.setItem('pragoptics_redeem_prefill', act.dataset.code || ''); } catch {}
         window.location.hash = '#redeem';
@@ -4137,18 +4692,23 @@ function bindOnce() {
       if (admAct.dataset.admAction === 'catalog-sync') catalogSync(admAct);
       if (admAct.dataset.admAction === 'catalog-copy') copyCatalogList(admAct);
       if (admAct.dataset.admAction === 'catalog-import') catalogImport(admAct);
-      if (admAct.dataset.admAction === 'lane-live') switchLane('live');
-      if (admAct.dataset.admAction === 'lane-dev') switchLane('dev');
+      if (admAct.dataset.admAction === 'lane-live') laneSwitch(admAct, 'live', 'data-adm-action');
+      if (admAct.dataset.admAction === 'lane-dev') laneSwitch(admAct, 'dev', 'data-adm-action');
       if (admAct.dataset.admAction === 'order-label') buyOrderLabel(admAct);
       if (admAct.dataset.admAction === 'order-refund') openOrderRefund(admAct);
       if (admAct.dataset.admAction === 'orders-export') exportOrdersCsv();
-      if (admAct.dataset.admAction === 'orders-clear-range') {
+      if (admAct.dataset.admAction === 'orders-clear-range' && !admAct.disabled) {
         odRange.from = ''; odRange.to = '';
         const f = document.getElementById('odFrom'); if (f) f.value = '';
         const t = document.getElementById('odTo'); if (t) t.value = '';
-        loadAdminOrders(odActiveStatus());
+        const done = busy(admAct, 'Loading every order…', { hold: [...document.querySelectorAll('[data-adm-orders]')], why: 'Loading…' });
+        loadAdminOrders(odActiveStatus()).finally(done);
       }
-      if (admAct.dataset.admAction === 'cost-refresh') loadAdminCosts(true);
+      if (admAct.dataset.admAction === 'cost-refresh' && !admAct.disabled) {
+        // the card paints anew with the answer; until then its refresh turns and says so
+        busy(admAct, 'Reading Azure spend…');
+        loadAdminCosts(true);
+      }
       if (admAct.dataset.admAction === 'user-manage') openUserManage(admAct.dataset.user, admAct.dataset.email);
       if (admAct.dataset.admAction === 'wh-stripe') runWebhookSync(admAct, STRIPE_WH_SYNC_URL, 'Stripe');
       if (admAct.dataset.admAction === 'wh-stripe-connect') runWebhookSync(admAct, STRIPE_WH_SYNC_URL, 'Stripe Connect', { kind: 'connect' });
@@ -4175,43 +4735,56 @@ function bindOnce() {
     const rpTab = e.target.closest('[data-adm-reports]');
     if (rpTab) {
       e.preventDefault();
+      if (rpTab.disabled) return;
       rpStatus = rpTab.dataset.admReports || 'OPEN';
-      document.querySelectorAll('[data-adm-reports]').forEach(t => {
+      const group = [...document.querySelectorAll('[data-adm-reports]')];
+      group.forEach(t => {
         const on = t === rpTab;
         t.classList.toggle('is-active', on);
         t.setAttribute('aria-selected', on ? 'true' : 'false');
       });
-      loadReports();
+      const release = hold(group, 'Loading…');
+      loadReports().finally(release);
       return;
     }
 
     const ordersTab = e.target.closest('[data-adm-orders]');
     if (ordersTab) {
       e.preventDefault();
-      document.querySelectorAll('[data-adm-orders]').forEach(t => {
+      if (ordersTab.disabled) return;
+      const group = [...document.querySelectorAll('[data-adm-orders]')];
+      group.forEach(t => {
         const on = t === ordersTab;
         t.classList.toggle('is-active', on);
         t.setAttribute('aria-selected', on ? 'true' : 'false');
       });
-      loadAdminOrders(ordersTab.dataset.admOrders || '');
+      const release = hold([...group, ...document.querySelectorAll('[data-adm-action="orders-clear-range"], #odFrom, #odTo')], 'Loading…');
+      loadAdminOrders(ordersTab.dataset.admOrders || '').finally(release);
       return;
     }
 
     const tab = e.target.closest('[data-adm-filter]');
     if (tab) {
       e.preventDefault();
-      document.querySelectorAll('.adm-tab').forEach(t => {
+      if (tab.disabled) return;
+      const group = [...document.querySelectorAll('[data-adm-filter]')];
+      group.forEach(t => {
         const on = t === tab;
         t.classList.toggle('is-active', on);
         t.setAttribute('aria-selected', on ? 'true' : 'false');
       });
-      loadInventory(tab.dataset.admFilter);
+      const release = hold(group, 'Loading…');
+      loadInventory(tab.dataset.admFilter).finally(release);
     }
   });
 
   // Live user filtering, delegated so it survives section re-renders.
   document.addEventListener('input', (e) => {
     if (e.target.id === 'admUserSearch') renderUserRows();
+    if (e.target.id === 'acctFirstName' || e.target.id === 'acctLastName') { e.target.removeAttribute('aria-invalid'); setNameStatus(''); }
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && (e.target.id === 'acctFirstName' || e.target.id === 'acctLastName')) { e.preventDefault(); document.querySelector('[data-acct-action="name-save"]')?.click(); }
   });
   document.addEventListener('change', (e) => {
     // Appearance: the starfield is a switch (2026-09-23 polish)
@@ -4232,15 +4805,21 @@ function bindOnce() {
  *  on Overview; the warranty success screen lands on Registered hardware). */
 /* A card link (2026-09-16): the software's "one button" lands here with
  * { section, card, row } kept in sessionStorage by routeToAccountOnLoad. Once
- * the section has rendered, the card scrolls into view and flashes once;
+ * the section has rendered, the card opens, scrolls into view and flashes once;
  * cards paint after their loads, so this looks for the element for a few
- * seconds and gives up quietly. */
+ * seconds and gives up quietly. A named row (the Microsoft row of Connected
+ * accounts, from the studio's door) arrives with its card's own list, after
+ * the card: it is looked for a while longer and gets the same scroll and flash.
+ * The kept copy survives the panel rewriting the address to the bare section
+ * (runtime/bootstrap.js captureAccountReturn keeps it before the rehydrate). */
 const CARD_IDS = {
-  environment: { environment: 'evBody', storage: 'evBody', lanes: 'evBody', files: 'evFiles', connections: 'evConnections', domains: 'evDomains', keys: 'evKeys' },
+  environment: { environment: 'evBody', storage: 'evBody', lanes: 'evBody', files: 'evFiles', data: 'evData', ai: 'evAi', connections: 'evConnections', domains: 'evDomains', keys: 'evKeys' },
   subscription: { plan: 'acctPricing', payment: 'acctPmActions' },
   profile: { passkeys: 'acctPasskeyList', password: 'acctPasswordError', phone: 'acctPhoneState', email: 'acctAliasList' },
   team: {}
 };
+const CARD_TRIES = 24;   // about six seconds for the card
+const ROW_TRIES = 56;    // about fourteen in all for its row
 function consumeOpenCard(sectionId) {
   if (!hasLiveSession()) return;   // signed out, the card waits for the sign-in that lands here
   let want = null;
@@ -4249,20 +4828,26 @@ function consumeOpenCard(sectionId) {
   try { sessionStorage.removeItem('pragoptics_open_card'); } catch { /* fine */ }
   const id = (CARD_IDS[sectionId] || {})[String(want.card || '')] || '';
   if (!id) return;
-  let tries = 0;
+  const row = String(want.row || '');
+  const flash = (el) => {
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    el.classList.add('is-flash');
+    setTimeout(() => el.classList.remove('is-flash'), 2600);
+  };
+  let tries = 0, cardShown = false;
   const tick = () => {
+    if (activeSection !== sectionId) return;   // the person moved on: nothing scrolls them back
+    tries += 1;
+    // The id names the card's wrapper (evConnections holds the card) or something inside a card (acctPricing). The
+    // element is found again on every pass: the section and each card repaint as their reads land.
     const el = document.getElementById(id);
-    const target = el && (el.closest('.acct-card') || el);
-    if (target) {
-      openCardOf(target);
-      let focus = target;
-      if (want.row) { const r = target.querySelector(`[data-row="${CSS.escape(String(want.row))}"]`); if (r) focus = r; }
-      focus.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      focus.classList.add('is-flash');
-      setTimeout(() => focus.classList.remove('is-flash'), 2600);
-      return;
-    }
-    if (++tries < 24) setTimeout(tick, 250);
+    const card = el && (el.matches('.acct-card') ? el : (el.querySelector(':scope > .acct-card') || el.closest('.acct-card') || el));
+    if (!card) { if (tries < CARD_TRIES) setTimeout(tick, 250); return; }
+    if (!cardShown) { openCardOf(card); flash(card); cardShown = true; }
+    if (!row) return;
+    const r = card.querySelector(`[data-row="${CSS.escape(row)}"]`);
+    if (r) { flash(r); return; }
+    if (tries < ROW_TRIES) setTimeout(tick, 250);
   };
   setTimeout(tick, 150);
 }
@@ -4319,10 +4904,15 @@ export function onAccountEnter() {
     // reloaded on the Builds queue and landed on Profile).
     const known = [...customerSections(), ...internalSections()];
     if (!known.some(s => s.id === activeSection) || (cachedPing() && !allSections().some(s => s.id === activeSection))) activeSection = 'profile';
+    // a fresh mount may be a different person: the role on the team in view is read again (the entry stays hidden until then)
+    teamRole = { userId: '', teamId: '', role: '' }; roleReadError = '';
     $body.innerHTML = shellHtml();
     mounted = true;
     mountedAsAdmin = admin;
     lastEnter = { id: '', at: 0 };
+    // the role on the team in view, for the Licensing entry; Team and Environment read the same view themselves, and a
+    // preset Licensing waits for this same read (showSection)
+    if (activeSection !== 'team' && activeSection !== 'environment') ensureTeamRole();
   }
   const now = Date.now();
   if (lastEnter.id === activeSection && now - lastEnter.at < ENTER_WINDOW_MS) return;

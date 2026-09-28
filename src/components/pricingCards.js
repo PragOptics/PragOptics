@@ -13,11 +13,7 @@
 
 import { normalizeCatalog } from '../wizard/catalog.normalize.js';
 
-function esc(s) {
-  return String(s ?? '').replace(/[&<>"']/g, c => ({
-    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
-  }[c]));
-}
+import { esc } from '../ui/words.js';   // the site's one HTML escape
 
 function usd(cents) {
   const n = Number(cents);

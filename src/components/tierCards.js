@@ -18,16 +18,13 @@
 // from the catalog.
 import { FREE_TIER, TIER_COPY, TIER_ORDER } from './tierCopy.js';
 import { PRAG_API_BASE } from '../runtime/config.js';
+import { accessToken } from '../runtime/session.js';
 
 const PRICES_KEY = 'pragoptics_prices_v1';
 const PRICES_TTL_MS = 10 * 60 * 1000;
 let pricesInFlight = null;
 
-function esc(s) {
-  return String(s ?? '').replace(/[&<>"']/g, c => ({
-    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
-  }[c]));
-}
+import { esc } from '../ui/words.js';   // the site's one HTML escape
 
 function centsToUSD(cents) {
   const n = Number(cents);
@@ -39,7 +36,7 @@ function centsToUSD(cents) {
 function signedInNow() {
   try {
     if (typeof window.isAccessTokenValid === 'function') return !!window.isAccessTokenValid();
-    return !!JSON.parse(sessionStorage.getItem('pragoptics_tokens') || 'null')?.access_token;
+    return !!accessToken();
   } catch { return false; }
 }
 

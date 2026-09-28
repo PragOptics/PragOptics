@@ -148,6 +148,7 @@ export function prefillBillingProfileFromPing(ping) {
     }
   };
 
+  set("bpBusinessName", bp.businessName);   // decision 24: optional
   set("bpEmail",  bp.primaryEmail);
   set("bpPhone",  bp.phone);
   set("bpAddr1",  bp.addressLine1);

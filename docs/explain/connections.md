@@ -1,6 +1,6 @@
 # Connected accounts
 
-Your environment acts through accounts you already hold: Twilio for text messages, Shippo for shipping labels, Stripe for taking payments, GitHub for your code, Microsoft 365 for mail and your directory. Connecting one means handing the platform that account's credential exactly once. From then on the platform uses it on your behalf, and you never see or type it again.
+Your environment acts through accounts you already hold: Twilio for text messages, Shippo for shipping labels, Stripe for taking payments, GitHub for your code, Microsoft 365 for the SharePoint lists and workbooks the software imports. Connecting one means handing the platform that account's credential, or your approval at the provider, exactly once. From then on the platform uses it on your behalf, and you never see or type it again.
 
 ## How a connection is made
 
@@ -52,6 +52,24 @@ Drop shipping without a middleman. Your store is here on PragOptics; your suppli
 The supplier's store stays theirs and your relationship with them stays yours: their prices, their charges, their shipping and returns, agreed between you and them the way they always were. The platform is never in the money. What the platform holds is the access the supplier granted, in this environment's vault, and it uses it only to read their products and, later, to hand them your orders and bring tracking back. Remove deletes that access and the copied products. Two customers of the same supplier hold two separate approvals.
 
 Nobody needs a Shopify account on your side: not you, not PragOptics. Only the supplier is on Shopify.
+
+## Microsoft 365: your organization's SharePoint, for the software
+
+This is how the software imports SharePoint lists and Excel workbooks. Nothing is pasted. The owner or an admin picks Microsoft 365, sign in with Microsoft, presses Connect Microsoft 365, signs in at Microsoft with a work or school account in your organization, and approves PragOptics. Microsoft sends you back here, this page finishes the connection, and the row reads connected, with your organization's name and the account that signed in. A personal Microsoft account cannot connect.
+
+Only the person who pressed Connect can finish it, signed in to PragOptics, within ten minutes of signing in at Microsoft. So a Microsoft sign-in page forwarded to someone else can never connect their SharePoint to your environment. If the page was closed before it finished, the row reads waiting to be finished: press Connect again.
+
+**What it reads.** PragOptics asks Microsoft only to read: the signed-in account's profile, and the SharePoint sites, lists and files that account can open. It cannot change or delete anything in Microsoft 365, and it does not read mail. The platform keeps Microsoft's grant in this environment's vault, never shown, and reads only when someone on your team imports or refreshes in the software, or presses Check status here. What they import lands in the software like any other import.
+
+**Whose access it reads with.** Every read uses the access of the Microsoft account that signed in when it was connected, whoever on your team is importing. Everyone with a seat (the owner, admins, developers and members) can import through it; viewers cannot. So connect with an account whose SharePoint access suits the whole team.
+
+**Your administrator's approval.** Most Microsoft organizations let only an administrator approve an app that reads SharePoint. If yours does, the row reads needs your Microsoft administrator. Press Approve for my organization: Microsoft's approval page opens, your organization's Microsoft administrator signs in there and approves PragOptics once for everyone in it, and you come back here. Then press Connect. If PragOptics set up your Microsoft organization for you, PragOptics holds its administrator account, so the row reads PragOptics is approving instead: PragOptics approves it, the owner gets an email when it is done, and then you press Connect.
+
+**Live only.** Microsoft has no test mode, so Microsoft 365 connects on the live lane. While you work in the sandbox, the software reads through the live connection; the sandbox card says so and offers no door.
+
+**Check status and Remove.** Check status asks Microsoft again with the stored grant. If the grant has ended (for example the account was disabled, or an administrator reset its password or removed PragOptics), the row reads disconnected with the reason, and Connect again signs in anew. Remove deletes the grant from the vault, and PragOptics no longer reads from your Microsoft 365. The approval itself stays in your Microsoft organization until one of its administrators removes it there.
+
+**A Microsoft credential pasted in before.** Microsoft 365 is no longer connected by pasting a tenant ID, client ID and secret. A row pasted in that way before still lists, checks and removes, but it reads not used: the software reads only the connection made through PragOptics. Connect Microsoft 365 as above, then remove the pasted row.
 
 ## What is not here yet
 

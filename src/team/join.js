@@ -14,6 +14,7 @@
 // lose it. It is never sent anywhere but the accept and peek routes.
 
 import { PRAG_API_BASE, LANE, TEAM_LIVE } from '../runtime/config.js';
+import { accessToken } from '../runtime/session.js';
 import { openLoginModal } from '../ui/login.modal.js';
 
 // The join page follows the same live gate as Team: off on the live lane
@@ -34,18 +35,13 @@ const ROLE_HELP = {
 
 const state = { token: '', peek: null, loading: false, notFound: false, busy: false, error: '', accepted: null };
 
-function esc(s) {
-  return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-}
+import { esc } from '../ui/words.js';   // the site's one HTML escape
 function cap(s) { s = String(s || ''); return s.charAt(0).toUpperCase() + s.slice(1); }
 function signedIn() {
   try {
     if (typeof window.isAccessTokenValid === 'function') return !!window.isAccessTokenValid();
-    return !!JSON.parse(sessionStorage.getItem('pragoptics_tokens') || 'null')?.access_token;
+    return !!accessToken();
   } catch { return false; }
-}
-function accessToken() {
-  try { return JSON.parse(sessionStorage.getItem('pragoptics_tokens') || 'null')?.access_token || ''; } catch { return ''; }
 }
 function myEmail() {
   if (!signedIn()) return '';

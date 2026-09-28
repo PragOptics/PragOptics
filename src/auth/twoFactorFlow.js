@@ -14,6 +14,7 @@ import { PRAG_API_BASE } from "../runtime/config.js";
 import { fetchWithDna } from "../api/fetchWithDna.js";
 import { syncUserTheme } from "../runtime/userTheme.js";
 import { passkeySupported, registerPasskey, authenticatePasskey } from "./passkey.js";
+import { copyButton } from "../account/cards.js";
 
 // ---- shared session finalizer (mirrors native.js / login.modal.js) ------
 async function finalizeSession(tokens) {
@@ -55,10 +56,7 @@ async function post2fa(path, token, body) {
 }
 
 // ---- modal host ---------------------------------------------------------
-function esc(s) {
-  return String(s ?? "").replace(/[&<>"']/g, (c) =>
-    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-}
+import { esc } from "../ui/words.js";   // the site's one HTML escape
 
 function host() {
   let h = document.getElementById("twoFaHost");
@@ -346,10 +344,10 @@ function showRecoveryCodes(codes, tokens) {
     </div>`;
 
   const text = codes.join("\n");
-  card.querySelector("#tfaCopy").onclick = () => {
-    navigator.clipboard?.writeText(text).catch(() => {});
-    card.querySelector("#tfaCopy").textContent = "Copied";
-  };
+  // the site's one copy button (cards.js copyButton): "Copied" only when the codes reached the clipboard; where the
+  // browser refuses, the codes are selected for the keyboard
+  const copyBtn = card.querySelector("#tfaCopy");
+  copyBtn.onclick = () => { copyButton(copyBtn, text, { select: () => card.querySelector(".tfa-codes") }); };
   card.querySelector("#tfaDownload").onclick = () => {
     const blob = new Blob([`PragOptics recovery codes\n\n${text}\n`], { type: "text/plain" });
     const a = document.createElement("a");

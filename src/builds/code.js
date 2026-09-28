@@ -13,10 +13,11 @@
 //                             the lists and displays, the API calls it makes, the settings it exposes.
 //   logicHtml(read)        -> that read as sentences and a compact grid, for the card.
 //
-// The build's files come from the platform's public raw route (v1/builds/{id}/raw?path=), a text
-// file of a published build; the card fetches one at a time when its tab is opened.
+// The build's files come from the platform's raw route (v1/builds/{id}/raw?path=), a text file of a
+// published build, read with the session (signed in only, decision 34); the card fetches one at a
+// time when its tab is opened.
 
-const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+import { esc } from '../ui/words.js';
 
 const JS_KEYWORDS = new Set(('async await break case catch class const continue debugger default delete do else export extends finally for function if import in instanceof let new of return static super switch this throw try typeof var void while with yield true false null undefined').split(' '));
 const CSS_AT = /^@[a-z-]+/;
@@ -92,10 +93,44 @@ export function highlight(text, lang = 'js') {
   return out + esc(src.slice(i));
 }
 
-/** The highlighted text as numbered lines. */
+/**
+ * The highlighted text as numbered lines: one grid row per source line, its number in the first cell and its text in
+ * the second, so a line that soft-wraps (decision 40, 2026-09-24) grows its own row and its number stays beside its
+ * first visual line. A token that runs over several lines (a block comment, a template string) is closed at each
+ * line's end and opened again on the next; split raw, its tags would nest the next rows inside this one's cell and the
+ * numbers would drift off their lines. The spans highlight() writes are flat and every character of the source is
+ * escaped, so the only tags in a line are these.
+ * Each text cell carries its line's indentation (--ind, in characters) when it has one, so a wrapped line hangs under
+ * its own text rather than under the margin (builds.css .bd-lc); highlight() adds and drops no newline, so its lines
+ * and the source's lines are the same lines.
+ */
+const TK_OPEN = '<span class="tk-';
 export function codeHtml(text, lang) {
-  const lines = highlight(text, lang).split('\n');
-  return `<div class="bd-code-lines">${lines.map((l, k) => `<span class="bd-ln">${k + 1}</span><span class="bd-lc">${l || ' '}</span>`).join('')}</div>`;
+  const src = String(text == null ? '' : text).replace(/\r\n?/g, '\n');
+  const lines = highlight(src, lang).split('\n');
+  const raw = src.split('\n');
+  let carry = '';   // the class of a token still open at the end of the line before
+  const rows = lines.map((l, k) => {
+    let html = carry ? `${TK_OPEN}${carry}">${l || ' '}` : (l || ' ');
+    const lastOpen = html.lastIndexOf(TK_OPEN), lastClose = html.lastIndexOf('</span>');
+    if (lastOpen > lastClose) {
+      carry = html.slice(lastOpen + TK_OPEN.length, html.indexOf('"', lastOpen + TK_OPEN.length));
+      html += '</span>';
+    } else carry = '';
+    const ind = indentOf(raw[k]);
+    return `<span class="bd-ln">${k + 1}</span><span class="bd-lc"${ind ? ` style="--ind:${ind}ch"` : ''}>${html}</span>`;
+  });
+  return `<div class="bd-code-lines">${rows.join('')}</div>`;
+}
+/** A line's indentation in columns: a space is one, a tab runs to the next stop of 2 (the viewer's tab-size). A number, never text, so nothing of the source reaches the attribute. */
+export function indentOf(line) {
+  let cols = 0;
+  for (const ch of String(line || '')) {
+    if (ch === ' ') cols += 1;
+    else if (ch === '\t') cols += 2 - (cols % 2);
+    else break;
+  }
+  return Math.min(cols, 200);
 }
 
 /* ---------------- the read of a project ---------------- */

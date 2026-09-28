@@ -9,14 +9,14 @@ Owner | Pays for the account and has the final say: names the team, assigns ever
 Admin | Runs the team day to day: invites people, changes roles, removes members, watches usage. Never touches billing.
 Developer | Builds on the platform: publishes routes, builds and automations, reads logs. Everything a member can do, plus that.
 Member | A seat. Signs in, uses the team's apps and APIs, and can hold their own API keys.
-Viewer | Reads. Sees what the team shares and takes no seat.
+Viewer | Read-only access given on purpose, to share work with someone: a possible customer, or a new team member before they take a seat. Changes nothing and takes no seat.
 ```
 
-A person can only give a role below their own. An admin cannot make another admin, and nobody but the owner can hand out owner.
+A person can only give a role below their own. Only the owner makes someone an admin, invites a viewer or moves someone to viewer, and changes, suspends or removes an admin. An admin invites developers and members and moves people between those two roles. A suspension the owner made is lifted by the owner only. Nobody but the owner can hand out owner.
 
 ## What a seat is
 
-A seat is one named person who signs in to work in the environment. Member, developer, admin and owner all sit in a seat. Viewers do not.
+A seat is one named person who signs in to work in the environment. Member, developer, admin and owner all sit in a seat. Viewers do not. A seat's included mailbox belongs to the seat: it ends when the person leaves or is removed, or becomes a viewer. Once a mailbox ends, Microsoft keeps its mail for 30 days, then deletes it.
 
 Every paid plan includes seats: User has one, yours. Partner includes five. Super includes forty-five. On Partner and Super you can add more, one at a time, at the per-seat price shown on the Billing page. Adding a seat takes effect now and is charged for the rest of the current period. Removing one takes effect at the end of the period, with no credit.
 
@@ -28,8 +28,8 @@ An admin or the owner sends an invite to an email address with a role attached. 
 
 ## Allowances
 
-The team's usage, API calls and storage, bills through the owner's plan. A manager can set a lower ceiling for one person, never a higher one than the plan allows. That is how a Partner keeps one client's build from eating the whole month.
+The team's usage, API calls and storage, bills through the owner's plan. A manager can set a lower ceiling for one person, never a higher one than the plan allows. That is how a Partner keeps one person's work from eating the whole month.
 
 ## What stays separate
 
-Team membership is visible to the team. The data in the environment is not visible to anyone outside it, and it is not visible on the public site, ever.
+Team membership is visible to the team. The data in the environment is not visible to anyone outside it, and it is not visible on the public site, ever. Your own customers are not team members or viewers: they exist in what you build, through your own connected accounts, and never get a role on PragOptics.

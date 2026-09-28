@@ -18,11 +18,7 @@ function el(tag, cls, html) {
   return n;
 }
 
-function esc(s) {
-  return String(s ?? '').replace(/[&<>"']/g, c => ({
-    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
-  }[c]));
-}
+import { esc } from '../ui/words.js';   // the site's one HTML escape
 
 /** True when the product carries a real, playable source. */
 export function hasVideoSource(video) {

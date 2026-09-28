@@ -19,6 +19,9 @@
 // about to change, without leaving the page.
 
 import { mdToHtml } from './legalViewer.js';
+import { copyButton } from '../account/cards.js';
+// the site's one clipboard (src/ui/clipboard.js), handed on here for the pages that import it from this module
+export { writeClipboard } from '../ui/clipboard.js';
 
 const DOCS = {
   team:        { title: 'Teams, seats and roles' },
@@ -35,35 +38,16 @@ const DOCS = {
 };
 const KICKER = 'How it works';
 const COPY_SVG = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
-const CHECK_SVG = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><polyline points="20 6 9 17 4 12"/></svg>';
 let currentMd = '';
-/** The clipboard, by the modern API or, where it refuses, the old selection-and-copy path. Throws when neither works. */
-export async function writeClipboard(text) {
-  try { await navigator.clipboard.writeText(text); return; } catch { /* fall through */ }
-  const ta = document.createElement('textarea');
-  ta.value = text; ta.setAttribute('readonly', ''); ta.style.cssText = 'position:fixed;top:0;left:0;width:1px;height:1px;opacity:0;';
-  document.body.appendChild(ta); ta.select(); ta.setSelectionRange(0, text.length);
-  let ok = false; try { ok = document.execCommand('copy'); } catch { ok = false; }
-  ta.remove();
-  if (!ok) throw new Error('clipboard refused');
-}
-/** The text of what is open, to the clipboard; the icon reads as a check for a moment. */
-export async function copyMarkdown(btn, text) {
-  if (!btn) return;
-  const orig = btn.innerHTML, label = btn.getAttribute('aria-label') || '';
-  const say = (ok) => { btn.innerHTML = ok ? CHECK_SVG : orig; const t = ok ? 'Copied' : 'Could not copy'; btn.setAttribute('data-tip', t); btn.setAttribute('aria-label', t); };
-  try { await writeClipboard(String(text || '')); say(true); } catch { say(false); }
-  setTimeout(() => { btn.innerHTML = orig; btn.setAttribute('data-tip', label); btn.setAttribute('aria-label', label); }, 1600);
-}
+/** The text of what is open, to the clipboard: the site's one copy button (cards.js copyButton) says what happened. */
+export function copyMarkdown(btn, text) { return copyButton(btn, String(text || '')); }
 const BASE = '/docs/explain/';
 
 let els = null;
 let lastTrigger = null;
 const cache = new Map();
 
-function esc(s) {
-  return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-}
+import { esc } from '../ui/words.js';   // the site's one HTML escape
 
 /** A ladder or flow block: one item per line, "Label | text". */
 function blockHtml(kind, body) {

@@ -2,6 +2,7 @@
 
 import { setAgreementAck } from "../runtime/state.js";
 import { openLoginModal } from "../ui/login.modal.js";
+import { agreementVersionOf } from "./agreementVersion.js";
 
 export function initAgreementModal({ agreementUrl }) {
   // Parsed from the document each time it is shown; see openAgreementModal.
@@ -97,8 +98,7 @@ export function initAgreementModal({ agreementUrl }) {
         // The Version line near the top identifies the exact text being
         // accepted; it rides on the acceptance record so a dispute can name
         // which terms (tiers, allowances, billing rules) the customer agreed to.
-        const m = t.match(/\*\*Version:\*\*\s*([^\s*]+)/);
-        agreementVersion = m ? m[1] : "";
+        agreementVersion = agreementVersionOf(t);
         $md.innerHTML = mdToHtml(t);
       })
       .catch(() => { $md.innerHTML = `<p class="muted">Unable to load agreement.</p>`; });

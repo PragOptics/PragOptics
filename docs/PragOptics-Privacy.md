@@ -1,6 +1,6 @@
 # PragOptics™ Privacy Policy
 
-**Version:** 2026-09  
+**Version:** 2026-09.2  
 **Effective Date:** Upon publication
 
 ---
@@ -26,6 +26,7 @@ Depending on configuration and role, this may include:
 - Authentication-related metadata
 - Role assignments and permission mappings
 - Tenant or account identifiers
+- A record of each notice of a change to the Platform Agreement sent to the account: the Version, the address it went to, and when
 
 PragOptics does **not** require or process government-issued identification by default.
 
@@ -74,6 +75,40 @@ When a Participant or a visitor to a Participant's site uses an AI feature, Prag
 - A count of answers per assistant and their cost, kept for caps and billing
 
 PragOptics stores no conversation. The question, the recent turns and the chosen excerpts are sent to the model provider that answers (Section 6) and are not kept by PragOptics after the answer. A message an assistant files on a visitor's behalf is stored in the Participant's own submissions table, like a message sent through a form, and is the Participant's data.
+
+---
+
+### 2.6 Microsoft Licensing
+
+When a subscriber opens Microsoft licensing on the Licensing section, PragOptics sends Microsoft's authorized distributor what it needs to open the business's licensing account: the business's name, billing address, phone number and website, and the name, email address and phone number of the account's contact. The phone number is the one on Billing; when Billing has none, the one given on the Licensing section, or else the mobile number verified on the owner's Profile.
+
+When someone on the team accepts the Microsoft Customer Agreement, their first and last name and email address, taken from their PragOptics account, and the date they accepted are sent with the business's orders so that Microsoft can record the acceptance. Microsoft may email that person to confirm it.
+
+Each order also carries the Microsoft tenant's name or ID and the licenses and quantities ordered. When a team member is given a mailbox, their name and email address are used to create their account in the business's Microsoft tenant. The distributor and Microsoft handle this information under their own terms.
+
+When the owner asks for an administrator account in a Microsoft tenant BI created, the account's first password, which BI's operator types once from Microsoft's page, is kept in the environment's own vault only until the owner sees it once in the Licensing section; it is then deleted. It is never sent by email and never written to a log or an audit record.
+
+---
+
+### 2.7 Connected Accounts
+
+When a Participant connects an account they hold at another provider (Platform Agreement, Section 4.8), its credential or approval is kept in a vault that belongs to their environment alone and is never shown again. Content read through a connected account is read on the Participant's instruction: through the Platform, or, for a file, by the Participant's own browser from a short-lived address the Platform gets from the provider. It is kept only where the Participant saves it in their environment.
+
+---
+
+### 2.8 Reports of a Site or an Account
+
+Anyone may report a published site or an account that breaks the community standards (Platform Agreement, Section 10). A report keeps exactly this:
+- Its reference number, and whether a site or an account is reported
+- The site address or the account the reporter gave
+- The environment, lane and site, or the account, it matched on the Platform, if any
+- The kind of breach named, and what the reporter wrote
+- The time it was sent
+- The reporter's email address, when they give one
+- When the reporter is signed in, their PragOptics account
+- Once BI closes the report, what was done, when, and which of BI's operators closed it
+
+The network address a report is sent from is used only to limit repeated reports and is not kept with it. BI's operators read the report to decide what to do, and keep it with the record of what was done. The owner of what is reported is not told of the report or of who sent it, only of an action BI takes. A reporter who gives an email address receives a receipt and may be asked about the report.
 
 ---
 
@@ -137,6 +172,8 @@ PragOptics relies on third-party services to operate core platform functions, in
 - Payment and billing processors
 - Messaging and communication delivery services
 - AI model providers: BI's provider for answers paid from a plan's AI credit, or a provider the Participant connects on their own account, which then processes the question under its own terms
+- Microsoft licensing: Microsoft's authorized distributor, which opens the business's licensing account and places its orders, and Microsoft, which provides the licenses, the tenant and the mailboxes under the Microsoft Customer Agreement
+- The providers behind accounts a Participant connects, which act under their own terms
 
 These providers process data only as necessary to deliver their services and are subject to contractual and security obligations.
 

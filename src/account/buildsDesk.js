@@ -13,7 +13,7 @@
 // public board and the Studio show.
 
 import { PRAG_API_BASE } from '../runtime/config.js';
-import { iconBtn, leadBtn, armed } from './cards.js';
+import { iconBtn, leadBtn, armed, busy } from './cards.js';
 
 const BUILDS_URL = `${PRAG_API_BASE}/builds`;
 const ADMIN_BUILDS_URL = `${PRAG_API_BASE}/admin/builds`;
@@ -32,13 +32,15 @@ function fmtSize(bytes) {
   if (n >= 1024) return `${Math.round(n / 1024)} KB`;
   return `${n} B`;
 }
-function assistantReady(b) { return !!(b?.manifest && Array.isArray(b.manifest.actions) && b.manifest.actions.length); }
+// My Builds reads the public list's rows (decision 34: no manifest on a row; the list says assistantReady and, for the
+// caller's own, settingsCount); the operator's queue reads v1/admin/builds, the full build with its manifest.
+function assistantReady(b) { return b?.assistantReady === true || !!(b?.manifest && Array.isArray(b.manifest.actions) && b.manifest.actions.length); }
 function buildIdOf(b) { return /^[A-Za-z0-9]{6,40}$/.test(String(b?.buildId || '')) ? String(b.buildId) : ''; }
 
 function rowHtml(b, { operator = false } = {}) {
   const e = D.escapeHtml;
   const status = String(b.status || 'draft');
-  const settings = b.manifest && Array.isArray(b.manifest.settings) ? b.manifest.settings.length : 0;
+  const settings = b.manifest && Array.isArray(b.manifest.settings) ? b.manifest.settings.length : (Number(b.settingsCount) || 0);
   return `
     <tr data-build-row="${e(buildIdOf(b))}">
       <td class="cell-ellip"><b>${e(b.name)}</b> <span class="adm-muted">v${e(b.version || '')}</span>
@@ -101,11 +103,14 @@ async function toggleDiff(btn, host) {
   const id = btn.dataset.id;
   const row = host.querySelector(`[data-diff-for="${CSS.escape(id)}"]`);
   if (!row) return;
+  if (btn.disabled) return;
   if (!row.hidden) { row.hidden = true; return; }
   const cell = row.querySelector('.bd-diff-cell');
+  const done = busy(btn, 'Reading the changes…');
   cell.innerHTML = '<p class="adm-note">Reading the changes\u2026</p>'; row.hidden = false;
   try { const d = await D.apiFetch(`${BUILDS_URL}/${encodeURIComponent(id)}/diff`); cell.innerHTML = diffHtml(d); }
   catch (ex) { cell.innerHTML = `<p class="adm-error">${D.escapeHtml(D.friendlyError(ex, 'Could not read the changes.'))}</p>`; }
+  finally { done(); }
 }
 
 /** Internal: every build, pending first, with Approve and Reject. */
@@ -118,7 +123,13 @@ export async function renderBuildsQueue(main, deps) {
     <div id="bqBody"><p class="adm-note">Loading…</p></div>
   `;
   const host = document.getElementById('bqBody');
-  document.getElementById('bqRefresh')?.addEventListener('click', () => { host.innerHTML = '<p class="adm-note">Loading…</p>'; load(); });
+  document.getElementById('bqRefresh')?.addEventListener('click', (ev) => {
+    const btn = ev.currentTarget;
+    if (btn.disabled) return;
+    host.innerHTML = '<p class="adm-note">Loading…</p>';
+    const done = busy(btn, 'Loading…');
+    load().finally(done);
+  });
   const load = async () => {
     try {
       const d = await D.apiFetch(ADMIN_BUILDS_URL);
@@ -135,11 +146,14 @@ export async function renderBuildsQueue(main, deps) {
         const verb = verb0 === 'reject-send' ? 'reject' : verb0;
         const reason = verb === 'reject' ? String(reasonRow?.querySelector('input')?.value || '').trim() : '';
         if (verb === 'reject' && !reason) { D.showError('bqError', 'Give the builder a reason; they read it.'); reasonRow?.querySelector('input')?.focus(); return; }
-        btn.disabled = true;
+        if (btn.disabled) return;
+        D.showError('bqError', '');
+        const done = busy(btn, verb === 'reject' ? 'Sending it back…' : 'Approving…');
         try {
           await D.apiFetch(`${ADMIN_BUILDS_URL}/${encodeURIComponent(id)}/${verb}`, { method: 'POST', body: JSON.stringify(verb === 'reject' ? { reason } : {}) });
           await load();
-        } catch (ex) { btn.disabled = false; D.showError('bqError', D.friendlyError(ex, `Could not ${verb} it.`)); }
+        } catch (ex) { D.showError('bqError', D.friendlyError(ex, `Could not ${verb} it.`)); }
+        finally { done(); }
       }));
     } catch (ex) {
       host.innerHTML = '';
@@ -150,7 +164,12 @@ export async function renderBuildsQueue(main, deps) {
   await load();
 }
 
-/** A customer's own builds, with their status. */
+/**
+ * A customer's own builds, with their status. The page is painted once; the list is read into it by load(), and the
+ * refresh stays the same control the whole time: disabled and saying "Loading…" while the read is out (cards.js
+ * busy()), its label back on the answer, so a second press never starts a second read. An action on a build reads the
+ * list again the same way.
+ */
 export async function renderMyBuilds(main, deps) {
   D = deps;
   main.innerHTML = `
@@ -160,27 +179,44 @@ export async function renderMyBuilds(main, deps) {
     <div id="mbBody"><p class="acct-loading">Loading…</p></div>
   `;
   const host = document.getElementById('mbBody');
-  document.getElementById('mbRefresh')?.addEventListener('click', () => renderMyBuilds(main, D));
-  try {
-    const me = D.cachedPing()?.user;
-    const d = await D.apiFetch(BUILDS_URL);
-    const mine = (d.builds || []).filter(b => me && (String(b.publisherUserId || '') === String(me.userId || me.rowKey || me.id || '') || b.status !== 'published'));
-    if (!mine.length) { host.innerHTML = `<p class="acct-empty">Nothing yet. In the Studio, open a web app and choose Export, Publish as a module.</p>`; return; }
-    host.innerHTML = tableHtml(mine);
-    // the builder's own chain: Submit for review, Retract, Remove, What changed
-    host.querySelectorAll('[data-build-action]').forEach(btn => btn.addEventListener('click', async () => {
-      const id = btn.dataset.id, verb = btn.dataset.buildAction, name = btn.dataset.name;
-      if (verb === 'diff') return void toggleDiff(btn, host);
-      if (verb === 'remove' && !armed(btn, 'Remove?')) return;
-      btn.disabled = true;
-      try {
-        if (verb === 'remove') await D.apiFetch(`${BUILDS_URL}/${encodeURIComponent(id)}`, { method: 'DELETE' });
-        else await D.apiFetch(`${BUILDS_URL}/${encodeURIComponent(id)}/${verb}`, { method: 'POST', body: '{}' });
-        await renderMyBuilds(main, D);
-      } catch (ex) { btn.disabled = false; D.showError('mbError', D.friendlyError(ex, `Could not ${verb} it.`)); }
-    }));
-  } catch (ex) {
-    host.innerHTML = '';
-    D.showError('mbError', D.friendlyError(ex, 'Could not load your builds.'));
-  }
+  const refresh = document.getElementById('mbRefresh');
+  const load = async () => {
+    if (!host.isConnected) return;
+    const done = busy(refresh, 'Loading…');
+    try {
+      const me = D.cachedPing()?.user;
+      const d = await D.apiFetch(BUILDS_URL);
+      if (!host.isConnected) return;
+      // the list marks the caller's own rows (mine); publisherUserId is how a list from before decision 34 said it
+      const mine = (d.builds || []).filter(b => b.mine === true || (me && (String(b.publisherUserId || '') === String(me.userId || me.rowKey || me.id || '') || b.status !== 'published')));
+      if (!mine.length) { host.innerHTML = `<p class="acct-empty">Nothing yet. In the Studio, open a web app and choose Export, Publish as a module.</p>`; return; }
+      host.innerHTML = tableHtml(mine);
+      // the builder's own chain: Submit for review, Retract, Remove, What changed
+      host.querySelectorAll('[data-build-action]').forEach(btn => btn.addEventListener('click', async () => {
+        const id = btn.dataset.id, verb = btn.dataset.buildAction;
+        if (verb === 'diff') return void toggleDiff(btn, host);
+        if (verb === 'remove' && !armed(btn, 'Remove?')) return;
+        if (btn.disabled) return;
+        D.showError('mbError', '');
+        const doneAct = busy(btn, { submit: 'Submitting for review…', retract: 'Retracting…', remove: 'Removing…' }[verb] || 'Working…', { hold: [refresh], why: 'Wait for the change to the build to finish' });
+        try {
+          if (verb === 'remove') await D.apiFetch(`${BUILDS_URL}/${encodeURIComponent(id)}`, { method: 'DELETE' });
+          else await D.apiFetch(`${BUILDS_URL}/${encodeURIComponent(id)}/${verb}`, { method: 'POST', body: '{}' });
+          doneAct();
+          await load();
+        } catch (ex) { D.showError('mbError', D.friendlyError(ex, `Could not ${verb} it.`)); }
+        finally { doneAct(); }
+      }));
+    } catch (ex) {
+      if (!host.isConnected) return;
+      host.innerHTML = '';
+      D.showError('mbError', D.friendlyError(ex, 'Could not load your builds.'));
+    } finally { done(); }
+  };
+  refresh?.addEventListener('click', (ev) => {
+    if (ev.currentTarget.disabled) return;
+    D.showError('mbError', '');
+    load();
+  });
+  await load();
 }

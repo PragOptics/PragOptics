@@ -12,6 +12,15 @@ const SESSION_KEYS = ["pragoptics_tokens", "pragoptics_ping"];
 // surgically; the cart and queues are left untouched.
 const LANE_OVERRIDE_KEY = "pragoptics_lane_override";
 
+/**
+ * The session's access token, or '' signed out: the one reader of the stored tokens outside bootstrap.js (which writes
+ * them). Read at every use and never kept, so a sign-out or a new sign-in is seen at once.
+ */
+export function accessToken() {
+  try { return JSON.parse(sessionStorage.getItem(SESSION_KEYS[0]) || "null")?.access_token || ""; }
+  catch { return ""; }
+}
+
 export function logout() {
   for (const k of SESSION_KEYS) {
     try { sessionStorage.removeItem(k); } catch {}

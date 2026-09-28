@@ -117,14 +117,11 @@ export function initLegalViewer(options = {}) {
 
   // If any are missing, the viewer can't operate
   if (!$mask || !$panel || !$title || !$loading || !$content) return;
-  // The text of what is open, to the clipboard (for an assistant, for a record); the icon reads as a check for a moment.
-  const COPY_SVG = $copy ? $copy.innerHTML : "";
-  const CHECK_SVG = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><polyline points="20 6 9 17 4 12"/></svg>';
+  // The text of what is open, to the clipboard (for an assistant, for a record): the site's one copy button
+  // (cards.js copyButton, through explainer.js copyMarkdown) turns the icon to a check and says what happened.
   if ($copy) $copy.addEventListener("click", async () => {
-    const label = $copy.getAttribute("aria-label") || "";
-    const say = (t, ok) => { $copy.innerHTML = ok ? CHECK_SVG : COPY_SVG; $copy.setAttribute("data-tip", t); $copy.setAttribute("aria-label", t); };
-    try { const { writeClipboard } = await import("./explainer.js"); await writeClipboard(currentMd); say("Copied", true); } catch { say("Could not copy", false); }
-    setTimeout(() => { $copy.innerHTML = COPY_SVG; $copy.setAttribute("data-tip", label); $copy.setAttribute("aria-label", label); }, 1600);
+    try { const { copyMarkdown } = await import("./explainer.js"); await copyMarkdown($copy, currentMd); }
+    catch { $copy.setAttribute("data-tip", "Could not copy"); $copy.setAttribute("aria-label", "Could not copy"); }
   });
 
   function open() {

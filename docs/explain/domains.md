@@ -74,4 +74,4 @@ Registration takes a few minutes. The domain then appears on the card as verifie
 
 ## What it costs
 
-Connecting your own domain is free on every paid plan. Registering a new domain through PragOptics passes the registrar's price through with no markup, and the domain is yours.
+Connecting your own domain is free on every paid plan: up to five on User, twenty on Partner, fifty on Super. Registering a new domain through PragOptics passes the registrar's price through with no markup, and the domain is yours.

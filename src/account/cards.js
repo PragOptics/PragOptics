@@ -12,8 +12,10 @@
 // Used by environment.js, team.js and account.js; every section's cards look
 // and behave the same.
 
+import { esc } from '../ui/words.js';
+import { writeClipboard, selectText } from '../ui/clipboard.js';
+
 const OPEN_KEY = 'pragoptics_acct_open';
-const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 export const ICONS = {
   refresh: '<polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>',
@@ -42,6 +44,7 @@ export const ICONS = {
   shield: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>',
   alert: '<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>',
   users: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+  user: '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
   userPlus: '<path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/>',
   activity: '<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>',
   cart: '<circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>',
@@ -121,6 +124,189 @@ export function btnLabel(btn, text) {
   const before = span ? span.textContent : btn.textContent;
   if (text !== undefined) { if (span) span.textContent = text; else btn.textContent = text; }
   return before;
+}
+
+/* THE BUTTON RULE (standing rule c, 2026-09-23): every control that sends a request is disabled while its request is
+ * out, says what it is doing, and comes back with its own label when the answer comes, an error included. One helper
+ * for the whole panel, so no section carries its own copy:
+ *
+ *   const done = busy(btn, 'Saving…');          // on the press, before the request
+ *   try { await request(); } finally { done(); }  // on the answer
+ *
+ * The control is disabled and marked aria-busy; an icon turns into the spinning refresh; the word shows where the
+ * control keeps its words (the span of a leadBtn, the tip and screen-reader label of an icon button, the text of a
+ * plain button). A select, a checkbox or a field gets the word in a turning note beside it. `hold` lists other
+ * controls that must wait for the same answer: each is disabled with `why` as its tip. done(label) puts everything
+ * back as it was (a control disabled before stays disabled) and, given a label, sets the control's word to it. A
+ * second busy() on a control already out answers the same done(); done() runs once, and on a control the page has
+ * since painted over it changes nothing anyone sees. Sections that repaint their controls from their own state (the
+ * Licensing tab's send(), the Environment cards, the Team switches) draw the same looks with stateLead() and
+ * stateIcon() below, so there is one set of words and looks for the whole panel. */
+const BUSY = new WeakMap();
+function setWord(el, word) {
+  if (el.classList.contains('btn-ico')) {
+    btnLabel(el, word);
+    // an icon opened into its question (an armed confirm) shows its words: they say what it is doing now
+    const span = el.querySelector(':scope > span');
+    if (span) span.textContent = word;
+    return;
+  }
+  if (el.classList.contains('btn-lead') || !el.firstElementChild) { btnLabel(el, word); return; }
+  // a plain button with an icon and its words: the words change, the icon stays
+  for (const n of [...el.childNodes]) if (n.nodeType === 3) n.remove();
+  el.append(document.createTextNode(word));
+}
+/** Hold controls while a request they would collide with is out: disabled, `why` as the tip. Answers release(). */
+export function hold(els, why = 'Wait for the answer to the request that is out') {
+  const held = [];
+  for (const h of els || []) {
+    if (!h || BUSY.has(h) || h.dataset.held === '1') continue;
+    held.push({ h, disabled: h.disabled, tip: h.getAttribute('data-tip') });
+    h.dataset.held = '1';
+    h.disabled = true;
+    if (why) h.setAttribute('data-tip', why);
+  }
+  let open = true;
+  return () => {
+    if (!open) return;
+    open = false;
+    for (const x of held) {
+      x.h.disabled = !!x.disabled;
+      if (x.tip != null) x.h.setAttribute('data-tip', x.tip); else x.h.removeAttribute('data-tip');
+      delete x.h.dataset.held;
+    }
+  };
+}
+/** The control whose request is out. Answers done(label?). See THE BUTTON RULE above. */
+export function busy(el, word = 'Working…', { hold: others = [], why = '' } = {}) {
+  if (!el) return () => {};
+  if (BUSY.has(el)) return BUSY.get(el);
+  const isBtn = el.tagName === 'BUTTON';
+  const was = { disabled: el.disabled, html: isBtn ? el.innerHTML : null, tip: el.getAttribute('data-tip'), label: el.getAttribute('aria-label') };
+  el.disabled = true;
+  el.setAttribute('aria-busy', 'true');
+  let note = null;
+  if (isBtn) {
+    const svg = el.querySelector(':scope > svg');
+    if (svg) { svg.outerHTML = ico('refresh'); el.classList.add('is-spinning'); }
+    setWord(el, word);
+    // a worded button that carried a tip says the same thing on hover
+    if (!el.classList.contains('btn-ico') && was.tip != null) el.setAttribute('data-tip', word);
+  } else {
+    note = document.createElement('span');
+    note.className = 'busy-note';
+    note.setAttribute('role', 'status');
+    note.innerHTML = `${ico('refresh')}<span></span>`;
+    note.lastElementChild.textContent = word;
+    el.after(note);
+  }
+  const release = hold(others, why || `Wait: ${word.replace(/…$/, '')}`);
+  let open = true;
+  const done = (label) => {
+    if (!open) return;
+    open = false;
+    BUSY.delete(el);
+    if (isBtn && was.html != null) el.innerHTML = was.html;
+    el.classList.remove('is-spinning');
+    el.removeAttribute('aria-busy');
+    if (was.tip != null) el.setAttribute('data-tip', was.tip); else el.removeAttribute('data-tip');
+    if (was.label != null) el.setAttribute('aria-label', was.label); else el.removeAttribute('aria-label');
+    note?.remove();
+    el.disabled = !!was.disabled;
+    if (label !== undefined && isBtn) setWord(el, label);
+    release();
+  };
+  BUSY.set(el, done);
+  return done;
+}
+/** True while busy() holds the control. */
+export function isBusy(el) { return !!el && BUSY.has(el); }
+
+/* THE COPY BUTTON (2026-09-24; Cameron's copy-to-clipboard example: one function, reused, the inputs and outputs the
+ * only difference). Every copy on the site goes through here: the text goes to the clipboard (src/ui/clipboard.js, the
+ * modern API or the selection path an embedded browser still allows, inside the open <dialog> the button sits in, since
+ * a modal dialog makes the page outside it inert), then the button says what happened and comes back as it was:
+ *   copied           the icon turns to a check, the word is "Copied"
+ *   refused, select  `select()` names what to select instead (a field, a <code>): it is selected and the word is
+ *                    "Selected: copy it with your keyboard"
+ *   refused          "Could not copy. Select the text instead"
+ * The word goes where the button keeps its words (the tip and label of an icon button, the span of a leadBtn). A second
+ * press while the word still shows starts from the button as it was, never from "Copied". Answers true when copied. */
+const COPYING = new WeakMap();
+export async function copyButton(btn, text, { select = null, ms = 1600 } = {}) {
+  if (!btn) return false;
+  let was = COPYING.get(btn);
+  if (was) clearTimeout(was.timer);
+  else was = { html: btn.innerHTML, tip: btn.getAttribute('data-tip'), label: btn.getAttribute('aria-label') };
+  COPYING.set(btn, was);
+  let ok = true;
+  try { await writeClipboard(String(text ?? ''), btn.closest?.('dialog[open]') || document.body); } catch { ok = false; }
+  const selected = !ok && typeof select === 'function' && selectText(select());
+  const word = ok ? 'Copied' : selected ? 'Selected: copy it with your keyboard' : 'Could not copy. Select the text instead';
+  if (!btn.isConnected) { COPYING.delete(btn); return ok; }
+  btn.innerHTML = was.html;
+  const svg = btn.querySelector(':scope > svg');
+  if (ok && svg) svg.innerHTML = ICONS.check;
+  setWord(btn, word);
+  btn.classList.toggle('is-done', ok);
+  was.timer = setTimeout(() => {
+    COPYING.delete(btn);
+    if (!btn.isConnected) return;
+    btn.innerHTML = was.html;
+    btn.classList.remove('is-done');
+    if (was.tip != null) btn.setAttribute('data-tip', was.tip); else btn.removeAttribute('data-tip');
+    if (was.label != null) btn.setAttribute('aria-label', was.label); else btn.removeAttribute('aria-label');
+  }, ok ? ms : Math.max(ms, 4000));
+  return ok;
+}
+
+/* ONE MODAL HOST FOR THE WHOLE PANEL (2026-09-24). Every prompt over the page (the reports, the closing screens, the
+ * operator's windows) is an .acct-modal-host div by id, made once and reused. openModal fills it, shows it, wires the
+ * listeners given, and answers { host, $, close }: close() takes every listener off and empties the host, once, so a
+ * prompt opened again never runs two sets of listeners. `onKey` listens on the document (Escape). `focus` is a
+ * selector to focus once it is open. */
+export function openModal(id, html, { onClick = null, onInput = null, onChange = null, onKey = null, focus = '' } = {}) {
+  let host = document.getElementById(id);
+  if (!host) { host = document.createElement('div'); host.id = id; host.className = 'acct-modal-host'; document.body.appendChild(host); }
+  host.innerHTML = html;
+  host.hidden = false;
+  const on = [];
+  const listen = (target, type, fn) => { if (typeof fn === 'function') { target.addEventListener(type, fn); on.push([target, type, fn]); } };
+  listen(host, 'click', onClick);
+  listen(host, 'input', onInput);
+  listen(host, 'change', onChange);
+  listen(document, 'keydown', onKey);
+  let open = true;
+  const close = () => {
+    if (!open) return;
+    open = false;
+    for (const [target, type, fn] of on) target.removeEventListener(type, fn);
+    host.hidden = true; host.innerHTML = '';
+  };
+  if (focus) host.querySelector(focus)?.focus?.();
+  return { host, $: (sel) => host.querySelector(sel), close };
+}
+
+/* THE BUTTON RULE, PAINTED (2026-09-23). A section that redraws its controls from its own state while a request is out
+ * (the Licensing tab's send(), the Environment cards, the Team switches) cannot hold the element with busy(): the next
+ * paint draws a fresh one. It draws the same three looks from here instead, so the words, the spinner and the
+ * attributes are the panel's one set, whichever way a control is held:
+ *   out      its own request is out: disabled, aria-busy, the spinning refresh, the busy word (busy()'s look)
+ *   waiting  another request it would collide with is out: disabled, the reason as its tip (hold()'s look)
+ *   neither  ready, with its own label and tip
+ * waitingWord(word) is the reason a control waits for another's request ("Waiting for the answer: Saving"). */
+export function waitingWord(word) { return `Waiting for the answer: ${String(word || 'a request is out').replace(/…$/, '')}`; }
+/** A worded control (leadBtn) drawn in its state. `waiting` is the reason it waits (waitingWord), '' when it does not. */
+export function stateLead(action, icon, label, { out = false, busyWord = 'Working…', waiting = '' } = {}, attrs = '', cls = '') {
+  // while it waits, the control's own tip gives way to the reason
+  const own = waiting && !out ? String(attrs).replace(/\s*data-tip="[^"]*"/g, '') : String(attrs);
+  const a = `${own} ${out || waiting ? 'disabled' : ''} ${out ? 'aria-busy="true"' : ''} ${waiting && !out ? `data-tip="${esc(waiting)}"` : ''}`;
+  return leadBtn(action, out ? 'refresh' : icon, out ? busyWord : label, a, `${cls} ${out ? 'is-spinning' : ''}`);
+}
+/** An icon control (iconBtn) drawn in its state: its tip and label say what it is doing, or what it waits for. */
+export function stateIcon(action, icon, label, { out = false, busyWord = 'Working…', waiting = '' } = {}, attrs = '', cls = '') {
+  const tip = out ? busyWord : waiting ? `${label}. ${waiting}` : label;
+  return iconBtn(action, out ? 'refresh' : icon, tip, `${attrs} ${out || waiting ? 'disabled' : ''} ${out ? 'aria-busy="true"' : ''}`, `${cls} ${out ? 'is-spinning' : ''}`);
 }
 
 /* ONE ARMED CONFIRM FOR THE WHOLE PANEL (2026-09-23 polish). A destructive icon asks once in words before it acts: the

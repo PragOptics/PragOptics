@@ -36,4 +36,6 @@ The owner sets the sandbox up from the Environment section with one click; its s
 
 Connected accounts never move between lanes on their own. A test key you connect in the sandbox stays in the sandbox's vault; live gets its own live keys, entered separately. That is the whole point: a test credential can never end up serving your customers.
 
+One exception: Microsoft 365 connects on Live only, because Microsoft has no test mode, and the software reads through that live connection from the sandbox too. It only reads, so nothing you do in the sandbox changes anything in your Microsoft 365.
+
 Domains serve the live site, so they show on the Live lane only.

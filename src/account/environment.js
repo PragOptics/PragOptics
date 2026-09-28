@@ -16,7 +16,7 @@
 // and sized, keys are prefixed, values are never fetched.
 //
 // An upload goes straight from the browser to the tenant's private container
-// through a ten-minute link the API mints; the API never sees the bytes. The
+// through a two-minute link the API mints; the API never sees the bytes. The
 // storage account must carry a CORS rule for this origin and the page's
 // Content Security Policy must list the blob host, or the PUT is refused
 // before it leaves the browser (both found on dev, 2026-09-11).
@@ -26,10 +26,15 @@
 
 import { PRAG_API_BASE, STUDIO_URL, LANE } from '../runtime/config.js';
 import { tierName } from '../components/tierCopy.js';
-import { explainLink, writeClipboard } from '../components/explainer.js';
+import { explainLink } from '../components/explainer.js';
+import { accessToken } from '../runtime/session.js';
 import { stripeAppearance } from '../api/stripeAppearance.js';
 import { ensureStripeJs } from '../runtime/stripeLoader.js';
-import { ico, iconBtn, leadBtn, btnLabel, cardHtml as sharedCard, isOpen, setOpen, initCards } from './cards.js';
+import { ico, iconBtn, leadBtn, btnLabel, cardHtml as sharedCard, isOpen, setOpen, initCards, busy, hold, stateLead, stateIcon, copyButton } from './cards.js';
+import { cardErrorWords } from '../api/stripeWords.js';
+// the platform's cents formatter, under the name this file has always used for it (the local cents() below is the
+// AI budget's cent-sign variant, so the shared one cannot take that name here)
+import { countWord, cents as money } from '../ui/words.js';
 
 const TENANT_URL = `${PRAG_API_BASE}/tenant`;
 const ENV_URL = `${PRAG_API_BASE}/environment`;
@@ -41,13 +46,15 @@ const DOMAIN_ROLES = new Set(['owner', 'admin', 'developer']);   // who connects
 const LANE_KEY = 'pragoptics_env_lane';   // the lane the person was looking at; survives a section re-render
 function cardHtml(o) { return sharedCard({ ...o, key: `environment:${o.key}` }); }
 function openState() { return {}; }
-function countWord(n, one, many) { return `${n} ${n === 1 ? one : many}`; }
 
 function laneChoice() { try { return sessionStorage.getItem(LANE_KEY) === 'sandbox' ? 'sandbox' : 'live'; } catch { return 'live'; } }
 const ev = { lane: laneChoice(), teamId: '', view: null, files: null, filesTruncated: false, keys: null, madeKey: null, filesNote: '', uploading: false, domains: null, domainLimit: 0, cnameTarget: null, serving: null, binding: '', domainNote: '', checking: '', registrations: [], reg: null,
   // Connected accounts (the connection broker): the list, the provider
   // catalog the form renders from, the picked provider, and the last outcome.
   connections: null, connProviders: [], connLimit: 0, connNote: '', connPick: '', connBusy: false, connResult: '', connTesting: '',
+  // The Microsoft 365 row whose sign-in is being finished (confirmMicrosoftConnect): its request is out, the doors wait.
+  // Not reset by a re-render, so a repaint in the middle still draws them waiting.
+  connConfirming: '',
   // What survives a failed Connect: the name and the NON-secret identifiers
   // (an Account SID, a tenant id), so a typo in the token does not mean
   // re-typing everything. Secret fields are never kept.
@@ -169,7 +176,36 @@ async function fetchView() {
   }
 }
 
+/*
+ * THE ENVIRONMENT'S READ AND ITS REFRESH (standing rule c). load() reads the view and then every card, and paint()
+ * redraws the page, Refresh included, part way through. So the Refresh is painted from this state (refreshCtl): while a
+ * read is out every Refresh on the page is disabled and says "Refreshing…", a repaint in the middle of the read draws it
+ * the same way, and the answer puts it back (syncRefresh). A read asked for while one is out runs after it, never
+ * beside it.
+ */
+let envLoad = null;
+function refreshCtl(kind = 'icon') {
+  const out = !!envLoad;
+  if (kind === 'lead') return stateLead('refresh', 'refresh', 'Check again', { out, busyWord: 'Checking…' });
+  return stateIcon('refresh', 'refresh', 'Refresh', { out, busyWord: 'Refreshing…' });
+}
+function syncRefresh() {
+  for (const b of document.querySelectorAll('[data-env-action="refresh"]')) {
+    // a lane switch holds it with its own reason (setLane), and gives it back itself
+    if (b.dataset.held === '1') continue;
+    const t = document.createElement('template');
+    t.innerHTML = refreshCtl(b.classList.contains('btn-lead') ? 'lead' : 'icon').trim();
+    if (t.content.firstElementChild) b.replaceWith(t.content.firstElementChild);
+  }
+}
 async function load() {
+  const prev = envLoad;
+  const run = (async () => { if (prev) { try { await prev; } catch { /* its own error was shown */ } } await loadNow(); })();
+  envLoad = run;
+  syncRefresh();
+  try { await run; } finally { if (envLoad === run) { envLoad = null; syncRefresh(); } }
+}
+async function loadNow() {
   const host = document.getElementById('evBody');
   if (!host) return;
   D.showError('evError', '');
@@ -298,7 +334,7 @@ function sandboxSetupHtml(v) {
       <section class="acct-card">
         <h3 class="acct-card-h">Your sandbox is being set up</h3>
         <p class="acct-card-note">${e(sb.note || 'Its own storage account is being created. This takes a moment and finishes on its own.')}</p>
-        <div class="acct-actions-row">${leadBtn('refresh', 'refresh', 'Check again')}</div>
+        <div class="acct-actions-row">${refreshCtl('lead')}</div>
       </section>`;
   }
   return `
@@ -306,7 +342,7 @@ function sandboxSetupHtml(v) {
       <h3 class="acct-card-h">A place to build and test</h3>
       <p class="acct-card-note">A sandbox is a second environment of your own: its own storage account, its own vault, its own connected accounts. Build and test here with test keys, and nothing touches what your customers use. When you are ready, the software pushes your work live. ${explainLink('environment', 'How your environment works')}</p>
       ${isOwner
-        ? `<div class="acct-actions-row">${leadBtn('sandbox-setup', ev.sandboxBusy ? 'refresh' : 'plus', ev.sandboxBusy ? 'Setting up…' : 'Set up a sandbox', ev.sandboxBusy ? 'disabled' : '', `btn-primary ${ev.sandboxBusy ? 'is-spinning' : ''}`)}</div>`
+        ? `<div class="acct-actions-row">${stateLead('sandbox-setup', 'plus', 'Set up a sandbox', { out: !!ev.sandboxBusy, busyWord: 'Setting up…' }, '', 'btn-primary')}</div>`
         : `<p class="acct-card-note ev-note">The owner sets up the sandbox. Once it exists, it shows here for everyone on the team.</p>`}
       <p class="acct-error" id="evSandboxError" hidden></p>
     </section>`;
@@ -317,7 +353,12 @@ async function setLane(lane) {
   try { sessionStorage.setItem(LANE_KEY, ev.lane); } catch { /* fine */ }
   ev.files = null; ev.keys = null; ev.domains = null; ev.connections = null; ev.connPick = ''; ev.connResult = ''; ev.madeKey = null; ev.filesNote = '';
   paint();
-  if (ev.lane === 'live' || laneReady(ev.view?.tenant)) await Promise.all([loadFiles(), ...(ev.lane === 'live' ? [loadDomains()] : []), loadKeys(), loadConnections()]);
+  if (ev.lane === 'live' || laneReady(ev.view?.tenant)) {
+    // the lane switch and the refresh wait while this lane's cards are read, saying why
+    const release = hold(document.querySelectorAll('[data-env-action="lane-live"], [data-env-action="lane-sandbox"], [data-env-action="refresh"]'), `Loading the ${ev.lane} lane…`);
+    try { await Promise.all([loadFiles(), ...(ev.lane === 'live' ? [loadDomains()] : []), loadKeys(), loadConnections()]); }
+    finally { release(); }
+  }
 }
 
 async function setupSandbox(btn) {
@@ -363,7 +404,7 @@ function emptyHtml(view) {
       <section class="acct-card">
         <h3 class="acct-card-h">Your environment is being set up.</h3>
         <p class="acct-card-note">It happens on its own within a moment of signing in: a place for your data, your files and your keys, with the allowance your plan carries. Press Refresh, or set it up now.</p>
-        <div class="acct-actions-row act-row">${leadBtn('provision', 'zap', 'Set it up now', '', 'btn-primary')}${iconBtn('refresh', 'refresh', 'Refresh')}</div>
+        <div class="acct-actions-row act-row">${leadBtn('provision', 'zap', 'Set it up now', '', 'btn-primary')}${refreshCtl()}</div>
         <p class="acct-error" id="evProvError" hidden></p>
       </section>`;
   }
@@ -416,7 +457,7 @@ function summaryHtml(v) {
         </div>
         <div class="ev-actions">
           ${(me.role === 'owner' || me.role === 'admin') && (phase === 'READY' || phase === 'SUSPENDED') ? iconBtn('export', 'download', 'Download everything in this environment as one file') : ''}
-          ${iconBtn('refresh', 'refresh', 'Refresh')}
+          ${refreshCtl()}
         </div>
       </div>
       ${phase === 'READY' || phase === 'SUSPENDED' ? `
@@ -549,7 +590,7 @@ function dataHtml() {
       <div class="ev-data-head">
         <button class="btn btn-sm ev-btn-ico" type="button" data-env-action="data-close">${ico('chevron')}<span>All tables</span></button>
         <span class="ev-name-cell">${e(ev.table)}</span>
-        ${iconBtn('data-reload', 'refresh', 'Reload the rows', `data-table="${e(ev.table)}"`)}
+        ${stateIcon('data-reload', 'refresh', 'Reload the rows', { out: !!ev.rowsLoading && rows == null, busyWord: 'Reading the rows…', waiting: ev.rowsLoading && rows != null ? 'Wait for the next rows being read' : '' }, `data-table="${e(ev.table)}"`)}
       </div>
       ${rows == null ? '<p class="acct-loading">Reading rows…</p>' : !rows.length ? '<p class="acct-empty">This table is empty.</p>' : `
       <div class="adm-table-scroll">
@@ -568,7 +609,7 @@ function dataHtml() {
           </tbody>
         </table>
       </div>
-      ${ev.rowsAfter ? `<div class="acct-actions-row ev-note">${leadBtn('data-more', ev.rowsLoading ? 'refresh' : 'chevron', ev.rowsLoading ? 'Reading…' : 'Next 50 rows', ev.rowsLoading ? 'disabled' : '', ev.rowsLoading ? 'is-spinning' : '')}</div>` : ''}`}`;
+      ${ev.rowsAfter ? `<div class="acct-actions-row ev-note">${stateLead('data-more', 'chevron', 'Next 50 rows', { out: !!ev.rowsLoading, busyWord: 'Reading…' })}</div>` : ''}`}`;
   }
   return cardHtml({
     key: 'data', icon: 'database', title: 'Data', summary,
@@ -850,11 +891,13 @@ function domainHtml(d) {
       ${body}
       ${manage ? `
       <div class="ev-dom-actions act-row">
-        ${verified || (d.hosted && d.hosted.phase !== 'MANAGED') ? '' : leadBtn('domain-verify', checking ? 'refresh' : 'checkCircle', checking ? 'Checking…' : 'Verify', `data-host="${e(d.host)}" ${checking ? 'disabled' : ''} data-tip="Look for the TXT record now"`, `btn-primary ${checking ? 'is-spinning' : ''}`)}
+        ${verified || (d.hosted && d.hosted.phase !== 'MANAGED') ? '' : stateLead('domain-verify', 'checkCircle', 'Verify', { out: !!checking, busyWord: 'Checking…' }, `data-host="${e(d.host)}" data-tip="Look for the TXT record now"`, 'btn-primary')}
         ${verified && hosted ? (bs === 'BOUND'
           ? twoStep('unbind', 'x', 'Unbind: stop serving the software at this domain', 'Stop serving here?')
-          : leadBtn('domain-bind', busy ? 'refresh' : 'link', busy ? 'Working…' : bs === 'BINDING' ? 'Check' : bs === 'BIND_FAILED' ? 'Try again' : 'Bind', `data-host="${e(d.host)}" ${busy ? 'disabled' : ''} data-tip="Serve the software at this domain"`, `btn-primary ${busy ? 'is-spinning' : ''}`)) : ''}
-        ${d.hosted ? twoStep('dns-cancel', 'undo', 'Hand DNS back to where it was', 'Hand DNS back?') : ''}
+          : stateLead('domain-bind', 'link', bs === 'BINDING' ? 'Check' : bs === 'BIND_FAILED' ? 'Try again' : 'Bind', { out: !!busy, busyWord: 'Working…' }, `data-host="${e(d.host)}" data-tip="Serve the software at this domain"`, 'btn-primary')) : ''}
+        ${d.hosted ? (ev.dnsBusy === d.host
+          ? stateIcon('domain-dns-cancel', 'undo', 'Hand DNS back', { out: ev.dnsAct === 'cancel', busyWord: 'Handing DNS back…', waiting: ev.dnsAct === 'cancel' ? '' : 'Wait for the DNS change being made' }, `data-host="${e(d.host)}"`)
+          : twoStep('dns-cancel', 'undo', 'Hand DNS back to where it was', 'Hand DNS back?')) : ''}
         ${linked ? iconBtn('domain-unlink', 'link', 'Unlink: manage its records yourself again', `data-host="${e(d.host)}"`) : ''}
         ${twoStep('remove', 'trash', 'Remove this domain', 'Remove?')}
       </div>` : ''}
@@ -883,7 +926,7 @@ function dnsDoorHtml(full) {
   return `
     <div class="ev-dom-row ev-dom-host-door">
       <input class="acct-input" type="text" id="evDnsHost" maxlength="253" placeholder="example.com" autocomplete="off" spellcheck="false" autocapitalize="off" ${full || s.busy ? 'disabled' : ''} />
-      ${leadBtn('domain-dns-start', s.busy ? 'refresh' : 'globe', s.busy ? 'Looking it up…' : 'Manage its DNS here', full || s.busy ? 'disabled' : '', `btn-primary ${s.busy ? 'is-spinning' : ''}`)}
+      ${stateLead('domain-dns-start', 'globe', 'Manage its DNS here', { out: !!s.busy, busyWord: 'Looking it up…' }, full && !s.busy ? 'disabled' : '', 'btn-primary')}
     </div>
     <p class="acct-card-note ev-dom-door">The domain stays where you bought it. Its settings move here, nothing changes until you say so, and you can hand it back any time.</p>
     ${s.note ? `<p class="acct-card-note">${e(s.note)}</p>` : ''}`;
@@ -917,6 +960,9 @@ function hostedBodyHtml(d) {
   const h = d.hosted || {};
   const phase = String(h.phase || 'REVIEW').toUpperCase();
   const busy = ev.dnsBusy === d.host;
+  // which of the row's requests is out (dnsAdd, dnsSwitch, dnsCheck, dnsCancel): that one turns and says so, the rest wait
+  const act = busy ? ev.dnsAct || '' : '';
+  const waitWord = 'Wait for the DNS change being made';
   const shown = !!(ev.dnsRecs || {})[d.host];
   const note = (ev.dnsNote || {})[d.host] || '';
   const ns = (h.nameServers || []).map(n => `<li><code>${e(n)}</code> <button class="btn btn-sm btn-ico" type="button" data-env-action="domain-copy" data-text="${e(n)}" aria-label="Copy" data-tip="Copy">${ico('copy')}</button></li>`).join('');
@@ -926,7 +972,7 @@ function hostedBodyHtml(d) {
         <p class="acct-card-note ev-dom-note">Paste a zone file exported from where the domain lives today, or type names we should look up, one per line (for example <code>intranet</code>).</p>
         <textarea class="acct-input ev-dom-zonefile" id="evDnsFile-${e(d.host)}" rows="4" placeholder="Zone file (optional)"></textarea>
         <textarea class="acct-input ev-dom-names" id="evDnsNames-${e(d.host)}" rows="2" placeholder="Names, one per line (optional)"></textarea>
-        <div class="ev-dom-actions">${leadBtn('domain-dns-add', 'plus', 'Add', `data-host="${e(d.host)}" ${busy ? 'disabled' : ''}`)}</div>
+        <div class="ev-dom-actions">${stateLead('domain-dns-add', 'plus', 'Add', { out: act === 'add', busyWord: 'Adding…', waiting: busy && act !== 'add' ? waitWord : '' }, `data-host="${e(d.host)}"`)}</div>
       </details>` : '';
   let body = '';
   if (phase === 'REVIEW') {
@@ -935,19 +981,19 @@ function hostedBodyHtml(d) {
       ${h.lastError ? `<p class="acct-error ev-dom-note">${e(h.lastError)}</p>` : ''}
       ${hostedRecordsHtml(d.host)}
       ${more}
-      <div class="ev-dom-actions act-row">${recordsBtn}${leadBtn('domain-dns-switch', busy ? 'refresh' : 'zap', busy ? 'Working…' : 'Switch to PragOptics', `data-host="${e(d.host)}" ${busy ? 'disabled' : ''}`, `btn-primary ${busy ? 'is-spinning' : ''}`)}</div>`;
+      <div class="ev-dom-actions act-row">${recordsBtn}${stateLead('domain-dns-switch', 'zap', 'Switch to PragOptics', { out: act === 'switch', busyWord: 'Switching…', waiting: busy && act !== 'switch' ? waitWord : '' }, `data-host="${e(d.host)}"`, 'btn-primary')}</div>`;
   } else if (phase === 'SWITCHING') {
     const byPlatform = String(h.switchedBy || '').startsWith('platform:') || String(h.switchedBy || '').startsWith('connection:');
     body = byPlatform ? `
       <p class="acct-card-note ev-dom-note">The nameservers were set at ${e(h.registrar || 'your registrar')}. <b>Checking.</b> This usually takes a few minutes and can take up to a day. Everything keeps working while we wait.</p>
       ${hostedRecordsHtml(d.host)}
-      <div class="ev-dom-actions act-row">${recordsBtn}${iconBtn('domain-dns-check', 'refresh', busy ? 'Checking…' : 'Check now', `data-host="${e(d.host)}" ${busy ? 'disabled' : ''}`, busy ? 'is-spinning' : '')}</div>` : `
+      <div class="ev-dom-actions act-row">${recordsBtn}${stateIcon('domain-dns-check', 'refresh', 'Check now', { out: act === 'check', busyWord: 'Checking…', waiting: busy && act !== 'check' ? waitWord : '' }, `data-host="${e(d.host)}"`)}</div>` : `
       <p class="acct-card-note ev-dom-note">Sign in at ${e(h.registrar || 'your registrar')} and paste these lines where it says <b>nameservers</b>, replacing what is there. Then press I did it.</p>
       <ul class="ev-dom-ns">${ns}</ul>
       ${h.lastError ? `<p class="acct-error ev-dom-note">${e(h.lastError)}</p>` : ''}
       ${hostedRecordsHtml(d.host)}
       ${more}
-      <div class="ev-dom-actions act-row">${recordsBtn}${leadBtn('domain-dns-check', busy ? 'refresh' : 'check', busy ? 'Checking…' : 'I did it', `data-host="${e(d.host)}" ${busy ? 'disabled' : ''}`, `btn-primary ${busy ? 'is-spinning' : ''}`)}</div>`;
+      <div class="ev-dom-actions act-row">${recordsBtn}${stateLead('domain-dns-check', 'check', 'I did it', { out: act === 'check', busyWord: 'Checking…', waiting: busy && act !== 'check' ? waitWord : '' }, `data-host="${e(d.host)}"`, 'btn-primary')}</div>`;
   } else if (phase === 'MANAGED') {
     body = `
       <p class="acct-card-note ev-dom-note">Managed by PragOptics${h.managedAt ? ` since ${e(D.fmtDate(h.managedAt))}` : ''}. Email, your website and the software's address are set here from now on; the domain itself stays at ${e(h.registrar || 'your registrar')}.</p>
@@ -959,7 +1005,7 @@ function hostedBodyHtml(d) {
       <p class="acct-card-note ev-dom-note">Point it back at these nameservers to keep it managed here, or hand it back.</p>
       <ul class="ev-dom-ns">${ns}</ul>
       ${hostedRecordsHtml(d.host)}
-      <div class="ev-dom-actions act-row">${recordsBtn}${iconBtn('domain-dns-check', 'refresh', busy ? 'Checking…' : 'Check now', `data-host="${e(d.host)}" ${busy ? 'disabled' : ''}`, busy ? 'is-spinning' : '')}</div>`;
+      <div class="ev-dom-actions act-row">${recordsBtn}${stateIcon('domain-dns-check', 'refresh', 'Check now', { out: act === 'check', busyWord: 'Checking…', waiting: busy && act !== 'check' ? waitWord : '' }, `data-host="${e(d.host)}"`)}</div>`;
   }
   if (note) body += `<p class="acct-card-note ev-dom-note">${e(note)}</p>`;
   if ((ev.dnsBack || {})[d.host]) body += `<p class="acct-card-note ev-dom-note">To hand it back, first set these nameservers at ${e(h.registrar || 'your registrar')} again, wait for the change to show, then press Hand DNS back once more.</p><ul class="ev-dom-ns">${(ev.dnsBack[d.host] || []).map(n => `<li><code>${e(n)}</code> <button class="btn btn-sm btn-ico" type="button" data-env-action="domain-copy" data-text="${e(n)}" aria-label="Copy" data-tip="Copy">${ico('copy')}</button></li>`).join('')}</ul>`;
@@ -1013,8 +1059,6 @@ function domainsHtml() {
 
 /* ---------- registration through PragOptics ---------- */
 
-function money(cents) { return `$${(Number(cents || 0) / 100).toFixed(2)}`; }
-
 /** Names bought and not on the list yet: the registry is still working, or it failed. */
 function registrationsHtml() {
   const e = D.escapeHtml;
@@ -1033,7 +1077,7 @@ function registrationsHtml() {
             : `Order ${e(String(r.orderId).slice(0, 8))} is placed. The registry usually finishes within a few minutes and this card updates on its own; your card is charged exactly the registrar's price once the name is yours.`}</p>
           ${r.status === 'FAILED' && myRole() === 'owner' ? `
           <div class="ev-dom-actions">
-            ${leadBtn('domain-reg-retry', 'refresh', ev.regRetrying === r.orderId ? 'Trying…' : 'Try again', `data-order="${e(r.orderId)}" data-host="${e(r.host)}" ${ev.regRetrying === r.orderId ? 'disabled' : ''}`, `btn-primary ${ev.regRetrying === r.orderId ? 'is-spinning' : ''}`)}
+            ${stateLead('domain-reg-retry', 'refresh', 'Try again', { out: ev.regRetrying === r.orderId, busyWord: 'Trying…' }, `data-order="${e(r.orderId)}" data-host="${e(r.host)}"`, 'btn-primary')}
             ${r.contact ? leadBtn('domain-reg-fix', 'edit', 'Fix the contact', `data-order="${e(r.orderId)}" data-host="${e(r.host)}"`) : ''}
           </div>` : ''}
         </div>`).join('')}
@@ -1051,7 +1095,7 @@ function registerHtml() {
       ${head}
       <div class="ev-dom-row">
         <input class="acct-input" type="text" id="evRegHost" maxlength="253" placeholder="yourname.com" autocomplete="off" spellcheck="false" autocapitalize="off" value="${e(r.host)}" ${r.busy ? 'disabled' : ''} />
-        ${leadBtn('domain-reg-check', r.busy ? 'refresh' : 'search', r.busy ? 'Checking…' : 'Check', r.busy ? 'disabled' : '', `btn-primary ${r.busy ? 'is-spinning' : ''}`)}
+        ${stateLead('domain-reg-check', 'search', 'Check', { out: !!r.busy, busyWord: 'Checking…' }, '', 'btn-primary')}
       </div>
       <p class="acct-card-note ev-dom-door">The registrar's price, passed through with no markup. The name is yours, in your name.</p>
       <p class="acct-error" id="evRegError" ${r.error ? '' : 'hidden'}>${e(r.error)}</p>`;
@@ -1072,7 +1116,7 @@ function registerHtml() {
     }
     if (q.quoteError) {
       // The registrar would not price the name: its own words, and nothing to buy at a price it will not honor.
-      return `${head}<p class="acct-error"><b>${e(q.host)}</b> is available, but the registrar could not price it right now: ${e(q.quoteError.message || q.quoteError.code || 'no reason given')}</p><div class="ev-dom-actions act-row">${iconBtn('domain-reg-check', 'refresh', 'Check again')}${leadBtn('domain-reg-cancel', 'undo', 'Try another')}</div>`;
+      return `${head}<p class="acct-error"><b>${e(q.host)}</b> is available, but the registrar could not price it right now: ${e(q.quoteError.message || q.quoteError.code || 'no reason given')}</p><div class="ev-dom-actions act-row">${stateIcon('domain-reg-check', 'refresh', 'Check again', { out: !!r.busy, busyWord: 'Checking…' })}${leadBtn('domain-reg-cancel', 'undo', 'Try another', r.busy ? 'disabled' : '')}</div>`;
     }
     return `
       ${head}
@@ -1285,16 +1329,17 @@ async function regConfirm() {
       confirmParams: { return_url: `${location.origin}${location.pathname}?post=domain` },
       redirect: 'if_required'
     });
-    if (error) throw new Error(error.message || 'Payment failed.');
+    // the site's own sentence for what Stripe answered, never Stripe's own text
+    if (error) throw Object.assign(new Error(cardErrorWords(error, { doing: 'pay' })), { plain: true });
     // A hold (2026-09-22): Stripe answers requires_capture, and that is the success; the charge lands when the name is registered.
-    if (paymentIntent && !['succeeded', 'processing', 'requires_capture'].includes(paymentIntent.status)) throw new Error(`Payment ${paymentIntent.status}.`);
+    if (paymentIntent && !['succeeded', 'processing', 'requires_capture'].includes(paymentIntent.status)) throw Object.assign(new Error('The payment did not go through. Try again, or use another card.'), { plain: true });
     r.step = 'paid'; r.busy = false; r.stripe = null; r.elements = null;
     paintDomains();
     pollRegistration(r.quote.host);
   } catch (ex) {
     // A declined card: the error shows, the box stays mounted (paintDomains
     // re-mounts it), and Confirm payment works again with another card.
-    r.busy = false; r.error = ex?.message || 'Payment failed.';
+    r.busy = false; r.error = ex?.plain ? ex.message : cardErrorWords(ex, { doing: 'pay' });
     paintDomains();
   }
 }
@@ -1330,14 +1375,22 @@ function connIdentity(c) {
   if (isManagedShopify(c)) return e(c.status === 'ACTIVE' ? [d.name, d.domain || d.shop, d.productCount !== undefined ? `${d.productCount} products` : ''].filter(Boolean).join(' · ') : `${d.shop || ''} · waiting for the supplier`);
   if (c.provider === 'shippo') return e(d.mode ? `${d.mode} token` : '');
   if (c.provider === 'github') return e(d.login ? `@${d.login}` : '');
+  // who signed in stays off the row until the sign-in is finished (the backend keeps it aside)
+  if (isManagedMicrosoft(c)) return e([d.org, d.account].filter(Boolean).join(' · ') || (d.awaitingConfirm ? 'signed in, not finished yet' : 'not yet signed in'));
   if (c.provider === 'microsoft') return e(d.org || f.tenantId || '');
   return e(Object.values(f)[0] || '');
 }
 
 function connStatusTag(c) {
   const e = D.escapeHtml;
+  // closing (2026-09-24, agreement 13.3): the owner closed the account and every stored credential was deleted; only a
+  // member of the paused environment can still read the list, and the row is the record
+  if (c.status === 'CLOSED') return '<span class="acct-tag is-quiet" data-tip="The credential was deleted for good. The account itself stays yours at its provider.">deleted when the account closed</span>';
+  if (isManagedMicrosoft(c)) return msStatusTag(c);   // its own words first: a REJECTED Microsoft row reads disconnected, never rejected
   if (c.status === 'REJECTED' && c.detail?.disconnected) return `<span class="acct-tag is-bad" title="${e(c.lastError || '')}">disconnected</span>`;
   if (c.status === 'REJECTED') return `<span class="acct-tag is-bad" title="${e(c.lastError || '')}">rejected</span>`;
+  // a pasted Microsoft credential may still check out, but nothing reads through it (pastedMicrosoftWords): never "verified"
+  if (c.provider === 'microsoft') return '<span class="acct-tag is-pending" data-tip="The software reads Microsoft 365 only through a connection made through PragOptics, never through a pasted credential.">not used</span>';
   if (isManagedShopify(c)) {
     const d = c.detail || {};
     if (c.status === 'ACTIVE') return `<span class="acct-tag is-verified" data-tip="${e(d.name || d.shop || 'The supplier')} approved this environment on their store.">connected</span>`;
@@ -1377,7 +1430,75 @@ function isManagedTwilio(c) { return c?.provider === 'twilio' && c?.detail?.mana
 /** A Shippo account the customer connected through PragOptics (Shippo OAuth): the token sits in the vault, Shippo's own state on the row. */
 function isManagedShippo(c) { return c?.provider === 'shippo' && c?.detail?.managed === 'shippo-connect'; }
 function isManagedShopify(c) { return c?.provider === 'shopify' && c?.detail?.managed === 'shopify-supplier'; }
-function isManaged(c) { return isManagedStripe(c) || isManagedTwilio(c) || isManagedShippo(c) || isManagedShopify(c); }
+/**
+ * Microsoft 365 through PragOptics (2026-09-23): the owner or an admin signs in at Microsoft once and approves PragOptics;
+ * the platform keeps only Microsoft's grant, in the vault, and the software reads SharePoint through it. Live lane only
+ * (Microsoft has no test mode; the software reads through the live row from either lane). The pasted Microsoft kind is
+ * no longer offered (SOFTWARE-SEAM decision 9); its old rows keep listing, testing and removing. States on the row's detail:
+ * needsApproval (Microsoft asked for an administrator's approval), platformApproving (a tenant PragOptics made and
+ * administers: the operator approves from the Needs attention desk and the owner is emailed), approvedAt (an approval is
+ * recorded; Connect finishes), declined, failed (a sign-in that did not finish; its lastError says to connect again),
+ * awaitingConfirm (signed in at Microsoft, not finished yet: the review of 2026-09-23 found nothing tied Microsoft's page
+ * to the person who pressed Connect, so the platform keeps the sign-in aside until that person's own session confirms it,
+ * confirmMicrosoftConnect below). awaitingConfirm is read before the approval states: a row can still carry
+ * needsApproval or approvedAt from before the sign-in, and the sign-in is the newer news.
+ */
+function isManagedMicrosoft(c) { return c?.provider === 'microsoft' && c?.detail?.managed === 'microsoft-connect'; }
+function msWaiting(c) { return c?.status !== 'ACTIVE' && c?.status !== 'REJECTED'; }
+function msAwaiting(c) { return msWaiting(c) && !!c.detail?.awaitingConfirm; }
+function msNeedsApproval(c) { return msWaiting(c) && !msAwaiting(c) && !!c.detail?.needsApproval; }
+function msApproving(c) { return msNeedsApproval(c) && !!c.detail?.platformApproving; }
+function msApproved(c) { return msWaiting(c) && !msAwaiting(c) && !c.detail?.needsApproval && !!c.detail?.approvedAt; }
+const MS_AWAITING_WORDS = 'The Microsoft sign-in is waiting to be finished on the PragOptics page where Connect was pressed. If that page was closed, press Connect again.';
+// What the row's other controls say while its sign-in is being finished (THE BUTTON RULE: disabled, saying why).
+const MS_CONFIRM_WAIT = 'Wait for the Microsoft sign-in to finish';
+function isManaged(c) { return isManagedStripe(c) || isManagedTwilio(c) || isManagedShippo(c) || isManagedShopify(c) || isManagedMicrosoft(c); }
+
+/** The Microsoft row's tag: connected, waiting for you at Microsoft, needs your Microsoft administrator, PragOptics is approving, disconnected. */
+function msStatusTag(c) {
+  const e = D.escapeHtml, d = c.detail || {};
+  if (c.status === 'ACTIVE') return `<span class="acct-tag is-verified" data-tip="${e(`PragOptics reads SharePoint for the software with the access of ${d.accountName || d.account || 'the account that signed in'}.`)}">connected</span>`;
+  if (c.status === 'REJECTED') return `<span class="acct-tag is-bad" data-tip="${e(c.lastError || 'PragOptics can no longer read with this sign-in.')}">disconnected</span>`;
+  if (msAwaiting(c)) return '<span class="acct-tag is-pending" data-tip="Signed in at Microsoft. The PragOptics page where Connect was pressed finishes it.">waiting to be finished</span>';
+  if (msApproving(c)) return '<span class="acct-tag is-pending" data-tip="PragOptics holds your organization\'s administrator account and approves it for you.">PragOptics is approving</span>';
+  if (msNeedsApproval(c)) return '<span class="acct-tag is-pending" data-tip="Your organization lets only its Microsoft administrator approve an app that reads SharePoint.">needs your Microsoft administrator</span>';
+  return `<span class="acct-tag is-pending" data-tip="${e(msApproved(c) ? 'Approved for your organization. Connect finishes the sign-in.' : 'Waiting for you to sign in at Microsoft and approve PragOptics.')}">waiting for you at Microsoft</span>`;
+}
+/** The line under a Microsoft row that is not connected: where it stands and what to press, in plain words. */
+function msStateWords(c) {
+  if (c.status === 'REJECTED') return c.lastError || 'PragOptics can no longer read with this sign-in. Press Connect again.';
+  if (msAwaiting(c)) return c.lastError || MS_AWAITING_WORDS;
+  if (msApproving(c)) return 'PragOptics set up your Microsoft organization and holds its administrator account, so PragOptics approves it for you. The owner gets an email when it is done; then press Connect.';
+  if (msNeedsApproval(c)) return c.lastError || "Your organization's Microsoft administrator has to approve PragOptics first. If that is you, press Approve for my organization. Then press Connect.";
+  // an approval keeps approvedAt; start and a finished sign-in clear lastError, so one here is the sign-in that failed after it
+  if (msApproved(c)) return c.lastError || 'Approved for your organization. Press Connect to sign in and finish.';
+  if (c.detail?.declined) return c.lastError || 'You declined at Microsoft. Nothing was connected.';
+  return c.lastError || 'Waiting for you to sign in at Microsoft and approve PragOptics.';
+}
+/**
+ * The line under a Microsoft row pasted in by hand (tenant id, client id, secret), from before the kind stopped being
+ * offered (decision 6). It still lists, checks and removes, but the software reads only the connection made through
+ * PragOptics (environmentMicrosoft reads the managed row), so this row says so and names the way out: without it the
+ * studio said "not connected" while this card showed a Microsoft 365 row that checked out (2026-09-24 walk).
+ */
+function pastedMicrosoftWords() {
+  const head = 'Your own app registration, pasted in by hand. The software does not read Microsoft 365 through it';
+  if ((ev.connections || []).some(isManagedMicrosoft)) return `${head}: it reads through the Microsoft 365 connection made through PragOptics, so this one can be removed.`;
+  if (!canManageConnections()) return `${head}. The owner or an admin connects Microsoft 365 through PragOptics for the software to import from it.`;
+  if (ev.lane === 'sandbox') return `${head}. Connect Microsoft 365 through PragOptics on Live for the software to import from it, then remove this one.`;
+  // at the limit the picker is off: this row goes first
+  if (ev.connLimit > 0 && (ev.connections || []).length >= ev.connLimit) return `${head}. Remove this one, then choose Microsoft 365 under Connect above for the software to import from it.`;
+  return `${head}. Choose Microsoft 365 under Connect above for the software to import from it, then remove this one.`;
+}
+/** What was said after a removal, per provider: what the provider still holds, and what the platform no longer does. */
+function removedWords(c) {
+  if (isManagedStripe(c)) return ' The Stripe account is still yours at dashboard.stripe.com.';
+  if (isManagedTwilio(c)) return ' The Twilio account itself is still yours.';
+  if (isManagedShippo(c)) return ' The Shippo account itself is still yours.';
+  if (isManagedShopify(c)) return " The supplier's store is still theirs.";
+  if (isManagedMicrosoft(c)) return ' PragOptics no longer reads from your Microsoft 365. The approval stays in your Microsoft organization until one of its administrators removes it there.';
+  return '';
+}
 
 /** A Stripe requirement key in the customer's words (the same table the API uses). */
 function stripeRequirementWords(key) {
@@ -1433,6 +1554,8 @@ function stripeNeedsHtml(c) {
   if (isManagedStripe(c) && c.detail?.disconnected) return `<div class="ev-conn-needs">${e(c.lastError || 'PragOptics was disconnected from this Stripe account.')}</div>`;
   if (isManagedTwilio(c)) return c.status === 'ACTIVE' ? '' : `<div class="ev-conn-needs">${e(c.lastError || 'Waiting for you to authorize PragOptics at Twilio.')}</div>`;
   if (isManagedShippo(c)) return c.status === 'ACTIVE' ? '' : `<div class="ev-conn-needs">${e(c.lastError || 'Waiting for you to sign in or sign up at Shippo and approve PragOptics.')}</div>`;
+  if (isManagedMicrosoft(c)) return c.status === 'ACTIVE' ? '' : `<div class="ev-conn-needs">${e(msStateWords(c))}</div>`;
+  if (c.provider === 'microsoft') return `<div class="ev-conn-needs">${e(pastedMicrosoftWords())}</div>`;
   if (!isManagedStripe(c) || c.status === 'REJECTED') return '';
   const d = c.detail || {}, s = stripeState(d);
   if (s.kind === 'active') return '';
@@ -1462,7 +1585,12 @@ function connectionsHtml() {
   const e = D.escapeHtml;
   const manage = canManageConnections();
   const rows = ev.connections;
-  const summary = rows == null ? (ev.connNote ? 'not on this lane' : 'loading') : !rows.length ? 'nothing connected yet' : `${rows.length} connected${ev.connLimit ? ` of ${ev.connLimit}` : ''}`;
+  // connected counts only what is connected (ACTIVE); a row still waiting (a sign-in, an approval, a setup, a supplier) or
+  // one that stopped working is said apart from it, and the limit counts every row, as the limit itself does (atLimit)
+  const summary = rows == null ? (ev.connNote ? 'not on this lane' : 'loading') : !rows.length ? 'nothing connected yet' : (() => {
+    const live = rows.filter(c => c.status === 'ACTIVE').length, off = rows.filter(c => c.status === 'REJECTED').length, waiting = rows.length - live - off;
+    return [`${live} connected`, waiting ? `${waiting} waiting` : '', off ? `${off} not working` : ''].filter(Boolean).join(', ') + (ev.connLimit ? ` · ${rows.length} of ${ev.connLimit} used` : '');
+  })();
   const list = rows == null ? (ev.connNote ? '' : '<p class="acct-loading">Loading connected accounts…</p>')
     : !rows.length ? `<p class="acct-empty">${manage ? 'Nothing connected yet.' : 'Nothing connected yet. The owner or an admin connects accounts.'}</p>`
     : `
@@ -1474,22 +1602,35 @@ function connectionsHtml() {
               const p = providerOf(c.provider);
               const testing = ev.connTesting === c.id;
               const kind = isManagedShopify(c) ? 'supplier' : isManaged(c) ? 'via PragOptics' : `key ••••${e(c.hint || '')}`;
-              const refreshAction = isManagedStripe(c) ? 'conn-stripe-refresh' : isManagedTwilio(c) ? 'conn-twilio-refresh' : isManagedShippo(c) ? 'conn-shippo-refresh' : isManagedShopify(c) ? 'conn-shopify-refresh' : 'conn-test';
+              const refreshAction = isManagedStripe(c) ? 'conn-stripe-refresh' : isManagedTwilio(c) ? 'conn-twilio-refresh' : isManagedShippo(c) ? 'conn-shippo-refresh' : isManagedShopify(c) ? 'conn-shopify-refresh' : isManagedMicrosoft(c) ? 'conn-microsoft-refresh' : 'conn-test';
+              // a provider's page opened from this row: its button turns and says so; the other rows' (and this row's
+              // other door, a Microsoft row waiting on an approval carries two) wait, saying why; while a Microsoft sign-in is
+              // being finished every door waits for it (a door leaves the page, and the finish is still out)
+              const doorBtn = (action, icon, label, word, tip, extra, cls = '') => {
+                const mine = ev.connBusy && ev.connRow === c.id && (!ev.connAct || ev.connAct === action);
+                return stateLead(action, icon, label, { out: !!mine, busyWord: word, waiting: ev.connConfirming ? MS_CONFIRM_WAIT : ev.connBusy && !mine ? 'Wait for the account being opened' : '' }, `data-id="${e(c.id)}" ${extra} data-tip="${e(mine ? word : tip)}"`, cls);
+              };
+              const confirming = ev.connConfirming === c.id;
               return `
               <tr class="${c.status === 'REJECTED' ? 'ev-muted-row' : ''}" data-row="${e(c.provider)}">
                 <td class="cell-ellip" data-th="Account"><span class="ev-conn-name" title="${e(c.label)}"><span class="acct-tag is-primary">${e(PROVIDER_ICON[c.provider] || c.provider)}</span> ${e(c.label)}</span><span class="ev-conn-kind adm-muted">${e(p?.label || cap(c.provider))} · ${kind}</span></td>
                 <td class="cell-ellip adm-muted" data-th="Identity">${connIdentity(c)}${stripeNeedsHtml(c)}</td>
                 <td class="cell-tight" data-th="Status">${connStatusTag(c)}</td>
                 <td class="cell-tight adm-muted" data-th="Checked">${c.verifiedAt ? e(D.fmtDate(c.verifiedAt)) : 'never'}</td>
-                <td class="cell-tight ev-actions-cell">${manage ? (ev.connArm === c.id ? `
+                <td class="cell-tight ev-actions-cell">${manage && c.status !== 'CLOSED' ? (ev.connArm === c.id ? `
                   <span class="act-row"><button class="btn btn-sm btn-ico is-armed" type="button" data-env-action="conn-remove" data-id="${e(c.id)}" data-label="${e(c.label)}" aria-label="Remove? The credential is deleted and anything using it stops. Press again to confirm." data-tip="The credential is deleted from the vault and anything using it stops on its next call">${ico('trash')}<span>Remove?</span></button>${iconBtn('conn-remove-cancel', 'x', 'Keep it', '', 'btn-arm-cancel')}</span>` : `<span class="act-row">
-                  ${isManagedStripe(c) && (() => { const s = stripeState(c.detail); return s.kind === 'action' || s.kind === 'incomplete' || (s.kind === 'payments' && s.needs.length > 0); })() ? leadBtn('conn-stripe-continue', 'external', 'Continue setup', `data-id="${e(c.id)}" ${ev.connBusy ? 'disabled' : ''} data-tip="Stripe's own pages for what it still needs"`, 'btn-primary') : ''}
-                  ${isManagedTwilio(c) && c.status !== 'ACTIVE' ? leadBtn('conn-twilio-start', 'external', c.detail?.disconnected || c.detail?.declined ? 'Connect again' : 'Authorize at Twilio', `data-id="${e(c.id)}" ${ev.connBusy ? 'disabled' : ''} data-tip="Twilio's authorization page for PragOptics, on your own Twilio account"`, 'btn-primary') : ''}
-                  ${isManagedShippo(c) && c.status !== 'ACTIVE' ? leadBtn('conn-shippo-start', 'external', c.detail?.disconnected || c.detail?.declined ? 'Connect again' : 'Authorize at Shippo', `data-id="${e(c.id)}" ${ev.connBusy ? 'disabled' : ''} data-tip="Shippo's authorization page for PragOptics; sign in or create your Shippo account there"`, 'btn-primary') : ''}
-                  ${isManagedShopify(c) && c.status !== 'ACTIVE' ? leadBtn('conn-shopify-link', 'send', 'Supplier link', `data-id="${e(c.id)}" data-shop="${e(c.detail?.shop || '')}" ${ev.connBusy ? 'disabled' : ''} data-tip="A fresh link for your supplier; the old one stops working"`) : ''}
-                  ${isManagedShopify(c) && c.status === 'ACTIVE' ? leadBtn('conn-shopify-sync', 'refresh', ev.connSyncing === c.id ? 'Syncing…' : 'Sync products', `data-id="${e(c.id)}" ${ev.connSyncing === c.id ? 'disabled' : ''} data-tip="Copy the store's products into this environment's data, table supplier_products"`, ev.connSyncing === c.id ? 'is-spinning' : '') : ''}
-                  ${iconBtn(refreshAction, testing ? 'refresh' : 'check', isManaged(c) ? 'Check status' : 'Test the credential', `data-id="${e(c.id)}" ${testing ? 'disabled' : ''}`, testing ? 'is-spinning' : '')}
-                  ${iconBtn('conn-remove', 'trash', 'Remove this connection', `data-id="${e(c.id)}" data-label="${e(c.label)}"`, 'is-risky')}</span>`) : ''}</td>
+                  ${isManagedStripe(c) && (() => { const s = stripeState(c.detail); return s.kind === 'action' || s.kind === 'incomplete' || (s.kind === 'payments' && s.needs.length > 0); })() ? doorBtn('conn-stripe-continue', 'external', 'Continue setup', 'Opening with Stripe…', "Stripe's own pages for what it still needs", '', 'btn-primary') : ''}
+                  ${isManagedTwilio(c) && c.status !== 'ACTIVE' ? doorBtn('conn-twilio-start', 'external', c.detail?.disconnected || c.detail?.declined ? 'Connect again' : 'Authorize at Twilio', 'Opening with Twilio…', "Twilio's authorization page for PragOptics, on your own Twilio account", '', 'btn-primary') : ''}
+                  ${isManagedShippo(c) && c.status !== 'ACTIVE' ? doorBtn('conn-shippo-start', 'external', c.detail?.disconnected || c.detail?.declined ? 'Connect again' : 'Authorize at Shippo', 'Opening with Shippo…', "Shippo's authorization page for PragOptics; sign in or create your Shippo account there", '', 'btn-primary') : ''}
+                  ${isManagedMicrosoft(c) && c.status !== 'ACTIVE' && !msApproving(c) ? (msNeedsApproval(c)
+                    ? doorBtn('conn-microsoft-approve', 'external', 'Approve for my organization', 'Opening with Microsoft…', "Microsoft's approval page: your organization's Microsoft administrator signs in there and approves PragOptics once", '', 'btn-primary')
+                      + doorBtn('conn-microsoft-start', 'external', 'Sign in at Microsoft', 'Opening with Microsoft…', 'Once your administrator has approved PragOptics, sign in and connect', '')
+                    : doorBtn('conn-microsoft-start', 'external', c.status === 'REJECTED' || c.detail?.declined || c.detail?.failed || msAwaiting(c) ? 'Connect again' : msApproved(c) ? 'Connect' : 'Sign in at Microsoft', 'Opening with Microsoft…', "Microsoft's sign-in page, for a work or school account in your organization", '', 'btn-primary')) : ''}
+                  ${isManagedShopify(c) && c.status !== 'ACTIVE' ? doorBtn('conn-shopify-link', 'send', 'Supplier link', 'Making the link…', 'A fresh link for your supplier; the old one stops working', `data-shop="${e(c.detail?.shop || '')}"`) : ''}
+                  ${isManagedShopify(c) && c.status === 'ACTIVE' ? stateLead('conn-shopify-sync', 'refresh', 'Sync products', { out: ev.connSyncing === c.id, busyWord: 'Syncing…' }, `data-id="${e(c.id)}" data-tip="Copy the store's products into this environment's data, table supplier_products"`) : ''}
+                  ${stateIcon(refreshAction, 'check', isManaged(c) ? 'Check status' : 'Test the credential', { out: !!testing, busyWord: 'Checking…', waiting: confirming ? MS_CONFIRM_WAIT : ev.connTesting && !testing ? 'Wait for the check being made' : '' }, `data-id="${e(c.id)}"`)}
+                  ${confirming ? stateIcon('conn-remove', 'trash', 'Remove this connection', { waiting: MS_CONFIRM_WAIT }, `data-id="${e(c.id)}" data-label="${e(c.label)}"`, 'is-risky')
+                    : iconBtn('conn-remove', 'trash', 'Remove this connection', `data-id="${e(c.id)}" data-label="${e(c.label)}"`, 'is-risky')}</span>`) : ''}</td>
               </tr>${isManagedShippo(c) && c.status !== 'ACTIVE' && c.lastError && !(ev.rowNote && ev.rowNote.id === c.id) ? `
               <tr class="ev-note-row" data-row="note"><td colspan="5" data-th="Problem"><p class="acct-error ev-row-note">${e(c.lastError)}</p></td></tr>` : ''}${ev.rowNote && ev.rowNote.id === c.id ? `
               <tr class="ev-note-row" data-row="note">
@@ -1513,31 +1654,39 @@ function connectionsHtml() {
     ...(has(isManagedStripe) ? [] : [['m:stripe', 'Stripe, set up through PragOptics']]),
     ...(has(isManagedTwilio) ? [] : [['m:twilio', 'Twilio, your account']]),
     ...(has(isManagedShippo) ? [] : [['m:shippo', 'Shippo, your account']]),
+    // Microsoft has no test mode: its door is on the live lane only (the sandbox card says so in one sentence)
+    ...(ev.lane === 'sandbox' || has(isManagedMicrosoft) ? [] : [['m:microsoft', 'Microsoft 365, sign in with Microsoft']]),
     ['m:shopify', 'Shopify supplier']
   ];
-  const byo = (ev.connProviders || []).map(p => [p.id, `${p.label}, your own credential`]);
+  // the pasted Microsoft kind is not offered even where an older lane still lists it (decision 9: humans do not fetch API keys)
+  const byo = (ev.connProviders || []).filter(p => p.id !== 'microsoft').map(p => [p.id, `${p.label}, your own credential`]);
+  // why the picked door waits: a Microsoft sign-in being finished, or a row's door already opening
+  const pickWait = ev.connConfirming ? MS_CONFIRM_WAIT : ev.connBusy && ev.connRow ? 'Wait for the account being opened' : '';
   let form = '';
   if (manage && !ev.connNote) {
     let door = '';
     if (pick === 'm:stripe') door = `
         <div class="ev-key-row">
           <input class="acct-input" type="text" id="evStripeBiz" maxlength="120" placeholder="Your business name (optional)" autocomplete="organization" value="${e(ev.connDraft?.stripeBusiness || '')}" />
-          ${leadBtn('conn-stripe-start', 'external', ev.connBusy ? 'Opening with Stripe…' : 'Set up Stripe', ev.connBusy ? 'disabled' : '', 'btn-primary')}
+          ${stateLead('conn-stripe-start', 'external', 'Set up Stripe', { out: ev.connBusy && !ev.connRow, busyWord: 'Opening with Stripe…', waiting: pickWait }, '', 'btn-primary')}
         </div>
         <p class="acct-card-note ev-dom-door">The platform opens a Stripe account in your name and Stripe walks you through its setup. Your account, your Dashboard, the platform never in your money.</p>`;
     else if (pick === 'm:twilio') door = `
-        <div class="ev-key-row">${leadBtn('conn-twilio-start', 'external', ev.connBusy ? 'Opening with Twilio…' : 'Connect your Twilio account', ev.connBusy ? 'disabled' : '', 'btn-primary')}</div>
+        <div class="ev-key-row">${stateLead('conn-twilio-start', 'external', 'Connect your Twilio account', { out: ev.connBusy && !ev.connRow, busyWord: 'Opening with Twilio…', waiting: pickWait }, '', 'btn-primary')}</div>
         <p class="acct-card-note ev-dom-door">Approve PragOptics on your own upgraded Twilio account; Twilio bills you directly.</p>`;
     else if (pick === 'm:shippo') door = `
-        <div class="ev-key-row">${leadBtn('conn-shippo-start', 'external', ev.connBusy ? 'Opening with Shippo…' : 'Connect your Shippo account', ev.connBusy ? 'disabled' : '', 'btn-primary')}</div>
+        <div class="ev-key-row">${stateLead('conn-shippo-start', 'external', 'Connect your Shippo account', { out: ev.connBusy && !ev.connRow, busyWord: 'Opening with Shippo…', waiting: pickWait }, '', 'btn-primary')}</div>
         <p class="acct-card-note ev-dom-door">Sign in or create your Shippo account there and approve PragOptics; Shippo bills you directly for labels.</p>`;
+    else if (pick === 'm:microsoft') door = `
+        <div class="ev-key-row">${stateLead('conn-microsoft-start', 'external', 'Connect Microsoft 365', { out: ev.connBusy && !ev.connRow, busyWord: 'Opening with Microsoft…', waiting: pickWait }, '', 'btn-primary')}</div>
+        <p class="acct-card-note ev-dom-door">Sign in at Microsoft with a work or school account in your organization and approve PragOptics. It asks Microsoft only to read: your profile and the SharePoint sites that account can open, so the software can import their lists and Excel workbooks. Your organization's Microsoft administrator may have to approve it first.</p>`;
     else if (pick === 'm:shopify') door = `
         <div class="ev-key-row">
           <input class="acct-input" id="evShopifyShop" type="text" inputmode="url" autocomplete="off" placeholder="supplier-name.myshopify.com" aria-label="Your supplier's Shopify store address" value="${e(ev.shopifyShop || '')}">
-          ${leadBtn('conn-shopify-start', 'link', ev.connBusy ? 'Making the link…' : 'Make the link', ev.connBusy ? 'disabled' : '', 'btn-primary')}
+          ${stateLead('conn-shopify-start', 'link', 'Make the link', { out: ev.connBusy && !ev.connRow, busyWord: 'Making the link…', waiting: pickWait }, '', 'btn-primary')}
         </div>
         <p class="acct-card-note ev-dom-door">Your supplier's store address. You send them the link, they approve, and their products land here for your site. They bill you as they always have.</p>`;
-    else if (picked) door = `${connFieldsHtml(picked)}<div class="ev-key-row">${leadBtn('conn-add', 'plug', ev.connBusy ? `Checking with ${picked.label}…` : 'Connect', ev.connBusy ? 'disabled' : '', 'btn-primary')}</div>`;
+    else if (picked) door = `${connFieldsHtml(picked)}<div class="ev-key-row">${stateLead('conn-add', 'plug', 'Connect', { out: ev.connBusy && !ev.connRow, busyWord: `Checking with ${picked.label}…`, waiting: pickWait }, '', 'btn-primary')}</div>`;
     form = `
       <div class="ev-conn-add">
         <div class="ev-key-row">
@@ -1553,7 +1702,7 @@ function connectionsHtml() {
   return cardHtml({
     key: 'connections', icon: 'plug', title: 'Connected accounts', summary, explain: explainLink('connections', 'How connected accounts work'),
     body: `
-      ${ev.lane === 'sandbox' ? '<p class="acct-card-note ev-note"><b>Sandbox:</b> test keys live here, in its own vault. Live has its own connections.</p>' : ''}
+      ${ev.lane === 'sandbox' ? '<p class="acct-card-note ev-note"><b>Sandbox:</b> test keys live here, in its own vault. Live has its own connections. Microsoft 365 connects on Live only, and the software reads through it from both lanes.</p>' : ''}
       ${ev.connNote ? `<p class="acct-card-note ev-note">${e(ev.connNote)}</p>` : ''}
       ${form}
       <p class="acct-error" id="evConnError" hidden></p>
@@ -1635,30 +1784,31 @@ function errText(ex, fallback) { return ex?.sessionInvalidated ? '' : (ex?.data?
 
 async function refreshAll() { await load(); }
 
-async function provision() {
+async function provision(btn) {
+  if (btn?.disabled) return;
   D.showError('evProvError', '');
-  const btn = document.querySelector('[data-env-action="provision"]');
-  if (btn) btn.disabled = true;
+  const done = busy(btn, 'Setting it up…');
   try {
     // The door provisions the caller's own environment; an operator's own
     // account must be named explicitly, which is what the membership id is.
     await D.apiFetch(`${ENV_URL}/provision`, { method: 'POST', body: JSON.stringify({ userId: ev.view?.membership?.userId || '' }) });
     await load();
   } catch (ex) {
-    if (btn) btn.disabled = false;
     D.showError('evProvError', errText(ex, 'Setup did not finish. Try again in a minute.'));
-  }
+  } finally { done(); }
 }
 
 // Open shows the file; Download saves it. Both fetch the bytes through the
-// ten-minute link the API mints (the page's CSP and the account's CORS allow
+// two-minute link the API mints (the page's CSP and the account's CORS allow
 // the tenant's own blob host), then hand the browser a blob typed by the
 // file's NAME, so a .md or .csv shows as text and a PDF opens in the viewer
 // no matter what type Azure stored it under. A kind the browser cannot show
 // is downloaded instead, with its real filename.
 async function openFile(name, btn, mode = 'open') {
   D.showError('evFileError', '');
-  const origTip = btn.getAttribute('data-tip'); btn.disabled = true; btn.classList.add('is-spinning'); btn.setAttribute('data-tip', mode === 'open' ? 'Opening…' : 'Fetching…');
+  if (btn.disabled) return;
+  // the panel's one busy helper (cards.js): disabled, turning, saying what it does; back as it was on the answer
+  const done = busy(btn, mode === 'open' ? 'Opening…' : 'Fetching…');
   let objectUrl = '';
   try {
     const d = await post(`${ENV_URL}/files/download-url`, { name });
@@ -1682,7 +1832,7 @@ async function openFile(name, btn, mode = 'open') {
     }
   } catch (ex) { D.showError('evFileError', errText(ex, mode === 'open' ? 'Could not open that file.' : 'Could not download that file.')); }
   finally {
-    btn.disabled = false; btn.classList.remove('is-spinning'); if (origTip) btn.setAttribute('data-tip', origTip);
+    done();
     // The blob lives long enough for the tab or the save to take it.
     if (objectUrl) setTimeout(() => URL.revokeObjectURL(objectUrl), 120000);
   }
@@ -1695,20 +1845,20 @@ async function makeKey(btn) {
   if (document.getElementById('evScopeRead')?.checked) scopes.push('read');
   if (document.getElementById('evScopeWrite')?.checked) scopes.push('write');
   if (!scopes.length) { D.showError('evKeyError', 'Pick at least one scope.'); return; }
-  btn.disabled = true;
+  if (btn.disabled) return;
+  const done = busy(btn, 'Making the key…');
   try {
     ev.madeKey = await post(`${ENV_URL}/keys`, { label, scopes });
     await loadKeys();
     const input = document.getElementById('evMadeKey');
     if (input) { input.focus(); input.select(); }
   } catch (ex) {
-    btn.disabled = false;
     D.showError('evKeyError', errText(ex, 'The key could not be made.'));
-  }
+  } finally { done(); }
 }
 
 let keyArmTimer = null;
-async function revokeKey(keyId, label) {
+async function revokeKey(keyId, label, btn = null) {
   // First click arms the row, the second within six seconds revokes; no native dialog.
   if (ev.keyArm !== keyId) {
     ev.keyArm = keyId; paintKeys();
@@ -1717,32 +1867,35 @@ async function revokeKey(keyId, label) {
     return;
   }
   clearTimeout(keyArmTimer); ev.keyArm = '';
+  if (btn?.disabled) return;
   D.showError('evKeyError', '');
+  const done = busy(btn, 'Revoking…');
   try {
     await post(`${ENV_URL}/keys/revoke`, { keyId });
     if (ev.madeKey?.keyId === keyId) ev.madeKey = null;
     await loadKeys();
-  } catch (ex) { D.showError('evKeyError', errText(ex, 'Could not revoke that key.')); }
+  } catch (ex) { paintKeys(); D.showError('evKeyError', errText(ex, 'Could not revoke that key.')); }
+  finally { done(); }
 }
 
 async function copyKey(btn) {
   const text = document.getElementById('evMadeKey')?.value || '';
-  await copyText(text, btn, () => { const input = document.getElementById('evMadeKey'); if (input) { input.focus(); input.select(); } });
+  await copyText(text, btn, () => document.getElementById('evMadeKey'));
 }
 
 async function addDomain(btn) {
   D.showError('evDomainError', '');
   const host = (document.getElementById('evDomainHost')?.value || '').trim();
   if (!host) { D.showError('evDomainError', 'Enter the domain to connect, e.g. www.example.com.'); return; }
-  btn.disabled = true;
+  if (btn.disabled) return;
+  const done = busy(btn, 'Connecting…');
   try {
     await post(`${ENV_URL}/domains`, { host });
     ev.domainNote = '';
     await loadDomains();
   } catch (ex) {
-    btn.disabled = false;
     D.showError('evDomainError', errText(ex, 'That domain could not be connected.'));
-  }
+  } finally { done(); }
 }
 
 async function verifyDomain(host) {
@@ -1784,20 +1937,26 @@ function armDomain(key) {
 }
 function disarmDomain() { clearTimeout(domArmTimer); ev.domArm = ''; }
 
-async function unbindDomain(host) {
+async function unbindDomain(host, btn = null) {
   if (ev.domArm !== `unbind:${host}`) return armDomain(`unbind:${host}`);
   disarmDomain();
+  if (btn?.disabled) return;
   D.showError('evDomainError', '');
+  const done = busy(btn, 'Unbinding…');
   try { await post(`${ENV_URL}/domains/unbind`, { host }); await loadDomains(); }
   catch (ex) { paintDomains(); D.showError('evDomainError', errText(ex, 'Could not unbind that domain.')); }
+  finally { done(); }
 }
 
-async function removeDomain(host) {
+async function removeDomain(host, btn = null) {
   if (ev.domArm !== `remove:${host}`) return armDomain(`remove:${host}`);
   disarmDomain();
+  if (btn?.disabled) return;
   D.showError('evDomainError', '');
+  const done = busy(btn, 'Removing…');
   try { await post(`${ENV_URL}/domains/remove`, { host }); await loadDomains(); }
   catch (ex) { paintDomains(); D.showError('evDomainError', errText(ex, 'Could not remove that domain.')); }
+  finally { done(); }
 }
 
 // The link door: the name is checked in the linked account, the proof record
@@ -1808,15 +1967,15 @@ async function linkDomain(btn) {
   const connectionId = document.getElementById('evLinkConn')?.value || '';
   if (!host) { D.showError('evDomainError', 'Enter the domain to link, e.g. www.example.com.'); return; }
   if (!connectionId) { D.showError('evDomainError', 'Pick the registrar account that holds the name.'); return; }
-  btn.disabled = true;
+  if (btn.disabled) return;
+  const done = busy(btn, 'Linking…');
   try {
     const r = await post(`${ENV_URL}/domains/link`, { host, connectionId });
     ev.linkNote = r.note || '';
     await loadDomains();
   } catch (ex) {
-    btn.disabled = false;
     D.showError('evDomainError', errText(ex, 'That domain could not be linked.'));
-  }
+  } finally { done(); }
 }
 
 /* ---------- the DNS door ---------- */
@@ -1838,18 +1997,21 @@ async function startDnsDoor(btn) {
   }
 }
 function setDnsNote(host, note) { ev.dnsNote = ev.dnsNote || {}; ev.dnsNote[host] = note || ''; }
-async function dnsRecords(host) {
+async function dnsRecords(host, btn = null) {
   ev.dnsRecs = ev.dnsRecs || {};
   if (ev.dnsRecs[host]) { delete ev.dnsRecs[host]; paintDomains(); return; }
+  if (btn?.disabled) return;
+  const done = busy(btn, 'Reading the records…');
   try { const r = await post(`${ENV_URL}/domains/dns/records`, { host }); ev.dnsRecs[host] = { records: r.records || [], counts: r.counts || {} }; paintDomains(); }
   catch (ex) { D.showError('evDomainError', errText(ex, 'Could not read the records.')); }
+  finally { done(); }
 }
 async function dnsAdd(host) {
   D.showError('evDomainError', '');
   const zoneFile = document.getElementById(`evDnsFile-${host}`)?.value || '';
   const names = (document.getElementById(`evDnsNames-${host}`)?.value || '').split(/\r?\n/).map(s => s.trim()).filter(Boolean);
   if (!zoneFile.trim() && !names.length) { D.showError('evDomainError', 'Paste a zone file or type a name first.'); return; }
-  ev.dnsBusy = host; paintDomains();
+  ev.dnsBusy = host; ev.dnsAct = 'add'; paintDomains();
   try {
     const r = await post(`${ENV_URL}/domains/dns/add`, { host, zoneFile, names });
     ev.dnsRecs = ev.dnsRecs || {}; ev.dnsRecs[host] = { records: r.records || [], counts: r.counts || {} };
@@ -1859,14 +2021,14 @@ async function dnsAdd(host) {
 }
 async function dnsSwitch(host) {
   D.showError('evDomainError', '');
-  ev.dnsBusy = host; paintDomains();
+  ev.dnsBusy = host; ev.dnsAct = 'switch'; paintDomains();
   try { const r = await post(`${ENV_URL}/domains/dns/switch`, { host }); setDnsNote(host, r.note || ''); }
   catch (ex) { D.showError('evDomainError', errText(ex, 'Could not switch the nameservers.')); }
   ev.dnsBusy = ''; await loadDomains();
 }
 async function dnsCheck(host) {
   D.showError('evDomainError', '');
-  ev.dnsBusy = host; paintDomains();
+  ev.dnsBusy = host; ev.dnsAct = 'check'; paintDomains();
   try { const r = await post(`${ENV_URL}/domains/dns/check`, { host }); setDnsNote(host, r.note || ''); }
   catch (ex) { D.showError('evDomainError', errText(ex, 'Could not check the domain.')); }
   ev.dnsBusy = ''; await loadDomains();
@@ -1874,7 +2036,7 @@ async function dnsCheck(host) {
 async function dnsCancel(host) {
   D.showError('evDomainError', '');
   if (ev.domArm !== `dns-cancel:${host}`) { ev.domArm = `dns-cancel:${host}`; paintDomains(); return; }
-  ev.domArm = ''; ev.dnsBusy = host; paintDomains();
+  ev.domArm = ''; ev.dnsBusy = host; ev.dnsAct = 'cancel'; paintDomains();
   try {
     const r = await post(`${ENV_URL}/domains/dns/cancel`, { host });
     ev.dnsBack = ev.dnsBack || {}; delete ev.dnsBack[host];
@@ -1887,10 +2049,13 @@ async function dnsCancel(host) {
   ev.dnsBusy = ''; await loadDomains();
 }
 
-async function unlinkDomain(host) {
+async function unlinkDomain(host, btn = null) {
+  if (btn?.disabled) return;
   D.showError('evDomainError', '');
+  const done = busy(btn, 'Unlinking…');
   try { const r = await post(`${ENV_URL}/domains/unlink`, { host }); ev.linkNote = r.note || ''; await loadDomains(); }
   catch (ex) { D.showError('evDomainError', errText(ex, 'Could not unlink that domain.')); }
+  finally { done(); }
 }
 
 // Open the software (2026-09-16): the studio lives on its own origin, so the
@@ -1902,19 +2067,20 @@ async function unlinkDomain(host) {
 async function openSoftware(btn) {
   const plain = String(btn?.dataset?.url || '');
   if (!plain) return;
+  if (btn.disabled) return;
   let w = null;
   try { w = window.open('about:blank', '_blank'); if (w) w.opener = null; } catch { w = null; }
-  btn.disabled = true;
+  const done = busy(btn, 'Opening the software…');
   const base = plain.replace(/\/+$/, '');
   let target = base;
   try {
-    const token = JSON.parse(sessionStorage.getItem('pragoptics_tokens') || 'null')?.access_token || '';
+    const token = accessToken();
     const res = await fetch(`${PRAG_API_BASE}/auth/software/handoff`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
     const d = res.ok ? await res.json() : null;
     // The code plus this lane's API base and name: the studio redeems on the lane the person is signed in on.
     if (d?.code) target = `${base}/#handoff=${encodeURIComponent(d.code)}&api=${encodeURIComponent(PRAG_API_BASE)}&lane=${encodeURIComponent(LANE)}`;
   } catch { /* the plain address: the studio asks for a sign-in */ }
-  btn.disabled = false;
+  done();
   if (w) { try { w.location.replace(target); return; } catch { /* fall through */ } }
   location.assign(target);
 }
@@ -1924,10 +2090,11 @@ async function openSoftware(btn) {
 async function exportEnvironment(btn) {
   D.showError('evExportError', '');
   const status = document.getElementById('evExportStatus');
-  btn.disabled = true;
+  if (btn.disabled) return;
+  const done = busy(btn, 'Gathering everything…');
   if (status) status.textContent = 'Gathering everything…';
   try {
-    const token = JSON.parse(sessionStorage.getItem('pragoptics_tokens') || 'null')?.access_token || '';
+    const token = accessToken();
     const res = await fetch(url(`${ENV_URL}/export`), { headers: { Authorization: `Bearer ${token}` } });
     if (!res.ok) { let d = null; try { d = await res.json(); } catch { /* fine */ } throw Object.assign(new Error(d?.error || `Export failed (${res.status})`), { status: res.status, data: d }); }
     const blob = await res.blob();
@@ -1942,11 +2109,11 @@ async function exportEnvironment(btn) {
     a.href = URL.createObjectURL(blob); a.download = name; a.rel = 'noopener';
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(a.href), 60000);
-    if (status) status.textContent = `Saved ${name} (${bytesFmt(blob.size)}). The file links inside live ten minutes.`;
+    if (status) status.textContent = `Saved ${name} (${bytesFmt(blob.size)}). The file links inside work for two minutes. For a file you need later, open it from Files.`;
   } catch (ex) {
     if (status) status.textContent = '';
     D.showError('evExportError', errText(ex, 'The export did not finish.'));
-  } finally { btn.disabled = false; }
+  } finally { done(); }
 }
 
 /* ---------- connected accounts ---------- */
@@ -2094,6 +2261,125 @@ async function refreshTwilioConnect(id, quiet = false) {
   await loadConnections();
 }
 
+/**
+ * Microsoft 365 (2026-09-23): mode "connect" answers Microsoft's sign-in page, mode "approve" Microsoft's admin approval
+ * page for the subscriber's own organization. Either is used at once in this tab, never shown; Microsoft sends the person
+ * back to /#account?connect=microsoft&id=<row>&outcome=... (runtime/bootstrap.js keeps it through the sign-in). A
+ * finished sign-in comes back as outcome=confirm&ticket=..., which confirmMicrosoftConnect finishes.
+ * The platform's refusals come back as the platform's words here, never a setting's name or Microsoft's text.
+ */
+async function startMicrosoftConnect(mode = 'connect') {
+  if (ev.connBusy || ev.connConfirming) return;
+  D.showError('evConnError', '');
+  ev.connBusy = true; ev.connResult = ''; paintConnections();
+  try {
+    const d = await post(`${ENV_URL}/connections/microsoft/start`, { mode: mode === 'approve' ? 'approve' : 'connect' });
+    if (!d?.url) throw new Error('The platform did not answer with a Microsoft page to open.');
+    try { sessionStorage.setItem('pragoptics_connect_return', JSON.stringify({ provider: 'microsoft', id: String(d.connection?.id || '') })); } catch { /* the return still carries the id */ }
+    window.location.assign(d.url);
+    return;
+  } catch (ex) {
+    ev.connBusy = false;
+    const code = String(ex?.data?.code || '');
+    // connected meanwhile (another tab, another admin): the row says so
+    if (code === 'ALREADY_CONNECTED') { ev.connPick = ''; ev.connResult = 'Microsoft 365 is already connected here.'; await loadConnections(); return; }
+    paintConnections();
+    D.showError('evConnError', code === 'LIVE_LANE_ONLY' ? 'Microsoft 365 connects on the live lane only. Switch to Live to connect it.'
+      : code === 'MS_CONNECT_NOT_CONFIGURED' || ex?.status === 404 ? 'Microsoft 365 is not switched on for this lane yet.'
+      : errText(ex, 'Could not open the Microsoft page right now.'));
+  }
+}
+/**
+ * Check status. A connected (or disconnected) row asks Microsoft again with the stored grant: POST
+ * connections/microsoft/refresh answers { connection, message }. A row not yet signed in holds no grant to ask with; its
+ * state is the platform's own record (an administrator's approval lands on it), so the list is read again instead. A row
+ * signed in but not finished (awaitingConfirm) asks the platform too: it never uses that sign-in, and drops it once its
+ * ten minutes have passed, so the row's line then says to press Connect again instead of waiting forever. A row waiting
+ * on an approval (msNeedsApproval) asks the platform as well. Waiting for PragOptics' approval (msApproving), it asks the
+ * operator's desk again (an open item counts up, a closed one reopens and the operator is emailed), or turns the row to
+ * the subscriber's own administrator when the tenant is no longer one PragOptics administers. Blocked because the sign-in
+ * came from another organization while PragOptics' approval of the subscriber's tenant is on record (needsApproval,
+ * platformApproving false), it forgets that approval, which may have been removed at Microsoft, and asks the desk again
+ * (functions/microsoftConnect.js). For any other approval the platform answers the row as it stands. Reading the list
+ * again only would never ask anyone, and that row would be a dead end.
+ */
+async function refreshMicrosoftConnect(id, quiet = false) {
+  if (!id || ev.connTesting || ev.connConfirming === id) return;
+  if (!quiet) D.showError('evConnError', '');
+  const was = (ev.connections || []).find(c => c.id === id);
+  ev.connTesting = id; paintConnections();
+  if (was && msWaiting(was) && !msAwaiting(was) && !msNeedsApproval(was)) {
+    await loadConnections();
+    ev.connTesting = '';
+    const now = (ev.connections || []).find(c => c.id === id);
+    // a row that turned to PragOptics approving since the list on screen was read says so; its next Check status asks the desk
+    if (!quiet && now) rowNote(id, now.status === 'ACTIVE' ? 'Connected.' : msApproving(now) ? 'Checked again: PragOptics has not approved it yet. The owner gets an email when it is done.'
+      : msNeedsApproval(now) ? "Checked again: still waiting for your Microsoft administrator's approval." : msApproved(now) ? 'Checked again: approved. Press Connect to sign in and finish.' : 'Checked again: not signed in at Microsoft yet.');
+    paintConnections();
+    return;
+  }
+  try {
+    const d = await post(`${ENV_URL}/connections/microsoft/refresh`, { id });
+    rowNote(id, d.message || d.connection?.message || 'Microsoft answered for the account.', d.connection?.status === 'REJECTED');
+  } catch (ex) {
+    // as at start: a lane without the settings (or without the route) is said in the platform's words, never a setting's
+    // name; a 404 that names the row (NOT_FOUND) is the row gone, and says so
+    const code = String(ex?.data?.code || '');
+    if (!quiet) rowNote(id, code === 'MS_CONNECT_NOT_CONFIGURED' || (ex?.status === 404 && code !== 'NOT_FOUND') ? 'Microsoft 365 is not switched on for this lane yet.'
+      : errText(ex, 'Could not check that Microsoft 365 connection.'), true);
+  }
+  ev.connTesting = '';
+  await loadConnections();
+}
+
+/**
+ * The sign-in's finish (2026-09-23 review). Microsoft's page is not tied to the browser or the session that pressed
+ * Connect, so the platform keeps a finished sign-in aside and sends this page a one-use ticket
+ * (#account?connect=microsoft&id=<row>&outcome=confirm&ticket=<t>). This session, the one that pressed Connect, posts it
+ * once: POST connections/microsoft/confirm { id, ticket } answers { connection, message } (already: true when this
+ * person had finished it before). Refusals come in the platform's words: 400 CONFIRM_INVALID, 403 CONFIRM_NOT_YOURS,
+ * 409 CONFIRM_EXPIRED, 404 NOT_FOUND. The row is always on the live lane, so the post names the live lane whichever lane
+ * this page shows, and it is never skipped because the row is missing from the list on screen. The ticket is not kept:
+ * the caller already took it out of sessionStorage, and it is put back only when the session itself was refused (then
+ * the platform never looked at it, and signing in again finishes it).
+ */
+async function confirmMicrosoftConnect(id, ticket) {
+  if (!id || ev.connConfirming) return;
+  D.showError('evConnError', '');
+  if (!/^[A-Za-z0-9_-]{16,128}$/.test(String(ticket || ''))) {
+    ev.connResult = '';
+    await loadConnections();
+    D.showError('evConnError', 'This Microsoft sign-in cannot be finished from this link. Press Connect to start again.');
+    return;
+  }
+  const waiting = 'Back from Microsoft. Finishing the connection…';
+  ev.connConfirming = id; ev.connResult = waiting; paintConnections();
+  let said = '', problem = '';
+  try {
+    const u = new URL(url(`${ENV_URL}/connections/microsoft/confirm`)); u.searchParams.delete('lane');
+    const d = await D.apiFetch(u.toString(), { method: 'POST', body: body({ lane: 'live', id, ticket }) });
+    said = d?.message || d?.connection?.message || 'Microsoft 365 is connected.';
+  } catch (ex) {
+    const code = String(ex?.data?.code || '');
+    if (ex?.sessionInvalidated) {
+      // refused at the session, before the ticket was read: kept for the sign-in that follows, inside its ten minutes
+      try { sessionStorage.setItem('pragoptics_connect_return', JSON.stringify({ provider: 'microsoft', id, outcome: 'confirm', ticket })); sessionStorage.setItem('pragoptics_return_to', 'environment'); } catch { /* Connect again */ }
+      providerReturnSeen = false;
+    } else {
+      problem = code === 'NOT_FOUND' ? 'This Microsoft sign-in is not waiting in the team open here, so nothing was connected. Open the team where Connect was pressed and press Connect again.'
+        : ex?.status === 404 ? 'Microsoft 365 is not switched on for this lane yet.'
+          : errText(ex, 'Could not finish the Microsoft sign-in. Press Connect to start again.');
+    }
+  } finally {
+    ticket = '';
+    ev.connConfirming = '';
+  }
+  // the progress line leaves unless something newer took its place; the answer is the card's line, a refusal its error
+  if (ev.connResult === waiting) ev.connResult = said;
+  await loadConnections();
+  if (problem) D.showError('evConnError', problem);
+}
+
 async function startStripeConnect(id = '') {
   if (ev.connBusy) return;
   D.showError('evConnError', '');
@@ -2125,53 +2411,107 @@ async function refreshStripeConnect(id, quiet = false) {
   await loadConnections();
 }
 
-/** Back from a provider (Stripe's hosted setup, Twilio's authorization): the return carries the provider and the connection id; the card re-reads the provider once and cleans the address bar. */
-let providerReturnSeen = false;
-async function handleProviderReturn() {
-  if (providerReturnSeen) return;
-  providerReturnSeen = true;
-  let provider = '', id = '', outcome = '';
+/**
+ * The return from a provider: /#account?connect=stripe|twilio|shippo|shopify|microsoft&id=...&outcome=... in the address
+ * (Microsoft's finished sign-in also carries &ticket=..., for the confirm), or the one kept in sessionStorage across a
+ * sign-in. The address is cleaned back to #account, taking the ticket out of the address bar, and what was kept is
+ * cleared. Answers { provider, id, outcome, ticket }, or null when there is no return.
+ */
+function readProviderReturn() {
+  let provider = '', id = '', outcome = '', ticket = '';
   try {
-    // The return rides in the hash: /#account?connect=stripe|twilio&id=...&outcome=...; the hash is cleaned back to #account.
     const q = new URLSearchParams(String(window.location.hash || '').split('?')[1] || '');
-    if (['stripe', 'twilio', 'shippo', 'shopify'].includes(q.get('connect'))) { provider = q.get('connect'); id = q.get('id') || ''; outcome = q.get('outcome') || 'return'; history.replaceState(null, '', window.location.pathname + '#account'); }
+    if (['stripe', 'twilio', 'shippo', 'shopify', 'microsoft'].includes(q.get('connect'))) { provider = q.get('connect'); id = q.get('id') || ''; outcome = q.get('outcome') || 'return'; ticket = q.get('ticket') || ''; history.replaceState(null, '', window.location.pathname + '#account'); }
   } catch { /* no query to read */ }
   if (!id) {
     try {
       const kept = JSON.parse(sessionStorage.getItem('pragoptics_connect_return') || 'null');
-      if (kept?.id) { provider = kept.provider || provider; id = kept.id; outcome = kept.outcome || outcome || 'return'; }
+      if (kept?.id) { provider = kept.provider || provider; id = kept.id; outcome = kept.outcome || outcome || 'return'; ticket = String(kept.ticket || ''); }
       else { id = sessionStorage.getItem('pragoptics_stripe_connect') || ''; provider = id ? 'stripe' : provider; }
     } catch { /* nothing kept */ }
-    if (!id) return; outcome = outcome || 'return';
+    if (!id) return null;
+    outcome = outcome || 'return';
   }
   try { sessionStorage.removeItem('pragoptics_connect_return'); sessionStorage.removeItem('pragoptics_stripe_connect'); } catch { /* nothing to clear */ }
-  if (!(ev.connections || []).some(c => c.id === id)) return;
-  if (provider === 'twilio') {
-    ev.connResult = outcome === 'declined' ? 'You declined the authorization at Twilio. Nothing was connected.' : outcome === 'failed' ? 'Twilio named an account the platform could not read. Try connecting again.' : 'Back from Twilio. Checking the account…';
-    paintConnections();
-    await refreshTwilioConnect(id, true);
-    return;
+  return { provider, id, outcome, ticket };
+}
+
+/* Back from Twilio, Shopify, Shippo or Stripe: the card's line for the outcome, then the provider is read once more.
+ * Stripe is also the return of an older page that named no provider. */
+const PROVIDER_RETURN = {
+  twilio: {
+    words: (o) => (o === 'declined' ? 'You declined the authorization at Twilio. Nothing was connected.' : o === 'failed' ? 'Twilio named an account the platform could not read. Try connecting again.' : 'Back from Twilio. Checking the account…'),
+    refresh: (id) => refreshTwilioConnect(id, true)
+  },
+  shopify: {
+    words: () => 'Back from Shopify. Checking the supplier…',
+    refresh: (id) => refreshShopifyConnect(id, true)
+  },
+  shippo: {
+    words: (o) => (o === 'declined' ? 'You declined the authorization at Shippo. Nothing was connected.' : o === 'failed' ? 'Shippo did not hand the platform a working authorization. Try connecting again.' : 'Back from Shippo. Checking the account…'),
+    refresh: (id) => refreshShippoConnect(id, true)
+  },
+  stripe: {
+    words: (o) => (o === 'refresh' ? 'The Stripe setup link had expired. Press Continue setup for a fresh one.' : 'Back from Stripe. Checking the account…'),
+    refresh: (id) => refreshStripeConnect(id, true)
   }
-  if (provider === 'shopify') {
-    ev.connResult = 'Back from Shopify. Checking the supplier…';
-    paintConnections();
-    await refreshShopifyConnect(id, true);
-    return;
-  }
-  if (provider === 'shippo') {
-    ev.connResult = outcome === 'declined' ? 'You declined the authorization at Shippo. Nothing was connected.' : outcome === 'failed' ? 'Shippo did not hand the platform a working authorization. Try connecting again.' : 'Back from Shippo. Checking the account…';
-    paintConnections();
-    await refreshShippoConnect(id, true);
-    return;
-  }
-  ev.connResult = outcome === 'refresh' ? 'The Stripe setup link had expired. Press Continue setup for a fresh one.' : 'Back from Stripe. Checking the account…';
+};
+
+/**
+ * Back from Microsoft's sign-in or approval page. outcome: declined | failed | approval-needed | approved (an
+ * administrator approved for the organization) | superseded (a page a later press replaced, or one already answered:
+ * nothing changed) | return (signed in, from a lane before the confirm; the confirm is handled before this).
+ * A decline or a failure is said in the row's own words: the platform wrote why on it (lastError) for the page it came
+ * back from, the sign-in or the administrator's approval (detail.mode), and why it did not finish (ten minutes passed, a
+ * personal account, the approval not given). A fixed sentence here guessed, and contradicted the row under it
+ * (2026-09-24 walk). Without a line on the row, the page it was (mode) says what is certain, and no reason.
+ */
+async function microsoftReturn(id, outcome) {
+  const c = (ev.connections || []).find(x => x.id === id);
+  const approving = c?.detail?.mode === 'approve';
+  const rowSays = String(c?.lastError || '').trim();
+  const said = {
+    declined: rowSays || (approving ? 'The approval at Microsoft was not given. Nothing changed.' : 'You declined at Microsoft. Nothing was connected.'),
+    failed: rowSays || (approving ? 'Microsoft did not finish the approval. Try again.' : 'The sign-in at Microsoft did not finish, and nothing was connected. Press Connect to try again.'),
+    // the row's line first: after PragOptics approved its own tenant, a blocked sign-in came from another organization,
+    // and the platform's line names the tenant to sign in with (a fixed sentence here would send them to the wrong door)
+    'approval-needed': c && msApproving(c)
+      ? 'Your organization needs an administrator to approve PragOptics, and PragOptics holds that administrator account. PragOptics has been asked to approve it; the owner gets an email when it is done.'
+      : rowSays || "Your organization's Microsoft administrator has to approve PragOptics first. If that is you, press Approve for my organization. Then press Connect.",
+    approved: 'Approved for your organization. Press Connect to sign in and finish.',
+    superseded: 'This Microsoft page was replaced by a later press, or it was already used, so nothing changed. The row shows where the connection stands.'
+  }[outcome];
+  const checking = 'Back from Microsoft. Checking the account…';
+  ev.connResult = said || checking;
   paintConnections();
-  await refreshStripeConnect(id, true);
+  // only a sign-in left a grant to check; the other answers are already on the row
+  if (said) return;
+  await refreshMicrosoftConnect(id, true);
+  // the row carries the answer (its note, its tag): the progress line leaves, unless something newer took its place
+  if (ev.connResult === checking) { ev.connResult = ''; paintConnections(); }
+}
+
+/** Back from a provider (Stripe's hosted setup, Twilio's authorization, Shippo's, Shopify's, Microsoft's sign-in or approval): the return is read, the card re-reads the provider once, and the address bar is clean. */
+let providerReturnSeen = false;
+async function handleProviderReturn() {
+  if (providerReturnSeen) return;
+  providerReturnSeen = true;
+  const r = readProviderReturn();
+  if (!r) return;
+  // A finished Microsoft sign-in is confirmed before the list is looked at: its row is on the live lane, which may not be
+  // the list on screen, and a skipped confirm would leave the sign-in unfinished. The ticket is not kept after.
+  if (r.provider === 'microsoft' && r.outcome === 'confirm') { const ticket = r.ticket; r.ticket = ''; await confirmMicrosoftConnect(r.id, ticket); return; }
+  if (!(ev.connections || []).some(c => c.id === r.id)) return;
+  if (r.provider === 'microsoft') { await microsoftReturn(r.id, r.outcome); return; }
+  const back = PROVIDER_RETURN[r.provider] || PROVIDER_RETURN.stripe;
+  ev.connResult = back.words(r.outcome);
+  paintConnections();
+  await back.refresh(r.id);
 }
 
 let connArmTimer = null;
-async function removeConnection(id, label) {
-  if (!id) return;
+async function removeConnection(id, label, btn = null) {
+  if (!id || ev.connConfirming === id) return;   // its sign-in is being finished: the button waits, saying so
   // First click arms the row (no native dialog: embedded browsers swallow
   // those and the click looked dead). Second click within six seconds removes.
   if (ev.connArm !== id) {
@@ -2181,27 +2521,29 @@ async function removeConnection(id, label) {
     return;
   }
   clearTimeout(connArmTimer); ev.connArm = '';
+  if (btn?.disabled) return;
   D.showError('evConnError', '');
-  const managed = (ev.connections || []).some(c => c.id === id && isManaged(c));
-  try { await post(`${ENV_URL}/connections/remove`, { id }); ev.connResult = managed ? `${label} removed from this environment. The Stripe account is still yours at dashboard.stripe.com.` : `${label} removed.`; await loadConnections(); }
-  catch (ex) { D.showError('evConnError', errText(ex, 'Could not remove that connection.')); }
+  const row = (ev.connections || []).find(c => c.id === id);
+  const managed = !!row && isManaged(row);
+  const done = busy(btn, 'Removing…');
+  // each provider's own sentence (it used to be the Stripe one for every managed row)
+  try { await post(`${ENV_URL}/connections/remove`, { id }); ev.connResult = managed ? `${label} removed from this environment.${removedWords(row)}` : `${label} removed.`; await loadConnections(); }
+  catch (ex) { paintConnections(); D.showError('evConnError', errText(ex, 'Could not remove that connection.')); }
+  finally { done(); }
 }
 
 async function setRenewal(host, autoRenew, input) {
   D.showError('evDomainError', '');
-  input.disabled = true;
+  const done = busy(input, autoRenew ? 'Turning renewal on…' : 'Turning renewal off…');
   try { await post(`${ENV_URL}/domains/renewal`, { host, autoRenew }); await loadDomains(); }
-  catch (ex) { input.disabled = false; input.checked = !autoRenew; D.showError('evDomainError', errText(ex, 'Could not change the renewal choice.')); }
+  catch (ex) { input.checked = !autoRenew; D.showError('evDomainError', errText(ex, 'Could not change the renewal choice.')); }
+  finally { done(); }
 }
 
-async function copyText(text, btn, onFail) {
-  const iconOnly = btn.classList.contains('btn-ico');
-  const orig = btn.innerHTML, origLabel = btn.getAttribute('aria-label') || '';
-  const show = (ok) => { if (iconOnly) { btn.innerHTML = ico(ok ? 'check' : 'x'); btn.setAttribute('aria-label', ok ? 'Copied' : 'Select the text and copy it'); } else btn.textContent = ok ? 'Copied' : 'Select the text'; };
-  try { await writeClipboard(text); show(true); }
-  catch { show(false); if (onFail) onFail(); }
-  setTimeout(() => { btn.innerHTML = orig; if (iconOnly) btn.setAttribute('aria-label', origLabel); }, 1600);
-}
+/** A value to the clipboard (cards.js copyButton); where the browser refuses, `select()` names what to select for the keyboard. */
+function copyText(text, btn, select = null) { return copyButton(btn, text, { select }); }
+/** The <code> a copy button sits beside (a DNS record's value, a nameserver, a link), selected when the clipboard is refused. */
+function codeBeside(btn) { return btn.parentElement?.querySelector('code') || btn.closest('dd')?.previousElementSibling?.querySelector?.('code') || null; }
 
 export function bindEnvironmentActions(deps) {
   if (bindEnvironmentActions._bound) return;
@@ -2218,35 +2560,36 @@ export function bindEnvironmentActions(deps) {
     e.preventDefault();
     const a = btn.dataset.envAction;
     if (a === 'dom-tab') { ev.domTab = btn.dataset.tab || 'connect'; paintDomains(); return; }
-    if (a === 'refresh') return void refreshAll();
+    // the read paints every Refresh as out while it runs (refreshCtl), so a second press finds it disabled
+    if (a === 'refresh') { if (btn.disabled || envLoad) return; return void refreshAll(); }
     if (a === 'budget-save') return void saveBudget(btn);
     if (a === 'lane-live') return void setLane('live');
     if (a === 'lane-sandbox') return void setLane('sandbox');
     if (a === 'sandbox-setup') return void setupSandbox(btn);
     if (a === 'export') return void exportEnvironment(btn);
     if (a === 'open-software') return void openSoftware(btn);
-    if (a === 'provision') return void provision();
+    if (a === 'provision') return void provision(btn);
     if (a === 'open') return void openFile(btn.dataset.name || '', btn, 'open');
     if (a === 'download') return void openFile(btn.dataset.name || '', btn, 'download');
     if (a === 'key-make') return void makeKey(btn);
     if (a === 'key-copy') return void copyKey(btn);
-    if (a === 'key-revoke') return void revokeKey(btn.dataset.key || '', btn.dataset.label || 'this key');
+    if (a === 'key-revoke') return void revokeKey(btn.dataset.key || '', btn.dataset.label || 'this key', btn);
     if (a === 'key-arm-cancel') { clearTimeout(keyArmTimer); ev.keyArm = ''; paintKeys(); return; }
     if (a === 'domain-add') return void addDomain(btn);
     if (a === 'domain-verify') return void verifyDomain(btn.dataset.host || '');
-    if (a === 'domain-remove') return void removeDomain(btn.dataset.host || '');
+    if (a === 'domain-remove') return void removeDomain(btn.dataset.host || '', btn);
     if (a === 'domain-bind') return void bindDomain(btn.dataset.host || '');
-    if (a === 'domain-unbind') return void unbindDomain(btn.dataset.host || '');
-    if (a === 'domain-copy') return void copyText(btn.dataset.text || '', btn);
+    if (a === 'domain-unbind') return void unbindDomain(btn.dataset.host || '', btn);
+    if (a === 'domain-copy') return void copyText(btn.dataset.text || '', btn, () => codeBeside(btn));
     if (a === 'data-open' || a === 'data-reload') return void loadRows(btn.dataset.table || '');
     if (a === 'data-close') return void closeTable();
     if (a === 'data-more') return void loadRows(ev.table, true);
     if (a === 'data-row') { const k = btn.dataset.key || ''; ev.openRow = ev.openRow === k ? '' : k; paintData(); return; }
     if (a === 'open-url') { const u = String(btn.dataset.url || ''); if (/^https:\/\//.test(u)) window.open(u, '_blank', 'noopener'); return; }
     if (a === 'domain-link') return void linkDomain(btn);
-    if (a === 'domain-unlink') return void unlinkDomain(btn.dataset.host || '');
+    if (a === 'domain-unlink') return void unlinkDomain(btn.dataset.host || '', btn);
     if (a === 'domain-dns-start') return void startDnsDoor(btn);
-    if (a === 'domain-dns-records') return void dnsRecords(btn.dataset.host || '');
+    if (a === 'domain-dns-records') return void dnsRecords(btn.dataset.host || '', btn);
     if (a === 'domain-dns-add') return void dnsAdd(btn.dataset.host || '');
     if (a === 'domain-dns-switch') return void dnsSwitch(btn.dataset.host || '');
     if (a === 'domain-dns-check') return void dnsCheck(btn.dataset.host || '');
@@ -2261,10 +2604,12 @@ export function bindEnvironmentActions(deps) {
     if (a === 'domain-reg-suggest') { const r = ev.reg; r.host = btn.dataset.host || ''; r.step = 'idle'; r.quote = null; r.error = ''; paintDomains(); const i = document.getElementById('evRegHost'); if (i) i.value = r.host; regCheck(); return; }
     if (a === 'domain-reg-edit-contact') { ev.reg.contact = readContact(); ev.reg.editContact = true; paintDomains(); document.getElementById('evRegFirst')?.focus(); return; }
     if (a === 'domain-reg-cancel') { ev.reg = freshReg(); paintDomains(); return; }
-    if (a === 'conn-add') return void addConnection(btn);
+    if (a === 'conn-add') { if (!ev.connBusy) ev.connRow = ''; return void addConnection(btn); }
     if (a === 'conn-test') return void testConnection(btn.dataset.id || '');
-    if (a === 'conn-remove') return void removeConnection(btn.dataset.id || '', btn.dataset.label || 'this connection');
+    if (a === 'conn-remove') return void removeConnection(btn.dataset.id || '', btn.dataset.label || 'this connection', btn);
     if (a === 'conn-remove-cancel') { clearTimeout(connArmTimer); ev.connArm = ''; paintConnections(); return; }
+    // the row a provider's page was opened from says so while the answer is out (connectionsHtml)
+    if (/^conn-(stripe|twilio|shippo|shopify|microsoft)-(start|continue|link|approve)$/.test(a) && !ev.connBusy) { ev.connRow = btn.dataset.id || ''; ev.connAct = a; }
     if (a === 'conn-stripe-start') return void startStripeConnect('');
     if (a === 'conn-stripe-continue') return void startStripeConnect(btn.dataset.id || '');
     if (a === 'conn-stripe-refresh') return void refreshStripeConnect(btn.dataset.id || '');
@@ -2276,7 +2621,14 @@ export function bindEnvironmentActions(deps) {
     if (a === 'conn-shopify-link') return void startShopifyConnect(btn.dataset.id || '', btn.dataset.shop || '');
     if (a === 'conn-shopify-refresh') return void refreshShopifyConnect(btn.dataset.id || '');
     if (a === 'conn-shopify-sync') return void syncShopifyProducts(btn.dataset.id || '');
+    if (a === 'conn-microsoft-start') return void startMicrosoftConnect('connect');
+    if (a === 'conn-microsoft-approve') return void startMicrosoftConnect('approve');
+    if (a === 'conn-microsoft-refresh') return void refreshMicrosoftConnect(btn.dataset.id || '');
   });
+
+  // Back from a provider's page with the browser's Back button, the page can come back from the browser's memory as it
+  // was left: the door still turning. Its request finished (the page was opened), so the door comes back.
+  window.addEventListener('pageshow', (e) => { if (e.persisted && ev.connBusy) { ev.connBusy = false; ev.connRow = ''; ev.connAct = ''; paintConnections(); } });
 
   document.addEventListener('change', (e) => {
     const t = e.target.closest?.('[data-env-toggle="domain-renew"]');

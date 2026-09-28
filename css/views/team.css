@@ -27,9 +27,18 @@
 .join-error { width: 100%; box-sizing: border-box; text-align: left; }
 
 /* ---------- team section ---------- */
-.tm-switch { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
-.tm-switch .adm-select { min-width: 240px; }
+/* the section's cards stand apart with the gap every other section's cards keep (they touched until 2026-09-23);
+   the role permissions host is no box of its own, so an empty one adds no gap */
+#tmBody { display: grid; gap: 12px; min-width: 0; }
+#tmBody > * { min-width: 0; }
+#tmBody > .tm-scopes-host { display: contents; }
+/* the picker wraps: "Loading the team…" (cards.js busy(), a .busy-note after the select) drops under it on a phone
+   instead of running past the edge, where the shell's overflow cut it off */
+.tm-switch { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin-bottom: 14px; min-width: 0; }
+#tmBody > .tm-switch { margin-bottom: 0; }
+.tm-switch .adm-select { min-width: min(240px, 100%); max-width: 100%; }
 .tm-switch .acct-label { margin: 0; }
+.tm-switch .busy-note { margin-left: 0; white-space: normal; }
 
 .tm-summary-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; flex-wrap: wrap; }
 .tm-summary-id { min-width: 0; flex: 1 1 320px; }
@@ -69,6 +78,11 @@
 .tm-field .acct-input { width: 100%; }
 .tm-edit-acts { padding-bottom: 1px; }
 .tm-edit-note { margin: 8px 0 0; }
+/* a change that ends a seat asks first (licensing L5d): the question in words, then its two buttons; they wrap on a phone */
+.tm-confirm-row { display: grid; gap: 8px; margin-top: 10px; }
+.tm-edit .tm-confirm-row { margin-top: 0; }
+.tm-confirm-row .acct-card-note { margin: 0; }
+.tm-confirm-row .act-row { flex-wrap: wrap; gap: 8px; }
 /* an input with its icons (rename, the invite link): the field takes the room */
 .tm-inline-edit { display: flex; gap: 8px; align-items: center; }
 .tm-inline-edit .acct-input { flex: 1 1 auto; min-width: 0; }
@@ -97,6 +111,101 @@
 .tm-inv-when { font-size: .82rem; }
 .tm-inv-who { font-weight: 600; color: var(--card-title); flex: 1 1 200px; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .tm-recent { margin: 10px 0 0; }
+
+/* ---------- what each role can do (src/account/team.js scopesHtml, 2026-09-23) ----------
+   One group per role (Admin, Developer, Member), one row per permission: its label with the
+   switch at the end of that line, and its full description under both, across the row's
+   whole width (a phone keeps the words readable). From 760px of panel width each group lays
+   its permissions out two across. The switch is a button (role="switch") so the panel's
+   armed confirm can open it into its question; while it asks, the question sits under the
+   description, across the row. */
+.tm-scopes-lead { margin: 0 0 10px; }
+.tm-scopes-retry { margin-top: 10px; }
+.tm-scopes-yours {
+  display: flex; gap: 8px; align-items: flex-start; margin: 0 0 12px; padding: 8px 12px;
+  border-radius: var(--radius-ctl);
+  border: 1px solid color-mix(in srgb, var(--brand-600) 30%, transparent);
+  background: color-mix(in srgb, var(--brand-600) 7%, transparent);
+  color: var(--ink); font-size: .88rem; line-height: 1.45;
+}
+.tm-scopes-yours .ev-ico { flex: none; margin-top: 2px; color: var(--brand-600); }
+.tm-scopes { display: grid; gap: 12px; }
+.tm-scope-role {
+  min-width: 0; padding: 12px 12px 2px;
+  border: 1px solid var(--border); border-radius: var(--radius-ctl); background: var(--surface-3);
+}
+.tm-scope-role.is-mine { border-color: color-mix(in srgb, var(--brand-600) 50%, transparent); box-shadow: inset 3px 0 0 var(--brand-600); }
+.tm-scope-role-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.tm-scope-role-h { margin: 0; font-size: .95rem; font-weight: 800; color: var(--card-title); }
+.tm-scope-count { margin-left: auto; font-size: .8rem; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.tm-scope-role-note { margin: 2px 0 4px; color: var(--muted); font-size: .8rem; line-height: 1.4; }
+.tm-scope-list { list-style: none; margin: 0; padding: 0; display: grid; column-gap: 24px; }
+.tm-scope {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: "label ctl" "desc desc" "err err";
+  column-gap: 12px; align-items: center; align-content: start;
+  min-width: 0; padding: 8px 0 12px; border-top: 1px solid var(--border);
+}
+.tm-scope-label { grid-area: label; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; min-width: 0; font-weight: 700; font-size: .9rem; line-height: 1.3; color: var(--card-title); }
+.tm-scope-ctl { grid-area: ctl; display: inline-flex; align-items: center; justify-self: end; min-width: 0; }
+.tm-scope-desc { grid-area: desc; margin-top: 2px; color: var(--muted); font-size: .84rem; line-height: 1.45; overflow-wrap: anywhere; }
+.tm-scope-err { grid-area: err; margin: 8px 0 0; }
+/* the armed question (cards.js armed) goes under the description it asks about, across the row */
+.tm-scope:has(.is-armed) { grid-template-areas: "label label" "desc desc" "ctl ctl" "err err"; }
+.tm-scope:has(.is-armed) .tm-scope-ctl { justify-self: stretch; margin-top: 8px; }
+.tm-scope-ctl .btn.tm-sw.is-armed { flex: 1 1 auto; justify-content: flex-start; font-size: .84rem; }
+@container (min-width: 760px) {
+  .tm-scope-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* the switch: the word, then the track; a button for the owner, a marked state for everyone else */
+.btn.tm-sw:not(.is-armed), .tm-sw.is-static {
+  display: inline-flex; align-items: center; gap: 8px;
+  min-height: var(--ctl-h); padding: 4px 2px 4px 6px;
+  border: 1px solid transparent; border-radius: var(--radius-btn-sm); background: transparent;
+  color: var(--ink); font: inherit; font-size: .8rem; font-weight: 700; line-height: 1;
+  transform: none; box-shadow: none; white-space: nowrap;
+}
+.btn.tm-sw:not(.is-armed):hover { background: color-mix(in srgb, var(--brand-600) 9%, transparent); border-color: transparent; color: var(--ink); transform: none; }
+.btn.tm-sw:not(.is-armed):disabled:hover { background: transparent; border-color: transparent; }
+.btn.tm-sw.is-saving:disabled { opacity: 1; cursor: progress; }
+.tm-sw.is-static { cursor: default; }
+.tm-sw-word { min-width: 2.2em; text-align: right; color: var(--muted); }
+.tm-sw.is-on .tm-sw-word { color: var(--brand-600); }
+.btn.tm-sw.is-saving .tm-sw-word { color: var(--ink); }
+.tm-sw-track {
+  position: relative; flex: none; width: 44px; height: 24px; border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--ink) 18%, transparent); transition: background 160ms ease;
+}
+/* the same thumb as the AI switch (environment.css .ev-switch-thumb): its fill is that switch's own var(--card, #fff),
+   so the two switches always match; its shadow is drawn from the shade token */
+.tm-sw-thumb {
+  position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%;
+  background: var(--card, #fff); box-shadow: 0 1px 3px color-mix(in srgb, var(--shade) 25%, transparent); transition: transform 160ms ease;
+}
+.tm-sw.is-on .tm-sw-track { background: var(--brand-600); }
+.tm-sw.is-on .tm-sw-thumb { transform: translateX(20px); }
+.tm-sw.is-static:not(.is-on) .tm-sw-track { background: color-mix(in srgb, var(--ink) 12%, transparent); }
+.btn.tm-sw.is-saving .tm-sw-track { animation: tmSwSaving 900ms ease-in-out infinite alternate; }
+@keyframes tmSwSaving { from { opacity: 1; } to { opacity: .45; } }
+@media (prefers-reduced-motion: reduce) {
+  .tm-sw-track, .tm-sw-thumb { transition: none; }
+  .btn.tm-sw.is-saving .tm-sw-track { animation: none; }
+}
+
+/* a change out (src/account/team.js applyLocks): the sentence under the heading, and the turning "Saving…" beside a
+   role picker. The words are what a phone reads, since it has no hover for the tips. */
+.tm-status {
+  display: flex; align-items: center; gap: 8px; margin: 0 0 12px; padding: 8px 10px; border-radius: var(--radius-ctl);
+  border: 1px solid color-mix(in srgb, var(--brand-600) 35%, transparent);
+  background: color-mix(in srgb, var(--brand-600) 9%, transparent);
+  color: var(--ink); font-size: .86rem; line-height: 1.45; overflow-wrap: anywhere;
+}
+.tm-status[hidden] { display: none; }
+.tm-status .ev-ico { flex: none; color: var(--brand-600); animation: evSpin 900ms linear infinite; }
+/* a picker waiting on a change looks as held as a waiting button does */
+#tmBody .adm-select:disabled { opacity: .55; cursor: not-allowed; }
+@media (prefers-reduced-motion: reduce) { .tm-status .ev-ico { animation: none; } }
 
 .tm-activity { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font-size: .86rem; }
 .tm-activity li { display: grid; grid-template-columns: 96px 1fr; gap: 10px; align-items: baseline; padding: 6px 0; border-bottom: 1px solid var(--border); }

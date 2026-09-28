@@ -26,6 +26,22 @@
   transform: translateY(-1px);
   outline: none;
 }
+/* signed out (decision 34, 2026-09-24): a row is text to read, not a control; it neither lifts nor glows */
+.bd-row.is-locked { cursor: default; }
+.bd-row.is-locked:hover { border-color: var(--border); box-shadow: none; transform: none; }
+/* its detail being read (cards.js busy puts "Opening…" under it) */
+.bd-row[aria-busy="true"] { cursor: progress; opacity: .8; }
+.bd-board > .busy-note { margin: -4px 0 0 16px; }
+/* a request out (cards.js busy): every button here is the platform's .btn (decision 40), so the shared rules make it
+   wait and turn its icon (buttons.css .btn:disabled, environment.css .btn.is-spinning); the one whose request is out
+   shows progress */
+.builds .btn[aria-busy="true"], .bd-card .btn[aria-busy="true"] { cursor: progress; }
+
+/* the line over the rows: the count, and Sign in while signed out; it wraps under the words on a phone */
+.bd-gate { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 14px; margin: 0 0 4px; }
+.bd-gate .bd-count { margin: 0 0 0 4px; flex: 1 1 240px; min-width: 0; }
+.bd-error { margin: 0; padding: 8px 12px; border-radius: 10px; border: 1px solid color-mix(in srgb, var(--danger) 35%, transparent); background: color-mix(in srgb, var(--danger) 10%, transparent); color: var(--danger-text); font-size: .84rem; }
+.bd-error[hidden] { display: none; }
 
 /* the kind, as a glyph in a ring */
 .bd-r-glyph {
@@ -72,40 +88,11 @@
 .bd-badge--ok   { color: var(--brand-600); background: color-mix(in srgb, var(--brand-600) 14%, transparent); }
 .bd-badge--gold { color: var(--gold-soft); background: color-mix(in srgb, var(--gold-soft) 14%, transparent); }
 
-/* the one action on a row: an icon button in the site's recipe */
+/* THE BUTTONS (decision 40, 2026-09-24): every button on this page and its card is the platform's own, one action
+   language (css/components/buttons.css): .btn .btn-sm at the one control height (--ctl-h), .btn-ico for an icon alone
+   (the row's Open in the Studio, the card's close), .btn-lead for an icon with its word, .btn-primary for the one
+   primary action. No button here carries a recipe of its own, and none is a pill. */
 .bd-r-get { justify-self: end; }
-.bd-act {
-  display: inline-flex; align-items: center; justify-content: center;
-  width: 40px; height: 40px; border-radius: 12px; padding: 0;
-  border: 1px solid var(--border);
-  background: color-mix(in srgb, var(--ink) 4%, transparent);
-  color: var(--ink); cursor: pointer; text-decoration: none;
-  transition: color 160ms ease, background 160ms ease, border-color 160ms ease, transform 120ms ease;
-}
-.bd-act:hover { color: var(--card-title); background: color-mix(in srgb, var(--brand-600) 14%, transparent); border-color: var(--brand-600); }
-.bd-act:active { transform: translateY(1px); }
-.bd-act:focus-visible { outline: 2px solid var(--brand-600); outline-offset: 2px; }
-
-/* text buttons, the same recipe sized for words */
-.bd-btn {
-  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-  height: 42px; padding: 0 18px; border-radius: 12px;
-  font: 700 .84rem/1 inherit; letter-spacing: .01em; white-space: nowrap;
-  border: 1px solid var(--border);
-  background: color-mix(in srgb, var(--ink) 4%, transparent);
-  color: var(--ink); cursor: pointer; text-decoration: none;
-  transition: color 160ms ease, background 160ms ease, border-color 160ms ease, box-shadow 160ms ease, transform 120ms ease;
-}
-.bd-btn:hover { background: color-mix(in srgb, var(--brand-600) 12%, transparent); border-color: var(--brand-600); color: var(--card-title); }
-.bd-btn.is-primary {
-  color: #fff; border-color: transparent;
-  background: linear-gradient(135deg, var(--brand-600), var(--brand-purp-solid));
-  box-shadow: 0 6px 18px color-mix(in srgb, var(--brand-purp-solid) 30%, transparent);
-}
-.bd-btn.is-primary:hover { filter: brightness(1.08); box-shadow: 0 8px 22px color-mix(in srgb, var(--brand-purp-solid) 40%, transparent); }
-.bd-btn.is-ghost { background: transparent; }
-.bd-btn:active { transform: translateY(1px); }
-.bd-btn:focus-visible { outline: 2px solid var(--brand-600); outline-offset: 2px; }
 
 /* ================= the card: a native dialog in the top layer; two columns on a desk, one on a phone ================= */
 
@@ -126,13 +113,8 @@ dialog.bd-modal.is-fallback { display: grid; place-items: center; }
 @keyframes bd-in { from { opacity: 0; transform: translateY(8px) scale(.985); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .bd-card { animation: none; } }
 
-.bd-close {
-  position: absolute; top: 14px; right: 14px; z-index: 2;
-  display: inline-flex; align-items: center; justify-content: center;
-  width: 36px; height: 36px; border-radius: 10px; padding: 0;
-  border: 1px solid var(--border); background: color-mix(in srgb, var(--surface-deep) 80%, transparent); color: var(--muted); cursor: pointer;
-}
-.bd-close:hover { color: var(--ink); border-color: var(--brand-600); }
+/* the close: the platform's icon button (.btn .btn-sm .btn-ico), pinned in the card's corner */
+.btn.bd-close { position: absolute; top: 14px; right: 14px; z-index: 2; }
 
 /* the story: what it is and what it does */
 .bd-card-main { flex: 1 1 auto; min-width: 0; min-height: 0; padding: 30px 34px 30px; overflow-y: auto; overscroll-behavior: contain; }
@@ -187,7 +169,7 @@ dialog.bd-modal.is-fallback { display: grid; place-items: center; }
 .bd-filelist li { display: flex; justify-content: space-between; gap: 10px; font-size: .8rem; color: var(--muted); }
 .bd-filelist code { font: 600 .78rem/1.4 ui-monospace, "Cascadia Code", Consolas, monospace; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bd-card-actions { margin-top: auto; display: grid; gap: 8px; padding-top: 14px; }
-.bd-btn.is-wide { width: 100%; }
+.bd-card-actions > .btn { width: 100%; }
 
 /* ================= empty ================= */
 
@@ -221,30 +203,72 @@ dialog.bd-modal.is-fallback { display: grid; place-items: center; }
 .bd-parts code { font: 600 .78rem/1.4 ui-monospace, "Cascadia Code", Consolas, monospace; color: var(--ink); }
 
 .bd-code-lead { margin: -6px 0 10px; }
+/* the files: a tab each, in the platform's button (.btn .btn-sm, the one control height; decision 40 took the pills
+   away), the open file marked by the shared chosen look (buttons.css, aria-selected) */
 .bd-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 10px; }
-.bd-tab {
-  appearance: none; cursor: pointer; padding: 6px 12px; border-radius: 999px;
-  border: 1px solid var(--border); background: color-mix(in srgb, var(--ink) 4%, transparent);
-  color: var(--muted); font: 600 .76rem/1 ui-monospace, "Cascadia Code", Consolas, monospace;
-  transition: border-color 160ms ease, color 160ms ease, background 160ms ease;
-}
-.bd-tab:hover { color: var(--ink); border-color: color-mix(in srgb, var(--brand-purp-solid) 40%, transparent); }
-.bd-tab.is-on { color: var(--ink); background: color-mix(in srgb, var(--brand-purp-solid) 16%, transparent); border-color: color-mix(in srgb, var(--brand-purp-solid) 55%, transparent); }
+/* a file's path can be long (up to four folders deep): the tab wraps inside the column, breaking anywhere, instead of
+   running past it (the site's .btn-sm keeps a button on one line, and a clipped path lost its extension on a phone);
+   min-height still gives the one control height */
+.btn.bd-tab { font-family: ui-monospace, "Cascadia Code", Consolas, monospace; max-width: 100%; white-space: normal; overflow-wrap: anywhere; text-align: start; line-height: 1.3; }
+
+/* THE READING (decision 40, 2026-09-24). Long lines soft-wrap by default. Each source line is one grid row (code.js
+   codeHtml): its number in the first cell, at the top of the row, and its text in the second, so a wrapped line grows
+   its own row and its number stays beside its first visual line. The wrapped part hangs two characters in from the
+   line's own indentation (--ind, set per line by codeHtml; capped by --ind-cap so a deep line keeps room on a phone), so
+   a continuation never reads as a new line; a word longer than the box (a minified line, a long string) breaks rather
+   than pushing the box sideways, so the default reading has no sideways scrollbar at all.
+   No wrap (the toggle under the box, .is-nowrap) keeps each line on one line: the numbers stay pinned at the left while
+   the text scrolls under them, and the box carries its own sideways scrollbar at its foot, in view with the code, wide
+   enough to take hold of, the keyboard's arrows moving it a few characters at a time (the box takes focus). */
 .bd-code {
+  --bd-code-bg: color-mix(in srgb, #05070e 78%, var(--surface-deep, #0b0f1a));
+  --ind-cap: 24ch;
+  position: relative;   /* the numbers' offset parent: builds.js topLine keeps the top line in place across the toggle */
   max-height: 420px; overflow: auto; overscroll-behavior: contain;
   border: 1px solid var(--border); border-radius: 12px;
-  background: color-mix(in srgb, #05070e 78%, var(--surface-deep, #0b0f1a));
+  background: var(--bd-code-bg);
   font: 500 .78rem/1.55 ui-monospace, "Cascadia Code", Consolas, monospace; color: var(--ink);
   tab-size: 2;
 }
+/* the box stays dark in both themes (the site's rule, css/theme-light.css "Terminals stay terminals": code keeps a dark
+   surface and light text), so inside it the light theme takes the dark theme's inks (css/tokens.css, the dark block):
+   with the light theme's own dark inks the code read at 1.4:1 and the scrollbar's thumb did not show (measured
+   2026-09-24). Its ground takes the dark value too, so the box is the same box in both themes. */
+:root[data-theme="light"] .bd-code { --ink: #dcdbf0e1; --muted: #c6d0f0a6; --brand-600: #21bca5; --gold-soft: #ffd489; --border: #ffffff1a; --surface-deep: rgba(12,16,26,.66); }
+.bd-code:not(.is-nowrap) { overflow-x: hidden; }
 .bd-code:focus-visible { outline: 2px solid color-mix(in srgb, var(--brand-600) 70%, transparent); outline-offset: 2px; }
-.bd-code-lines { display: grid; grid-template-columns: max-content 1fr; padding: 12px 0; min-width: max-content; }
+.bd-code-lines { display: grid; grid-template-columns: max-content minmax(0, 1fr); padding: 12px 0; }
 .bd-ln { padding: 0 12px 0 14px; text-align: right; color: color-mix(in srgb, var(--muted) 55%, transparent); user-select: none; font-variant-numeric: tabular-nums; border-right: 1px solid color-mix(in srgb, var(--border) 70%, transparent); }
-.bd-lc { padding: 0 16px 0 14px; white-space: pre; }
+.bd-lc {
+  --ind: 0ch;
+  padding: 0 16px 0 calc(14px + min(var(--ind), var(--ind-cap)) + 2ch);
+  text-indent: calc(-1 * (min(var(--ind), var(--ind-cap)) + 2ch));
+  white-space: pre-wrap; overflow-wrap: break-word; overflow-wrap: anywhere;
+}
+.bd-code.is-nowrap .bd-code-lines { grid-template-columns: max-content 1fr; min-width: max-content; }
+.bd-code.is-nowrap .bd-lc { padding-left: 14px; text-indent: 0; white-space: pre; overflow-wrap: normal; }
+.bd-code.is-nowrap .bd-ln { position: sticky; left: 0; z-index: 1; background: linear-gradient(var(--bd-code-bg), var(--bd-code-bg)), #05070e; }
+/* the box's scrollbars: always drawn, 10px, a thumb that shows against the dark and never shrinks below a finger's hold
+   (56px sideways: a 3,000 character line otherwise leaves a sliver; seen in Chrome 2026-09-24). Chromium and Safari take
+   the ::-webkit-scrollbar parts; setting scrollbar-color there would switch them off, so the standard properties are for
+   the other engines only. */
+.bd-code::-webkit-scrollbar { width: 10px; height: 10px; }
+.bd-code::-webkit-scrollbar-track { background: color-mix(in srgb, var(--ink) 5%, transparent); }
+.bd-code::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--ink) 30%, transparent); background-clip: padding-box; border: 2px solid transparent; border-radius: var(--radius-btn-sm); }
+.bd-code::-webkit-scrollbar-thumb:horizontal { min-width: 56px; }
+.bd-code::-webkit-scrollbar-thumb:vertical { min-height: 40px; }
+.bd-code::-webkit-scrollbar-thumb:hover { background-color: color-mix(in srgb, var(--brand-600) 60%, transparent); }
+.bd-code::-webkit-scrollbar-corner { background: transparent; }
+@supports not selector(::-webkit-scrollbar) {
+  .bd-code { scrollbar-width: auto; scrollbar-color: color-mix(in srgb, var(--ink) 30%, transparent) color-mix(in srgb, var(--ink) 5%, transparent); }
+}
 .bd-code-note { margin: 0; padding: 14px 16px; font: 500 .84rem/1.5 inherit; color: var(--muted); }
-.bd-code-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 8px; }
+/* under the box: the count on the left, No wrap and Copy on the right (the shared .act-row); on a phone the buttons
+   drop under the count rather than squeeze it */
+.bd-code-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 10px; margin-top: 8px; }
+.bd-code-foot .act-row { margin-left: auto; }
+.bd-code-foot .btn[hidden] { display: none; }
 .bd-code-meta { font-size: .76rem; color: var(--muted); font-variant-numeric: tabular-nums; }
-.bd-btn.is-sm { padding: 6px 12px; font-size: .78rem; }
 
 /* the tokens: the site's own palette, comments quiet, strings warm, keywords purple, numbers teal */
 .tk-c { color: color-mix(in srgb, var(--muted) 78%, transparent); font-style: italic; }
@@ -281,10 +305,12 @@ dialog.bd-modal.is-fallback { display: grid; place-items: center; }
   .bd-card-actions { position: sticky; bottom: -16px; margin: 0 -18px -16px; padding: 12px 18px 16px; background: linear-gradient(to top, var(--surface-deep, #0b0f1a) 75%, transparent); }
   .bd-def { grid-template-columns: minmax(0, 1fr); gap: 2px; }
   .bd-kicker { letter-spacing: .12em; line-height: 1.5; }
+  /* one column: the close sits over the story's first lines, so they leave its corner free (40px under a finger) */
+  .bd-kicker, .bd-card-title { padding-right: calc(var(--ctl-h, 36px) + 8px); }
 }
 @media (max-width: 640px) {
   .builds { padding: 22px 16px 30px; }
   .bd-parts li { grid-template-columns: 1fr; gap: 2px; }
-  .bd-code { max-height: 320px; font-size: .74rem; }
+  .bd-code { max-height: 320px; font-size: .74rem; --ind-cap: 10ch; }
   .bd-tiles { grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); }
 }

@@ -11,6 +11,7 @@
 //                    account panel's entry; safe to call often
 
 import { applyTheme, getTheme, applyStarfield, getStarfield } from './theme.js';
+import { accessToken } from './session.js';
 
 function cachedPing() {
   try { return JSON.parse(sessionStorage.getItem('pragoptics_ping') || 'null'); }
@@ -23,7 +24,7 @@ function cachedPing() {
 function hasSession() {
   try {
     if (typeof window.isAccessTokenValid === 'function') return !!window.isAccessTokenValid();
-    const token = JSON.parse(sessionStorage.getItem('pragoptics_tokens') || 'null')?.access_token;
+    const token = accessToken();
     if (!token) return false;
     const parts = String(token).split('.');
     if (parts.length < 2) return false;

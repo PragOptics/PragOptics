@@ -36,6 +36,12 @@ Add-ons are for the User plan only: more storage, or more API calls. Partner and
 
 One payment method per account. Swap it any time; the next invoice uses the new one. If a payment fails, the plan stays active while the card is sorted, and the Billing page says so.
 
+## Billing details
+
+The name, business name, phone and address PragOptics bills. They start as what you gave when you subscribed; change them on the Billing details card. A business name is optional. When you give one, your invoices are made out to your business, and the Licensing tab fills it in as the name of your Microsoft licensing account, which the owner checks and confirms there. Invoices already issued keep the details they were issued with. Sales tax follows the billing address, so an address that cannot be placed for sales tax is not saved.
+
+These are your details with PragOptics. The name your own customers see when they pay you comes from your own Stripe account, connected on Environment.
+
 ## What you see here
 
-The allowance numbers on this page are the ones that apply to you, add-ons included. The bars show this month's usage against them. A number in documentation or on a plan card is informational; this page is the record.
+The allowance numbers on this page are the ones that apply to you, add-ons included. The bars show this month's API calls and storage against them. Connected domains are counted differently: the bar shows how many domains are connected now against your plan's number (none on Free, 5 on User, 20 on Partner, 50 on Super), and that number does not reset each month or have a grace margin. A number in documentation or on a plan card is informational; this page is the record.

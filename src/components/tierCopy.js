@@ -29,6 +29,7 @@ export const TIER_COPY = {
       'Cloud sync for field data and calibration records',
       'API access with your own keys',
       'Provisioned workspace and storage',
+      'Up to five connected domains',
       'Add-ons to scale storage and API calls',
       'Email support'
     ],
@@ -40,7 +41,8 @@ export const TIER_COPY = {
     featured: true,
     features: [
       'Everything in User, with higher included limits',
-      'Five seats included, each with a mailbox on request',
+      'Five seats included, each with its own mailbox',
+      'Up to twenty connected domains',
       'Publish your own APIs under the platform',
       'Usage billed through your subscription',
       'Your commerce stays yours',
@@ -54,6 +56,7 @@ export const TIER_COPY = {
     features: [
       'Everything in Partner',
       'Forty-five seats included',
+      'Up to fifty connected domains',
       'The highest platform limits',
       'First in line for support'
     ],
