@@ -138,6 +138,32 @@ export function errHtml(key) {
 }
 /** A code's sentence that also links to the panel section that fixes it. */
 export function withLink(key, section, label, text) { return () => { lc.links[key] = { section, label }; return text; }; }
+/** A link into a section of the panel and one of its cards; account.js opens the card once the section has painted. */
+export function cardLink(section, card, label) {
+  return `<a class="acct-inline-link" href="#account?section=${esc(section)}&card=${esc(card)}" data-acct-section="${esc(section)}" data-acct-card="${esc(card)}">${esc(label)}</a>`;
+}
+
+/* ---------- the owner's four steps, in order (2026-09-28): the account, the tenant, the agreement, then mail ---------- */
+
+export const STEPS = 4;
+/** A card's summary with its step in front: "Step 2 of 4 · not named yet". `summaryHtml` is already escaped. */
+export function stepWord(n, summaryHtml) { return `<span class="lic-step">Step ${n} of ${STEPS}</span> · ${summaryHtml}`; }
+/** The tenant is named (a new name Microsoft makes) or given (the ID of one the business has). */
+export function tenantNamed(m) { return !!(m?.tenantId || m?.domainPrefix); }
+/** The Microsoft Customer Agreement stands: the server's agreement.stands, else an acceptance on record. */
+export function agreementStands(m) { return m?.agreement ? !!m.agreement.stands : !!m?.mca; }
+/**
+ * Why a step's control waits: one sentence naming the first step before it that is not done, and its card; '' when
+ * every step before it is done. `upTo` is how many steps must be done first: 1 the account (the tenant's Save), 2 and
+ * the tenant (the agreement's Accept), 3 and the agreement (Turn on mail).
+ */
+export function stepGate(v, upTo) {
+  const m = v?.microsoft || {};
+  if (!v?.account) return 'Create your licensing account first, on the Licensing account card above.';
+  if (upTo >= 2 && !tenantNamed(m)) return 'Name your Microsoft tenant first, on the card above.';
+  if (upTo >= 3 && !agreementStands(m)) return 'Accept the Microsoft Customer Agreement first, on the card above.';
+  return '';
+}
 /** A card's note (what the last action did), painted inside the card; `bad` marks one that did not go as asked. */
 export function noteHtml(key) { const n = lc.notes[key]; return n?.text ? `<p class="acct-card-note ev-note ${n.bad ? 'is-bad' : ''}" role="status">${esc(n.text)}</p>` : ''; }
 export function setNote(key, text, bad = false) { lc.notes[key] = text ? { text, bad } : null; }

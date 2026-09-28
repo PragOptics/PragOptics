@@ -432,3 +432,66 @@ select.acct-input { background-color: var(--surface-deep); }
 .rp-what .um-check { display: inline-flex; align-items: center; gap: 6px; font-size: .9rem; }
 .rp-conduct .acct-modal-hint { margin-top: 4px; }
 .rp-hp { position: absolute; left: -10000px; top: auto; width: 1px; height: 1px; overflow: hidden; }
+
+/* ===== SETTING UP (2026-09-28): the account's setup checklist at the top of every customer section (src/account/setup.js).
+   One folded line (a ring of done over total, the count, the next step as a link, a chevron); opened, the groups in the
+   server's order, each a vertical stepper: a dot per step joined by a line, the title as a link into its card, the
+   sentence under it. The dot says the state: done filled with a check, next an accent ring, open hollow, waiting dashed,
+   off greyed. Phone first: one column; from 900px the groups pack into columns. ===== */
+.su-card { padding: 12px 16px; margin-bottom: 16px; }
+.su-card.is-open { padding-bottom: 6px; }
+.su-row { display: flex; align-items: center; gap: 12px; min-height: 32px; }
+.su-ring { position: relative; flex: 0 0 auto; width: 32px; height: 32px; display: inline-grid; place-items: center; }
+.su-ring svg { position: absolute; inset: 0; width: 32px; height: 32px; transform: rotate(-90deg); }
+.su-ring-track { fill: none; stroke: var(--border); stroke-width: 3.5; }
+.su-ring-fill { fill: none; stroke: var(--brand-600); stroke-width: 3.5; stroke-linecap: round; stroke-dasharray: 100; transition: stroke-dashoffset .5s ease; }
+.su-ring.is-done .su-ring-fill { stroke: var(--brand-cyan); }
+.su-ring.is-done { color: var(--brand-cyan); }
+.su-title { font-weight: 700; color: var(--card-title); white-space: nowrap; }
+.su-line { display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1 1 auto; color: var(--muted); font-size: .86rem; }
+.su-count { white-space: nowrap; }
+.su-sep { opacity: .6; }
+.su-next { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.su-next .su-link { font-weight: 600; }
+.su-link { background: none; border: 0; padding: 0; font: inherit; color: var(--brand-600); text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--brand-600) 40%, transparent); text-underline-offset: 3px; cursor: pointer; text-align: left; }
+.su-link:hover { color: var(--card-title); text-decoration-color: var(--brand-purp); }
+.su-link:focus-visible { outline: 2px solid var(--brand-600); outline-offset: 2px; border-radius: 3px; }
+.su-toggle { flex: 0 0 auto; display: inline-grid; place-items: center; width: 32px; height: 32px; padding: 0; border: 1px solid var(--border); border-radius: 8px; background: transparent; color: var(--muted); cursor: pointer; }
+.su-toggle:hover { color: var(--card-title); background: color-mix(in srgb, var(--ink) 4%, transparent); }
+.su-toggle svg { transition: transform .2s ease; }
+.su-card.is-open .su-toggle svg { transform: rotate(180deg); }
+.su-body { margin-top: 14px; border-top: 1px solid var(--border); padding-top: 14px; }
+.su-groups { display: grid; grid-template-columns: 1fr; gap: 18px 28px; }
+.su-kicker { margin: 0 0 8px; font-size: .68rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.su-steps { list-style: none; margin: 0; padding: 0; }
+.su-step { position: relative; display: flex; gap: 12px; padding: 0 0 14px 0; }
+.su-step:last-child { padding-bottom: 4px; }
+/* the line that joins the dots: from this dot down to the next one */
+.su-step::before { content: ""; position: absolute; left: 9px; top: 20px; bottom: -2px; width: 2px; background: var(--border); }
+.su-step:last-child::before { display: none; }
+.su-dot { position: relative; z-index: 1; flex: 0 0 auto; width: 20px; height: 20px; margin-top: 1px; border-radius: 50%; border: 2px solid var(--border); background: var(--surface-2); display: inline-grid; place-items: center; color: #fff; }
+.su-step.is-done .su-dot { border-color: var(--brand-600); background: var(--brand-600); }
+.su-step.is-done::before { background: color-mix(in srgb, var(--brand-600) 55%, var(--border)); }
+.su-step.is-next .su-dot { border-color: var(--brand-600); background: var(--surface-2); box-shadow: 0 0 0 4px color-mix(in srgb, var(--brand-600) 22%, transparent); }
+.su-step.is-next .su-dot::after { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--brand-600); }
+.su-step.is-open .su-dot { border-color: color-mix(in srgb, var(--ink) 35%, var(--border)); }
+.su-step.is-waiting .su-dot { border-style: dashed; }
+.su-step.is-off .su-dot { border-color: var(--border); background: transparent; opacity: .6; }
+.su-step.is-off .su-step-title, .su-step.is-off .su-why { color: var(--muted); opacity: .75; }
+.su-main { min-width: 0; flex: 1 1 auto; }
+.su-step-head { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.su-step-title { font-size: .92rem; font-weight: 600; color: var(--card-title); }
+.su-step.is-next .su-step-title { color: var(--brand-600); }
+.su-step.is-done .su-step-title { text-decoration: none; }
+.su-opt { font-size: .58rem; }
+.acct-tag.is-quiet { color: var(--muted); background: color-mix(in srgb, var(--ink) 4%, transparent); border: 1px solid var(--border); }
+.su-why { margin: 3px 0 0; font-size: .8rem; line-height: 1.45; color: var(--muted); max-width: 60ch; }
+.su-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+@media (min-width: 900px) { .su-groups { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); } }
+@media (max-width: 560px) {
+  .su-row { flex-wrap: wrap; row-gap: 4px; }
+  .su-line { flex-basis: 100%; padding-left: 44px; }
+}
+/* the Licensing tab's four steps, the step word in front of each card's summary */
+.lic-step { display: inline-block; font-size: .64rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--brand-600); background: color-mix(in srgb, var(--brand-600) 10%, transparent); border: 1px solid color-mix(in srgb, var(--brand-600) 28%, transparent); border-radius: 4px; padding: .1rem .45rem; margin-right: 2px; vertical-align: middle; }
+.lic-uses { margin-top: 4px; }

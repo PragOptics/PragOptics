@@ -27,7 +27,7 @@
 
 import { explainLink } from '../components/explainer.js';
 import { iconBtn, armed, btnLabel } from './cards.js';
-import { LIC_URL, lc, st, cardHtml, countWord, money, cents, dayWord, sentence, cap, TERM_NAMES, STATUS_WORDS, loadOffers, billWord, commitWord, ruleWords, licName, perms, me, call, send, sayError, reqLead, reqIcon, errHtml, noteHtml, setNote, kept, forget, withLink, showsLicensing, forgetMarks } from './licensingShared.js';
+import { LIC_URL, lc, st, cardHtml, countWord, money, cents, dayWord, sentence, cap, TERM_NAMES, STATUS_WORDS, loadOffers, billWord, commitWord, ruleWords, licName, perms, me, call, send, sayError, reqLead, reqIcon, errHtml, noteHtml, setNote, kept, forget, withLink, showsLicensing, forgetMarks, stepWord, stepGate, agreementStands } from './licensingShared.js';
 import { ask, lineRequestHtml } from './licensingRequests.js';
 import { quoteNew, quoteSeats, fresh, moved, moneyCodes, addChargeWords, addGoLabel, seatChargeWords, planTermLine, notForPlanLine } from './licensingMoney.js';
 
@@ -44,11 +44,14 @@ export function canAdd() {
 
 export function agreementHtml() {
   const v = lc.view;
-  if (!showsLicensing() || !v.account) return '';
+  if (!showsLicensing()) return '';
   const e = st.D.escapeHtml, m = v.microsoft || {}, p = perms(), mca = m.mca, a = m.agreement;
   const stands = a ? !!a.stands : !!mca;
   const named = !!(m.tenantId || m.domainPrefix);
-  const summary = stands ? 'accepted' : mca ? 'to accept again' : 'not accepted yet';
+  // step 3 of the owner's four (2026-09-28): the card stands before the account and the tenant too, folded, its
+  // Accept waiting on them with the sentence under it
+  const gate = stands ? '' : stepGate(v, 2);
+  const summary = stands ? 'accepted' : gate ? (v.account ? 'after your Microsoft tenant' : 'after the licensing account') : mca ? 'to accept again' : 'not accepted yet';
   let inner = '';
   if (mca && stands) {
     inner = `
@@ -60,14 +63,15 @@ export function agreementHtml() {
   } else {
     const why = mca && a?.message ? `<p class="acct-card-note ev-note is-bad">${e(sentence(a.message))}</p>` : '';
     let act;
-    if (p.canAccept && named) act = acceptFormHtml(v, m);
+    if ((p.canAccept || (p.isOwner && !v.readOnly)) && gate) act = acceptFormHtml(v, m, gate);
+    else if (p.canAccept && named) act = acceptFormHtml(v, m, '');
     else if (p.canAccept) act = '<p class="acct-card-note">Accept it here once the tenant above is named.</p>';
     else if (v.readOnly) act = `<p class="acct-card-note">${e(sentence(v.readOnlyWhy))}</p>`;
     else act = '<p class="acct-card-note">Someone who can accept agreements accepts it here: the owner, or a role the owner gives "Accept agreements" on the Team tab.</p>';
     inner = `${why}${act}`;
   }
   return cardHtml({
-    key: 'agreement', icon: 'file', title: 'Microsoft Customer Agreement', summary: e(summary),
+    key: 'agreement', icon: 'file', title: 'Microsoft Customer Agreement', summary: stepWord(3, e(summary)), open: !gate,
     explain: explainLink('licensing', 'The agreement and the tenant'),
     body: `${noteHtml('agreement')}${errHtml('agreement')}${inner}`
   });
@@ -78,7 +82,7 @@ export function agreementHtml() {
  * account, never typed here. With no name on the account yet, the card says to add it on Profile first, and the
  * server refuses the acceptance the same way (409 NAME_REQUIRED).
  */
-function acceptFormHtml(v, m) {
+function acceptFormHtml(v, m, gate = '') {
   const e = st.D.escapeHtml, who = me(), n = m.accepter || {};
   const biz = v.account?.businessName || 'your business';
   const email = who.email || 'the account you are signed in with';
@@ -91,11 +95,13 @@ function acceptFormHtml(v, m) {
   const name = `${n.firstName} ${n.lastName}`.trim();
   return `
     <p class="acct-card-note">${e(intro)} You accept as <strong>${e(name)}</strong>, <strong>${e(email)}</strong>: the name and email on the account you are signed in with. Microsoft records them, and a copy is emailed to you. Your name is changed on Profile.</p>
-    <label class="ev-agree"><input type="checkbox" id="licMcaAccept" data-keep ${kept('licMcaAccept', false) ? 'checked' : ''}><span>I accept the <a href="${MCA_URL}" target="_blank" rel="noopener">Microsoft Customer Agreement</a> for <strong>${e(biz)}</strong>.</span></label>
-    <div class="acct-actions-row">${reqLead('mca-accept', { lic: 'mca-accept' }, 'check', 'Accept the agreement', 'Accepting…', '', 'btn-primary')}</div>`;
+    <label class="ev-agree"><input type="checkbox" id="licMcaAccept" data-keep ${kept('licMcaAccept', false) ? 'checked' : ''} ${gate ? 'disabled' : ''}><span>I accept the <a href="${MCA_URL}" target="_blank" rel="noopener">Microsoft Customer Agreement</a> for <strong>${e(biz)}</strong>.</span></label>
+    <div class="acct-actions-row">${reqLead('mca-accept', { lic: 'mca-accept' }, 'check', 'Accept the agreement', 'Accepting…', gate ? `disabled data-tip="${e(gate)}"` : '', 'btn-primary')}</div>
+    ${gate ? `<p class="lic-hint">${e(gate)}</p>` : ''}`;
 }
 
 async function acceptAgreement() {
+  if (stepGate(lc.view, 2)) return;   // Accept is disabled with the reason under it; nothing is sent
   const ticked = !!(Object.prototype.hasOwnProperty.call(lc.draft, 'licMcaAccept') ? lc.draft.licMcaAccept : document.getElementById('licMcaAccept')?.checked);
   lc.err.agreement = ''; setNote('agreement', '');
   if (!ticked) { lc.err.agreement = 'Tick "I accept" to accept the agreement.'; st.paint(); document.getElementById('licMcaAccept')?.focus(); return; }

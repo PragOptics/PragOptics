@@ -48,7 +48,7 @@
 // licensing.js paints the card and routes its clicks here.
 
 import { iconBtn, leadBtn, ico, copyButton, armed } from './cards.js';
-import { LIC_URL, lc, st, url, cardHtml, perms, call, send, reqLead, reqIcon, errHtml, noteHtml, setNote, kept, forget, sentence, showsLicensing, dayWord, countWord } from './licensingShared.js';
+import { LIC_URL, lc, st, url, cardHtml, perms, call, send, reqLead, reqIcon, errHtml, noteHtml, setNote, kept, forget, sentence, showsLicensing, dayWord, countWord, stepWord, stepGate, tenantNamed } from './licensingShared.js';
 
 const SIGNIN_RULE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
 const SIGNIN_WORDS = 'Use 1 to 64 letters, digits, dots, dashes or underscores, starting with a letter or digit.';
@@ -121,19 +121,23 @@ function suggestion(v) { const d = String((v.mailDomains || [])[0] || '').split(
 
 export function tenantHtml() {
   const v = lc.view;
-  if (!showsLicensing() || !v.account) return '';
+  if (!showsLicensing()) return '';
   const e = st.D.escapeHtml, m = v.microsoft || {}, p = perms();
-  const named = !!(m.tenantId || m.domainPrefix);
-  const summary = !named ? 'not named yet' : m.domainPrefix ? `${m.domainPrefix}.onmicrosoft.com` : 'your own tenant';
-  const editing = p.canNameTenant && (!named || lc.tnEdit);
+  const named = tenantNamed(m);
+  // step 2 of the owner's four (2026-09-28): before the account the card stands folded, its Save waiting on step 1
+  const gate = stepGate(v, 1);
+  const summary = gate ? 'after the licensing account' : !named ? 'not named yet' : m.domainPrefix ? `${m.domainPrefix}.onmicrosoft.com` : 'your own tenant';
+  const editing = !gate && p.canNameTenant && (!named || lc.tnEdit);
   let inner;
-  if (editing) inner = formHtml(v, m);
+  if (gate) inner = p.isOwner && !v.readOnly ? formHtml(v, m, gate)
+    : '<p class="acct-card-note">The owner names your Microsoft tenant here once the licensing account is created: a new one Microsoft makes for your business, or one your business already has.</p>';
+  else if (editing) inner = formHtml(v, m, '');
   else if (!named) inner = p.isOwner
     ? `<p class="acct-card-note">${e(v.readOnlyWhy || 'The tenant cannot be named right now.')}</p>`
     : '<p class="acct-card-note">The owner names your Microsoft tenant here: a new one Microsoft makes for your business, or one your business already has.</p>';
   else inner = factsHtml(m, p);
   return cardHtml({
-    key: 'tenant', icon: 'building', title: 'Your Microsoft tenant', summary: e(summary),
+    key: 'tenant', icon: 'building', title: 'Your Microsoft tenant', summary: stepWord(2, e(summary)), open: !gate,
     body: `${noteHtml('tenant')}${errHtml('tenant')}${inner}`
   });
 }
@@ -158,14 +162,28 @@ function factsHtml(m, p) {
 /* ---------- Part 2: the connection into the tenant, and what runs through it ---------- */
 
 /** The connection section: nothing until the tenant is named; then where the connection stands and what it carries. */
+/** Mail or a license has been ordered, so Microsoft is making (or has made) the tenant PragOptics named. */
+const ORDERED_MAIL = new Set(['ordering', 'delayed', 'on', 'ending']);
+const ORDERED_LICENSE = new Set(['ORDERED', 'ACTIVE']);
+function ordered(v, m) {
+  return !!m?.locked || ORDERED_MAIL.has(String(v?.mail?.state || '')) || (v?.licenses || []).some(l => ORDERED_LICENSE.has(String(l?.status || '')));
+}
+
 function connectionHtml(m, p) {
   const e = st.D.escapeHtml;
   const head = '<h4 class="lic-sub">The connection</h4>';
-  if (lc.tnErr) return `<div class="lic-admin">${head}<p class="acct-card-note ev-note is-bad">${e(sentence(lc.tnErr))}</p></div>`;
   const t = tn();
+  // decision 16: a tenant PragOptics has Microsoft make (a new name, no ID yet) is connected by PragOptics, never by the
+  // customer: nothing to do before the first order, and nothing to do while it is being connected after it. The server
+  // says platformConnecting for the same case (2026-09-28); either counts.
+  if (!t?.connected && (t?.platformConnecting || (m.domainPrefix && !m.tenantId))) {
+    const words = t?.platformConnecting || ordered(lc.view, m)
+      ? 'Your Microsoft tenant is being connected by PragOptics. Your team\'s mailboxes are made once it is; nothing is needed from you.'
+      : `${m.domainPrefix}.onmicrosoft.com is made by your first order of mail or a license, then connected by PragOptics. Nothing to do here yet.`;
+    return `<div class="lic-admin">${head}<p class="acct-card-note">${e(words)}</p></div>`;
+  }
+  if (lc.tnErr) return `<div class="lic-admin">${head}<p class="acct-card-note ev-note is-bad">${e(sentence(lc.tnErr))}</p></div>`;
   if (!t) return lc.tn === null && lc.view ? '' : `<div class="lic-admin">${head}<p class="acct-card-note">Reading your tenant at Microsoft…</p></div>`;
-  // decision 16: PragOptics connects the tenant it made; the customer has nothing to do here
-  if (t.platformConnecting) return `<div class="lic-admin">${head}<p class="acct-card-note">Your Microsoft tenant is being connected by PragOptics. Your team's mailboxes are made once it is; nothing is needed from you.</p></div>`;
   if (!t.configured) return `<div class="lic-admin">${head}<p class="acct-card-note">Connecting your tenant is being set up. Look again soon.</p></div>`;
   const ro = t.writes === false ? '<p class="acct-card-note ev-note">This lane reads your tenant and shows what each step would do; nothing is written from here.</p>' : '';
   if (!t.connected) {
@@ -512,9 +530,12 @@ async function withdrawAdmin() {
   }, { errKey: 'tenant', fallback: 'The request could not be withdrawn.' });
 }
 
-/** The owner's form in two modes (2026-09-22): a new tenant by name, or the ID of a tenant the business has. */
-function formHtml(v, m) {
-  const e = st.D.escapeHtml, mode = modeOf(m), named = !!(m.tenantId || m.domainPrefix);
+/**
+ * The owner's form in two modes (2026-09-22): a new tenant by name, or the ID of a tenant the business has. `gate` is
+ * the sentence Save waits on (step 1, the account, not done yet): Save is disabled with it under the row.
+ */
+function formHtml(v, m, gate = '') {
+  const e = st.D.escapeHtml, mode = modeOf(m), named = tenantNamed(m);
   // switching the form's mode sends nothing; while the save is out the form waits with it
   const saving = lc.busy === 'tn-save';
   const tab = (k, label) => `<button class="ev-tab ${mode === k ? 'is-on' : ''}" type="button" role="tab" aria-selected="${mode === k}" data-lic-action="tn-mode" data-mode="${k}" ${saving && mode !== k ? 'disabled data-tip="Waiting for the answer: saving the tenant"' : ''}>${label}</button>`;
@@ -536,14 +557,16 @@ function formHtml(v, m) {
       </div>
     </div>
     <div class="acct-actions-row">
-      ${reqLead('tn-save', { lic: 'tn-save' }, 'check', mode === 'existing' ? 'Save the tenant ID' : 'Save the name', mode === 'existing' ? 'Saving…' : 'Asking Microsoft…', '', 'btn-primary')}
+      ${reqLead('tn-save', { lic: 'tn-save' }, 'check', mode === 'existing' ? 'Save the tenant ID' : 'Save the name', mode === 'existing' ? 'Saving…' : 'Asking Microsoft…', gate ? `disabled data-tip="${e(gate)}"` : '', 'btn-primary')}
       ${named && !saving ? iconBtn({ lic: 'tn-cancel' }, 'x', 'Keep it as it is') : ''}
-    </div>`;
+    </div>
+    ${gate ? `<p class="lic-hint">${e(gate)}</p>` : ''}`;
 }
 
 /* ---------- actions ---------- */
 
 async function saveTenant() {
+  if (stepGate(lc.view, 1)) return;   // Save is disabled with the reason under it; nothing is sent
   const m = lc.view?.microsoft || {};
   const mode = modeOf(m);
   lc.err['tenant-name'] = ''; lc.err.tenant = ''; setNote('tenant', '');

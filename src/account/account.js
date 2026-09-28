@@ -25,6 +25,7 @@ import { renderLicensing, bindLicensingActions } from './licensing.js';
 import { renderBuildsQueue, renderMyBuilds } from './buildsDesk.js';
 import { renderNeedsAttention } from './needsAttentionDesk.js';
 import { renderAgreementNotice } from './agreementNotice.js';
+import { renderSetup } from './setup.js';
 import { billingDetailsHtml, editBillingDetails, cancelBillingDetails, saveBillingDetails } from './billingDetails.js';
 import { explainLink } from '../components/explainer.js';
 import { cardHtml, iconBtn, leadBtn, btnLabel, armed, ico, setCardSummary, initCards, openCardOf, packGrid, busy, hold, copyButton, openModal } from './cards.js';
@@ -4580,6 +4581,17 @@ function showSection(id) {
   // a role read that failed (or a team picked since) is asked again on the next section; Team and Environment read the view themselves
   if (TEAM_ON && id !== 'team' && id !== 'environment' && roleInView() === null) ensureTeamRole();
   consumeOpenCard(id);
+  paintSection(id, main);
+  // the setup checklist at the top of every customer section (setup.js): mounted after the section's first paint, which
+  // every section writes in one go; what each reads later lands inside its own hosts, so the block stays
+  if (SETUP_SECTIONS.has(id)) renderSetup(main, teamDeps());
+}
+
+// The sections of the panel that carry the setup checklist: every customer section, never an internal desk.
+const SETUP_SECTIONS = new Set(ACCOUNT_SECTIONS.map(s => s.id));
+
+/** The section's own paint into main (each writes its shell at once and reads into it after). */
+function paintSection(id, main) {
   if (id === 'profile')      return void renderProfile(main);
   if (id === 'products')     return void renderProducts(main);
   if (id === 'subscription') return void renderSubscription(main);
@@ -4620,7 +4632,16 @@ function bindOnce() {
 
   document.addEventListener('click', (e) => {
     const nav = e.target.closest('[data-acct-section]');
-    if (nav) { e.preventDefault(); showSection(nav.dataset.acctSection); return; }
+    if (nav) {
+      e.preventDefault();
+      const section = nav.dataset.acctSection, card = nav.dataset.acctCard || '';
+      // a link that names a card (the setup checklist, "Change them on Billing"): the card is kept for the section to open
+      // once it has painted (consumeOpenCard); on the section already in view it opens in place, nothing read again
+      if (card) keepOpenCard(section, card);
+      if (card && section === activeSection && document.getElementById('acctMain')) { consumeOpenCard(section); return; }
+      showSection(section);
+      return;
+    }
 
     const act = e.target.closest('[data-acct-action]');
     if (act) {
@@ -4812,12 +4833,19 @@ function bindOnce() {
  * the card: it is looked for a while longer and gets the same scroll and flash.
  * The kept copy survives the panel rewriting the address to the bare section
  * (runtime/bootstrap.js captureAccountReturn keeps it before the rehydrate). */
+// The setup checklist's names (setup.js; the server's link.card) are here too (2026-09-28): a card made by cardHtml is
+// found by its body's id, card-<key with : as ->; a name with no card of its own opens the section's first card.
 const CARD_IDS = {
-  environment: { environment: 'evBody', storage: 'evBody', lanes: 'evBody', files: 'evFiles', data: 'evData', ai: 'evAi', connections: 'evConnections', domains: 'evDomains', keys: 'evKeys' },
-  subscription: { plan: 'acctPricing', payment: 'acctPmActions' },
-  profile: { passkeys: 'acctPasskeyList', password: 'acctPasswordError', phone: 'acctPhoneState', email: 'acctAliasList' },
-  team: {}
+  environment: { environment: 'evBody', storage: 'evBody', lanes: 'evBody', publish: 'evBody', files: 'evFiles', data: 'evData', ai: 'evAi', connections: 'evConnections', domains: 'evDomains', keys: 'evKeys' },
+  subscription: { plan: 'acctPricing', card: 'acctPmActions', payment: 'acctPmActions', details: 'card-billing-details' },
+  profile: { name: 'card-profile-name', passkeys: 'acctPasskeyList', password: 'acctPasswordError', phone: 'acctPhoneState', email: 'acctAliasList' },
+  team: { members: 'card-team-members', invite: 'card-team-invite' },
+  licensing: { account: 'card-licensing-account', tenant: 'card-licensing-tenant', agreement: 'card-licensing-agreement', mail: 'card-licensing-mailboxes', mailboxes: 'card-licensing-mailboxes' }
 };
+/** Keep a card for its section to open once it has painted (the same note a card link in the address leaves). */
+function keepOpenCard(section, card) {
+  try { sessionStorage.setItem('pragoptics_open_card', JSON.stringify({ section, card, row: '' })); } catch { /* the section still opens */ }
+}
 const CARD_TRIES = 24;   // about six seconds for the card
 const ROW_TRIES = 56;    // about fourteen in all for its row
 function consumeOpenCard(sectionId) {

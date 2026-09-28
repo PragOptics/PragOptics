@@ -22,15 +22,18 @@
 //                                          the tenant in Part 1) or taken back ("Give out mailboxes and licenses")
 //
 // The cards, top to bottom: what a failed license payment left owed (licensingMoney.js, which also holds the exact
-// charge every charging button shows), requests (licensingRequests.js), the licensing account (here), the tenant
-// (licensingTenant.js), the agreement, the licenses held and adding one (licensingOrders.js), the mailboxes (here),
-// the catalog (licensingCatalog.js), and for the platform's operator the charges and the distributor check
-// (licensingBilling.js, licensingPax8.js). What they share is licensingShared.js.
+// charge every charging button shows), requests (licensingRequests.js), then the owner's four steps in order, each
+// summary saying "Step n of 4" (2026-09-28): the licensing account (here), the tenant (licensingTenant.js), the
+// agreement (licensingOrders.js), the mailboxes with Turn on mail (here); then the licenses held and adding one
+// (licensingOrders.js), the catalog (licensingCatalog.js), and for the platform's operator the charges and the
+// distributor check (licensingBilling.js, licensingPax8.js). What they share is licensingShared.js, where stepGate
+// says which step a control waits on: steps 2 to 4 stand before the account exists, folded, their one control
+// disabled with that sentence under it.
 
 import { tierName } from '../components/tierCopy.js';
 import { explainLink } from '../components/explainer.js';
 import { ico, leadBtn, armed, initCards } from './cards.js';
-import { LIC_URL, lc, st, url, cardHtml, countWord, cap, dayWord, sentence, perms, isOperator, me, call, send, reqLead, reqIcon, errHtml, noteHtml, setNote, kept, forget, keepInput, withLink, showsLicensing } from './licensingShared.js';
+import { LIC_URL, lc, st, url, cardHtml, countWord, cap, dayWord, sentence, perms, isOperator, me, call, send, reqLead, reqIcon, errHtml, noteHtml, setNote, kept, forget, keepInput, withLink, cardLink, showsLicensing, stepWord, stepGate } from './licensingShared.js';
 import { agreementHtml, licensesHtml, orderAction, orderChange } from './licensingOrders.js';
 import { catalogHtml, catalogAction, catalogInput } from './licensingCatalog.js';
 import { billingHtml, billingAction } from './licensingBilling.js';
@@ -96,7 +99,8 @@ function paint() {
   if (!host) return;
   if (!lc.view) { host.innerHTML = lc.loadMsg ? `<p class="acct-empty">${st.D.escapeHtml(lc.loadMsg)}</p>` : '<p class="acct-loading">Loading…</p>'; return; }
   // decision 21: what a failed license payment left owed comes first, with Pay now for the owner (licensingMoney.js)
-  host.innerHTML = `${headHtml()}${errHtml('load')}<div class="ev-cards">${owedHtml()}${requestsHtml()}${myMailboxHtml()}${accountHtml()}${tenantHtml()}${agreementHtml()}${licensesHtml()}${mailboxesHtml()}${catalogHtml()}${billingHtml()}${pax8Html()}</div>`;
+  // the owner's four steps stand in order (2026-09-28): the account, the tenant, the agreement, then mail; the licenses held come after
+  host.innerHTML = `${headHtml()}${errHtml('load')}<div class="ev-cards">${owedHtml()}${requestsHtml()}${myMailboxHtml()}${accountHtml()}${tenantHtml()}${agreementHtml()}${mailboxesHtml()}${licensesHtml()}${catalogHtml()}${billingHtml()}${pax8Html()}</div>`;
 }
 
 /* ---------- the head ---------- */
@@ -190,8 +194,9 @@ function accountHtml() {
       </div>`;
   } else if (p.canOpenAccount) {
     summary = 'not created yet';
+    const uses = usesHtml(v);
     inner = `
-      <p class="acct-card-note">Your business's Microsoft licenses are held under this account. It is created with the billing address you gave on Billing.</p>
+      <p class="acct-card-note">Your business's Microsoft licenses are held under this account.${uses ? '' : ' It is created with the billing address you gave on Billing.'}</p>
       <div class="ev-reg-form">
         <div class="lic-span">
           <label class="acct-label" for="licBizName">Your business's name</label>
@@ -207,6 +212,7 @@ function accountHtml() {
         </div>
         ${lc.needPhone ? `<div class="lic-span"><label class="acct-label" for="licPhone">Phone number for the account</label><input class="acct-input" id="licPhone" type="tel" inputmode="tel" autocomplete="tel" data-keep value="${e(kept('licPhone', ''))}" placeholder="+1 555 555 5555"></div>` : ''}
       </div>
+      ${uses}
       <div class="acct-actions-row">${leadBtn({ lic: 'open-account' }, 'plus', 'Create licensing account', '', 'btn-primary')}</div>
       <p class="lic-hint">Creates your business's Microsoft licensing account. Nothing is charged.</p>`;
   } else {
@@ -214,10 +220,28 @@ function accountHtml() {
     inner = `<p class="acct-card-note">${e(v.readOnly && v.readOnlyWhy ? sentence(v.readOnlyWhy) : 'The owner creates the licensing account here.')}</p>`;
   }
   return cardHtml({
-    key: 'account', icon: 'shield', title: 'Licensing account', summary,
+    // step 1 of the owner's four (2026-09-28), wherever the team's licensing shows
+    key: 'account', icon: 'shield', title: 'Licensing account', summary: showsLicensing() ? stepWord(1, summary) : summary,
     explain: explainLink('licensing', 'What the licensing account is'),
     body: `${noteHtml('account')}${errHtml('account')}${inner}`
   });
+}
+
+/**
+ * What the account is created with, said before Create (2026-09-28): the server's accountDraft.uses names the billing
+ * address and phone it takes from Billing details ({ address, phone, from }); with no phone there, the verified mobile
+ * on Profile is used (and with none there either, the card asks for one). An older backend sends no uses: nothing extra.
+ */
+function usesHtml(v) {
+  const u = v.accountDraft?.uses;
+  if (!u || typeof u !== 'object') return '';
+  const e = st.D.escapeHtml;
+  const address = String(u.address || '').trim(), phone = String(u.phone || '').trim();
+  if (!address && !phone) return '';
+  const src = u.from === 'billing' ? 'Billing details' : 'your account';
+  const what = address && phone ? 'billing address and phone' : address ? 'billing address' : 'billing phone';
+  const parts = [address, phone || 'no phone on file: the verified mobile on Profile is used'].filter(Boolean);
+  return `<p class="acct-card-note lic-uses">${e(`Created with your ${what} from ${src}: ${parts.join('; ')}.`)} ${cardLink('subscription', 'details', 'Change them on Billing')}</p>`;
 }
 
 /** The name as typed in the box (spaces run together), the website, and the phone when one was asked for. */
@@ -317,17 +341,22 @@ function mailStateHtml(v, p) {
   }
   // off: never turned on, refused (its reason), or cancelled (decision 10: "Your mail order was cancelled: ...")
   const told = m.text ? `<p class="acct-card-note ev-note is-bad">${e(sentence(m.text))}</p>` : '';
-  if (!p.canTurnOnMail) {
+  // before the account the server has no say yet: the owner sees the button, waiting on step 1
+  const may = p.canTurnOnMail || (!v.account && p.isOwner && !v.readOnly);
+  if (!may) {
     const why = v.readOnly && v.readOnlyWhy ? sentence(v.readOnlyWhy) : 'Mail is not on for your team yet. The owner turns it on here.';
     return `${told}<p class="acct-card-note">${e(why)}</p>`;
   }
-  if (!v.microsoft?.ready) return `${told}<p class="acct-card-note">Name your Microsoft tenant and accept the Microsoft Customer Agreement above, then turn on mail here.</p>`;
+  // step 4 of four (2026-09-28): Turn on mail waits, disabled, until the account exists, the tenant is named and the
+  // agreement stands, and says under it which of those comes first and where; the server's own ready flag still counts
+  const gate = stepGate(v, 3) || (v.microsoft?.ready ? '' : 'Your Microsoft tenant and agreement are not complete yet. Finish the cards above, then turn on mail here.');
   return `
     ${told}
     <div class="lic-enroll">
       <p class="acct-card-note">Turn on mail for your team. Your own mailbox comes first, included with your plan; nothing is charged. Then give each team seat its mailbox below.</p>
       ${errHtml('mail')}
-      <div class="acct-actions-row">${reqLead('enroll', { lic: 'mail-enroll' }, 'mail', 'Turn on mail', 'Turning on…', '', 'btn-primary')}</div>
+      <div class="acct-actions-row">${reqLead('enroll', { lic: 'mail-enroll' }, 'mail', 'Turn on mail', 'Turning on…', gate ? `disabled data-tip="${e(gate)}"` : '', 'btn-primary')}</div>
+      ${gate ? `<p class="lic-hint">${e(gate)}</p>` : ''}
     </div>`;
 }
 
@@ -360,7 +389,8 @@ function seatMailCell(s, p, mailOn, e) {
 
 function mailboxesHtml() {
   const e = st.D.escapeHtml, v = lc.view, p = perms();
-  if (!showsLicensing() || !v.account) return '';
+  // step 4 of the owner's four (2026-09-28): the card stands before the account too, folded, its button waiting on step 1
+  if (!showsLicensing()) return '';
   // the person looking first, so their own mailbox (or Ask for my mailbox) is the first row on a phone
   const mine = me().userId;
   const seats = [...(v.seats || [])].sort((a, b) => (String(b.userId) === mine) - (String(a.userId) === mine));
@@ -380,8 +410,9 @@ function mailboxesHtml() {
         </table>
       </div>`;
   const state = MAIL_WORDS[v.mail?.state] || 'mail off';
+  const summary = v.account ? `${state} · ${seats.filter(s => s.included).length} of ${countWord(seats.length, 'team seat', 'team seats')} with a mailbox` : 'after the licensing account';
   return cardHtml({
-    key: 'mailboxes', icon: 'mail', title: 'Mailboxes', summary: e(`${state} · ${seats.filter(s => s.included).length} of ${countWord(seats.length, 'team seat', 'team seats')} with a mailbox`),
+    key: 'mailboxes', icon: 'mail', title: 'Mailboxes', summary: stepWord(4, e(summary)), open: !!v.account,
     explain: explainLink('licensing', 'A mailbox for every seat'),
     body: `
       <p class="acct-card-note">Each team seat can have one mailbox, included with your plan: Exchange Online Kiosk, 2 GB, for Outlook on the web and the Outlook phone apps (not the desktop Outlook app). A mailbox ends when it is taken back, when its seat ends, or when the person becomes a viewer. Once a mailbox ends, Microsoft keeps its mail for 30 days, then deletes it.</p>
@@ -392,6 +423,7 @@ function mailboxesHtml() {
 }
 
 async function enrollMail() {
+  if (stepGate(lc.view, 3)) return;   // the button is disabled with the reason under it; nothing is sent
   setNote('mailboxes', '');
   await send('enroll', 'Turning on…', async () => {
     let d;
