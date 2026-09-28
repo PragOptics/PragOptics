@@ -17,7 +17,7 @@
 import { PRAG_API_BASE } from '../runtime/config.js';
 import { tierName } from '../components/tierCopy.js';
 import { explainLink } from '../components/explainer.js';
-import { cardHtml, iconBtn, leadBtn, ico, armed, busy, hold, stateLead, copyButton } from './cards.js';
+import { cardHtml, iconBtn, leadBtn, ico, armed, busy, hold, stateLead, copyButton, initCards } from './cards.js';
 
 const TENANT_URL = `${PRAG_API_BASE}/tenant`;
 const SCOPES_URL = `${TENANT_URL}/scopes`;
@@ -1164,12 +1164,31 @@ async function loadPartnerCenter() {
   let d = null;
   try { d = await D.apiFetch(PARTNER_CENTER_URL); } catch (ex) { if (ex?.status === 404) { host.innerHTML = ''; return; } host.innerHTML = `<p class="adm-note tn-real">${e(D.friendlyError(ex, 'Partner Center could not be read.'))}</p>`; return; }
   if (!host.isConnected) return;
-  if (!d?.configured) { host.innerHTML = `<p class="adm-note tn-real">Partner Center is not set up on this lane (MS_PARTNER_TENANT_ID, MS_PC_VAULT and the app's Partner Center permission). Until it is, a tenant PragOptics makes waits on this desk for Connect this tenant.</p>`; return; }
-  if (d.signedIn) {
-    host.innerHTML = `<p class="adm-note tn-real">Partner Center: signed in as <b>${e(d.upn || 'the on-behalf-of user')}</b>${d.savedAt ? ` since ${e(D.fmtDate(d.savedAt))}` : ''}${d.rotatedAt ? `, renewed ${e(D.fmtDate(d.rotatedAt))}` : ''}. Tenants PragOptics makes connect on their own; the sign-in renews itself by use and lapses after 90 days unused. ${iconBtn({ tenant: 'pc-forget' }, 'x', 'Sign Partner Center out: tenants wait on this desk again until the next sign-in')}</p>`;
-    return;
+  // one card, the panel's own (2026-09-28, Cameron: the desk read as scattered text): the state in the summary, one
+  // sentence and one labelled button in the body; the sign-out is a two-press confirm, never a bare icon
+  let summary, body;
+  if (!d?.configured) {
+    summary = 'not set up on this lane';
+    body = `<p class="acct-card-note">Not set up on this lane: MS_PARTNER_TENANT_ID, MS_PC_VAULT and the app's Partner Center permission. Until it is, a tenant PragOptics makes waits on this desk for Connect this tenant.</p>`;
+  } else if (d.signedIn) {
+    summary = `signed in as ${d.upn || 'the on-behalf-of user'}`;
+    body = `
+      <div class="lic-facts">
+        <div class="lic-fact"><span class="lic-k">Signed in as</span><span class="lic-v"><span class="ev-code">${e(d.upn || '')}</span></span></div>
+        ${d.savedAt ? `<div class="lic-fact"><span class="lic-k">Since</span><span class="lic-v">${e(D.fmtDate(d.savedAt))}</span></div>` : ''}
+        ${d.rotatedAt ? `<div class="lic-fact"><span class="lic-k">Renewed</span><span class="lic-v">${e(D.fmtDate(d.rotatedAt))}</span></div>` : ''}
+      </div>
+      <p class="acct-card-note">Tenants PragOptics makes connect on their own. The sign-in renews itself by use and lapses after 90 days unused.</p>
+      <div class="acct-actions-row">${leadBtn({ tenant: 'pc-forget' }, 'x', 'Sign Partner Center out', '', 'btn-quiet')}</div>
+      <p class="lic-hint">Signed out, a tenant PragOptics makes waits on this desk for Connect this tenant until the next sign-in.</p>`;
+  } else {
+    summary = 'not signed in';
+    body = `
+      <p class="acct-card-note">The platform's on-behalf-of user in the partner tenant signs in once, with MFA. After that, tenants PragOptics makes connect on their own; until then each waits on this desk for Connect this tenant.</p>
+      <div class="acct-actions-row">${leadBtn({ tenant: 'pc-connect' }, 'link', 'Connect Partner Center', '', 'btn-primary')}</div>`;
   }
-  host.innerHTML = `<div class="adm-note tn-real"><p>Partner Center: not signed in. A tenant PragOptics makes waits here for Connect this tenant until the on-behalf-of user signs in once, with MFA; after that they connect on their own.</p>${leadBtn({ tenant: 'pc-connect' }, 'link', 'Connect Partner Center', '', 'btn-primary')}</div>`;
+  host.innerHTML = cardHtml({ key: 'tenants:partner-center', icon: 'link', title: 'Partner Center', summary: e(summary), body });
+  initCards();
 }
 async function connectPartnerCenter(btn) {
   const done = busy(btn, 'Opening Microsoft…');
@@ -1180,6 +1199,7 @@ async function connectPartnerCenter(btn) {
   } catch (ex) { done(); D.showError('tnError', D.friendlyError(ex, 'The Partner Center sign-in could not be started.')); }
 }
 async function forgetPartnerCenter(btn) {
+  if (!armed(btn, 'Sign Partner Center out?')) return;
   const done = busy(btn, 'Signing out…');
   try { await D.apiFetch(`${PARTNER_CENTER_URL}/forget`, { method: 'POST' }); partnerCenterFlash('Partner Center signed out.'); await loadPartnerCenter(); }
   catch (ex) { D.showError('tnError', D.friendlyError(ex, 'Could not sign Partner Center out.')); }
@@ -1191,8 +1211,17 @@ function realOrdersLineHtml(d, rows) {
   if (!ro?.available) return '';
   const e = D.escapeHtml;
   const on = rows.find(t => t.realOrders?.armed);
-  const who = on ? `${e(on.organizationName || on.ownerEmail || 'Unnamed')} <code>${e(String(on.environmentId).slice(0, 8))}</code>${on.realOrders.armedBy ? `, by ${e(on.realOrders.armedBy)}` : ''}${on.realOrders.armedAt ? ` on ${e(D.fmtDate(on.realOrders.armedAt))}` : ''}` : '';
-  return `<p class="adm-note tn-real">${e(ro.note || '')} ${on ? `Armed now: <b>${who}</b>. Turn it off when the proof is done.` : 'No environment is armed.'}</p>`;
+  // the panel's own card (2026-09-28): the armed environment in the summary, the lane's note and the facts in the body
+  const body = `
+    <p class="acct-card-note">${e(ro.note || '')}</p>
+    ${on ? `
+    <div class="lic-facts">
+      <div class="lic-fact"><span class="lic-k">Armed now</span><span class="lic-v">${e(on.organizationName || on.ownerEmail || 'Unnamed')} <span class="ev-code">${e(String(on.environmentId).slice(0, 8))}</span></span></div>
+      ${on.realOrders.armedBy ? `<div class="lic-fact"><span class="lic-k">By</span><span class="lic-v">${e(on.realOrders.armedBy)}</span></div>` : ''}
+      ${on.realOrders.armedAt ? `<div class="lic-fact"><span class="lic-k">Since</span><span class="lic-v">${e(D.fmtDate(on.realOrders.armedAt))}</span></div>` : ''}
+    </div>
+    <p class="lic-hint">Turn it off from its row when the proof is done.</p>` : '<p class="lic-hint">No environment is armed. The dollar switch on a row arms it.</p>'}`;
+  return `<div class="ev-cards tn-desk-cards">${cardHtml({ key: 'tenants:real-orders', icon: 'dollar', title: 'Real orders', summary: e(on ? `armed: ${on.organizationName || on.ownerEmail || 'Unnamed'}` : 'no environment armed'), body, open: false })}</div>`;
 }
 /** The row's switch, on the dev lane only: the button that turns real orders on for this environment, or off again. */
 function realOrdersBtnHtml(t, available) {

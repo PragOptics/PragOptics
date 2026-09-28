@@ -443,8 +443,9 @@ th.adm-num { text-align: right; }
 .adm-side-report-btn .ev-ico, .adm-side-alien { display: none; }
 .adm-side-alien {
   width: 26px; height: 30px; flex: none; background-color: currentColor;
-  -webkit-mask: url("/images/anomaly.png") 52% center / auto 132% no-repeat;
-  mask: url("/images/anomaly.png") 52% center / auto 132% no-repeat;
+  /* the whole alien inside its box (2026-09-28: at 132% the head and feet were cut off on the phone rail) */
+  -webkit-mask: url("/images/anomaly.png") center / contain no-repeat;
+  mask: url("/images/anomaly.png") center / contain no-repeat;
 }
 .adm-side .acct-signout { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
 .adm-side .acct-signout .ev-ico { width: 16px; height: 16px; }
@@ -939,3 +940,8 @@ select.adm-select option:checked, select.adm-input option:checked {
   .cd .cd-site .um-actions, .cd .cd-site .um-actions .btn-lead { width: 100%; }
   .cd .cd-site .um-actions .btn-lead { justify-content: center; }
 }
+
+/* the Tenants desk's head cards (2026-09-28): Partner Center and Real orders as the panel's own cards, not paragraphs */
+#tnPartnerCenter { margin: 0 0 10px; }
+#tnPartnerCenter .acct-card, .tn-desk-cards .acct-card { margin: 0; }
+.tn-desk-cards { margin: 0 0 14px; }
