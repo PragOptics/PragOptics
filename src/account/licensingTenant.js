@@ -475,7 +475,7 @@ function adminAskHtml(m, p) {
   const needName = !acc.hasName;
   return `<div class="lic-admin">${head}
     ${a.state === 'refused' ? `<p class="acct-card-note ev-note is-bad">PragOptics could not make <span class="ev-code">${e(a.signIn)}</span>: ${e(sentence(a.reason))} You can ask again.</p>` : ''}
-    <p class="acct-card-note">PragOptics keeps an administrator account in this tenant so your licenses and mail keep working; you never need its sign-in. The tenant is yours, so you can have an administrator account of your own, with full control of the tenant (Microsoft calls it Global Administrator). When it is made, its first password waits on this card for you, shown once, and never by email.</p>
+    <p class="acct-card-note">PragOptics works in this tenant through the approval you give it above, never through an account of its own. The tenant is yours, so you can have an administrator account of your own, with full control of the tenant (Microsoft calls it Global Administrator). When it is made, its first password waits on this card for you, shown once, and never by email.</p>
     ${a.canAsk ? `
       <label class="acct-label" for="licTnAdminName">Sign-in name</label>
       <div class="lic-suffix ${err ? 'is-bad' : ''}"><input class="acct-input" id="licTnAdminName" type="text" data-keep value="${e(kept('licTnAdminName', signInSuggestion(m)))}" maxlength="64" spellcheck="false" autocapitalize="off" autocomplete="off" aria-describedby="licTnAdminHint${err ? ' licTnAdminErr' : ''}"><span>${e(suffix)}</span></div>
