@@ -1012,6 +1012,8 @@ const TEAM_ACTIONS = {
 const TENANT_ACTIONS = {
   repair: (tb) => repairTenant(tb),
   'real-orders': (tb) => toggleRealOrders(tb),
+  'pc-connect': (tb) => connectPartnerCenter(tb),
+  'pc-forget': (tb) => forgetPartnerCenter(tb),
   conduct: (tb) => {
     const done = busy(tb, 'Opening…');
     import('./conductDesk.js')
@@ -1136,6 +1138,54 @@ function tnFlash(text) {
   el.hidden = !text;
 }
 /** The line above the desk on the dev lane: the lane's note, and which environment is armed now, if any. */
+/* PARTNER CENTER, THE OPERATOR'S ONE SIGN-IN (2026-09-28; backend v1/admin/partner-center). Tenants PragOptics makes
+ * connect on their own through the partner relationship, acting as a dedicated on-behalf-of user in the partner tenant;
+ * that user signs in once here, with MFA, and the platform keeps only its refresh token. The card says who is signed in
+ * and since when, never the token; Connect sends the operator to Microsoft and back to this desk. */
+const PARTNER_CENTER_URL = `${PRAG_API_BASE}/admin/partner-center`;
+function partnerCenterFlash(text, bad = false) {
+  const el = document.getElementById('tnFlash');
+  if (!el) return;
+  el.textContent = text; el.classList.toggle('is-bad', !!bad); el.hidden = !text;
+}
+/** The return from Microsoft: #account?section=tenants&pc=connected&upn= or pc=failed&why=, said once and taken off the address. */
+function partnerCenterReturn() {
+  const q = new URLSearchParams(String(location.hash || '').split('?')[1] || '');
+  const pc = q.get('pc');
+  if (!pc) return;
+  if (pc === 'connected') partnerCenterFlash(`Partner Center is signed in${q.get('upn') ? ` as ${q.get('upn')}` : ''}. Tenants PragOptics makes now connect on their own.`);
+  else partnerCenterFlash(q.get('why') || 'The Partner Center sign-in did not complete.', true);
+  try { history.replaceState(null, '', '#account?section=tenants'); } catch { /* the flash still shows */ }
+}
+async function loadPartnerCenter() {
+  const host = document.getElementById('tnPartnerCenter');
+  if (!host) return;
+  const e = D.escapeHtml;
+  let d = null;
+  try { d = await D.apiFetch(PARTNER_CENTER_URL); } catch (ex) { if (ex?.status === 404) { host.innerHTML = ''; return; } host.innerHTML = `<p class="adm-note tn-real">${e(D.friendlyError(ex, 'Partner Center could not be read.'))}</p>`; return; }
+  if (!host.isConnected) return;
+  if (!d?.configured) { host.innerHTML = `<p class="adm-note tn-real">Partner Center is not set up on this lane (MS_PARTNER_TENANT_ID, MS_PC_VAULT and the app's Partner Center permission). Until it is, a tenant PragOptics makes waits on this desk for Connect this tenant.</p>`; return; }
+  if (d.signedIn) {
+    host.innerHTML = `<p class="adm-note tn-real">Partner Center: signed in as <b>${e(d.upn || 'the on-behalf-of user')}</b>${d.savedAt ? ` since ${e(D.fmtDate(d.savedAt))}` : ''}${d.rotatedAt ? `, renewed ${e(D.fmtDate(d.rotatedAt))}` : ''}. Tenants PragOptics makes connect on their own; the sign-in renews itself by use and lapses after 90 days unused. ${iconBtn({ tenant: 'pc-forget' }, 'x', 'Sign Partner Center out: tenants wait on this desk again until the next sign-in')}</p>`;
+    return;
+  }
+  host.innerHTML = `<div class="adm-note tn-real"><p>Partner Center: not signed in. A tenant PragOptics makes waits here for Connect this tenant until the on-behalf-of user signs in once, with MFA; after that they connect on their own.</p>${leadBtn({ tenant: 'pc-connect' }, 'link', 'Connect Partner Center', '', 'btn-primary')}</div>`;
+}
+async function connectPartnerCenter(btn) {
+  const done = busy(btn, 'Opening Microsoft…');
+  try {
+    const d = await D.apiFetch(`${PARTNER_CENTER_URL}/connect?origin=${encodeURIComponent(location.origin)}`);
+    if (!d?.url) throw new Error('No sign-in address came back.');
+    location.href = d.url;
+  } catch (ex) { done(); D.showError('tnError', D.friendlyError(ex, 'The Partner Center sign-in could not be started.')); }
+}
+async function forgetPartnerCenter(btn) {
+  const done = busy(btn, 'Signing out…');
+  try { await D.apiFetch(`${PARTNER_CENTER_URL}/forget`, { method: 'POST' }); partnerCenterFlash('Partner Center signed out.'); await loadPartnerCenter(); }
+  catch (ex) { D.showError('tnError', D.friendlyError(ex, 'Could not sign Partner Center out.')); }
+  finally { done(); }
+}
+
 function realOrdersLineHtml(d, rows) {
   const ro = d?.realOrders;
   if (!ro?.available) return '';
@@ -1187,8 +1237,11 @@ export async function renderTenants(main, deps) {
     <p class="adm-note">Every team on the platform: who owns it, its plan, its storage against the allowance, seats in use. Counts and names only; tenant data never renders here. Repair runs the one-pass provisioning for an environment that stalled: it creates what is missing and changes nothing that exists.</p>
     <p class="adm-error" id="tnError" hidden></p>
     <p class="na-flash" id="tnFlash" role="status" aria-live="polite" hidden></p>
+    <div id="tnPartnerCenter"></div>
     <div id="tnBody"><p class="adm-note">Loading…</p></div>
   `;
+  partnerCenterReturn();
+  loadPartnerCenter();
   const host = document.getElementById('tnBody');
   try {
     const d = await D.apiFetch(ADMIN_TENANTS_URL);
