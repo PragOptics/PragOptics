@@ -1150,7 +1150,8 @@ function realOrdersBtnHtml(t, available) {
   const e = D.escapeHtml;
   const on = !!t.realOrders?.armed;
   const name = t.organizationName || t.ownerEmail || 'this environment';
-  return iconBtn({ tenant: 'real-orders' }, on ? 'power' : 'zap',
+  // money, so a dollar sign, on and off (Cameron, 2026-09-28); the armed state is told by the red is-danger look and the row's tag
+  return iconBtn({ tenant: 'real-orders' }, 'dollar',
     on ? `Real orders are on for ${name}: turn them off` : `Turn on real orders for ${name}: its orders are placed at Pax8 and billed to PragOptics`,
     `data-env="${e(t.environmentId)}" data-name="${e(name)}" data-armed="${on ? '1' : '0'}"`, on ? 'is-danger' : '');
 }
