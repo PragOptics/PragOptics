@@ -1153,11 +1153,13 @@ function realOrdersBtnHtml(t, available) {
   // money, so a dollar sign, on and off (Cameron, 2026-09-28); the armed state is told by the red is-danger look and the row's tag
   return iconBtn({ tenant: 'real-orders' }, 'dollar',
     on ? `Real orders are on for ${name}: turn them off` : `Turn on real orders for ${name}: its orders are placed at Pax8 and billed to PragOptics`,
-    `data-env="${e(t.environmentId)}" data-name="${e(name)}" data-armed="${on ? '1' : '0'}"`, on ? 'is-danger' : '');
+    `data-env="${e(t.environmentId)}" data-name="${e(name)}" data-real="${on ? '1' : '0'}"`, on ? 'is-danger' : '');
 }
 async function toggleRealOrders(btn) {
   const id = String(btn.dataset.env || ''), name = btn.dataset.name || 'this environment';
-  const on = btn.dataset.armed !== '1';
+  // data-real is the switch's own state: cards.js armed() uses data-armed for its press-again state, and the two clashed
+  // (every confirmed press read "already on" and turned real orders OFF; seen on the pane 2026-09-28)
+  const on = btn.dataset.real !== '1';
   // two presses: the first opens the question, naming the environment and the charge; the second acts
   if (!armed(btn, on ? `Real orders for ${name}? Pax8 bills PragOptics for what it orders.` : `Turn off real orders for ${name}?`)) return;
   D.showError('tnError', ''); tnFlash('');
