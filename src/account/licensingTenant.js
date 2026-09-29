@@ -198,6 +198,7 @@ function connectionHtml(m, p) {
     // 2026-09-29, Cameron: the least clicks; the customer never uses the tenant's admin@. PragOptics makes the owner's own
     // Microsoft account in the tenant (their mail account) and makes it the tenant's administrator; the owner approves
     // PragOptics once with it. Until that account is ready there is nothing to press.
+    if (t.madeByPlatform && !t.ownerAccount && t.ownerAccountWaits === 'seat') return `<div class="lic-admin">${head}${lost}${ro}<p class="acct-card-note">Your own Microsoft account in ${who} comes with your included mailbox. On the Mailboxes card of this tab (step 4), give yourself your included mailbox, and PragOptics makes the account on its next pass.</p></div>`;
     if (t.madeByPlatform && !t.ownerAccount) return `<div class="lic-admin">${head}${lost}${ro}<p class="acct-card-note">PragOptics is making your own Microsoft account in ${who}, the one you will use for your mail. When it is ready it appears here with one step left: approve PragOptics once.</p></div>`;
     const made = t.madeByPlatform ? `<p class="acct-card-note">Your Microsoft account <span class="ev-code">${e(t.ownerAccount.upn)}</span> is ready and runs ${who}. See its first password once on your My mailbox card, then press Connect your tenant, sign in with that account when Microsoft asks, and approve PragOptics once.</p>` : '';
     return `<div class="lic-admin">${head}${lost}${ro}${made}
