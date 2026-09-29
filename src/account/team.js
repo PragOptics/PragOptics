@@ -1140,6 +1140,7 @@ async function runAutoConnect(btn) {
     const main = document.getElementById('acctMain');
     if (main) await renderTenants(main, D);
     if (r.done) partnerCenterFlash(`${name}: ${r.orgName || 'the tenant'} connected by the platform through the partner relationship.`);
+    else if (r.busy) partnerCenterFlash(`${name}: ${r.why}`);
     else D.showError('tnError', `${name}: ${r.why || AUTO_WORDS[r.status] || r.status || 'not connected yet'}`);
   } catch (ex) {
     D.showError('tnError', ex?.sessionInvalidated ? '' : (ex?.data?.error || D.friendlyError(ex, 'The automatic connect did not run.')));
@@ -1330,7 +1331,7 @@ export async function renderTenants(main, deps) {
                 <td class="adm-num cell-tight">${e(String(t.seats?.used ?? 0))} / ${e(String(t.seats?.limit ?? 0))}${Number(t.seats?.pending) ? `<div class="adm-muted">+${e(String(t.seats.pending))} pending</div>` : ''}</td>
                 <td class="adm-num cell-tight">${e(String(t.members ?? 0))}${Number(t.viewers) ? `<div class="adm-muted">${e(String(t.viewers))} viewer${t.viewers === 1 ? '' : 's'}</div>` : ''}</td>
                 <td class="adm-muted cell-tight">${e(D.fmtDate(t.createdAt))}</td>
-                <td class="cell-tight tm-actions">${repairable(t) ? iconBtn({ tenant: 'repair' }, 'tool', 'Repair: run provisioning', `data-user="${e(t.ownerUserId)}" data-name="${e(t.organizationName || t.ownerEmail || 'this team')}"`) : ''}${iconBtn({ tenant: 'conduct' }, 'shield', 'Community standards', `data-env="${e(t.environmentId)}"`)}${t.microsoft?.madeByPlatform && t.microsoft?.tenantId ? iconBtn({ tenant: 'auto-connect' }, 'plug', 'Run the automatic connect now', `data-env="${e(t.environmentId)}" data-name="${e(t.organizationName || t.ownerEmail || 'this team')}"`) : ''}${realOrdersBtnHtml(t, realOrdersOn)}${t.conduct && (t.conduct.held || t.conduct.sitesHeld?.live || t.conduct.sitesHeld?.sandbox) ? `<div><span class="acct-tag is-bad" title="${e(t.conduct.held ? 'Suspended for the community standards' : 'Sites taken down for the community standards')}">held</span></div>` : ''}</td>
+                <td class="cell-tight tm-actions">${repairable(t) ? iconBtn({ tenant: 'repair' }, 'tool', 'Repair: run provisioning', `data-user="${e(t.ownerUserId)}" data-name="${e(t.organizationName || t.ownerEmail || 'this team')}"`) : ''}${iconBtn({ tenant: 'conduct' }, 'shield', 'Community standards', `data-env="${e(t.environmentId)}"`)}${t.microsoft?.madeByPlatform && t.microsoft?.tenantId && t.microsoft?.consentBy !== 'platform' ? iconBtn({ tenant: 'auto-connect' }, 'plug', t.microsoft.connected ? "Move it onto the platform's own connection now" : 'Run the automatic connect now', `data-env="${e(t.environmentId)}" data-name="${e(t.organizationName || t.ownerEmail || 'this team')}"`) : ''}${realOrdersBtnHtml(t, realOrdersOn)}${t.conduct && (t.conduct.held || t.conduct.sitesHeld?.live || t.conduct.sitesHeld?.sandbox) ? `<div><span class="acct-tag is-bad" title="${e(t.conduct.held ? 'Suspended for the community standards' : 'Sites taken down for the community standards')}">held</span></div>` : ''}</td>
               </tr>`).join('')}
           </tbody>
         </table>
