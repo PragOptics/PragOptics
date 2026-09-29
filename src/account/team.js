@@ -1176,7 +1176,8 @@ function partnerCenterReturn() {
   const q = new URLSearchParams(String(location.hash || '').split('?')[1] || '');
   const pc = q.get('pc');
   if (!pc) return;
-  if (pc === 'connected') partnerCenterFlash(`Partner Center is signed in${q.get('upn') ? ` as ${q.get('upn')}` : ''}. Tenants PragOptics makes now connect on their own.`);
+  if (pc === 'connected' && q.get('mfa') === 'no') partnerCenterFlash(`Partner Center is signed in${q.get('upn') ? ` as ${q.get('upn')}` : ''}, but the sign-in has no multi-factor authentication and Partner Center refuses it. Enforce multi-factor authentication for that account in the partner tenant, then Sign Partner Center out and connect again.`, true);
+  else if (pc === 'connected') partnerCenterFlash(`Partner Center is signed in${q.get('upn') ? ` as ${q.get('upn')}` : ''}${q.get('mfa') === 'yes' ? ' with multi-factor authentication' : ''}. Tenants PragOptics makes now connect on their own.`);
   else partnerCenterFlash(q.get('why') || 'The Partner Center sign-in did not complete.', true);
   try { history.replaceState(null, '', '#account?section=tenants'); } catch { /* the flash still shows */ }
 }
@@ -1200,8 +1201,9 @@ async function loadPartnerCenter() {
         <div class="lic-fact"><span class="lic-k">Signed in as</span><span class="lic-v"><span class="ev-code">${e(d.upn || '')}</span></span></div>
         ${d.savedAt ? `<div class="lic-fact"><span class="lic-k">Since</span><span class="lic-v">${e(D.fmtDate(d.savedAt))}</span></div>` : ''}
         ${d.rotatedAt ? `<div class="lic-fact"><span class="lic-k">Renewed</span><span class="lic-v">${e(D.fmtDate(d.rotatedAt))}</span></div>` : ''}
+        <div class="lic-fact"><span class="lic-k">Multi-factor</span><span class="lic-v">${d.mfa === true ? 'yes' : d.mfa === false ? '<span class="acct-tag is-bad">no: Partner Center refuses this sign-in</span>' : 'not checked yet'}</span></div>
       </div>
-      <p class="acct-card-note">Tenants PragOptics makes connect on their own. The sign-in renews itself by use and lapses after 90 days unused.</p>
+      ${d.mfa === false ? `<p class="acct-card-note">Microsoft requires multi-factor authentication on every Partner Center call. Enforce it for this account in the partner tenant, then Sign Partner Center out and connect again; the prompt must appear.</p>` : `<p class="acct-card-note">Tenants PragOptics makes connect on their own. The sign-in renews itself by use and lapses after 90 days unused.</p>`}
       <div class="acct-actions-row">${leadBtn({ tenant: 'pc-forget' }, 'x', 'Sign Partner Center out', '', 'btn-quiet')}</div>
       <p class="lic-hint">Signed out, a tenant PragOptics makes waits on this desk for Connect this tenant until the next sign-in.</p>`;
   } else {
