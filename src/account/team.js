@@ -982,7 +982,7 @@ const TEAM_ACTIONS = {
       { el: btn, word: 'Withdrawing…', status: `Withdrawing the invite to ${who}…` });
   },
   suspend: (btn, { userId, who }) => {
-    if (!armed(btn, 'Suspend?')) return;
+    if (!armed(btn, 'Suspend?', { keep: 'Leave them as they are' })) return;
     return act(() => post(`${TENANT_URL}/members/patch`, { userId, status: 'SUSPENDED' }),
       { el: btn, word: 'Suspending…', status: `Suspending ${who}…` });
   },
@@ -1112,7 +1112,7 @@ function repairable(t) {
 }
 async function repairTenant(btn) {
   const name = btn.dataset.name || 'this team';
-  if (!armed(btn, 'Run it?')) return;
+  if (!armed(btn, 'Run it?', { keep: 'Do not run it' })) return;
   D.showError('tnError', '');
   const done = busy(btn, `Running provisioning for ${name}…`);
   try {
@@ -1131,7 +1131,7 @@ async function repairTenant(btn) {
  * landed. How the platform's own path is proven on a tenant a person connected first, and the re-run after a fix. */
 async function runAutoConnect(btn) {
   const name = btn.dataset.name || 'this team';
-  if (!armed(btn, 'Run it?')) return;
+  if (!armed(btn, 'Run it?', { keep: 'Do not run it' })) return;
   D.showError('tnError', '');
   const done = busy(btn, `Connecting ${name} on its own…`);
   try {
@@ -1221,7 +1221,7 @@ async function connectPartnerCenter(btn) {
   } catch (ex) { done(); D.showError('tnError', D.friendlyError(ex, 'The Partner Center sign-in could not be started.')); }
 }
 async function forgetPartnerCenter(btn) {
-  if (!armed(btn, 'Sign Partner Center out?')) return;
+  if (!armed(btn, 'Sign Partner Center out?', { keep: 'Stay signed in' })) return;
   const done = busy(btn, 'Signing out…');
   try { await D.apiFetch(`${PARTNER_CENTER_URL}/forget`, { method: 'POST' }); partnerCenterFlash('Partner Center signed out.'); await loadPartnerCenter(); }
   catch (ex) { D.showError('tnError', D.friendlyError(ex, 'Could not sign Partner Center out.')); }

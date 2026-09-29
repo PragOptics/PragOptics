@@ -354,7 +354,7 @@ async function mailPlan(btn) {
 async function mailSwitch(btn, confirmOnly) {
   const host = String(btn.dataset.host || '');
   if (!host || lc.busy) return;
-  if (!confirmOnly && !armed(btn, 'Switch mail?')) return;
+  if (!confirmOnly && !armed(btn, 'Switch mail?', { keep: 'Leave mail as it is' })) return;
   lc.err['tenant-domains'] = ''; setNote('tenant', '');
   await send(`tn-mail:${host}`, confirmOnly ? 'Checking DNS…' : 'Switching…', async () => {
     const d = confirmOnly ? await call(`${LIC_URL}/tenant/domains/${encodeURIComponent(host)}/mail/confirm`, 'POST') : await call(`${LIC_URL}/tenant/domains/${encodeURIComponent(host)}/mail`, 'POST', { confirm: true });
@@ -428,7 +428,7 @@ function copyMyPassword(btn) {
   if (box) copyButton(btn, box.value, { select: () => box });
 }
 async function resetMyPassword(btn) {
-  if (!armed(btn, 'Reset it?')) return;
+  if (!armed(btn, 'Reset it?', { keep: 'Do not reset it' })) return;
   lc.err['mailbox-mine'] = ''; setNote('mailbox-mine', '');
   mbShown = null;
   await send('mb-reset', 'Resetting…', async () => {
