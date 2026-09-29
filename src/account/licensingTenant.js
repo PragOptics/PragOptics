@@ -195,9 +195,13 @@ function connectionHtml(m, p) {
     if (!canDomains()) return `<div class="lic-admin">${head}${lost}<p class="acct-card-note">Not connected yet. The owner, or a role with Connect your Microsoft tenant and set up its mail, connects ${who}: they sign in at Microsoft as its administrator and approve PragOptics for your organization.</p></div>`;
     // a tenant the distributor made for this team: the customer holds its administrator login (mailed to them with the
     // order) and may connect with it now, while PragOptics keeps trying to connect it on its own
-    const made = t.madeByPlatform ? `<p class="acct-card-note">Microsoft made ${who} for you. Its administrator login${t.adminLogin ? `, <span class="ev-code">${e(t.adminLogin)}</span>,` : ''} was emailed to you with the order. PragOptics is also connecting it on its own; connect it yourself now and nothing waits.</p>` : '';
+    // 2026-09-29, Cameron: the least clicks; the customer never uses the tenant's admin@. PragOptics makes the owner's own
+    // Microsoft account in the tenant (their mail account) and makes it the tenant's administrator; the owner approves
+    // PragOptics once with it. Until that account is ready there is nothing to press.
+    if (t.madeByPlatform && !t.ownerAccount) return `<div class="lic-admin">${head}${lost}${ro}<p class="acct-card-note">PragOptics is making your own Microsoft account in ${who}, the one you will use for your mail. When it is ready it appears here with one step left: approve PragOptics once.</p></div>`;
+    const made = t.madeByPlatform ? `<p class="acct-card-note">Your Microsoft account <span class="ev-code">${e(t.ownerAccount.upn)}</span> is ready and runs ${who}. See its first password once on your My mailbox card, then press Connect your tenant, sign in with that account when Microsoft asks, and approve PragOptics once.</p>` : '';
     return `<div class="lic-admin">${head}${lost}${ro}${made}
-      <p class="acct-card-note">Connect ${who} so PragOptics can make each seat's mailbox, add your domains to it and switch your mail. You sign in at Microsoft as an administrator of that tenant, approve PragOptics for your organization, and come back here. The link works once and for ten minutes.</p>
+      <p class="acct-card-note">${t.madeByPlatform ? 'The link works once and for ten minutes.' : `Connect ${who} so PragOptics can make each seat's mailbox, add your domains to it and switch your mail. You sign in at Microsoft as an administrator of that tenant, approve PragOptics for your organization, and come back here. The link works once and for ten minutes.`}</p>
       <div class="acct-actions-row">${reqLead('tn-connect', { lic: 'tn-connect' }, 'external', t.lost ? 'Connect it again' : 'Connect your tenant', 'Opening Microsoft…', '', 'btn-primary')}</div>
     </div>`;
   }

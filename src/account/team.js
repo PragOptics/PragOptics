@@ -1235,7 +1235,8 @@ async function forgetPartnerCenter(btn) {
  * platform made, where the automatic connect stands, in words, so the desk says what the platform is doing right now. */
 const AUTO_WORDS = {
   'waiting-relationship': 'waiting for the admin relationship from the distributor', approving: 'approving the admin relationship', assigning: 'assigning the roles',
-  assigned: 'roles assigned; consenting the app', consented: 'app consented; reading the tenant', connected: 'connected', retrying: 'retrying next hour', 'needs-operator': 'stopped: see Needs attention'
+  assigned: 'roles assigned; consenting the app', consented: 'app consented; reading the tenant', connected: 'connected', retrying: 'retrying next hour', 'needs-operator': 'stopped: see Needs attention',
+  'owner-ready': "the owner's own account is ready; the owner approves once", 'owner-seat': "waiting for the owner's mailbox seat"
 };
 function tenantLineHtml(t) {
   const m = t.microsoft;
