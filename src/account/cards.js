@@ -325,6 +325,8 @@ export function disarm() {
   if (b._armLabel != null) b.setAttribute('aria-label', b._armLabel); else b.removeAttribute('aria-label');
   delete b.dataset.armed; b._armHtml = b._armTip = b._armLabel = null;
   const c = b.nextElementSibling;
+  const h = c && c.hasAttribute('data-arm-cancel') ? c.nextElementSibling : null;
+  if (h && h.hasAttribute('data-arm-hint')) h.remove();
   if (c && c.hasAttribute('data-arm-cancel')) c.remove();
 }
 export function armed(btn, word, { keep = 'Keep it', ms = 6000 } = {}) {
@@ -343,6 +345,13 @@ export function armed(btn, word, { keep = 'Keep it', ms = 6000 } = {}) {
   c.type = 'button'; c.className = 'btn btn-sm btn-ico btn-arm-cancel'; c.setAttribute('data-arm-cancel', '1');
   c.setAttribute('aria-label', keep); c.setAttribute('data-tip', keep); c.innerHTML = ico('x');
   btn.after(c);
+  // the second press is asked for where it can be seen, with the time running out under it (Cameron pressed an icon on the
+  // Tenants desk and had no sign a second press was wanted, 2026-09-29): the question beside an icon-only button, and under
+  // both kinds a bar that empties over the window
+  const h = document.createElement('span');
+  h.className = 'arm-hint'; h.setAttribute('data-arm-hint', '1'); h.setAttribute('aria-hidden', 'true');
+  h.innerHTML = `${btn.classList.contains('btn-ico') ? `<span class="arm-hint-word">${esc(word)} Press again.</span>` : ''}<i class="arm-hint-bar" style="--arm-ms:${Number(ms) || 6000}ms"></i>`;
+  c.after(h);
   bindArming();
   armTimer = setTimeout(disarm, ms);
   return false;

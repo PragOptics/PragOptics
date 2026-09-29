@@ -262,7 +262,13 @@
   to   { box-shadow: 0 0 0 4px color-mix(in srgb, var(--danger) 22%, transparent); }
 }
 .btn.btn-arm-cancel { margin-left: 6px; }
-@media (prefers-reduced-motion: reduce) { .btn.is-armed { animation: none; } }
+/* the ask for the second press, beside the armed button: the question (icon-only buttons) over a bar that empties across the
+   six seconds, so the window is seen, not guessed (2026-09-29) */
+.arm-hint { display: inline-flex; flex-direction: column; justify-content: center; gap: 3px; margin-left: 8px; min-width: 72px; vertical-align: middle; }
+.arm-hint-word { font-size: .78rem; font-weight: 700; line-height: 1.2; color: var(--danger-text); white-space: nowrap; }
+.arm-hint-bar { display: block; height: 3px; border-radius: 2px; background: var(--danger); transform-origin: left center; animation: poArmCount var(--arm-ms, 6000ms) linear forwards; }
+@keyframes poArmCount { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+@media (prefers-reduced-motion: reduce) { .btn.is-armed { animation: none; } .arm-hint-bar { animation: none; } }
 
 /* a group of row actions: icons side by side, never wrapping one per line */
 .act-row { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
