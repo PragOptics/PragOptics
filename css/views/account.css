@@ -284,7 +284,7 @@ select.acct-input { background-color: var(--surface-deep); }
 /* a channel as a toggle chip (2026-09-23 polish): the checkbox underneath, the chip shows on or off */
 .acct-chip {
   position: relative; display: inline-flex; align-items: center; gap: 6px;
-  height: 30px; padding: 0 12px 0 10px; border-radius: var(--radius-pill, 999px);
+  height: 30px; padding: 0 12px 0 10px; border-radius: var(--radius-pill);
   border: 1px solid var(--border); background: color-mix(in srgb, var(--ink) 3%, transparent);
   color: var(--muted); font-size: .8rem; font-weight: 700; cursor: pointer; user-select: none;
   transition: background 140ms ease, border-color 140ms ease, color 140ms ease;
@@ -392,6 +392,33 @@ select.acct-input { background-color: var(--surface-deep); }
 /* Billing's cards stand apart like every other section's */
 #acctSubBody { display: grid; gap: 14px; }
 #acctSubBody > #acctUsageCard:empty { display: none; }
+#acctSubBody > #acctBandwidthCard:empty { display: none; }
+
+/* Bandwidth on Billing (2026-09-29, src/account/bandwidth.js): the month's meter, the sites that served it, pay as you
+   go, the closed months. Everything wraps at phone width; the history table stacks by its column labels (environment.css). */
+.bw-line { margin: 10px 0 0; }
+.bw-paused { margin: 12px 0 0; }
+.bw-sub { margin: 18px 0 6px; font-size: .68rem; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
+.bw-sites { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.bw-site { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; min-width: 0; padding: 6px 10px; border-radius: 8px; background: var(--surface-3); }
+.bw-site-name { min-width: 0; overflow-wrap: anywhere; font-size: .88rem; font-weight: 600; color: var(--ink); }
+.bw-site-val { flex: none; font: 600 .76rem/1 ui-monospace, "Cascadia Code", Consolas, monospace; font-variant-numeric: tabular-nums; color: var(--muted); }
+.bw-payg-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; min-width: 0; margin: 4px 0 0; }
+.bw-cap { display: inline-flex; align-items: center; gap: 8px; min-width: 0; }
+.bw-cap-k { font-size: .8rem; font-weight: 600; color: var(--muted); white-space: nowrap; }
+.bw-cap-box { display: inline-flex; align-items: center; gap: 4px; min-width: 0; }
+.bw-cap-cur { font-weight: 700; color: var(--muted); }
+.account .bw-cap-in { flex: none; width: 6.5rem; }
+.bw-msg { margin: 10px 0 0; color: var(--ink); }
+.bw-msg[hidden] { display: none; }
+.bw-hist td .acct-tag { margin-left: 4px; vertical-align: middle; }
+/* stacked at phone width, a month is its name over two columns of figures, not six lines (the qualifier outranks the
+   stacking rules in environment.css, which load after this file) */
+@container (max-width: 640px) {
+  .account .adm-table--wrap.bw-hist tr { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px 12px; }
+  .account .adm-table--wrap.bw-hist td:first-child { grid-column: 1 / -1; font-weight: 700; }
+  .account .adm-table--wrap.bw-hist td:first-child::before { display: none; }
+}
 
 /* the one-time mail offer on Profile (2026-09-23) */
 .acct-offer { display: flex; gap: 14px; align-items: flex-start; margin-bottom: 14px; border-color: color-mix(in srgb, var(--brand-600) 40%, var(--border)); background: color-mix(in srgb, var(--brand-600) 6%, transparent); }

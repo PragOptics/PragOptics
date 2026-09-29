@@ -442,6 +442,11 @@ function summaryHtml(v) {
   const bwUsed = bw ? Number(bw.usedBytes || 0) : 0, bwLimit = bw ? Number(bw.limitBytes || 0) : 0;
   const bwPct = bwLimit ? Math.min(100, (bwUsed / bwLimit) * 100) : 0;
   const bwCls = bw && bw.paused ? 'is-hot' : bwPct >= 95 ? 'is-hot' : bwPct >= 70 ? 'is-warn' : '';
+  // "Bandwidth details" opens the Bandwidth card on Billing (account.js CARD_IDS subscription.bandwidth, 2026-09-29). That
+  // card reads the signed-in person's own account, or the team in view when they have none of their own, so the link
+  // shows only where it lands on this same environment: its owner, or a member with no environment of their own.
+  const bwLink = isOwner || !D.cachedPing?.()?.environment;
+  const paidTier = String(t.tier || '').toLowerCase() !== 'free';
   const l = lanesOf(t);
   const w = (l && l[ev.lane] && l[ev.lane].storage) || { kind: s.kind, account: s.account };
   const whereTag = ev.lane === 'sandbox' && sandboxState(t)?.phase !== 'READY' ? '' : w.kind === 'dedicated'
@@ -472,12 +477,15 @@ function summaryHtml(v) {
       ${bw ? `
       <div class="use-row ev-meter">
         <div class="use-head">
-          <span class="use-name">Bandwidth this month${bw.readAt ? ` <span class="acct-tag" title="Read by the platform from the storage account's own metric, once a night.">read ${e(D.fmtDate(bw.readAt))}</span>` : ''}</span>
-          <span class="use-val">${e(bwUsed > 0 && bwUsed < 0.05 * 1024 ** 3 ? bytesFmt(bwUsed) : gb(bwUsed))} / ${e(gb(bwLimit))}</span>
+          <span class="use-name">Bandwidth this month${bw.readAt ? ` <span class="acct-tag" title="${paidTier ? "Read by the platform from the storage account's own metric, once a night, and every hour near the allowance." : 'Counted by the platform once a night.'}">read ${e(D.fmtDate(bw.readAt))}</span>` : ''}</span>
+          <span class="use-val">${e(bwUsed > 0 && bwUsed < 0.05 * 1024 ** 3 ? bytesFmt(bwUsed) : gb(bwUsed))} / ${e(gb(bwLimit))}</span>${bwLink ? `<a class="ev-more" href="#account?section=subscription&amp;card=bandwidth" data-acct-section="subscription" data-acct-card="bandwidth" data-tip="This month by site, pay as you go, and the past months">Bandwidth details</a>` : ''}
         </div>
         <div class="use-track"><div class="use-fill ${bwCls}" style="width:${bwPct.toFixed(1)}%"></div></div>
       </div>
-      ${bw.paused ? `<p class="acct-error ev-note">Your published sites are paused: they served the month's bandwidth allowance. Every file is kept, and they are served again on the first of next month. A larger plan raises the allowance.</p>` : bwPct >= 80 ? `<p class="acct-card-note ev-note">Near the month's bandwidth allowance. At the allowance the published sites pause until the first of next month; nothing is deleted.</p>` : ''}` : ''}
+      ${bw.paused ? `<p class="acct-error ev-note">${paidTier
+        ? `Your published sites are paused: they served the month's bandwidth allowance. Every file is kept, and they are served again on the first of next month. ${bwLink ? 'Bandwidth details says when they clear and how to bring them back now.' : 'The account owner can bring them back now with pay as you go on Billing.'}`
+        : `Your free site is paused: it served this month's ${e(gb(bwLimit).replace(/\.0 GB$/, ' GB'))}. Every file is kept, and it is back on the first of next month. A paid plan brings it back now, with 10 GB or more a month.`}</p>`
+        : bwPct >= 80 ? `<p class="acct-card-note ev-note">Near the month's bandwidth allowance. At the allowance ${paidTier ? 'the published sites pause until the first of next month, unless pay as you go is on' : 'your free site pauses until the first of next month, and a paid plan keeps it up'}. Nothing is deleted.</p>` : ''}` : ''}
       ${pct >= 70 ? `<p class="acct-card-note ev-note">${pct >= 95 ? 'Almost full.' : 'Filling up.'} A write past the allowance plus ${e(gb(s.graceBytes || Math.ceil(limit * 0.1)))} of grace is refused; nothing is ever deleted to make room.</p>` : ''}
       <span class="ev-status" id="evExportStatus" aria-live="polite"></span><p class="acct-error" id="evExportError" hidden></p>
       ${phase === 'SUSPENDED' ? `<p class="acct-error ev-note">This environment is paused${t.suspendReason === 'closed' ? ' because the account was closed' : ' because the subscription ended'}. Everything in it can still be read and downloaded, nothing new can be written.${t.keepUntil ? ` It is kept until ${e(D.fmtDate(t.keepUntil))}, then removed.` : ''}${t.suspendReason === 'closed' ? '' : ' Restore a paid plan on Billing and it resumes exactly as it was.'}</p>` : ''}` : ''}

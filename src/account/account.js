@@ -27,6 +27,7 @@ import { renderNeedsAttention } from './needsAttentionDesk.js';
 import { renderAgreementNotice } from './agreementNotice.js';
 import { renderSetup } from './setup.js';
 import { billingDetailsHtml, editBillingDetails, cancelBillingDetails, saveBillingDetails } from './billingDetails.js';
+import { loadBandwidthCard, bandwidthAction } from './bandwidth.js';
 import { explainLink } from '../components/explainer.js';
 import { cardHtml, iconBtn, leadBtn, btnLabel, armed, ico, setCardSummary, initCards, openCardOf, packGrid, busy, hold, copyButton, openModal } from './cards.js';
 import { closeBillOf, closeChargeWord } from './closeBill.js';
@@ -1895,6 +1896,11 @@ function meterRowHtml(name, used, limit, fmt = nFmt) {
   `;
 }
 
+/** What the Bandwidth card (bandwidth.js) borrows from the panel: the fetch, the error words, the meter, the GB format. */
+function bandwidthDeps() {
+  return { apiFetch, friendlyError, meterRowHtml, gbFmt, cachedPing, pickedTeam: pickedTeamId };
+}
+
 async function loadUsageCard() {
   const host = document.getElementById('acctUsageCard');
   if (!host) return;
@@ -2028,6 +2034,7 @@ function subManagerHtml(data) {
       </div>
     </section>
     <div id="acctUsageCard"></div>
+    <div id="acctBandwidthCard"></div>
 
     ${pending ? cardHtml({ key: 'billing:pending', icon: 'clock', title: 'Scheduled change', summary: `on ${escapeHtml(fmtDate(pending.effectiveAt))}`, cls: 'acct-card-warn', body: `
         <p class="acct-card-note">On ${escapeHtml(fmtDate(pending.effectiveAt))}: ${escapeHtml(pending.summary || 'your plan changes')}.
@@ -2134,13 +2141,15 @@ async function renderSubscription(main) {
   if (!host.isConnected) return;
 
   if (!subData?.subscription) {
-    host.innerHTML = subNotSubscribedHtml(subData) + '<div id="acctUsageCard"></div>';
+    host.innerHTML = subNotSubscribedHtml(subData) + '<div id="acctUsageCard"></div><div id="acctBandwidthCard"></div>';
     loadUsageCard();
+    loadBandwidthCard(bandwidthDeps());
     return;
   }
 
   host.innerHTML = subManagerHtml(subData);
   loadUsageCard();
+  loadBandwidthCard(bandwidthDeps());
 
   // Change-plan surface: the same catalog-driven cards as the wizard,
   // preloaded with what is billing today. Apply arms only on a real change.
@@ -4665,6 +4674,7 @@ function bindOnce() {
       if (a === 'pm-update') return void startPmUpdate(act);
       if (a === 'pm-save') return void savePmUpdate(act);
       if (a === 'pm-cancel') return void cancelPmUpdate();
+      if (a === 'bw-payg' || a === 'bw-cap') return void bandwidthAction(act, a);
       if (a === 'mail-offer-go') { mailOfferDone(); return void showSection('licensing'); }
       if (a === 'mail-offer-later') return void mailOfferDone();
       if (a === 'lic-role-retry') return void showSection('licensing');
@@ -4837,7 +4847,7 @@ function bindOnce() {
 // found by its body's id, card-<key with : as ->; a name with no card of its own opens the section's first card.
 const CARD_IDS = {
   environment: { environment: 'evBody', storage: 'evBody', lanes: 'evBody', publish: 'evBody', files: 'evFiles', data: 'evData', ai: 'evAi', connections: 'evConnections', domains: 'evDomains', keys: 'evKeys' },
-  subscription: { plan: 'acctPricing', card: 'acctPmActions', payment: 'acctPmActions', details: 'card-billing-details' },
+  subscription: { plan: 'acctPricing', card: 'acctPmActions', payment: 'acctPmActions', details: 'card-billing-details', bandwidth: 'card-billing-bandwidth' },
   profile: { name: 'card-profile-name', passkeys: 'acctPasskeyList', password: 'acctPasswordError', phone: 'acctPhoneState', email: 'acctAliasList' },
   team: { members: 'card-team-members', invite: 'card-team-invite' },
   licensing: { account: 'card-licensing-account', tenant: 'card-licensing-tenant', agreement: 'card-licensing-agreement', mail: 'card-licensing-mailboxes', mailboxes: 'card-licensing-mailboxes' }

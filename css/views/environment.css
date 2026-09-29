@@ -204,6 +204,7 @@
 .use-name .acct-tag { margin-left: 0; }
 .ev-more { margin-left: auto; padding: 4px 10px; border: 1px solid var(--border); border-radius: var(--radius-btn-sm); font-size: .78rem; font-weight: 600; color: var(--brand-600); background: transparent; }
 .ev-more:hover { text-decoration: none; border-color: var(--brand-600); }
+a.ev-more { text-decoration: none; white-space: nowrap; }
 .ev-summary .ev-meter { margin-top: 12px; }
 @container (max-width: 640px) {
   .ev-card-head { padding: 12px 10px 12px 14px; }
@@ -280,7 +281,7 @@
 .lic-item-head:focus-visible { outline: 2px solid var(--brand-600); outline-offset: -2px; }
 .lic-item-name { font-weight: 600; font-size: .92rem; line-height: 1.35; overflow-wrap: anywhere; }
 .lic-item-meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-.lic-tag { font-size: .72rem; font-weight: 600; letter-spacing: .02em; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); }
+.lic-tag { font-size: .72rem; font-weight: 600; letter-spacing: .02em; padding: 2px 8px; border-radius: var(--radius-pill); border: 1px solid var(--border); color: var(--muted); }
 .lic-from { font-size: .8rem; font-weight: 600; color: var(--card-title, var(--ink)); }
 .lic-item-body { padding: 0 14px 14px; display: grid; gap: 12px; }
 .lic-item-desc { margin: 0; font-size: .86rem; line-height: 1.55; color: var(--muted); }
@@ -350,13 +351,31 @@
 .ev-switch { display: inline-flex; align-items: center; gap: 10px; cursor: pointer; user-select: none; }
 .ev-switch.is-locked { cursor: default; }
 .ev-switch input { position: absolute; opacity: 0; width: 0; height: 0; }
-.ev-switch-track { position: relative; width: 44px; height: 24px; border-radius: 999px; background: color-mix(in srgb, var(--ink) 18%, transparent); transition: background 160ms ease; flex: 0 0 auto; }
+.ev-switch-track { position: relative; width: 44px; height: 24px; border-radius: var(--radius-pill); background: color-mix(in srgb, var(--ink) 18%, transparent); transition: background 160ms ease; flex: 0 0 auto; }
 .ev-switch-thumb { position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: var(--card, #fff); box-shadow: 0 1px 3px rgba(0,0,0,.25); transition: transform 160ms ease; }
 .ev-switch input:checked + .ev-switch-track { background: var(--brand-600); }
 .ev-switch input:checked + .ev-switch-track .ev-switch-thumb { transform: translateX(20px); }
 .ev-switch input:disabled + .ev-switch-track { opacity: .55; }
 .ev-switch input:focus-visible + .ev-switch-track { outline: 2px solid var(--brand-600); outline-offset: 2px; }
 .ev-switch-text { font-weight: 600; font-size: .9rem; }
+/* The same switch drawn as a button (Billing's pay as you go, 2026-09-29): a button, so the panel's two-press confirm
+   (cards.js armed()) can open it into its question when turning it on could charge money. aria-checked carries the state
+   the checkbox carries above; armed, it takes the shared red .btn.is-armed look. */
+.btn.ev-switch:not(.is-armed) {
+  gap: 10px; min-height: var(--ctl-h); padding: 4px 10px 4px 2px; border: 1px solid transparent; border-radius: var(--radius-btn-sm);
+  background: transparent; color: var(--ink); font: inherit; box-shadow: none; transform: none; white-space: normal; text-align: left;
+}
+.btn.ev-switch:not(.is-armed):hover { background: color-mix(in srgb, var(--brand-600) 9%, transparent); border-color: transparent; color: var(--ink); transform: none; }
+.btn.ev-switch:not(.is-armed):disabled:hover { background: transparent; }
+.btn.ev-switch[aria-checked="true"] .ev-switch-track { background: var(--brand-600); }
+.btn.ev-switch[aria-checked="true"] .ev-switch-thumb { transform: translateX(20px); }
+.btn.ev-switch:disabled { opacity: 1; }
+.btn.ev-switch:disabled .ev-switch-track { opacity: .55; }
+.btn.ev-switch[aria-busy="true"] { cursor: progress; }
+.btn.ev-switch[aria-busy="true"] .ev-switch-track { animation: tmSwSaving 900ms ease-in-out infinite alternate; }
+.btn.ev-switch:focus-visible { outline: none; }
+.btn.ev-switch:focus-visible .ev-switch-track { outline: 2px solid var(--brand-600); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .btn.ev-switch[aria-busy="true"] .ev-switch-track { animation: none; } }
 
 /* A stored value as a card (2026-09-19). */
 .ev-value-card { padding: 8px 0 10px; }
