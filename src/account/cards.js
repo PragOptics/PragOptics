@@ -324,9 +324,8 @@ export function disarm() {
   if (b._armTip != null) b.setAttribute('data-tip', b._armTip); else b.removeAttribute('data-tip');
   if (b._armLabel != null) b.setAttribute('aria-label', b._armLabel); else b.removeAttribute('aria-label');
   delete b.dataset.armed; b._armHtml = b._armTip = b._armLabel = null;
+  if (b._armHint) { b._armHint.remove(); b._armHint = null; }
   const c = b.nextElementSibling;
-  const h = c && c.hasAttribute('data-arm-cancel') ? c.nextElementSibling : null;
-  if (h && h.hasAttribute('data-arm-hint')) h.remove();
   if (c && c.hasAttribute('data-arm-cancel')) c.remove();
 }
 export function armed(btn, word, { keep = 'Keep it', ms = 6000 } = {}) {
@@ -351,7 +350,11 @@ export function armed(btn, word, { keep = 'Keep it', ms = 6000 } = {}) {
   const h = document.createElement('span');
   h.className = 'arm-hint'; h.setAttribute('data-arm-hint', '1'); h.setAttribute('aria-hidden', 'true');
   h.innerHTML = `${btn.classList.contains('btn-ico') ? `<span class="arm-hint-word">${esc(word)} Press again.</span>` : ''}<i class="arm-hint-bar" style="--arm-ms:${Number(ms) || 6000}ms"></i>`;
-  c.after(h);
+  // under the row of buttons, never in it (inline it shoved the next button aside; Cameron, 2026-09-29): inside a table cell
+  // as its last child, else as the row's next sibling
+  const row = btn.parentElement;
+  if (row && row.tagName !== 'TD' && row.tagName !== 'TH') row.after(h); else if (row) row.appendChild(h); else c.after(h);
+  btn._armHint = h;
   bindArming();
   armTimer = setTimeout(disarm, ms);
   return false;
