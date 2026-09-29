@@ -1014,6 +1014,7 @@ const TENANT_ACTIONS = {
   'real-orders': (tb) => toggleRealOrders(tb),
   'pc-connect': (tb) => connectPartnerCenter(tb),
   'pc-forget': (tb) => forgetPartnerCenter(tb),
+  'auto-connect': (tb) => runAutoConnect(tb),
   conduct: (tb) => {
     const done = busy(tb, 'Opening…');
     import('./conductDesk.js')
@@ -1121,6 +1122,27 @@ async function repairTenant(btn) {
     if (r.status !== 'READY') D.showError('tnError', `${name}: ${r.note || r.nextAction?.message || r.status}`);
   } catch (ex) {
     D.showError('tnError', ex?.sessionInvalidated ? '' : (ex?.data?.error || D.friendlyError(ex, 'Provisioning did not run.')));
+  } finally { done(); }
+}
+
+/* RUN THE AUTOMATIC CONNECT NOW (2026-09-29; backend POST v1/admin/tenants/{environmentId}/auto-connect). On a tenant the
+ * platform made, the whole chain runs on the press, connected already or not: the admin relationship, the group's roles,
+ * the app consented again through Partner Center, the tenant read as the on-behalf-of user. The row then says where it
+ * landed. How the platform's own path is proven on a tenant a person connected first, and the re-run after a fix. */
+async function runAutoConnect(btn) {
+  const name = btn.dataset.name || 'this team';
+  if (!armed(btn, 'Run it?')) return;
+  D.showError('tnError', '');
+  const done = busy(btn, `Connecting ${name} on its own…`);
+  try {
+    const d = await D.apiFetch(`${ADMIN_TENANTS_URL}/${encodeURIComponent(btn.dataset.env)}/auto-connect`, { method: 'POST' });
+    const r = d?.result || {};
+    const main = document.getElementById('acctMain');
+    if (main) await renderTenants(main, D);
+    if (r.done) partnerCenterFlash(`${name}: ${r.orgName || 'the tenant'} connected by the platform through the partner relationship.`);
+    else D.showError('tnError', `${name}: ${r.why || AUTO_WORDS[r.status] || r.status || 'not connected yet'}`);
+  } catch (ex) {
+    D.showError('tnError', ex?.sessionInvalidated ? '' : (ex?.data?.error || D.friendlyError(ex, 'The automatic connect did not run.')));
   } finally { done(); }
 }
 
@@ -1308,7 +1330,7 @@ export async function renderTenants(main, deps) {
                 <td class="adm-num cell-tight">${e(String(t.seats?.used ?? 0))} / ${e(String(t.seats?.limit ?? 0))}${Number(t.seats?.pending) ? `<div class="adm-muted">+${e(String(t.seats.pending))} pending</div>` : ''}</td>
                 <td class="adm-num cell-tight">${e(String(t.members ?? 0))}${Number(t.viewers) ? `<div class="adm-muted">${e(String(t.viewers))} viewer${t.viewers === 1 ? '' : 's'}</div>` : ''}</td>
                 <td class="adm-muted cell-tight">${e(D.fmtDate(t.createdAt))}</td>
-                <td class="cell-tight tm-actions">${repairable(t) ? iconBtn({ tenant: 'repair' }, 'tool', 'Repair: run provisioning', `data-user="${e(t.ownerUserId)}" data-name="${e(t.organizationName || t.ownerEmail || 'this team')}"`) : ''}${iconBtn({ tenant: 'conduct' }, 'shield', 'Community standards', `data-env="${e(t.environmentId)}"`)}${realOrdersBtnHtml(t, realOrdersOn)}${t.conduct && (t.conduct.held || t.conduct.sitesHeld?.live || t.conduct.sitesHeld?.sandbox) ? `<div><span class="acct-tag is-bad" title="${e(t.conduct.held ? 'Suspended for the community standards' : 'Sites taken down for the community standards')}">held</span></div>` : ''}</td>
+                <td class="cell-tight tm-actions">${repairable(t) ? iconBtn({ tenant: 'repair' }, 'tool', 'Repair: run provisioning', `data-user="${e(t.ownerUserId)}" data-name="${e(t.organizationName || t.ownerEmail || 'this team')}"`) : ''}${iconBtn({ tenant: 'conduct' }, 'shield', 'Community standards', `data-env="${e(t.environmentId)}"`)}${t.microsoft?.madeByPlatform && t.microsoft?.tenantId ? iconBtn({ tenant: 'auto-connect' }, 'plug', 'Run the automatic connect now', `data-env="${e(t.environmentId)}" data-name="${e(t.organizationName || t.ownerEmail || 'this team')}"`) : ''}${realOrdersBtnHtml(t, realOrdersOn)}${t.conduct && (t.conduct.held || t.conduct.sitesHeld?.live || t.conduct.sitesHeld?.sandbox) ? `<div><span class="acct-tag is-bad" title="${e(t.conduct.held ? 'Suspended for the community standards' : 'Sites taken down for the community standards')}">held</span></div>` : ''}</td>
               </tr>`).join('')}
           </tbody>
         </table>
