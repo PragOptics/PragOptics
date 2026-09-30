@@ -1953,23 +1953,33 @@ function subNotSubscribedHtml(data) {
   const tier = cachedPing()?.user?.tier || 'free';
   const status = String(data?.status || '').toUpperCase();
   const midCheckout = status === 'CHECKOUT_IN_PROGRESS';
+  // A plan was chosen but the subscription is not active yet (a checkout picked
+  // a plan and never finished). Show what they chose and that a card finishes
+  // it, instead of a bare "Not subscribed" that reads like nothing happened
+  // (2026-09-30, Cameron: the subscribe silently failed).
+  const req = (status === 'PENDING_SUBSCRIPTION' && data?.requestedSubscription) ? data.requestedSubscription : null;
+  const reqLabel = req ? `${tierName(req.subType)} plan, billed ${req.cadence === 'annual' ? 'annually' : 'monthly'}` : '';
+  const unfinished = midCheckout || !!req;
+  const note = status === 'PAYMENT_PENDING'
+    ? 'Your payment is processing. This settles within a minute; check back shortly.'
+    : midCheckout
+      ? 'You have a subscription checkout in progress. Pick up where you left off.'
+      : req
+        ? `You chose the ${escapeHtml(reqLabel)}, but it is not active yet. Add a payment method to finish subscribing.`
+        : status === 'CANCELED'
+          ? 'Your subscription has ended and you are on the Free tier. Subscribe again any time.'
+          : 'You are on the Free tier. Subscribe for cloud sync, API access with your own keys, and a provisioned workspace.';
   return `
     <section class="acct-card">
       <div class="acct-plan">
         <div>
           <span class="acct-plan-tier">${escapeHtml(tierName(tier))}</span>
-          <span class="acct-tag is-pending">${escapeHtml(statusLabel(status))}</span>
+          <span class="acct-tag is-pending">${escapeHtml(unfinished ? 'Not finished' : statusLabel(status))}</span>
         </div>
-        <p class="acct-card-note">${status === 'PAYMENT_PENDING'
-          ? 'Your payment is processing. This settles within a minute; check back shortly.'
-          : midCheckout
-            ? 'You have a subscription checkout in progress. Pick up where you left off.'
-            : status === 'CANCELED'
-              ? 'Your subscription has ended and you are on the Free tier. Subscribe again any time.'
-              : 'You are on the Free tier. Subscribe for cloud sync, API access with your own keys, and a provisioned workspace.'}</p>
+        <p class="acct-card-note">${note}</p>
       </div>
       <div class="acct-actions-row">
-        ${status === 'PAYMENT_PENDING' ? '' : leadBtn({ acct: 'subscribe' }, midCheckout ? 'play' : 'layers', midCheckout ? 'Resume checkout' : 'Subscribe', '', 'btn-primary')}
+        ${status === 'PAYMENT_PENDING' ? '' : leadBtn({ acct: 'subscribe' }, unfinished ? 'play' : 'layers', unfinished ? 'Finish subscribing' : 'Subscribe', '', 'btn-primary')}
       </div>
     </section>
     ${billingDetailsHtml(cachedPing()?.billingProfile)}
