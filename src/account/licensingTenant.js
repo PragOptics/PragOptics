@@ -404,6 +404,19 @@ export function myMailboxHtml() {
   // to reset: their organization manages that password, so no Reset row, and the ready-state note says so
   const own = mine.created === false;
   const reset = mine.hasMailbox && !own && (t.writes !== false) ? `<div class="acct-actions-row">${reqLead('mb-reset', { lic: 'mb-reset' }, 'key', 'Reset my password', 'Resetting…', '', 'is-risky')}</div>` : '';
+  // Choose your own mailbox name, or one press puts it back to automatic (2026-09-30). Only before the mailbox is made,
+  // and only once the tenant has a name to make the address on.
+  const canName = !mine.nameLocked && mine.plannedAddress && t.writes !== false;
+  const suffix = mine.plannedAddress ? `@${mine.plannedAddress.split('@')[1]}` : '';
+  const chosenNow = !!mine.mailName;
+  const naming = canName ? `
+      <div class="lic-span">
+        <p class="acct-card-note">Your address will be <span class="ev-code">${e(mine.plannedAddress)}</span>, ${chosenNow ? 'the name you chose.' : 'made automatically from your email. You can choose your own instead.'}</p>
+        <label class="acct-label" for="licMbName">Your mailbox name</label>
+        <div class="lic-suffix"><input class="acct-input" id="licMbName" type="text" data-keep value="${e(kept('licMbName', mine.mailName || ''))}" maxlength="60" spellcheck="false" autocapitalize="off" autocomplete="off" placeholder="${e(mine.autoName)}" aria-describedby="licMbNameHint"><span>${e(suffix)}</span></div>
+        <p class="lic-hint" id="licMbNameHint">Letters, numbers, dots, dashes. If it is taken, the next free number is added.</p>
+        <div class="acct-actions-row">${reqLead('mb-name-save', { lic: 'mb-name-save' }, 'check', 'Save this name', 'Saving…', '', 'btn-primary')}${chosenNow ? reqLead('mb-name-auto', { lic: 'mb-name-auto' }, 'refresh', 'Use an automatic name', 'Saving…', '') : ''}</div>
+      </div>` : '';
   return cardHtml({
     key: 'mailbox-mine', icon: 'mail', title: 'My mailbox', summary: e(mine.address || word),
     body: `
@@ -412,6 +425,7 @@ export function myMailboxHtml() {
         <div class="lic-fact"><span class="lic-k">Address</span><span class="lic-v">${address}</span></div>
         <div class="lic-fact"><span class="lic-k">State</span><span class="lic-v"><span class="lic-state ${cls}">${e(mine.state === 'failed' && mine.why ? sentence(mine.why) : word)}</span></span></div>
       </div>
+      ${naming}
       ${mine.state === 'ready' ? `<p class="acct-card-note">Sign in at <a href="https://outlook.office.com" target="_blank" rel="noopener noreferrer">outlook.office.com</a>, or in the Outlook app on your phone. ${own ? 'This is your own Microsoft account, so your password is managed by your organization, not reset here.' : 'Nobody at PragOptics, and no administrator on your team, can see or set your password: it is yours alone.'}</p>` : ''}
       ${first}
       ${reset}`
@@ -431,6 +445,23 @@ async function showMyPassword() {
 function copyMyPassword(btn) {
   const box = document.getElementById('licMbPw');
   if (box) copyButton(btn, box.value, { select: () => box });
+}
+async function saveMyMailName() {
+  lc.err['mailbox-mine'] = ''; setNote('mailbox-mine', '');
+  const name = String(document.getElementById('licMbName')?.value || '').trim();
+  await send('mb-name-save', 'Saving…', async () => {
+    const d = await call(`${LIC_URL}/tenant/mailbox/name`, 'POST', { name });
+    setNote('mailbox-mine', d?.auto ? 'Your mailbox name is automatic now.' : `Your mailbox will be made as ${d?.plannedAddress || 'the name you chose'}.`);
+    await st.load();
+  }, { errKey: 'mailbox-mine', fallback: 'That name could not be saved right now.', codes: { ...LANE_CODES, NAME_LOCKED: 'Your mailbox is already made, so its name cannot be changed here.', NO_MAILBOX: 'You have no mailbox seat to name yet.' } });
+}
+async function autoMyMailName() {
+  lc.err['mailbox-mine'] = ''; setNote('mailbox-mine', '');
+  await send('mb-name-auto', 'Saving…', async () => {
+    const d = await call(`${LIC_URL}/tenant/mailbox/name`, 'POST', { name: '' });
+    setNote('mailbox-mine', `Your mailbox name is automatic now${d?.plannedAddress ? `: ${d.plannedAddress}` : ''}.`);
+    await st.load();
+  }, { errKey: 'mailbox-mine', fallback: 'That could not be saved right now.', codes: LANE_CODES });
 }
 async function resetMyPassword(btn) {
   if (!armed(btn, 'Reset it?', { keep: 'Do not reset it' })) return;
@@ -651,6 +682,8 @@ export function tenantAction(a, btn) {
   if (a === 'mb-pw') { showMyPassword(); return true; }
   if (a === 'mb-pw-copy') { copyMyPassword(btn); return true; }
   if (a === 'mb-pw-hide') { mbShown = null; setNote('mailbox-mine', 'Hidden. The password is not kept anywhere any more.'); st.paint(); return true; }
+  if (a === 'mb-name-save') { saveMyMailName(); return true; }
+  if (a === 'mb-name-auto') { autoMyMailName(); return true; }
   if (a === 'mb-reset') { resetMyPassword(btn); return true; }
   return false;
 }
