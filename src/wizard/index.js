@@ -108,12 +108,22 @@ export function initPostLoginWizard(accessToken, ping) {
     };
 
     const nextBtn = document.getElementById("toStep2");
+    // The advance button names the plan the customer picked ("Continue with User"),
+    // and is the primary action, so it is not confused with "Stay on Free" beside it
+    // (2026-09-30, Cameron: a generic "Next" next to "Continue with Free" read as if
+    // the free button was the one that subscribed).
+    const planName = (s) => s ? s.charAt(0).toUpperCase() + s.slice(1) : '';
+    const setNext = (sel) => {
+      if (!nextBtn) return;
+      nextBtn.disabled = !sel?.subType;
+      nextBtn.textContent = sel?.subType ? `Continue with ${planName(sel.subType)}` : 'Continue';
+    };
     pricing = mountPricingSelect(host, {
       catalog: ping?.productCatalog || [],
       initial,
-      onChange: (sel) => { if (nextBtn) nextBtn.disabled = !sel.subType; }
+      onChange: setNext
     });
-    if (nextBtn) nextBtn.disabled = !pricing.get().subType;
+    setNext(pricing.get());
   }
 
   prefillBillingProfileFromPing(ping);

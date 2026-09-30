@@ -5,10 +5,6 @@
           <h2 id="wizardTitle">PragOptics™ Subscription Wizard</h2>
           <div id="wizardHint" class="hint">Complete setup to activate your PragOptics subscription.</div>
         </div>
-        <div class="auth-status">
-          <span class="auth-label">Status</span>
-          <span class="auth-indicator" id="authIndicator"></span>
-        </div>
       </div>
 
       <!-- Wizard container -->
@@ -19,8 +15,8 @@
           <h3>Step 1: Choose your plan</h3>
           <div id="pricingSelect" aria-label="Plans and add-ons"></div>
           <div class="dblStepBtn">
-            <button class="btn" type="button" data-wizard-action="continue-free" title="Stay on the Free tier for now. You can pick a plan any time from Billing.">Continue with Free</button>
-            <button class="btn" id="toStep2" data-wizard-nav="3" disabled>Next</button>
+            <button class="btn" type="button" data-wizard-action="continue-free" title="Stay on the Free tier for now. You can pick a plan any time from Billing.">Stay on Free</button>
+            <button class="cta" id="toStep2" data-wizard-nav="3" disabled>Continue</button>
           </div>
         </div>
 
