@@ -1139,7 +1139,8 @@ async function runAutoConnect(btn) {
     const r = d?.result || {};
     const main = document.getElementById('acctMain');
     if (main) await renderTenants(main, D);
-    if (r.done) partnerCenterFlash(`${name}: ${r.orgName || 'the tenant'} connected by the platform through the partner relationship.`);
+    if (r.done && r.consentExisted) partnerCenterFlash(`${name}: ${r.orgName || 'the tenant'} was consented already; the platform's own connection through the partner relationship is verified.`);
+    else if (r.done) partnerCenterFlash(`${name}: ${r.orgName || 'the tenant'} connected by the platform through the partner relationship.`);
     else if (r.busy) partnerCenterFlash(`${name}: ${r.why}`);
     else D.showError('tnError', `${name}: ${r.why || AUTO_WORDS[r.status] || r.status || 'not connected yet'}`);
   } catch (ex) {
@@ -1242,7 +1243,7 @@ function tenantLineHtml(t) {
   const m = t.microsoft;
   if (!m) return '';
   const e = D.escapeHtml;
-  const state = m.connected ? `connected${m.consentBy === 'platform' ? ' by the platform' : ''}` : m.madeByPlatform ? (AUTO_WORDS[m.autoConnect?.status] || (m.tenantId ? 'made; connecting on the next pass' : 'ordered; waiting for Microsoft')) : (m.tenantId ? 'not connected' : 'named');
+  const state = m.connected ? `connected${m.consentBy === 'platform' ? ' by the platform' : m.consentVerifiedAt ? "; the platform's connection verified" : ''}` : m.madeByPlatform ? (AUTO_WORDS[m.autoConnect?.status] || (m.tenantId ? 'made; connecting on the next pass' : 'ordered; waiting for Microsoft')) : (m.tenantId ? 'not connected' : 'named');
   const cls = m.connected ? 'is-verified' : m.autoConnect?.status === 'needs-operator' ? 'is-bad' : 'is-pending';
   const err = !m.connected && m.autoConnect?.error ? ` title="${e(m.autoConnect.error)}"` : '';
   return `<div class="adm-muted tn-ms"><span class="acct-tag ${cls}"${err}>tenant: ${e(state)}</span> <span class="ev-code">${e(m.name)}</span></div>`;
