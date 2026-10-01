@@ -26,6 +26,13 @@ export function initConsoleController({
   const apiConsoleTitle = view.querySelector("#apiConsoleTitle"); // <strong id="apiConsoleTitle">
   const apiRoutePrefix = view.querySelector(".api-route-prefix");
 
+  // The prefix shown beside the route box is the LANE'S base, never a hardcoded host (2026-10-01, Cameron: signed in on
+  // dev, the console read "https://api.pragoptics.com/api/v1/", so a PragOptics-mode call looked like it went to live and
+  // the same call pasted as an absolute URL into Global mode answered 401, because Global mode carries no token on
+  // purpose). The view's text is a fallback for a failed script; this is the truth.
+  const laneBase = `${String(apiBase || "").replace(/\/+$/, "")}/`;
+  if (apiRoutePrefix) apiRoutePrefix.textContent = laneBase;
+
   function applyApiModeUI() {
     const isGlobal = (apiRequestMode === "global");
 
