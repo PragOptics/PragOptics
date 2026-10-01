@@ -67,6 +67,19 @@ let mbShown = null;
 const NAME_RULE = /^[A-Za-z0-9]{3,27}$/;
 const ID_RULE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const NAME_HINT = '3 to 27 letters and digits: no spaces, dots or dashes. Microsoft makes your tenant as this name followed by .onmicrosoft.com. The name is fixed once mail or a license is ordered.';
+// The tenant name is suggested from the business name (letters and digits, up to 27), and a live preview under the field
+// shows the full .onmicrosoft.com address as the owner types, so the technical name is never a guess (2026-09-30, Cameron).
+function slugName(s) { return String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 27); }
+if (typeof document !== 'undefined') {
+  document.addEventListener('input', (ev) => {
+    const t = ev.target;
+    if (!t || t.id !== 'licTnName') return;
+    const prev = document.getElementById('licTnNamePreview');
+    if (!prev) return;
+    const slug = slugName(t.value);
+    prev.textContent = slug ? `${slug}.onmicrosoft.com` : '…';
+  });
+}
 // Back from Microsoft (decision 15): what the callback put in the address, in the card's words. The server's own `why`
 // is a plain sentence and wins when it is there.
 const RETURN_SAID = {
@@ -581,14 +594,19 @@ function formHtml(v, m, gate = '') {
   const saving = lc.busy === 'tn-save';
   const tab = (k, label) => `<button class="ev-tab ${mode === k ? 'is-on' : ''}" type="button" role="tab" aria-selected="${mode === k}" data-lic-action="tn-mode" data-mode="${k}" ${saving && mode !== k ? 'disabled data-tip="Waiting for the answer: saving the tenant"' : ''}>${label}</button>`;
   const nameErr = lc.err['tenant-name'] ? `<p class="lic-field-err" id="licTnNameErr" role="alert">${e(lc.err['tenant-name'])}</p>` : '';
+  // suggested from the business name when nothing is named yet; the preview shows exactly what the address becomes
+  const tnDefault = m.domainPrefix || suggestion(v) || slugName(v.account?.businessName);
+  const tnSlug = slugName(kept('licTnName', tnDefault));
+  const tnPreview = tnSlug ? `${tnSlug}.onmicrosoft.com` : '…';
   return `
     <p class="acct-card-note">Your licenses and mailboxes live in a Microsoft tenant: your business's own space at Microsoft. Name a new one, or give the ID of one your business already has.</p>
     <div class="ev-tabs lic-ms-tabs" role="tablist" aria-label="Your Microsoft tenant">${tab('new', 'New tenant')}${tab('existing', 'We have one')}</div>
     <div class="lic-tn-form">
       <div id="licTnNameWrap" ${mode === 'existing' ? 'hidden' : ''}>
         <label class="acct-label" for="licTnName">Tenant name</label>
-        <div class="lic-suffix ${nameErr ? 'is-bad' : ''}"><input class="acct-input" id="licTnName" type="text" data-keep value="${e(kept('licTnName', m.domainPrefix || suggestion(v)))}" placeholder="yourbusiness" spellcheck="false" autocapitalize="off" autocomplete="off" aria-describedby="licTnNameHint${nameErr ? ' licTnNameErr' : ''}"><span>.onmicrosoft.com</span></div>
+        <div class="lic-suffix ${nameErr ? 'is-bad' : ''}"><input class="acct-input" id="licTnName" type="text" data-keep value="${e(kept('licTnName', tnDefault))}" placeholder="yourbusiness" spellcheck="false" autocapitalize="off" autocomplete="off" aria-describedby="licTnNameHint${nameErr ? ' licTnNameErr' : ''}"><span>.onmicrosoft.com</span></div>
         ${nameErr}
+        <p class="lic-hint">Your Microsoft address will be <span class="ev-code" id="licTnNamePreview">${e(tnPreview)}</span>, suggested from your business name. Change it if you like.</p>
         <p class="lic-hint" id="licTnNameHint">${e(NAME_HINT)}</p>
       </div>
       <div id="licTnIdWrap" ${mode === 'existing' ? '' : 'hidden'}>
