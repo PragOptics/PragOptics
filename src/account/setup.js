@@ -95,15 +95,49 @@ function ringHtml(done, total, complete) {
   return `<span class="su-ring ${complete ? 'is-done' : ''}" aria-hidden="true"><svg viewBox="0 0 36 36" focusable="false"><circle class="su-ring-track" cx="18" cy="18" r="15"/><circle class="su-ring-fill" cx="18" cy="18" r="15" pathLength="100" style="stroke-dashoffset:${100 - pct}"/></svg>${complete ? ico('check', 11) : ''}</span>`;
 }
 
-/** The one line: the ring, the title, the count and the next step, the chevron. */
-function rowHtml(d, open, done, total, complete) {
+/**
+ * Required and optional counted APART (2026-10-02, Cameron: "we should not put the optional in the count, however we
+ * should account for them"). One ring of 21 was the first thing a new account saw, and most of that 21 was work nobody
+ * has to do. A step the plan does not offer (state "off") belongs to neither side: it is not something to finish. Each
+ * side carries its own next step, taken from the steps themselves rather than the server's single `next`, which only
+ * ever named one of the two.
+ */
+function tally(d) {
+  const steps = (d.groups || []).flatMap(g => (Array.isArray(g?.steps) ? g.steps : []));
+  const live = steps.filter(s => String(s?.state || '') !== 'off');
+  const side = (list) => ({
+    total: list.length,
+    done: list.filter(s => String(s?.state || '') === 'done').length,
+    next: list.find(s => String(s?.state || '') === 'next') || list.find(s => String(s?.state || '') === 'open') || null
+  });
+  return { required: side(live.filter(s => !s?.optional)), optional: side(live.filter(s => !!s?.optional)), counted: steps.length > 0 };
+}
+
+/** One category: its ring, its name, its own count and its own next step. */
+function catHtml(title, c) {
   const e = D.escapeHtml;
-  const title = complete ? 'Your account is set up' : 'Setting up your account';
-  const next = d.next && d.next.title ? `Next: ${linkHtml(d.next)}` : 'Nothing waits on you right now';
-  const line = complete ? '' : `<span class="su-line"><span class="su-count">${e(`${done} of ${total} done`)}</span><span class="su-sep" aria-hidden="true">·</span><span class="su-next">${next}</span></span>`;
+  const complete = c.total > 0 && c.done >= c.total;
+  const next = c.next && (c.next.title || c.next.id)
+    ? `Next: ${linkHtml(c.next)}`
+    : (complete ? 'All done' : 'Nothing waits on you');
+  return `<div class="su-cat ${complete ? 'is-done' : ''}">
+      ${ringHtml(c.done, c.total, complete)}
+      <span class="su-cat-main">
+        <span class="su-cat-title">${e(title)}</span>
+        <span class="su-line"><span class="su-count">${e(`${c.done} of ${c.total} done`)}</span><span class="su-sep" aria-hidden="true">·</span><span class="su-next">${next}</span></span>
+      </span>
+    </div>`;
+}
+
+/** The header: the title and the chevron, then the two rings side by side. */
+function rowHtml(d, open, t, reqComplete, allComplete) {
+  const e = D.escapeHtml;
+  // "Setting up" read as something the platform was doing for them; it is their list (Cameron, 2026-10-02)
+  const title = reqComplete ? 'Your account is set up' : 'Finish setting up your account';
   const tip = open ? 'Fold the steps away' : 'Show every step';
-  const toggle = complete ? '' : `<button class="ev-card-toggle su-toggle" type="button" data-setup-toggle aria-expanded="${open}" aria-controls="${ID}Body" aria-label="${tip}" data-tip="${tip}">${ico('chevron')}</button>`;
-  return `<div class="su-row ${complete ? 'is-done' : ''}">${ringHtml(done, total, complete)}<span class="su-title">${e(title)}</span>${line}${toggle}</div>`;
+  const toggle = allComplete ? '' : `<button class="ev-card-toggle su-toggle" type="button" data-setup-toggle aria-expanded="${open}" aria-controls="${ID}Body" aria-label="${tip}" data-tip="${tip}">${ico('chevron')}</button>`;
+  const rings = `<div class="su-rings">${catHtml('Required', t.required)}${t.optional.total ? catHtml('Optional', t.optional) : ''}</div>`;
+  return `<div class="su-head ${reqComplete ? 'is-done' : ''}"><span class="su-title">${e(title)}</span>${toggle}</div>${rings}`;
 }
 
 /** One step of the stepper: its dot, its title as a link, Optional when it is, and its sentence. */
@@ -135,14 +169,21 @@ function bodyHtml(d, open) {
 }
 
 function paint(host, d, uid) {
-  const total = Math.max(0, Number(d.total) || 0);
-  const done = Math.min(total, Math.max(0, Number(d.done) || 0));
-  const complete = total > 0 && done >= total;
-  // set up, the line stays folded whatever was remembered
-  const open = !complete && isOpen(uid);
+  const t = tally(d);
+  // a server that sends no steps to count still gets a ring: its own done/total, as the single ring always used
+  if (!t.counted) {
+    const total = Math.max(0, Number(d.total) || 0);
+    t.required = { total, done: Math.min(total, Math.max(0, Number(d.done) || 0)), next: d.next || null };
+    t.optional = { total: 0, done: 0, next: null };
+  }
+  // the account is SET UP once the required steps are done; optional ones are tracked, never a gate
+  const reqComplete = t.required.total > 0 && t.required.done >= t.required.total;
+  const allComplete = reqComplete && t.optional.done >= t.optional.total;
+  // everything done, the card stays folded whatever was remembered
+  const open = !allComplete && isOpen(uid);
   host.className = `acct-card su-card ${open ? 'is-open' : ''}`;
-  host.setAttribute('aria-label', complete ? 'Your account is set up' : 'Setting up your account');
-  host.innerHTML = `${rowHtml(d, open, done, total, complete)}${complete ? '' : bodyHtml(d, open)}`;
+  host.setAttribute('aria-label', reqComplete ? 'Your account is set up' : 'Finish setting up your account');
+  host.innerHTML = `${rowHtml(d, open, t, reqComplete, allComplete)}${allComplete ? '' : bodyHtml(d, open)}`;
   host.hidden = false;
 }
 
