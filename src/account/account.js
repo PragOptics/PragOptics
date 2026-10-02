@@ -731,6 +731,18 @@ async function renderProfile(main) {
     ${mailOfferHtml()}
     <div class="acct-grid">
     ${nameCardHtml()}
+    ${cardHtml({ key: 'profile:appearance', icon: 'sun', title: 'Appearance', summary: `${escapeHtml(theme)} · stars ${escapeHtml(stars)}`, body: `
+      <div class="acct-seg" role="group" aria-label="Theme">
+        <button class="btn btn-sm acct-theme-btn" type="button" data-acct-action="theme-set" data-theme="dark" aria-pressed="${theme === 'dark' ? 'true' : 'false'}">${DARK_LABEL}${moonSvg('acct-theme-ico')}</button>
+        <button class="btn btn-sm acct-theme-btn" type="button" data-acct-action="theme-set" data-theme="light" aria-pressed="${theme === 'light' ? 'true' : 'false'}">${LIGHT_LABEL}${sunSvg('acct-theme-ico')}</button>
+      </div>
+      <label class="ev-switch acct-stars-switch">
+        <input type="checkbox" id="acctStarsSwitch" data-acct-stars ${stars === 'on' ? 'checked' : ''}>
+        <span class="ev-switch-track" aria-hidden="true"><span class="ev-switch-thumb"></span></span>
+        <span class="ev-switch-text">Starfield ${stars === 'on' ? 'on' : 'off'}</span>
+      </label>
+      <p class="acct-card-note ev-dom-door">Remembered on your account, so the site looks the same wherever you sign in.</p>
+      <p class="acct-error" id="acctThemeError" hidden></p>` })}
     ${cardHtml({ key: 'profile:emails', icon: 'mail', title: 'Email addresses', summary: 'loading', body: `
       <ul class="acct-alias-list" id="acctAliasList"><li class="acct-loading">Loading…</li></ul>
       <div class="acct-add-row">
@@ -768,18 +780,6 @@ async function renderProfile(main) {
       </div>
       <p class="acct-card-note ev-dom-door">Changing it signs out every other device.</p>
       <p class="acct-error" id="acctPasswordError" hidden></p>` })}
-    ${cardHtml({ key: 'profile:appearance', icon: 'sun', title: 'Appearance', summary: `${escapeHtml(theme)} · stars ${escapeHtml(stars)}`, body: `
-      <div class="acct-seg" role="group" aria-label="Theme">
-        <button class="btn btn-sm acct-theme-btn" type="button" data-acct-action="theme-set" data-theme="dark" aria-pressed="${theme === 'dark' ? 'true' : 'false'}">${DARK_LABEL}${moonSvg('acct-theme-ico')}</button>
-        <button class="btn btn-sm acct-theme-btn" type="button" data-acct-action="theme-set" data-theme="light" aria-pressed="${theme === 'light' ? 'true' : 'false'}">${LIGHT_LABEL}${sunSvg('acct-theme-ico')}</button>
-      </div>
-      <label class="ev-switch acct-stars-switch">
-        <input type="checkbox" id="acctStarsSwitch" data-acct-stars ${stars === 'on' ? 'checked' : ''}>
-        <span class="ev-switch-track" aria-hidden="true"><span class="ev-switch-thumb"></span></span>
-        <span class="ev-switch-text">Starfield ${stars === 'on' ? 'on' : 'off'}</span>
-      </label>
-      <p class="acct-card-note ev-dom-door">Remembered on your account, so the site looks the same wherever you sign in.</p>
-      <p class="acct-error" id="acctThemeError" hidden></p>` })}
     ${cardHtml({ key: 'profile:close', icon: 'alert', title: 'Close account', summary: 'permanent', danger: true, body: `
       <p class="acct-card-note ev-dom-door">Closing is permanent: it signs you out everywhere, removes your sign-in, and ends any subscription of yours now, with no refund for the rest of a paid period. If you own your environment, closing also takes down every site it published, and a Microsoft license still under commitment is paid to the end of its commitment on your final bill; the amount is shown before you confirm. If you are a member of someone else's team, only your own sign-in goes: the team keeps its environment and its sites as they are. To keep service until the period ends, cancel on Billing instead.</p>
       <div class="acct-add-row">

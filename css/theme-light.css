@@ -37,6 +37,73 @@ html[data-theme="light"] .legal-content code{
   color: #dfe7ff;
 }
 
+/* ====== API CONSOLE (2026-10-01) ======
+   tokens.css says it outright: "The API console stays a dark terminal in both
+   themes (theme-light.css pins it)." The pin only ever covered <pre>, so on
+   light the editor FRAME, the response viewers and the ghost bubble all took
+   the light ground from var(--bg-deep) while the syntax layer inside them kept
+   its dark-tuned colors. A dark pre floating in a light box, white punctuation
+   on white, an invisible ghost.
+
+   This finishes the pin instead of re-coloring the syntax engine. The engine's
+   palette (--console-*, the depth rotation, tok-colon/comma/ghost at white
+   alpha) is tuned against a dark ground and is left ALONE: it keeps that
+   ground. src/components/jsonBodyEditor.js and the cursor/overlay geometry in
+   viewer-console.css are not touched by any rule here. */
+
+/* The editor frame and both response viewers: the terminal ground. */
+html[data-theme="light"] .po-json-editor,
+html[data-theme="light"] .viewer{
+  background: #0f1626;
+  border-color: rgba(255,255,255,.14);
+}
+
+/* The caret rides the terminal, not the page ink. */
+html[data-theme="light"] .po-json-editor textarea,
+html[data-theme="light"] .po-json-editor textarea#po-api-body{
+  caret-color: #dfe7ff !important;
+}
+
+/* The highlight layer is a <pre>, so the rule above already gave it the dark
+   ground. It is an absolute overlay ON the frame, so it must stay clear or it
+   paints over the frame's validity border. */
+html[data-theme="light"] .po-json-highlight{ background: transparent; }
+
+/* The floating ghost bubble: white glass with white text on light. */
+html[data-theme="light"] .po-json-ghost{
+  background: rgba(15,22,38,.92);
+  border-color: rgba(255,255,255,.16);
+  color: rgba(255,255,255,.85);
+}
+
+/* The chrome around the terminal follows the LIGHT panel, so the films and
+   hairlines drawn in white alpha have to become ink alpha or they vanish. */
+html[data-theme="light"] #consoleView #po-api-format,
+html[data-theme="light"] #consoleView #po-api-minify,
+html[data-theme="light"] #consoleView #po-api-repair{
+  background: rgba(27,22,56,.04);
+  border-color: rgba(27,22,56,.28);
+}
+html[data-theme="light"] #consoleView #po-api-curl{
+  background: rgba(27,22,56,.05);
+}
+html[data-theme="light"] #consoleView .po-view-toggle-track{
+  background: rgba(27,22,56,.06);
+}
+/* A bare `background:black` with var(--ink) text reads as dark-on-dark here. */
+html[data-theme="light"] .api-method-row select{
+  background: #0f1626;
+  color: #dfe7ff;
+}
+
+/* The copy toast: its colors live in viewer-console.css (.po-copy-toast) so
+   this can re-value them. On light it is a light card with ink text. */
+html[data-theme="light"] .po-copy-toast{
+  background: rgba(255,255,255,.96);
+  color: var(--ink);
+  box-shadow: 0 10px 34px rgba(30,20,64,.18);
+}
+
 /* The header's glass over a white ground needs a little more body so the
    DNA reads against the page. */
 html[data-theme="light"] header{ background: rgba(255,255,255,.55); }

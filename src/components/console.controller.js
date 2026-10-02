@@ -115,15 +115,16 @@ function showCopyResponseToast(message, ttl = 1800) {
   const t = document.createElement("div");
   t.textContent = message;
 
-  // isolated inline styling (no shared toast system)
+  // isolated inline styling (no shared toast system). The COLORS moved to
+  // .po-copy-toast in viewer-console.css so the light theme can re-value them
+  // (2026-10-01: the background was a hardcoded near-black and the text was
+  // var(--muted), which on light is dark ink on near-black, i.e. unreadable).
+  // Layout and the fade stay here, unchanged.
+  t.className = "po-copy-toast";
   t.style.pointerEvents = "none";
   t.style.marginTop = "8px";
-  t.style.background = "rgba(12,12,12,0.92)";
-  t.style.color = "var(--muted)";
   t.style.padding = "10px 14px";
   t.style.borderRadius = "12px";
-  t.style.borderLeft = "4px solid var(--brand)";
-  t.style.boxShadow = "0 10px 34px rgba(2,23,18,0.55)";
   t.style.fontWeight = "600";
   t.style.opacity = "1";
   t.style.transform = "translateY(0)";

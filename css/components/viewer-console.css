@@ -1131,6 +1131,17 @@ pre{
 
 
 
+/* =========================
+   Copy Response toast (colors only; console.controller.js owns layout + fade)
+   ========================= */
+.po-copy-toast{
+  background: rgba(12,12,12,0.92);
+  color: var(--muted);
+  border-left: 4px solid var(--brand);
+  box-shadow: 0 10px 34px rgba(2,23,18,0.55);
+}
+
+
 /* Mobile: center stack (Send/Curl) */
 @media (max-width: 640px){
   #consoleView .apiBtnContainer{
