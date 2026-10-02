@@ -224,10 +224,22 @@ function connectionHtml(m, p) {
     // 2026-10-02: this required madeByPlatform, the platform having RECORDED the tenant, so in the window where the
     // customer already holds the credentials Pax8 mailed them the card said nothing. t.adminLogin is derived from the
     // prefix at the order now, so the address is known then; having it is the signal there is something to do.
+    // SAY IT PLAINLY (2026-10-02, Cameron, holding the password while this card said "waiting"). Everything the owner
+    // needs is here and nothing is implied: what they are waiting for and who it comes from, the account name spelled
+    // out, three ways in rather than one, and what the sign-in actually causes. The distributor is still never named
+    // (decision 13); the email is described the way the customer sees it, which is what identifies it anyway.
     if ((t.madeByPlatform || t.adminLogin) && !t.ownerAccount) return `<div class="lic-admin">${head}${lost}${ro}
-      <p class="acct-card-note"><span class="lic-step">Step ${stepNo('msSignIn')} of ${STEPS}</span> · ${t.named ? `Your tenant ${who} exists at Microsoft.` : 'Your tenant exists at Microsoft.'} This one is yours, because Microsoft lets only your tenant's own administrator set its first password.</p>
-      <p class="acct-card-note">The administrator sign-in for it is emailed to you with your order${t.adminLogin ? `, <span class="ev-code">${e(t.adminLogin)}</span>,` : ','} with a password Microsoft made. Sign in once at <a href="https://admin.microsoft.com" target="_blank" rel="noopener noreferrer">admin.microsoft.com</a> with it and set your own password.</p>
-      <p class="acct-card-note">That first sign-in finishes setting your tenant up at Microsoft. PragOptics then makes your own account in it, the one you will use for your mail, and emails you when it is ready. Step ${STEPS} of ${STEPS} is left after that: approve PragOptics once, here.</p>
+      <div class="lic-call">
+        <p class="lic-call-head"><span class="lic-step">Step ${stepNo('msSignIn')} of ${STEPS}</span> · Sign in to Microsoft once, and set your password</p>
+        <p class="lic-call-line">Only you can do this. Microsoft lets no one else set your tenant's first password, so nothing else moves until it is done.</p>
+        <dl class="lic-call-facts">
+          <div><dt>Your account name</dt><dd>${t.adminLogin ? `<span class="ev-code">${e(t.adminLogin)}</span>` : `<span class="ev-code">admin@${e(String(t.named || 'yourtenant'))}</span>`}</dd></div>
+          <div><dt>Your first password</dt><dd>In an email titled as a Microsoft software order fulfilment, sent from a noreply address. It is not from PragOptics. If it has not arrived, you are waiting on it, and nothing is wrong.</dd></div>
+          <div><dt>Where to sign in</dt><dd>The button below, or the link in that email, or type <span class="ev-code">admin.microsoft.com</span> into your own browser. Any of the three.</dd></div>
+        </dl>
+        <div class="acct-actions-row"><a class="btn btn-primary" href="https://admin.microsoft.com" target="_blank" rel="noopener noreferrer">${ico('external')} Open the Microsoft admin portal</a></div>
+        <p class="lic-call-line">Microsoft asks you to set a new password on that first sign-in. Once you do, your tenant activates and your mail licensing goes live. PragOptics then makes your own Microsoft account, the one you will use for your mail, and emails you when it is ready. Step ${STEPS} of ${STEPS} is all that is left after that: approve PragOptics once, here on this card.</p>
+      </div>
     </div>`;
     const made = t.madeByPlatform ? `<p class="acct-card-note"><span class="lic-step">Step ${stepNo('connected')} of ${STEPS}</span> · Your Microsoft account <span class="ev-code">${e(t.ownerAccount.upn)}</span> is ready and runs ${who}. See its first password once on your My mailbox card, then press Connect your tenant, sign in with that account when Microsoft asks, and approve PragOptics once.</p>` : '';
     return `<div class="lic-admin">${head}${lost}${ro}${made}
