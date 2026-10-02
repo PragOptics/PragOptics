@@ -212,7 +212,18 @@ function connectionHtml(m, p) {
     // Microsoft account in the tenant (their mail account) and makes it the tenant's administrator; the owner approves
     // PragOptics once with it. Until that account is ready there is nothing to press.
     if (t.madeByPlatform && !t.ownerAccount && t.ownerAccountWaits === 'seat') return `<div class="lic-admin">${head}${lost}${ro}<p class="acct-card-note">Your own Microsoft account in ${who} comes with your included mailbox. On the Mailboxes card of this tab (step 4), give yourself your included mailbox, and PragOptics makes the account on its next pass.</p></div>`;
-    if (t.madeByPlatform && !t.ownerAccount) return `<div class="lic-admin">${head}${lost}${ro}<p class="acct-card-note">PragOptics is making your own Microsoft account in ${who}, the one you will use for your mail. When it is ready it appears here with one step left: approve PragOptics once.</p></div>`;
+    // 2026-10-01, Cameron: this card went quiet in exactly the window where the customer holds the one thing nobody else
+    // can do. A tenant the distributor creates stays provisional until its OWN administrator signs in once and sets the
+    // first password, and Microsoft lets no partner do that for them, so PragOptics cannot finish until they have.
+    // "PragOptics is making your own Microsoft account" read as work in progress while nothing could actually move
+    // (bridgecc1028+wiz sat in this state for hours). The card now names the sign-in they were mailed, where to use it,
+    // and why the step is theirs. t.adminLogin has been sent by the server since 2026-09-29 and was never surfaced.
+    // Decision 13: the distributor is never named to a customer.
+    if (t.madeByPlatform && !t.ownerAccount) return `<div class="lic-admin">${head}${lost}${ro}
+      <p class="acct-card-note">${t.named ? `Your tenant ${who} exists at Microsoft.` : 'Your tenant exists at Microsoft.'} One step here is yours, because Microsoft lets only your tenant's own administrator set its first password.</p>
+      <p class="acct-card-note">The administrator sign-in for it is emailed to you with your order${t.adminLogin ? `, <span class="ev-code">${e(t.adminLogin)}</span>,` : ','} with a password Microsoft made. Sign in once at <a href="https://admin.microsoft.com" target="_blank" rel="noopener noreferrer">admin.microsoft.com</a> with it and set your own password.</p>
+      <p class="acct-card-note">That first sign-in finishes setting your tenant up at Microsoft. PragOptics then makes your own account in it, the one you will use for your mail, and emails you when it is ready. One step is left after that: approve PragOptics once, here.</p>
+    </div>`;
     const made = t.madeByPlatform ? `<p class="acct-card-note">Your Microsoft account <span class="ev-code">${e(t.ownerAccount.upn)}</span> is ready and runs ${who}. See its first password once on your My mailbox card, then press Connect your tenant, sign in with that account when Microsoft asks, and approve PragOptics once.</p>` : '';
     return `<div class="lic-admin">${head}${lost}${ro}${made}
       <p class="acct-card-note">${t.madeByPlatform ? 'The link works once and for ten minutes.' : `Connect ${who} so PragOptics can make each seat's mailbox, add your domains to it and switch your mail. You sign in at Microsoft as an administrator of that tenant, approve PragOptics for your organization, and come back here. The link works once and for ten minutes.`}</p>
@@ -487,10 +498,13 @@ async function resetMyPassword(btn) {
   }, { errKey: 'mailbox-mine', fallback: 'The password could not be reset right now.', codes: { ...LANE_CODES, NO_MAILBOX: 'You have no mailbox to reset yet.', NOT_PLATFORM_ACCOUNT: 'This is your own Microsoft account, so your password is managed by your organization, not reset here.' } });
 }
 
-/** Decision 29: the owner's own administrator account in the tenant PragOptics made. The owner only; '' otherwise. */
+/** Decision 29: the owner's own administrator account in the tenant PragOptics made. The owner only; '' otherwise.
+ * On a tenant PragOptics made, the automatic connect makes the owner's account on its own (tenantAccess.ownerAdmin), so
+ * this manual "ask us to make it" offer is hidden there: it only confused, sitting beside the mailbox (Cameron,
+ * 2026-09-30). It stays for a tenant the business brought, where the platform does not make the owner an account. */
 function adminAskHtml(m, p) {
   const a = m.adminAsk || {};
-  if (!p.isOwner || !a.offered) return '';
+  if (!p.isOwner || !a.offered || m.madeByPlatform) return '';
   const e = st.D.escapeHtml;
   const suffix = a.suffix || (m.domainPrefix ? `@${m.domainPrefix}.onmicrosoft.com` : '');
   const head = '<h4 class="lic-sub">Your administrator account</h4>';
