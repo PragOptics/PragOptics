@@ -221,7 +221,10 @@ function connectionHtml(m, p) {
     // Decision 13: the distributor is never named to a customer.
     // 2026-10-02: these last two carried no step number anywhere, so the tab promised four and the owner met six.
     // They are steps 5 and 6 of the same list every other card numbers from (licensingShared.LICENSING_STEPS).
-    if (t.madeByPlatform && !t.ownerAccount) return `<div class="lic-admin">${head}${lost}${ro}
+    // 2026-10-02: this required madeByPlatform, the platform having RECORDED the tenant, so in the window where the
+    // customer already holds the credentials Pax8 mailed them the card said nothing. t.adminLogin is derived from the
+    // prefix at the order now, so the address is known then; having it is the signal there is something to do.
+    if ((t.madeByPlatform || t.adminLogin) && !t.ownerAccount) return `<div class="lic-admin">${head}${lost}${ro}
       <p class="acct-card-note"><span class="lic-step">Step ${stepNo('msSignIn')} of ${STEPS}</span> · ${t.named ? `Your tenant ${who} exists at Microsoft.` : 'Your tenant exists at Microsoft.'} This one is yours, because Microsoft lets only your tenant's own administrator set its first password.</p>
       <p class="acct-card-note">The administrator sign-in for it is emailed to you with your order${t.adminLogin ? `, <span class="ev-code">${e(t.adminLogin)}</span>,` : ','} with a password Microsoft made. Sign in once at <a href="https://admin.microsoft.com" target="_blank" rel="noopener noreferrer">admin.microsoft.com</a> with it and set your own password.</p>
       <p class="acct-card-note">That first sign-in finishes setting your tenant up at Microsoft. PragOptics then makes your own account in it, the one you will use for your mail, and emails you when it is ready. Step ${STEPS} of ${STEPS} is left after that: approve PragOptics once, here.</p>
