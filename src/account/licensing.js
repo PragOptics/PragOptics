@@ -100,7 +100,7 @@ function paint() {
   if (!lc.view) { host.innerHTML = lc.loadMsg ? `<p class="acct-empty">${st.D.escapeHtml(lc.loadMsg)}</p>` : '<p class="acct-loading">Loading…</p>'; return; }
   // decision 21: what a failed license payment left owed comes first, with Pay now for the owner (licensingMoney.js)
   // the owner's four steps stand in order (2026-09-28): the account, the tenant, the agreement, then mail; the licenses held come after
-  host.innerHTML = `${headHtml()}${errHtml('load')}<div class="ev-cards">${owedHtml()}${requestsHtml()}${myMailboxHtml()}${accountHtml()}${tenantHtml()}${agreementHtml()}${mailboxesHtml()}${signInHtml()}${licensesHtml()}${catalogHtml()}${billingHtml()}${pax8Html()}</div>`;
+  host.innerHTML = `${headHtml()}${errHtml('load')}<div class="ev-cards">${owedHtml()}${accountHtml()}${tenantHtml()}${agreementHtml()}${mailboxesHtml()}${signInHtml()}${myMailboxHtml()}${requestsHtml()}${licensesHtml()}${catalogHtml()}${billingHtml()}${pax8Html()}</div>`;
 }
 
 /* ---------- the head ---------- */

@@ -164,6 +164,10 @@ export function requestsHtml() {
   const all = lc.reqs || [];
   const open = all.filter(r => r.status === 'PENDING'), done = all.filter(r => r.status !== 'PENDING');
   if (!owner && !all.length && !lc.err.requests) return '';
+  // AN EMPTY CARD IS NOISE (2026-10-02). With nothing waiting this stood above the numbered steps saying "nothing
+  // waiting", and an owner halfway through setting the account up read it as one more thing being asked of them.
+  // It earns its place when there is something in it, or something went wrong reading it.
+  if (owner && !all.length && !lc.err.requests) return '';
   // the owner's waiting money requests read their exact charge once the card is on screen
   if (owner && !v.readOnly && open.some(chargesNow)) queueMicrotask(readQuotes);
   const summary = open.length ? `${countWord(open.length, 'request', 'requests')} waiting${owner ? '' : ' for the owner'}` : owner ? 'nothing waiting' : `${countWord(all.length, 'request', 'requests')}, all answered`;
