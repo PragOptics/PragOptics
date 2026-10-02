@@ -540,6 +540,9 @@ select.acct-input { background-color: var(--surface-deep); }
 .su-cat-title { font-weight: 700; color: var(--card-title); font-size: .92rem; line-height: 1.25; }
 .su-cat .su-line { flex: 0 1 auto; }
 .su-cat.is-done .su-cat-title { color: var(--brand-cyan); }
+/* the locked steps on this side: beside this ring's own count, so a denominator that grows later is expected rather
+   than a number going backwards. Quiet, but not fine print, and never styled as a link: nothing here is clickable. */
+.su-more { white-space: nowrap; color: var(--muted); background: color-mix(in srgb, var(--ink) 4%, transparent); border: 1px solid var(--border); border-radius: 4px; padding: .08rem .45rem; font-size: .76rem; font-weight: 600; }
 
 @media (min-width: 900px) { .su-groups { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); } }
 @media (max-width: 560px) {
@@ -548,7 +551,12 @@ select.acct-input { background-color: var(--surface-deep); }
   /* each category owns a full row; its line already sits right of its own ring, so it takes neither the
      full-width break nor the 44px indent the single-ring row needed */
   .su-cat { flex: 1 1 100%; }
-  .su-cat .su-line { flex-basis: auto; padding-left: 0; }
+  .su-cat .su-line { flex-basis: auto; padding-left: 0; flex-wrap: wrap; column-gap: 6px; row-gap: 2px; }
+  /* the count and the next step share one row until it is too narrow for the longer titles, where the next step was
+     ellipsed to "Next: ..." and said nothing (2026-10-02, measured at 375px: it wanted 149px and had 120px). It takes
+     its own line and wraps instead, and the dot between them goes, since they are no longer side by side. */
+  .su-cat .su-next { flex: 1 1 100%; white-space: normal; overflow: visible; text-overflow: clip; }
+  .su-cat .su-sep { display: none; }
 }
 /* the Licensing tab's four steps, the step word in front of each card's summary */
 .lic-step { display: inline-block; font-size: .64rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--brand-600); background: color-mix(in srgb, var(--brand-600) 10%, transparent); border: 1px solid color-mix(in srgb, var(--brand-600) 28%, transparent); border-radius: 4px; padding: .1rem .45rem; margin-right: 2px; vertical-align: middle; }

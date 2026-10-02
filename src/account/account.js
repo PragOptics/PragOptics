@@ -25,7 +25,7 @@ import { renderLicensing, bindLicensingActions } from './licensing.js';
 import { renderBuildsQueue, renderMyBuilds } from './buildsDesk.js';
 import { renderNeedsAttention } from './needsAttentionDesk.js';
 import { renderAgreementNotice } from './agreementNotice.js';
-import { renderSetup } from './setup.js';
+import { renderSetup, markSetupStale } from './setup.js';
 import { billingDetailsHtml, editBillingDetails, cancelBillingDetails, saveBillingDetails } from './billingDetails.js';
 import { loadBandwidthCard, bandwidthAction } from './bandwidth.js';
 import { explainLink } from '../components/explainer.js';
@@ -223,6 +223,10 @@ async function apiFetch(url, options = {}) {
     }
     throw err;
   }
+  // A write anywhere in the panel can finish a setup step, and the checklist keeps its answer for thirty seconds, so
+  // without this a step stayed on "Next" after it was done (2026-10-02). One hook here covers every card.
+  const method = String(options.method || 'GET').toUpperCase();
+  if (method !== 'GET' && method !== 'HEAD') { try { markSetupStale(); } catch { /* the list reloads on the next section */ } }
   return data || {};
 }
 

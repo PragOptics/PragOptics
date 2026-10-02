@@ -30,7 +30,9 @@ const TEAM_KEY = 'pragoptics_team_id';
 const ID = 'acctSetup';
 const STATES = new Set(['done', 'next', 'open', 'waiting', 'off']);
 // the state in words for a screen reader (the dot says it to the eye)
-const STATE_WORDS = { done: 'Done', next: 'Next', open: 'Can be done now', waiting: 'Waiting', off: 'Not on this plan' };
+// "Not on this plan" was wrong for a step the lane gates rather than the plan (setupSteps.js site.publish), and it read
+// as never to a free account whose fifteen off steps all say they come with a paid plan (Cameron, 2026-10-02)
+const STATE_WORDS = { done: 'Done', next: 'Next', open: 'Can be done now', waiting: 'Waiting', off: 'Not available yet' };
 // the sections a step may open; the billing group's steps say "billing", which the panel calls subscription
 const SECTIONS = new Set(['profile', 'products', 'subscription', 'team', 'environment', 'licensing', 'orders', 'builds']);
 const SECTION_ALIAS = { billing: 'subscription' };
@@ -38,6 +40,7 @@ const SECTION_ALIAS = { billing: 'subscription' };
 let D = null;   // the panel's deps: apiFetch, escapeHtml, cachedPing, friendlyError
 // the last answer (null after a failed read), when it landed and for whom, the read that is out, and the render in view
 const su = { data: null, at: 0, key: '', read: null, seq: 0 };
+const stale = { timer: 0 };   // several writes in a row coalesce into one read
 
 function userId() { try { return String(D.cachedPing?.()?.user?.userId || ''); } catch { return ''; } }
 function teamId() { try { return sessionStorage.getItem(TEAM_KEY) || ''; } catch { return ''; } }
@@ -73,6 +76,24 @@ function readSetup(key) {
   return read;
 }
 
+/**
+ * A WRITE SOMEWHERE ELSE JUST FINISHED A STEP (2026-10-02). Keeping the answer thirty seconds is right for moving
+ * between sections and wrong the moment a card saves: Cameron saved his name on the first step and the list went on
+ * reading "Next: Your name", because nothing ever told it the answer was stale. account.js calls this after every
+ * successful write, so one hook covers every card that can finish a step (your name, your mobile, billing, a
+ * connection, a licensing step) instead of a call added to each save.
+ */
+export function markSetupStale() {
+  su.key = ''; su.at = 0; su.data = null; su.read = null;
+  if (stale.timer || !D) return;
+  stale.timer = setTimeout(() => {
+    stale.timer = 0;
+    const host = document.getElementById(ID);
+    const main = host?.isConnected ? host.parentElement : null;
+    if (main) renderSetup(main, D);
+  }, 250);
+}
+
 /* ---------- the block ---------- */
 
 /** The section a step's link opens, or '' when the link names none the panel has. */
@@ -105,26 +126,48 @@ function ringHtml(done, total, complete) {
 function tally(d) {
   const steps = (d.groups || []).flatMap(g => (Array.isArray(g?.steps) ? g.steps : []));
   const live = steps.filter(s => String(s?.state || '') !== 'off');
-  const side = (list) => ({
+  const shut = steps.filter(s => String(s?.state || '') === 'off');
+  const side = (list, locked) => ({
     total: list.length,
     done: list.filter(s => String(s?.state || '') === 'done').length,
-    next: list.find(s => String(s?.state || '') === 'next') || list.find(s => String(s?.state || '') === 'open') || null
+    next: list.find(s => String(s?.state || '') === 'next') || list.find(s => String(s?.state || '') === 'open') || null,
+    locked: locked.length
   });
-  return { required: side(live.filter(s => !s?.optional)), optional: side(live.filter(s => !!s?.optional)), counted: steps.length > 0 };
+  return {
+    required: side(live.filter(s => !s?.optional), shut.filter(s => !s?.optional)),
+    optional: side(live.filter(s => !!s?.optional), shut.filter(s => !!s?.optional)),
+    // ACCOUNTED FOR ON ITS OWN SIDE, NEVER COUNTED (2026-10-02, Cameron: "we have more steps than what the counts
+    // say", then "that's because it's not obvious"). The stepper rendered twenty-one rows while the rings counted six.
+    // A step the plan does not offer stays out of the rings, because it is not work anyone can finish, and the
+    // arithmetic matches the server, which counts `state !== "off"` too (setupSteps.js). What was missing was telling
+    // anyone, so each side now carries its OWN locked count: a free account gains five required steps and ten
+    // optional ones on subscribing, and a single footnote of fifteen hid which ring they landed on. Without that the
+    // denominator appears to jump backwards the moment someone makes progress.
+    off: steps.length - live.length,
+    // WHY they are off decides the sentence. Most are gated on `!paid` in setupSteps.js, but site.publish is gated on
+    // the lane instead, so the copy is driven by whether the plan step is still outstanding rather than assumed.
+    planWaits: (() => { const p = steps.find(s => String(s?.id || '') === 'billing.plan'); return !!p && String(p.state || '') !== 'done'; })(),
+    counted: steps.length > 0
+  };
 }
 
 /** One category: its ring, its name, its own count and its own next step. */
-function catHtml(title, c) {
+function catHtml(title, c, planWaits) {
   const e = D.escapeHtml;
   const complete = c.total > 0 && c.done >= c.total;
   const next = c.next && (c.next.title || c.next.id)
     ? `Next: ${linkHtml(c.next)}`
     : (complete ? 'All done' : 'Nothing waits on you');
+  // the locked steps on THIS side, said next to this side's own count, so the denominator growing later is expected
+  const n = Number(c.locked) || 0;
+  const more = n > 0
+    ? `<span class="su-more">${e(planWaits ? `${n} more with a plan` : `${n} more not on your plan`)}</span>`
+    : '';
   return `<div class="su-cat ${complete ? 'is-done' : ''}">
       ${ringHtml(c.done, c.total, complete)}
       <span class="su-cat-main">
         <span class="su-cat-title">${e(title)}</span>
-        <span class="su-line"><span class="su-count">${e(`${c.done} of ${c.total} done`)}</span><span class="su-sep" aria-hidden="true">·</span><span class="su-next">${next}</span></span>
+        <span class="su-line"><span class="su-count">${e(`${c.done} of ${c.total} done`)}</span>${more}<span class="su-sep" aria-hidden="true">·</span><span class="su-next">${next}</span></span>
       </span>
     </div>`;
 }
@@ -136,7 +179,7 @@ function rowHtml(d, open, t, reqComplete, allComplete) {
   const title = reqComplete ? 'Your account is set up' : 'Finish setting up your account';
   const tip = open ? 'Fold the steps away' : 'Show every step';
   const toggle = allComplete ? '' : `<button class="ev-card-toggle su-toggle" type="button" data-setup-toggle aria-expanded="${open}" aria-controls="${ID}Body" aria-label="${tip}" data-tip="${tip}">${ico('chevron')}</button>`;
-  const rings = `<div class="su-rings">${catHtml('Required', t.required)}${t.optional.total ? catHtml('Optional', t.optional) : ''}</div>`;
+  const rings = `<div class="su-rings">${catHtml('Required', t.required, t.planWaits)}${t.optional.total || t.optional.locked ? catHtml('Optional', t.optional, t.planWaits) : ''}</div>`;
   return `<div class="su-head ${reqComplete ? 'is-done' : ''}"><span class="su-title">${e(title)}</span>${toggle}</div>${rings}`;
 }
 
@@ -173,8 +216,9 @@ function paint(host, d, uid) {
   // a server that sends no steps to count still gets a ring: its own done/total, as the single ring always used
   if (!t.counted) {
     const total = Math.max(0, Number(d.total) || 0);
-    t.required = { total, done: Math.min(total, Math.max(0, Number(d.done) || 0)), next: d.next || null };
-    t.optional = { total: 0, done: 0, next: null };
+    t.required = { total, done: Math.min(total, Math.max(0, Number(d.done) || 0)), next: d.next || null, locked: 0 };
+    t.optional = { total: 0, done: 0, next: null, locked: 0 };
+    t.off = 0; t.planWaits = false;
   }
   // the account is SET UP once the required steps are done; optional ones are tracked, never a gate
   const reqComplete = t.required.total > 0 && t.required.done >= t.required.total;
