@@ -224,23 +224,10 @@ function connectionHtml(m, p) {
     // 2026-10-02: this required madeByPlatform, the platform having RECORDED the tenant, so in the window where the
     // customer already holds the credentials Pax8 mailed them the card said nothing. t.adminLogin is derived from the
     // prefix at the order now, so the address is known then; having it is the signal there is something to do.
-    // SAY IT PLAINLY (2026-10-02, Cameron, holding the password while this card said "waiting"). Everything the owner
-    // needs is here and nothing is implied: what they are waiting for and who it comes from, the account name spelled
-    // out, three ways in rather than one, and what the sign-in actually causes. The distributor is still never named
-    // (decision 13); the email is described the way the customer sees it, which is what identifies it anyway.
-    if ((t.madeByPlatform || t.adminLogin) && !t.ownerAccount) return `<div class="lic-admin">${head}${lost}${ro}
-      <div class="lic-call">
-        <p class="lic-call-head"><span class="lic-step">Step ${stepNo('msSignIn')} of ${STEPS}</span> · Sign in to Microsoft once, and set your password</p>
-        <p class="lic-call-line">Only you can do this. Microsoft lets no one else set your tenant's first password, so nothing else moves until it is done.</p>
-        <dl class="lic-call-facts">
-          <div><dt>Your account name</dt><dd>${t.adminLogin ? `<span class="ev-code">${e(t.adminLogin)}</span>` : `<span class="ev-code">admin@${e(String(t.named || 'yourtenant'))}</span>`}</dd></div>
-          <div><dt>Your first password</dt><dd>In an email titled as a Microsoft software order fulfilment, sent from a noreply address. It is not from PragOptics. If it has not arrived, you are waiting on it, and nothing is wrong.</dd></div>
-          <div><dt>Where to sign in</dt><dd>The button below, or the link in that email, or type <span class="ev-code">admin.microsoft.com</span> into your own browser. Any of the three.</dd></div>
-        </dl>
-        <div class="acct-actions-row"><a class="btn btn-primary" href="https://admin.microsoft.com" target="_blank" rel="noopener noreferrer">${ico('external')} Open the Microsoft admin portal</a></div>
-        <p class="lic-call-line">Microsoft asks you to set a new password on that first sign-in. Once you do, your tenant activates and your mail licensing goes live. PragOptics then makes your own Microsoft account, the one you will use for your mail, and emails you when it is ready. Step ${STEPS} of ${STEPS} is all that is left after that: approve PragOptics once, here on this card.</p>
-      </div>
-    </div>`;
+    // step 5 is its own card now (signInHtml, at the end of this file). It used to render HERE, inside the card
+    // titled "Step 2 of 6", so a card labelled step 2 contained step 5, and all of it was invisible while that card
+    // sat folded (Cameron, 2026-10-02: "why is it step 2 all of a sudden... there is no step 5 or 6 visible").
+    if ((t.madeByPlatform || t.adminLogin) && !t.ownerAccount) return '';
     const made = t.madeByPlatform ? `<p class="acct-card-note"><span class="lic-step">Step ${stepNo('connected')} of ${STEPS}</span> · Your Microsoft account <span class="ev-code">${e(t.ownerAccount.upn)}</span> is ready and runs ${who}. See its first password once on your My mailbox card, then press Connect your tenant, sign in with that account when Microsoft asks, and approve PragOptics once.</p>` : '';
     return `<div class="lic-admin">${head}${lost}${ro}${made}
       <p class="acct-card-note">${t.madeByPlatform ? 'The link works once and for ten minutes.' : `Connect ${who} so PragOptics can make each seat's mailbox, add your domains to it and switch your mail. You sign in at Microsoft as an administrator of that tenant, approve PragOptics for your organization, and come back here. The link works once and for ten minutes.`}</p>
@@ -735,4 +722,38 @@ export function tenantAction(a, btn) {
   if (a === 'mb-name-auto') { autoMyMailName(); return true; }
   if (a === 'mb-reset') { resetMyPassword(btn); return true; }
   return false;
+}
+
+/* ---------- step 5: the sign-in only the customer can do, on a card of its own ---------- */
+
+/**
+ * ITS OWN CARD (2026-10-02). This lived inside the tenant card, which is step 2, so the owner was told to do step 5
+ * from somewhere labelled step 2, and saw nothing at all while that card sat folded. A step with its own number gets
+ * its own card, open by default, because nothing else can move until it is done.
+ */
+export function signInHtml() {
+  if (!showsLicensing()) return '';
+  const e = st.D.escapeHtml, t = tn(), p = perms();
+  if (!t || p.readOnly || t.connected) return '';
+  if (!((t.madeByPlatform || t.adminLogin) && !t.ownerAccount)) return '';
+  if (t.ownerAccountWaits === 'seat') return '';
+  const who = t.named ? `<span class="ev-code">${e(t.named)}</span>` : 'your tenant';
+  const addr = t.adminLogin ? e(t.adminLogin) : `admin@${e(String(t.named || 'yourtenant'))}`;
+  const lost = t.lost ? `<p class="acct-card-note ev-note is-bad">${e(sentence(t.why || 'Your administrator removed PragOptics from the tenant.'))}</p>` : '';
+  const ro = t.writes === false ? '<p class="acct-card-note ev-note">This lane reads your tenant and shows what each step would do; nothing is written from here.</p>' : '';
+  return cardHtml({
+    key: 'ms-signin', icon: 'external', title: 'Sign in to Microsoft', summary: stepWord('msSignIn', 'yours to do now'), open: true,
+    body: `${lost}${ro}
+      <div class="lic-call">
+        <p class="lic-call-head">Sign in once, and set your password</p>
+        <p class="lic-call-line">Only you can do this. Microsoft lets no one else set ${who}'s first password, so nothing else moves until it is done.</p>
+        <dl class="lic-call-facts">
+          <div><dt>Your account name</dt><dd><span class="ev-code">${addr}</span></dd></div>
+          <div><dt>Your first password</dt><dd>In an email titled as a Microsoft software order fulfilment, sent from a noreply address. It is not from PragOptics. If it has not arrived, you are waiting on it, and nothing is wrong.</dd></div>
+          <div><dt>Where to sign in</dt><dd>The button below, or the link in that email, or type <span class="ev-code">admin.microsoft.com</span> into your own browser. Any of the three.</dd></div>
+        </dl>
+        <div class="acct-actions-row"><a class="btn btn-primary" href="https://admin.microsoft.com" target="_blank" rel="noopener noreferrer">${ico('external')} Open the Microsoft admin portal</a></div>
+        <p class="lic-call-line">Microsoft asks you to set a new password on that first sign-in. Once you do, your tenant activates and your mail licensing goes live. PragOptics then makes your own Microsoft account, the one you will use for your mail, and emails you when it is ready. Step ${STEPS} of ${STEPS} is all that is left after that: approve PragOptics once, on the tenant card.</p>
+      </div>`
+  });
 }

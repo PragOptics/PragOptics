@@ -38,7 +38,7 @@ import { agreementHtml, licensesHtml, orderAction, orderChange } from './licensi
 import { catalogHtml, catalogAction, catalogInput } from './licensingCatalog.js';
 import { billingHtml, billingAction } from './licensingBilling.js';
 import { pax8Html, pax8Action } from './licensingPax8.js';
-import { tenantHtml, tenantAction, resetTenant, reopenTenant, loadTenantStatus, myMailboxHtml } from './licensingTenant.js';
+import { tenantHtml, tenantAction, resetTenant, reopenTenant, loadTenantStatus, myMailboxHtml, signInHtml } from './licensingTenant.js';
 import { requestsHtml, requestsAction, loadRequests, pendingMailbox, ask } from './licensingRequests.js';
 import { owedHtml, moneyAction } from './licensingMoney.js';
 
@@ -100,7 +100,7 @@ function paint() {
   if (!lc.view) { host.innerHTML = lc.loadMsg ? `<p class="acct-empty">${st.D.escapeHtml(lc.loadMsg)}</p>` : '<p class="acct-loading">Loading…</p>'; return; }
   // decision 21: what a failed license payment left owed comes first, with Pay now for the owner (licensingMoney.js)
   // the owner's four steps stand in order (2026-09-28): the account, the tenant, the agreement, then mail; the licenses held come after
-  host.innerHTML = `${headHtml()}${errHtml('load')}<div class="ev-cards">${owedHtml()}${requestsHtml()}${myMailboxHtml()}${accountHtml()}${tenantHtml()}${agreementHtml()}${mailboxesHtml()}${licensesHtml()}${catalogHtml()}${billingHtml()}${pax8Html()}</div>`;
+  host.innerHTML = `${headHtml()}${errHtml('load')}<div class="ev-cards">${owedHtml()}${requestsHtml()}${myMailboxHtml()}${accountHtml()}${tenantHtml()}${agreementHtml()}${mailboxesHtml()}${signInHtml()}${licensesHtml()}${catalogHtml()}${billingHtml()}${pax8Html()}</div>`;
 }
 
 /* ---------- the head ---------- */
