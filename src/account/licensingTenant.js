@@ -508,7 +508,13 @@ async function resetMyPassword(btn) {
  * 2026-09-30). It stays for a tenant the business brought, where the platform does not make the owner an account. */
 function adminAskHtml(m, p) {
   const a = m.adminAsk || {};
-  if (!p.isOwner || !a.offered || m.madeByPlatform) return '';
+  // The guard said m.madeByPlatform, which the server never sends on `microsoft`: the field there is createdByPlatform
+  // (auth/licensing.js), so this read undefined and the section has ALWAYS shown, including for a tenant PragOptics
+  // made, where PragOptics creates the owner's account itself and there is nothing to ask for. It put a section headed
+  // "Your administrator account", with a button to ask for one, inside the card titled "Step 2 of 6", in the middle of
+  // a sequence whose step 5 is a different administrator sign-in entirely (Cameron, 2026-10-02: "you still have step 2
+  // as the admin request... that was not there on the first round").
+  if (!p.isOwner || !a.offered || m.createdByPlatform) return '';
   const e = st.D.escapeHtml;
   const suffix = a.suffix || (m.domainPrefix ? `@${m.domainPrefix}.onmicrosoft.com` : '');
   const head = '<h4 class="lic-sub">Your administrator account</h4>';
