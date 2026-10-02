@@ -48,7 +48,7 @@ export function agreementHtml() {
   const e = st.D.escapeHtml, m = v.microsoft || {}, p = perms(), mca = m.mca, a = m.agreement;
   const stands = a ? !!a.stands : !!mca;
   const named = !!(m.tenantId || m.domainPrefix);
-  // step 3 of the owner's four (2026-09-28): the card stands before the account and the tenant too, folded, its
+  // step 3 of the owner's six: the card stands before the account and the tenant too, folded, its
   // Accept waiting on them with the sentence under it
   const gate = stands ? '' : stepGate(v, 2);
   const summary = stands ? 'accepted' : gate ? (v.account ? 'after your Microsoft tenant' : 'after the licensing account') : mca ? 'to accept again' : 'not accepted yet';
@@ -71,7 +71,7 @@ export function agreementHtml() {
     inner = `${why}${act}`;
   }
   return cardHtml({
-    key: 'agreement', icon: 'file', title: 'Microsoft Customer Agreement', summary: stepWord(3, e(summary)), open: !gate,
+    key: 'agreement', icon: 'file', title: 'Microsoft Customer Agreement', summary: stepWord('agreement', e(summary)), open: !gate,
     explain: explainLink('licensing', 'The agreement and the tenant'),
     body: `${noteHtml('agreement')}${errHtml('agreement')}${inner}`
   });

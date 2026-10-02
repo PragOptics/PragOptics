@@ -23,7 +23,7 @@
 //
 // The cards, top to bottom: what a failed license payment left owed (licensingMoney.js, which also holds the exact
 // charge every charging button shows), requests (licensingRequests.js), then the owner's four steps in order, each
-// summary saying "Step n of 4" (2026-09-28): the licensing account (here), the tenant (licensingTenant.js), the
+// summary saying "Step n of 6" (2026-09-28, widened 2026-10-02): the licensing account (here), the tenant (licensingTenant.js), the
 // agreement (licensingOrders.js), the mailboxes with Turn on mail (here); then the licenses held and adding one
 // (licensingOrders.js), the catalog (licensingCatalog.js), and for the platform's operator the charges and the
 // distributor check (licensingBilling.js, licensingPax8.js). What they share is licensingShared.js, where stepGate
@@ -220,8 +220,8 @@ function accountHtml() {
     inner = `<p class="acct-card-note">${e(v.readOnly && v.readOnlyWhy ? sentence(v.readOnlyWhy) : 'The owner creates the licensing account here.')}</p>`;
   }
   return cardHtml({
-    // step 1 of the owner's four (2026-09-28), wherever the team's licensing shows
-    key: 'account', icon: 'shield', title: 'Licensing account', summary: showsLicensing() ? stepWord(1, summary) : summary,
+    // step 1 of the owner's six (licensingShared.LICENSING_STEPS), wherever the team's licensing shows
+    key: 'account', icon: 'shield', title: 'Licensing account', summary: showsLicensing() ? stepWord('account', summary) : summary,
     explain: explainLink('licensing', 'What the licensing account is'),
     body: `${noteHtml('account')}${errHtml('account')}${inner}`
   });
@@ -347,7 +347,7 @@ function mailStateHtml(v, p) {
     const why = v.readOnly && v.readOnlyWhy ? sentence(v.readOnlyWhy) : 'Mail is not on for your team yet. The owner turns it on here.';
     return `${told}<p class="acct-card-note">${e(why)}</p>`;
   }
-  // step 4 of four (2026-09-28): Turn on mail waits, disabled, until the account exists, the tenant is named and the
+  // step 4 of six: Turn on mail waits, disabled, until the account exists, the tenant is named and the
   // agreement stands, and says under it which of those comes first and where; the server's own ready flag still counts
   const gate = stepGate(v, 3) || (v.microsoft?.ready ? '' : 'Your Microsoft tenant and agreement are not complete yet. Finish the cards above, then turn on mail here.');
   return `
@@ -389,7 +389,7 @@ function seatMailCell(s, p, mailOn, e) {
 
 function mailboxesHtml() {
   const e = st.D.escapeHtml, v = lc.view, p = perms();
-  // step 4 of the owner's four (2026-09-28): the card stands before the account too, folded, its button waiting on step 1
+  // step 4 of the owner's six: the card stands before the account too, folded, its button waiting on step 1
   if (!showsLicensing()) return '';
   // the person looking first, so their own mailbox (or Ask for my mailbox) is the first row on a phone
   const mine = me().userId;
@@ -412,7 +412,7 @@ function mailboxesHtml() {
   const state = MAIL_WORDS[v.mail?.state] || 'mail off';
   const summary = v.account ? `${state} · ${seats.filter(s => s.included).length} of ${countWord(seats.length, 'team seat', 'team seats')} with a mailbox` : 'after the licensing account';
   return cardHtml({
-    key: 'mailboxes', icon: 'mail', title: 'Mailboxes', summary: stepWord(4, e(summary)), open: !!v.account,
+    key: 'mailboxes', icon: 'mail', title: 'Mailboxes', summary: stepWord('mail', e(summary)), open: !!v.account,
     explain: explainLink('licensing', 'A mailbox for every seat'),
     body: `
       <p class="acct-card-note">Each team seat can have one mailbox, included with your plan: Exchange Online Kiosk, 2 GB, for Outlook on the web and the Outlook phone apps (not the desktop Outlook app). A mailbox ends when it is taken back, when its seat ends, or when the person becomes a viewer. Once a mailbox ends, Microsoft keeps its mail for 30 days, then deletes it.</p>

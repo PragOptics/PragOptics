@@ -143,11 +143,25 @@ export function cardLink(section, card, label) {
   return `<a class="acct-inline-link" href="#account?section=${esc(section)}&card=${esc(card)}" data-acct-section="${esc(section)}" data-acct-card="${esc(card)}">${esc(label)}</a>`;
 }
 
-/* ---------- the owner's four steps, in order (2026-09-28): the account, the tenant, the agreement, then mail ---------- */
-
-export const STEPS = 4;
-/** A card's summary with its step in front: "Step 2 of 4 · not named yet". `summaryHtml` is already escaped. */
-export function stepWord(n, summaryHtml) { return `<span class="lic-step">Step ${n} of ${STEPS}</span> · ${summaryHtml}`; }
+/* ---------- the owner's steps, in order ----------
+ *
+ * EVERY STEP, NOT THE NUMBERED FOUR (2026-10-02, Cameron: "i want a process that doesn't hide how many steps there
+ * are"). This said four, and typed the number into four cards by hand. Two things the owner has to do carried no
+ * number at all, because they live as paragraphs inside the tenant card: signing in to Microsoft once, which no one
+ * can do for them and which held +wiz for 8h47m, and approving PragOptics on the tenant afterwards. Being told four
+ * and then meeting six is the complaint. The list is now one array in one place, the ids match the server's own
+ * licensing steps (backend auth/setupSteps.js), and each card asks for its number by id rather than stating one.
+ */
+export const LICENSING_STEPS = Object.freeze(['account', 'tenant', 'agreement', 'mail', 'msSignIn', 'connected']);
+export const STEPS = LICENSING_STEPS.length;
+/** A step's number by its id, 1-based; 0 when the id is not a numbered step (Mailboxes is optional, My mailbox is not a step). */
+export function stepNo(id) { return LICENSING_STEPS.indexOf(String(id)) + 1; }
+/** A card's summary with its step in front: "Step 2 of 6 · not named yet". `summaryHtml` is already escaped.
+ *  Takes the step's ID, so a card can never carry a number the list does not agree with. */
+export function stepWord(id, summaryHtml) {
+  const n = stepNo(id);
+  return n ? `<span class="lic-step">Step ${n} of ${STEPS}</span> · ${summaryHtml}` : summaryHtml;
+}
 /** The tenant is named (a new name Microsoft makes) or given (the ID of one the business has). */
 export function tenantNamed(m) { return !!(m?.tenantId || m?.domainPrefix); }
 /** The Microsoft Customer Agreement stands: the server's agreement.stands, else an acceptance on record. */
