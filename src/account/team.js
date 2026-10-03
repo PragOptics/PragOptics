@@ -1164,7 +1164,13 @@ async function runGdapDiagnostic(btn) {
       const asg = (r.assignments || []).map((a) => `${a.status || '?'}${a.id ? ` (${String(a.id).slice(0, 8)})` : ''}`).join(', ') || 'none';
       return `${r.displayName || r.relationshipId}: relationship ${r.status || '?'}${r.activatedAt ? `, activated ${r.activatedAt}` : ', never activated'}; assignments ${asg}`;
     });
-    const msg = `${name}: group ${d?.groupId || '?'}; row ${d?.row?.gdapStatus || '?'}. ${lines.join(' | ') || 'no relationship found'}`;
+    // Microsoft's own facts first (2026-10-03): whether the app can read the tenant right now (consent effective) and
+    // when Microsoft actually made it, then the relationship and assignment state. The real picture in one line.
+    const m = d?.microsoft || {};
+    const msBit = m.readable
+      ? `Microsoft: readable, made ${m.createdDateTime || '?'}`
+      : `Microsoft: NOT readable${m.code ? ` (${m.code})` : ''}${m.error ? ` ${m.error}` : ''}`;
+    const msg = `${name}: ${msBit}. Group ${d?.groupId || '?'}; row ${d?.row?.gdapStatus || '?'}, consent ${d?.row?.consentVerifiedAt ? 'verified' : (d?.row?.consentAt ? 'recorded' : 'none')}. ${lines.join(' | ') || 'no relationship found'}`;
     partnerCenterFlash(msg);
     try { console.log('[gdap-diagnostic]', JSON.stringify(d, null, 1)); } catch { /* fine */ }
   } catch (ex) {
