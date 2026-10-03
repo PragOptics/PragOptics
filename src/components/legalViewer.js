@@ -187,6 +187,20 @@ export function initLegalViewer(options = {}) {
     if (e.target === $mask) close();
   });
 
+  /**
+   * A LINKABLE ADDRESS FOR EACH DOCUMENT (2026-10-02). These opened only from a click on [data-legal], with href="#",
+   * so nothing outside the site could point at them: not Microsoft's consent screen, which tells every customer "the
+   * publisher has not provided links to their terms for you to review", not an email, not an agreement. #terms,
+   * #privacy, #license, #shipping and #returns now open the matching document, and closing one puts the address back
+   * so the page behind it is not left on a dead hash.
+   */
+  function fromHash() {
+    const kind = String(location.hash || "").replace(/^#/, "").split("?")[0].toLowerCase();
+    if (paths[kind]) showDoc(kind);
+  }
+  window.addEventListener("hashchange", fromHash);
+  fromHash();
+
   // ESC to close
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && $panel.classList.contains("is-open")) close();
