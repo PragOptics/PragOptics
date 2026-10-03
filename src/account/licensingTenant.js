@@ -722,6 +722,7 @@ export function tenantAction(a, btn) {
   if (a === 'tn-admin-pw-copy') { copyPassword(btn); return true; }
   if (a === 'tn-admin-pw-hide') { shown = null; setNote('tenant', 'Hidden. The password is not kept anywhere any more.'); st.paint(); return true; }
   // Part 2: the connection, the seats, the domains and the mail switch
+  if (a === 'tn-ms-signin') { goToMicrosoft(btn); return true; }
   if (a === 'tn-connect') { connectTenant(); return true; }
   if (a === 'tn-sync') { syncSeats(); return true; }
   if (a === 'tn-dom-add') { domainAction(btn, 'add'); return true; }
@@ -766,13 +767,32 @@ export function signInHtml() {
         <p class="lic-call-line">Only you can do this. Microsoft lets no one else set ${who}'s first password, so nothing else moves until it is done.</p>
         <dl class="lic-call-facts">
           <div><dt>Your account name</dt><dd><span class="ev-code">${addr}</span></dd></div>
-          <div><dt>Your first password</dt><dd>In an email titled as a Microsoft software order fulfilment, sent from a noreply address. It is not from PragOptics. If it has not arrived, you are waiting on it, and nothing is wrong.</dd></div>
-          <div><dt>Where to sign in</dt><dd>The button below, or the link in that email, or type <span class="ev-code">admin.microsoft.com</span> into your own browser. Any of the three. It opens in a new tab and does not send you back here, so close it and return to this page when you are done.</dd></div>
+          <div><dt>Your first password</dt><dd>In the mail from Pax8, our license distributor, titled as a Microsoft software order fulfilment and sent from a noreply address. You need it <strong>twice</strong>: once to sign in, then again to change it to a password of your own. If it has not arrived, you are waiting on it, and nothing is wrong.</dd></div>
+          <div><dt>Where to sign in</dt><dd>The button below copies your sign-in name and opens Microsoft in a new tab. The link in that mail works too, as does typing <span class="ev-code">admin.microsoft.com</span> yourself. Microsoft does not send you back, so return to this page when you are done.</dd></div>
         </dl>
-        <div class="acct-actions-row"><a class="btn btn-primary" href="https://admin.microsoft.com" target="_blank" rel="noopener noreferrer">${ico('external')} Open the Microsoft admin portal</a></div>
+        <div class="acct-actions-row">${leadBtn({ lic: 'tn-ms-signin' }, 'external', 'Copy my sign-in and open Microsoft', `data-upn="${addr}"`, 'btn-primary')}</div>
+        <p class="lic-call-line" id="licMsGo" role="status" aria-live="polite" hidden></p>
         <p class="lic-call-line">Microsoft asks you to set a new password on that first sign-in. Once you do, your tenant activates and your mail licensing goes live. Come back to this page afterwards: nothing sends you back on its own, and step ${STEPS} of ${STEPS} is waiting here for you, which is approving PragOptics once.</p>
       </div>`
   });
+}
+
+/**
+ * THE HAND-OFF TO MICROSOFT (2026-10-02, Cameron's spec). The sign-in name is copied first, then said, then Microsoft
+ * is opened a beat later, so the person sees what was done before the tab appears and can paste it straight in. The
+ * password from the distributor's mail is needed TWICE at Microsoft: once to sign in, once to set their own.
+ */
+async function goToMicrosoft(btn) {
+  const upn = String(btn?.dataset?.upn || '');
+  const line = document.getElementById('licMsGo');
+  const say = (text) => { if (line) { line.textContent = text; line.hidden = !text; } };
+  const copied = upn ? await copyButton(btn, upn) : false;
+  say(copied
+    ? `${upn} is on your clipboard. Paste it at Microsoft with Ctrl and V, or right click and Paste. Your first password is in the mail from Pax8, our license distributor, and you need it twice: once to sign in, then again to change it to one of your own. When you are done, come back here and do step ${STEPS} of ${STEPS}.`
+    : `Sign in as ${upn || 'your administrator account'}. Your first password is in the mail from Pax8, our license distributor, and you need it twice: once to sign in, then again to change it to one of your own. When you are done, come back here and do step ${STEPS} of ${STEPS}.`);
+  // a beat to read it before the new tab takes the foreground
+  await new Promise(r => setTimeout(r, 1400));
+  window.open('https://admin.microsoft.com', '_blank', 'noopener,noreferrer');
 }
 
 /* ---------- step 6: the connection, on its own card ---------- */
