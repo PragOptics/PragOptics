@@ -1195,6 +1195,10 @@ function partnerCenterFlash(text, bad = false) {
   const el = document.getElementById('tnFlash');
   if (!el) return;
   el.textContent = text; el.classList.toggle('is-bad', !!bad); el.hidden = !text;
+  // The line is one status for the whole section and stands above the table, so an answer to a button pressed far down
+  // in a row was written somewhere the reader never looks (Cameron, 2026-10-02: "that is up in a spot you can not see,
+  // no where near the card"). Setting it brings the reader to it.
+  if (text) { try { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch { el.scrollIntoView(); } }
 }
 /** The return from Microsoft: #account?section=tenants&pc=connected&upn= or pc=failed&why=, said once and taken off the address. */
 function partnerCenterReturn() {
