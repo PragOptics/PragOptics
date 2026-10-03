@@ -4878,7 +4878,11 @@ function consumeOpenCard(sectionId) {
   try { want = JSON.parse(sessionStorage.getItem('pragoptics_open_card') || 'null'); } catch { want = null; }
   if (!want || (want.section && want.section !== sectionId)) return;
   try { sessionStorage.removeItem('pragoptics_open_card'); } catch { /* fine */ }
-  const id = (CARD_IDS[sectionId] || {})[String(want.card || '')] || '';
+  let id = (CARD_IDS[sectionId] || {})[String(want.card || '')] || '';
+  // The guided licensing wizard (2026-10-03) is one card for steps 1 to 5 (card-licensing-wizard); the per-step cards
+  // (account, tenant, agreement, mail) exist again only in the management view. A step with no card of its own, the
+  // sign-in and the connection, falls back to the wizard card so a licensing step link always has somewhere to go.
+  if (sectionId === 'licensing' && !id) id = 'card-licensing-wizard';
   if (!id) return;
   const row = String(want.row || '');
   const flash = (el) => {
@@ -4891,8 +4895,9 @@ function consumeOpenCard(sectionId) {
     if (activeSection !== sectionId) return;   // the person moved on: nothing scrolls them back
     tries += 1;
     // The id names the card's wrapper (evConnections holds the card) or something inside a card (acctPricing). The
-    // element is found again on every pass: the section and each card repaint as their reads land.
-    const el = document.getElementById(id);
+    // element is found again on every pass: the section and each card repaint as their reads land. While the licensing
+    // wizard card is on screen, every licensing step scrolls to it rather than to a per-step card that is gone.
+    const el = (sectionId === 'licensing' ? document.getElementById('card-licensing-wizard') : null) || document.getElementById(id);
     const card = el && (el.matches('.acct-card') ? el : (el.querySelector(':scope > .acct-card') || el.closest('.acct-card') || el));
     if (!card) { if (tries < CARD_TRIES) setTimeout(tick, 250); return; }
     if (!cardShown) { openCardOf(card); flash(card); cardShown = true; }

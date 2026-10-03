@@ -38,9 +38,10 @@ import { agreementHtml, licensesHtml, orderAction, orderChange } from './licensi
 import { catalogHtml, catalogAction, catalogInput } from './licensingCatalog.js';
 import { billingHtml, billingAction } from './licensingBilling.js';
 import { pax8Html, pax8Action } from './licensingPax8.js';
-import { tenantHtml, tenantAction, resetTenant, reopenTenant, loadTenantStatus, myMailboxHtml, signInHtml, connectHtml } from './licensingTenant.js';
+import { tenantHtml, tenantAction, resetTenant, reopenTenant, loadTenantStatus, myMailboxHtml } from './licensingTenant.js';
 import { requestsHtml, requestsAction, loadRequests, pendingMailbox, ask } from './licensingRequests.js';
 import { owedHtml, moneyAction } from './licensingMoney.js';
+import { phase1Html, phase2Card, wizardAction, wizardStage, tenantConnected, phaseRail, phase2Lead, phase3Lead } from './licensingWizard.js';
 
 const LIVE_INCLUDED = ['PAID', 'ORDERED', 'ACTIVE'];
 
@@ -79,7 +80,10 @@ async function load() {
     // L4: the requests are read whenever the team has a licensing account, so a paused or ended owner can decline one;
     // Part 2: the tenant's connection and the person's own mailbox, once the tenant is named (licensingTenant.js)
     if (v?.account) await Promise.all([loadRequests(), loadTenantStatus(v)]); else { lc.reqs = null; lc.tn = null; }
-    watchSetup(!!v?.settingUp);
+    // keep reading while Microsoft is still making the tenant (about ten minutes), so Phase 2 flips from the wait to the
+    // sign-in by itself when it lands; the existing SETUP timer does the re-read and says if it takes much longer
+    const awaitingTenant = !!(v?.account && v?.microsoft?.domainPrefix && !v.microsoft.tenantId && !lc.tn?.tenant?.connected);
+    watchSetup(!!v?.settingUp || awaitingTenant);
   } catch (ex) {
     const setupWait = ex?.status === 404 && !!ex?.data?.needsTenant;
     // a read that failed on the way (no answer, a 5xx, too many) while the tab was waiting on the setup keeps waiting:
@@ -98,9 +102,20 @@ function paint() {
   const host = document.getElementById('licBody');
   if (!host) return;
   if (!lc.view) { host.innerHTML = lc.loadMsg ? `<p class="acct-empty">${st.D.escapeHtml(lc.loadMsg)}</p>` : '<p class="acct-loading">Loading…</p>'; return; }
-  // decision 21: what a failed license payment left owed comes first, with Pay now for the owner (licensingMoney.js)
-  // the owner's four steps stand in order (2026-09-28): the account, the tenant, the agreement, then mail; the licenses held come after
-  host.innerHTML = `${headHtml()}${errHtml('load')}<div class="ev-cards">${owedHtml()}${accountHtml()}${tenantHtml()}${agreementHtml()}${mailboxesHtml()}${signInHtml()}${connectHtml()}${myMailboxHtml()}${requestsHtml()}${licensesHtml()}${catalogHtml()}${billingHtml()}${pax8Html()}</div>`;
+  // THE GUIDED WIZARD (2026-10-03): the six steps show as three things the customer does. Phase 1 is one card and one
+  // button (licensingWizard.js) up to the first mail order; then the sign-in and connect cards (the one human step);
+  // then the management view once the tenant is connected. An ineligible team drops to 'manage', where the account card
+  // carries the plan upsell. decision 21: what a failed license payment left owed comes first (licensingMoney.js).
+  const stage = lc.view.eligible ? wizardStage(lc.view) : 'manage';
+  let cards;
+  if (stage === 'phase1') cards = `${phaseRail('phase1')}${phase1Html(lc.view)}`;
+  else if (stage === 'signin') cards = `${phaseRail('signin')}${phase2Lead()}${phase2Card(lc.view)}`;
+  // Phase 3: connected. The rail reaches Ready and the owner sees their own account and their team's mailboxes, not the
+  // six setup cards again (Cameron, 2026-10-03: "the ui is back to the full old style menu... we consolidated to 3").
+  else if (tenantConnected()) cards = `${phaseRail('manage')}${phase3Lead(lc.view)}${myMailboxHtml()}${mailboxesHtml()}`;
+  // not connected and not eligible: the old account card carries the plan upsell
+  else cards = `${accountHtml()}${tenantHtml()}${agreementHtml()}${mailboxesHtml()}${myMailboxHtml()}${licensesHtml()}${catalogHtml()}`;
+  host.innerHTML = `${headHtml()}${errHtml('load')}<div class="ev-cards">${owedHtml()}${cards}${requestsHtml()}${billingHtml()}${pax8Html()}</div>`;
 }
 
 /* ---------- the head ---------- */
@@ -475,6 +490,7 @@ export function bindLicensingActions(deps) {
     e.preventDefault();
     const a = btn.dataset.licAction;
     if (a === 'refresh') return void send('refresh', 'Reading…', () => load());
+    if (wizardAction(a, btn)) return;
     if (a === 'open-account') return void askAccount();
     if (a === 'open-account-go') return void openAccount();
     if (a === 'open-account-back') { lc.acctConfirm = ''; lc.err.account = ''; paint(); document.getElementById('licBizName')?.focus(); return; }

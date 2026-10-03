@@ -21,7 +21,7 @@ const PING_KEY = 'pragoptics_ping';
 const FIELDS = [
   ['firstName', 'bdFirst', 'First name', 'autocomplete="given-name"'],
   ['lastName', 'bdLast', 'Last name', 'autocomplete="family-name"'],
-  ['businessName', 'bdBusiness', 'Business name (optional)', `autocomplete="organization" maxlength="${BUSINESS_MAX}" aria-describedby="bdBusinessHint"`],
+  ['businessName', 'bdBusiness', 'Legal business name', `autocomplete="organization" maxlength="${BUSINESS_MAX}" aria-describedby="bdBusinessHint"`],
   ['phone', 'bdPhone', 'Phone', 'autocomplete="tel" inputmode="tel"'],
   ['addressLine1', 'bdAddr1', 'Street', 'autocomplete="address-line1"'],
   ['addressLine2', 'bdAddr2', 'Street, line 2 (optional)', 'autocomplete="address-line2"'],
@@ -67,6 +67,7 @@ export function checkDetails(v) {
   if (firstName.length > PART_MAX) return no('firstName', `Your first name is at most ${PART_MAX} characters.`);
   if (!lastName) return no('lastName', 'Give your last name.');
   if (lastName.length > PART_MAX) return no('lastName', `Your last name is at most ${PART_MAX} characters.`);
+  if (!businessName) return no('businessName', "Give your business's legal name; your Microsoft licensing account, tenant and domain are set up from it.");
   if (businessName.length > BUSINESS_MAX) return no('businessName', `A business name is at most ${BUSINESS_MAX} characters.`);
   if (!phone) return no('phone', 'Give a phone number.');
   if (phone.length > PHONE_MAX) return no('phone', `A phone number is at most ${PHONE_MAX} characters.`);
@@ -87,11 +88,11 @@ function readHtml(bp) {
   return `
       <dl class="ev-record ev-registrant" aria-label="Billing details">
         <dt>Name</dt><dd>${esc(bp.customerName || 'not given yet')}</dd><dd>${iconBtn({ acct: 'bd-edit' }, 'edit', 'Change your billing details')}</dd>
-        <dt>Business</dt><dd>${bp.businessName ? esc(bp.businessName) : '<span class="muted">None given</span>'}</dd><dd></dd>
+        <dt>Business</dt><dd>${bp.businessName ? esc(bp.businessName) : '<span class="muted">Needed for licensing. Add it here.</span>'}</dd><dd></dd>
         <dt>Phone</dt><dd>${esc(bp.phone)}</dd><dd></dd>
         <dt>Address</dt><dd>${esc(addressLine(bp))}</dd><dd></dd>
       </dl>
-      <p class="acct-card-note ev-dom-note">Your invoices are made out to ${esc(bp.businessName || bp.customerName || 'you')}. A business name also fills in your Microsoft licensing account's name on Licensing.</p>
+      <p class="acct-card-note ev-dom-note">Your invoices are made out to ${esc(bp.businessName || bp.customerName || 'you')}. Your business's legal name sets up your Microsoft licensing account, your tenant and a domain on Licensing.</p>
       ${S.note ? `<p class="acct-card-note" role="status">${esc(S.note)}</p>` : ''}`;
 }
 function formHtml(bp) {
@@ -100,7 +101,7 @@ function formHtml(bp) {
   return `
       <div class="ev-reg-form">
         ${FIELDS.map(([k, id, label, extra]) => `<label class="acct-label" for="${id}">${esc(label)}</label><input class="acct-input" type="text" id="${id}" data-bd-field="${k}" value="${esc(val[k] || (k === 'country' ? 'US' : ''))}" spellcheck="false" ${extra} />${k === 'businessName'
-          ? `<p class="acct-card-note" id="bdBusinessHint" style="grid-column: 1 / -1; margin: 0 0 4px;">Optional. Your invoices are made out to it, and it fills in your Microsoft licensing account's name on Licensing, where you confirm it. Your own customers see the name on your own Stripe account instead.</p>` : ''}`).join('')}
+          ? `<p class="acct-card-note" id="bdBusinessHint" style="grid-column: 1 / -1; margin: 0 0 4px;">Your business's legal name. Your invoices are made out to it, and Licensing sets up your Microsoft account, your tenant and a domain from it. Your own customers see the name on your own Stripe account instead.</p>` : ''}`).join('')}
       </div>
       <p class="acct-error" id="bdError" ${S.error ? '' : 'hidden'}>${esc(S.error)}</p>
       <div class="ev-dom-actions">
