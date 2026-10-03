@@ -767,10 +767,10 @@ export function signInHtml() {
         <dl class="lic-call-facts">
           <div><dt>Your account name</dt><dd><span class="ev-code">${addr}</span></dd></div>
           <div><dt>Your first password</dt><dd>In an email titled as a Microsoft software order fulfilment, sent from a noreply address. It is not from PragOptics. If it has not arrived, you are waiting on it, and nothing is wrong.</dd></div>
-          <div><dt>Where to sign in</dt><dd>The button below, or the link in that email, or type <span class="ev-code">admin.microsoft.com</span> into your own browser. Any of the three.</dd></div>
+          <div><dt>Where to sign in</dt><dd>The button below, or the link in that email, or type <span class="ev-code">admin.microsoft.com</span> into your own browser. Any of the three. It opens in a new tab and does not send you back here, so close it and return to this page when you are done.</dd></div>
         </dl>
         <div class="acct-actions-row"><a class="btn btn-primary" href="https://admin.microsoft.com" target="_blank" rel="noopener noreferrer">${ico('external')} Open the Microsoft admin portal</a></div>
-        <p class="lic-call-line">Microsoft asks you to set a new password on that first sign-in. Once you do, your tenant activates and your mail licensing goes live. PragOptics then makes your own Microsoft account, the one you will use for your mail, and emails you when it is ready. Step ${STEPS} of ${STEPS} is all that is left after that: approve PragOptics once, on the tenant card.</p>
+        <p class="lic-call-line">Microsoft asks you to set a new password on that first sign-in. Once you do, your tenant activates and your mail licensing goes live. Come back to this page afterwards: nothing sends you back on its own, and step ${STEPS} of ${STEPS} is waiting here for you, which is approving PragOptics once.</p>
       </div>`
   });
 }
