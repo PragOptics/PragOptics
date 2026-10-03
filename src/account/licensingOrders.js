@@ -27,7 +27,7 @@
 
 import { explainLink } from '../components/explainer.js';
 import { iconBtn, armed, btnLabel } from './cards.js';
-import { LIC_URL, lc, st, cardHtml, countWord, money, cents, dayWord, sentence, cap, TERM_NAMES, STATUS_WORDS, loadOffers, billWord, commitWord, ruleWords, licName, perms, me, call, send, sayError, reqLead, reqIcon, errHtml, noteHtml, setNote, kept, forget, withLink, showsLicensing, forgetMarks, stepWord, stepGate, agreementStands } from './licensingShared.js';
+import { LIC_URL, lc, st, cardHtml, countWord, money, cents, dayWord, sentence, cap, TERM_NAMES, STATUS_WORDS, loadOffers, billWord, commitWord, ruleWords, licName, perms, me, call, send, sayError, reqLead, reqIcon, errHtml, noteHtml, setNote, kept, forget, withLink, showsLicensing, forgetMarks, stepWord, stepGate, agreementStands, saveAccountName } from './licensingShared.js';
 import { ask, lineRequestHtml } from './licensingRequests.js';
 import { quoteNew, quoteSeats, fresh, moved, moneyCodes, addChargeWords, addGoLabel, seatChargeWords, planTermLine, notForPlanLine } from './licensingMoney.js';
 
@@ -88,9 +88,17 @@ function acceptFormHtml(v, m, gate = '') {
   const email = who.email || 'the account you are signed in with';
   const intro = 'Microsoft asks someone at your business to accept its Customer Agreement before anything is ordered.';
   if (!n.hasName) {
+    // The agreement records THIS person's name (finding F16). It used to send them to Profile and come back; now the
+    // name is set right here, so step 3 is actionable on its own card (Cameron, 2026-10-03: "make the input field live
+    // there as well"). The server still records the name on the account, so Profile shows it too.
     return `
-    <p class="acct-card-note">${e(intro)} It records the name and email on the account you are signed in with, <strong>${e(email)}</strong>, and that account has no name yet.</p>
-    <p class="acct-card-note ev-note">${e(sentence(n.needsName || 'Add your first and last name on Profile, then accept'))} <a href="#account?section=profile" data-acct-section="profile">Open Profile</a></p>`;
+    <p class="acct-card-note">${e(intro)} Microsoft records the name and email on the account you are signed in with, <strong>${e(email)}</strong>. Add your name here, then accept.</p>
+    <div class="acct-name-fields">
+      <label class="acct-name-field"><span class="acct-label">First name</span><input class="acct-input" id="licMcaFirst" type="text" autocomplete="given-name" spellcheck="false" value="${e(kept('licMcaFirst', n.firstName || ''))}"></label>
+      <label class="acct-name-field"><span class="acct-label">Last name</span><input class="acct-input" id="licMcaLast" type="text" autocomplete="family-name" spellcheck="false" value="${e(kept('licMcaLast', n.lastName || ''))}"></label>
+    </div>
+    <div class="acct-actions-row">${reqLead('mca-name', { lic: 'mca-name' }, 'check', 'Save my name', 'Saving…', '', 'btn-primary')}</div>
+    <p class="lic-hint">This is the name Microsoft records on the agreement. It saves to your account, so <a href="#account?section=profile" data-acct-section="profile">Profile</a> shows it too.</p>`;
   }
   const name = `${n.firstName} ${n.lastName}`.trim();
   return `
@@ -98,6 +106,19 @@ function acceptFormHtml(v, m, gate = '') {
     <label class="ev-agree"><input type="checkbox" id="licMcaAccept" data-keep ${kept('licMcaAccept', false) ? 'checked' : ''} ${gate ? 'disabled' : ''}><span>I accept the <a href="${MCA_URL}" target="_blank" rel="noopener">Microsoft Customer Agreement</a> for <strong>${e(biz)}</strong>.</span></label>
     <div class="acct-actions-row">${reqLead('mca-accept', { lic: 'mca-accept' }, 'check', 'Accept the agreement', 'Accepting…', gate ? `disabled data-tip="${e(gate)}"` : '', 'btn-primary')}</div>
     ${gate ? `<p class="lic-hint">${e(gate)}</p>` : ''}`;
+}
+
+async function saveMcaName() {
+  const first = String(document.getElementById('licMcaFirst')?.value || '').trim();
+  const last = String(document.getElementById('licMcaLast')?.value || '').trim();
+  lc.err.agreement = ''; setNote('agreement', '');
+  if (!first || !last) { lc.err.agreement = 'Give your first and last name.'; st.paint(); document.getElementById(first ? 'licMcaLast' : 'licMcaFirst')?.focus(); return; }
+  await send('mca-name', 'Saving…', async () => {
+    await saveAccountName(first, last);
+    forget('licMcaFirst'); forget('licMcaLast');
+    setNote('agreement', 'Saved. Now tick "I accept" and accept the agreement below.');
+    await st.load();   // the next view sees the name; the card advances to the accept form
+  }, { errKey: 'agreement', fallback: 'Your name could not be saved.' });
 }
 
 async function acceptAgreement() {
@@ -603,6 +624,7 @@ async function takeHolder(btn) {
 /** Handles a data-lic-action this module owns; false when it is not one of them. */
 export function orderAction(a, btn) {
   if (a === 'mca-accept') { acceptAgreement(); return true; }
+  if (a === 'mca-name') { saveMcaName(); return true; }
   if (a === 'add-open') { openAdd(btn); return true; }
   if (a === 'add-cancel') { lc.add = null; lc.err.add = ''; st.paint(); return true; }
   if (a === 'add-confirm') { confirmAdd(); return true; }

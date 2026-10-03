@@ -283,7 +283,9 @@
   box-shadow:
     0 0 0 1px color-mix(in srgb, var(--brand-600) 25%, transparent),
     0 0 16px color-mix(in srgb, var(--brand-purp-solid) 15%, transparent);
-  background:black;
+  /* was background:black, which put dark ink on black in light mode: the dropdown vanished the instant it was clicked
+     (Cameron, flagged repeatedly). Keep the theme-aware ground so the value stays readable while focused. */
+  background:var(--grad);
 }
 
 .form-field{

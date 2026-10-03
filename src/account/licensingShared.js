@@ -61,6 +61,12 @@ export function call(path, method = 'POST', payload = {}) {
   return st.D.apiFetch(url(path), { method, headers: { 'Content-Type': 'application/json' }, body: body(payload) });
 }
 
+/** The signed-in person's own first/last name, saved through the account preferences route (not a tenant route, so no
+ *  team param). The Microsoft Customer Agreement records this name, so step 3 can set it without leaving for Profile. */
+export function saveAccountName(firstName, lastName) {
+  return st.D.apiFetch(`${PRAG_API_BASE}/account/preferences`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ firstName, lastName }) });
+}
+
 /** What the person looking may do, as the server says (auth/licensing.js describe). Read only when it says nothing. */
 export function perms() {
   const v = lc.view || {};

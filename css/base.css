@@ -60,6 +60,11 @@ input[type="checkbox"]:checked::before { transform: scale(1); }
 input[type="checkbox"]:focus-visible { outline: 2px solid var(--brand-600); outline-offset: 2px; }
 input[type="checkbox"]:disabled { opacity: .45; cursor: not-allowed; }
 
+/* Safety net (2026-10-03): any select on the site, even a bare one with no class, gets readable theme colors and lets
+   its native option list follow the theme, so none can ever render dark-ink-on-dark or vanish in light mode. Styled
+   selects (.acct-select, .adm-select, the console's own) override these with their higher specificity. */
+select { color: var(--ink); background-color: var(--surface-deep); color-scheme: inherit; }
+
 select.acct-select, select.acct-input, .acct-modal select {
   -webkit-appearance: none; -moz-appearance: none; appearance: none;
   cursor: pointer;
