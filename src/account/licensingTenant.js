@@ -169,7 +169,9 @@ function factsHtml(m, p) {
     : m.domainPrefix && m.tenantText ? `<p class="acct-card-note ev-note">${e(sentence(m.tenantText))}</p>` : '';
   const why = m.locked && m.lockedText ? `<p class="lic-hint">${e(sentence(m.lockedText))}</p>` : m.domainPrefix && !m.locked ? '<p class="lic-hint">The name can change until mail or a license is ordered.</p>' : '';
   const edit = p.canNameTenant && !m.locked ? `<div class="acct-actions-row">${iconBtn({ lic: 'tn-edit' }, 'edit', 'Change the tenant')}</div>` : '';
-  return `<div class="lic-facts">${rows.join('')}</div>${state}${why}${edit}${connectionHtml(m, p)}${adminAskHtml(m, p)}`;
+  // step 6 is its own card now (connectHtml, below): it was rendering here, inside the card titled "Step 2 of 6",
+  // exactly as step 5 was (Cameron, 2026-10-02: "why is that step 2").
+  return `<div class="lic-facts">${rows.join('')}</div>${state}${why}${edit}${adminAskHtml(m, p)}`;
 }
 
 /* ---------- Part 2: the connection into the tenant, and what runs through it ---------- */
@@ -184,7 +186,7 @@ function ordered(v, m) {
 
 function connectionHtml(m, p) {
   const e = st.D.escapeHtml;
-  const head = '<h4 class="lic-sub">The connection</h4>';
+  const head = '';   // the card's own title says it now (connectHtml)
   const t = tn();
   // decision 16: a tenant PragOptics has Microsoft make (a new name, no ID yet) is connected by PragOptics, never by the
   // customer: nothing to do before the first order, and nothing to do while it is being connected after it. The server
@@ -770,5 +772,27 @@ export function signInHtml() {
         <div class="acct-actions-row"><a class="btn btn-primary" href="https://admin.microsoft.com" target="_blank" rel="noopener noreferrer">${ico('external')} Open the Microsoft admin portal</a></div>
         <p class="lic-call-line">Microsoft asks you to set a new password on that first sign-in. Once you do, your tenant activates and your mail licensing goes live. PragOptics then makes your own Microsoft account, the one you will use for your mail, and emails you when it is ready. Step ${STEPS} of ${STEPS} is all that is left after that: approve PragOptics once, on the tenant card.</p>
       </div>`
+  });
+}
+
+/* ---------- step 6: the connection, on its own card ---------- */
+
+/**
+ * ITS OWN CARD (2026-10-02), for the same reason step 5 got one: it rendered inside the tenant card, which is step 2.
+ * The consent this collects IS the connection, so it is the last thing the owner does and it deserves to be findable.
+ */
+export function connectHtml() {
+  if (!showsLicensing()) return '';
+  const v = lc.view, m = v?.microsoft || {}, p = perms();
+  if (!m.tenantId && !m.domainPrefix) return '';          // nothing named yet: step 2's business
+  const t = tn();
+  if (t?.connected) return '';                            // done: the tenant card carries the facts
+  const inner = connectionHtml(m, p);
+  if (!inner) return '';
+  const waiting = !!t?.platformConnecting;
+  const summary = t?.autoStuck ? 'yours to do now' : waiting ? 'PragOptics is connecting it' : 'not connected yet';
+  return cardHtml({
+    key: 'tenant-connect', icon: 'plug', title: 'Connect your tenant', summary: stepWord('connected', st.D.escapeHtml(summary)),
+    open: !waiting, body: `${noteHtml('tenant-connect')}${errHtml('tenant-connect')}${inner}`
   });
 }
