@@ -766,7 +766,7 @@ export function signInHtml() {
         <p class="lic-call-head">Sign in once, and set your password</p>
         <p class="lic-call-line">Only you can do this. Microsoft lets no one else set ${who}'s first password, so nothing else moves until it is done.</p>
         <dl class="lic-call-facts">
-          <div><dt>Your account name</dt><dd><span class="ev-code">${addr}</span></dd></div>
+          <div><dt>Your account name</dt><dd><span class="ev-code" id="licMsUpn">${addr}</span></dd></div>
           <div><dt>Your first password</dt><dd>In the mail from Pax8, our license distributor, titled as a Microsoft software order fulfilment and sent from a noreply address. You need it <strong>twice</strong>: once to sign in, then again to change it to a password of your own. If it has not arrived, you are waiting on it, and nothing is wrong.</dd></div>
           <div><dt>Where to sign in</dt><dd>The button below copies your sign-in name and opens Microsoft in a new tab. The link in that mail works too, as does typing <span class="ev-code">admin.microsoft.com</span> yourself. Microsoft does not send you back, so return to this page when you are done.</dd></div>
         </dl>
@@ -786,10 +786,12 @@ async function goToMicrosoft(btn) {
   const upn = String(btn?.dataset?.upn || '');
   const line = document.getElementById('licMsGo');
   const say = (text) => { if (line) { line.textContent = text; line.hidden = !text; } };
-  const copied = upn ? await copyButton(btn, upn) : false;
+  // when the clipboard is refused (an embedded browser, a page without the permission), copyButton selects the address
+  // on the card instead, so Ctrl and C still works and the person is never left to retype it
+  const copied = upn ? await copyButton(btn, upn, { select: () => document.getElementById('licMsUpn') }) : false;
   say(copied
     ? `${upn} is on your clipboard. Paste it at Microsoft with Ctrl and V, or right click and Paste. Your first password is in the mail from Pax8, our license distributor, and you need it twice: once to sign in, then again to change it to one of your own. When you are done, come back here and do step ${STEPS} of ${STEPS}.`
-    : `Sign in as ${upn || 'your administrator account'}. Your first password is in the mail from Pax8, our license distributor, and you need it twice: once to sign in, then again to change it to one of your own. When you are done, come back here and do step ${STEPS} of ${STEPS}.`);
+    : `Your browser would not let the page copy for you, so ${upn || 'your administrator account'} is selected above: press Ctrl and C to take it. Your first password is in the mail from Pax8, our license distributor, and you need it twice: once to sign in, then again to change it to one of your own. When you are done, come back here and do step ${STEPS} of ${STEPS}.`);
   // a beat to read it before the new tab takes the foreground
   await new Promise(r => setTimeout(r, 1400));
   window.open('https://admin.microsoft.com', '_blank', 'noopener,noreferrer');
