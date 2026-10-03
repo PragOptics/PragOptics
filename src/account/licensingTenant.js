@@ -227,9 +227,18 @@ function connectionHtml(m, p) {
     // step 5 is its own card now (signInHtml, at the end of this file). It used to render HERE, inside the card
     // titled "Step 2 of 6", so a card labelled step 2 contained step 5, and all of it was invisible while that card
     // sat folded (Cameron, 2026-10-02: "why is it step 2 all of a sudden... there is no step 5 or 6 visible").
-    if ((t.madeByPlatform || t.adminLogin) && !t.ownerAccount) return '';
-    const made = t.madeByPlatform ? `<p class="acct-card-note"><span class="lic-step">Step ${stepNo('connected')} of ${STEPS}</span> · Your Microsoft account <span class="ev-code">${e(t.ownerAccount.upn)}</span> is ready and runs ${who}. See its first password once on your My mailbox card, then press Connect your tenant, sign in with that account when Microsoft asks, and approve PragOptics once.</p>` : '';
-    return `<div class="lic-admin">${head}${lost}${ro}${made}
+    // CONNECT STAYS OFFERED WHILE THE OWNER ACCOUNT IS BEING MADE (2026-10-02). Moving step 5 to its own card made this
+    // branch return nothing for a platform-made tenant without an owner account yet, which took the Connect button with
+    // it. That button is step 6 and it is the whole point: the consent it collects IS the connection, and the admin
+    // account the distributor mailed can give it. Waiting on PragOptics to make the owner's account first is a
+    // convenience, not a requirement, and on this walk it left the owner with no way forward at all for three hours.
+    const whoSignsIn = t.ownerAccount
+      ? `<p class="acct-card-note"><span class="lic-step">Step ${stepNo('connected')} of ${STEPS}</span> · Your Microsoft account <span class="ev-code">${e(t.ownerAccount.upn)}</span> is ready and runs ${who}. See its first password once on your My mailbox card, then press Connect your tenant, sign in with that account when Microsoft asks, and approve PragOptics once.</p>`
+      : t.adminLogin
+        ? `<p class="acct-card-note"><span class="lic-step">Step ${stepNo('connected')} of ${STEPS}</span> · Press Connect your tenant and sign in as <span class="ev-code">${e(t.adminLogin)}</span>, the administrator you set a password for in step ${stepNo('msSignIn')}, then approve PragOptics once. PragOptics is also making you your own Microsoft account in ${who}; you do not have to wait for it to do this.</p>`
+        : '';
+    return `<div class="lic-admin">${head}${lost}${ro}${whoSignsIn}
+      ${t.autoStuck ? `<p class="acct-card-note ev-note">PragOptics has not been able to connect ${who} on its own, so this is open to you. Your approval is the connection; PragOptics keeps trying underneath and nothing is lost either way.</p>` : ''}
       <p class="acct-card-note">${t.madeByPlatform ? 'The link works once and for ten minutes.' : `Connect ${who} so PragOptics can make each seat's mailbox, add your domains to it and switch your mail. You sign in at Microsoft as an administrator of that tenant, approve PragOptics for your organization, and come back here. The link works once and for ten minutes.`}</p>
       <div class="acct-actions-row">${reqLead('tn-connect', { lic: 'tn-connect' }, 'external', t.lost ? 'Connect it again' : 'Connect your tenant', 'Opening Microsoft…', '', 'btn-primary')}</div>
     </div>`;
