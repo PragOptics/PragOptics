@@ -101,7 +101,13 @@ function endingsHtml(p) {
   const word = (l) => {
     const x = l.pax8;
     if (x.state === 'sent') return `Pax8 took the cancellation on ${fmt(x.sentAt)} for ${x.endsAt ? fmt(x.endsAt) : 'its end date'}`;
-    if (x.state === 'waiting') return 'not sent to Pax8 yet; the sweep runs every hour at :20';
+    if (x.state === 'waiting') {
+      // the sweep sends a cancellation three days before the term's end, never inside the order's seven-day window
+      const p = x.plan || {};
+      if (p.dueNow) return 'due: the next sweep (every hour at :20) sends Pax8 the cancellation';
+      if (p.sendsAt) return `the sweep sends Pax8 the cancellation on ${fmt(p.sendsAt)}, three days before the term ends${p.termEndsAt ? ` on ${fmt(p.termEndsAt)}` : ''}${p.windowClosesAt && Date.parse(p.windowClosesAt) > Date.now() ? ` (never inside the order's first seven days, which run to ${fmt(p.windowClosesAt)})` : ''}`;
+      return 'waiting for the sweep: the term end is not known yet';
+    }
     if (x.state === 'stuck') return `Pax8 refused it${x.stuck?.tries ? ` ${x.stuck.tries} times` : ''}: ${x.stuck?.lastError || 'no reason kept'}`;
     return 'nothing at Pax8 (a test-lane order)';
   };
