@@ -14,6 +14,8 @@
 //   POST v1/admin/licensing/pax8/webhook        point Pax8 at this lane (made or brought up to date)
 //   POST v1/admin/licensing/pax8/webhook/test   { topic }  Pax8 sends that topic's sample payload here
 //   GET  v1/admin/licensing/pax8/events         the last deliveries received
+//   GET  v1/admin/licensing/endings             every license set to end or ended, with what the sweep sent Pax8 and when
+//                                               (2026-10-04, Cameron: "make damn sure the sweep ran and sent that")
 //   POST v1/admin/licensing/prices/ahead        { productId, billingTerm, commitmentMonths, newListCents, effectiveAt,
 //                                               remove? }  a Microsoft price change entered ahead (decision 37(11)): Pax8
 //                                               shows a new price only once it is current, Microsoft announces it
@@ -89,7 +91,27 @@ async function saveSegment() {
   }, 'Who it is sold to could not be saved.');
 }
 
-function ps() { return lc.p8 || (lc.p8 = { report: null, hook: null, events: null, topic: '' }); }
+function ps() { return lc.p8 || (lc.p8 = { report: null, hook: null, events: null, topic: '', endings: null }); }
+
+/** Every license set to end or ended on the lane, with what the sweep sent Pax8 and when (2026-10-04, GET v1/admin/licensing/endings). */
+function endingsHtml(p) {
+  const d = p.endings;
+  if (!d) return '';
+  const e = st.D.escapeHtml, fmt = st.D.fmtDate;
+  const word = (l) => {
+    const x = l.pax8;
+    if (x.state === 'sent') return `Pax8 took the cancellation on ${fmt(x.sentAt)} for ${x.endsAt ? fmt(x.endsAt) : 'its end date'}`;
+    if (x.state === 'waiting') return 'not sent to Pax8 yet; the sweep runs every hour at :20';
+    if (x.state === 'stuck') return `Pax8 refused it${x.stuck?.tries ? ` ${x.stuck.tries} times` : ''}: ${x.stuck?.lastError || 'no reason kept'}`;
+    return 'nothing at Pax8 (a test-lane order)';
+  };
+  const cls = (l) => l.pax8.state === 'sent' || l.pax8.state === 'none' ? '' : l.pax8.state === 'stuck' ? 'is-bad' : 'is-warn';
+  return `
+    <div class="p8-report p8-endings">
+      <p class="acct-card-note">Read ${e(fmt(d.at))}: ${e(countWord(d.lines.length, 'ending', 'endings'))}, ${e(String(d.sent))} sent to Pax8, ${e(String(d.waiting))} waiting for the sweep, ${e(String(d.stuck))} stuck, ${e(String(d.none))} test-lane.</p>
+      ${d.lines.length ? `<ul class="p8-list">${d.lines.map(l => `<li class="${cls(l)}"><b>${e(l.organizationName || l.environmentId.slice(0, 8))}</b> ${e(l.productName)} × ${e(String(l.quantity))}${l.included ? ' (included)' : ''}${l.ownerStatus === 'CLOSED' ? ' · account closed' : ''}: ${l.status === 'CANCELED' ? `ended ${e(fmt(l.canceledAt))}` : `ends ${e(fmt(l.cancelAt))}`}; ${e(word(l))}${l.bill.stopped ? '' : '; still on the customer\'s bill until the sweep'}</li>`).join('')}</ul>` : '<p class="acct-card-note">No license is set to end on this lane.</p>'}
+    </div>`;
+}
 
 export function pax8Html() {
   if (!isOperator() || !lc.view?.account) return '';
@@ -114,8 +136,10 @@ export function pax8Html() {
       <div class="acct-actions-row act-row">
         ${reqLead('p8-check', { lic: 'p8-check' }, 'search', 'Check against Pax8', 'Checking…', '', 'btn-primary')}
         ${reqLead('p8-sync', { lic: 'p8-sync' }, 'zap', 'Sync the webhook', 'Syncing…', 'data-tip="Points Pax8 at this lane, with every subscription and provisioning event"')}
+        ${reqLead('p8-endings', { lic: 'p8-endings' }, 'refresh', 'Endings at Pax8', 'Reading…', 'data-tip="Every license set to end or ended, with what the sweep sent Pax8 and when"')}
       </div>
       ${reportHtml}
+      ${endingsHtml(p)}
       ${hook ? `<p class="acct-card-note p8-hook">Webhook ${e(hook.created ? 'made' : 'up to date')}: ${hook.topics.map(t => `<b>${e(t.topic)}</b> (${e(t.actions.join(', ').toLowerCase())})`).join(', ')}.</p>
         <div class="tm-inline-edit p8-test">
           <select class="acct-input" id="licP8Topic" data-keep aria-label="Topic to test">${topics.map(t => `<option value="${e(t)}" ${kept('licP8Topic', p.topic) === t ? 'selected' : ''}>${e(t)}</option>`).join('')}</select>
@@ -148,6 +172,7 @@ export function pax8Action(a) {
     return true;
   }
   if (a === 'p8-events') { run('p8-events', 'Reading the events…', async () => { const d = await st.D.apiFetch(`${P8}/events`); p.events = d.events || []; }, 'The events could not be read.'); return true; }
+  if (a === 'p8-endings') { run('p8-endings', 'Reading…', async () => { p.endings = await st.D.apiFetch(`${ADM}/endings`); }, 'The endings could not be read.'); return true; }
   if (a === 'adm-price') { priceAhead(false); return true; }
   if (a === 'adm-price-remove') { priceAhead(true); return true; }
   if (a === 'adm-seg') { saveSegment(); return true; }
