@@ -1012,10 +1012,6 @@ const TEAM_ACTIONS = {
 const TENANT_ACTIONS = {
   repair: (tb) => repairTenant(tb),
   'real-orders': (tb) => toggleRealOrders(tb),
-  'pc-connect': (tb) => connectPartnerCenter(tb),
-  'pc-forget': (tb) => forgetPartnerCenter(tb),
-  'auto-connect': (tb) => runAutoConnect(tb),
-  'gdap-diag': (tb) => runGdapDiagnostic(tb),
   conduct: (tb) => {
     const done = busy(tb, 'Opening…');
     import('./conductDesk.js')
@@ -1126,58 +1122,6 @@ async function repairTenant(btn) {
   } finally { done(); }
 }
 
-/* RUN THE AUTOMATIC CONNECT NOW (2026-09-29; backend POST v1/admin/tenants/{environmentId}/auto-connect). On a tenant the
- * platform made, the whole chain runs on the press, connected already or not: the admin relationship, the group's roles,
- * the app consented again through Partner Center, the tenant read as the on-behalf-of user. The row then says where it
- * landed. How the platform's own path is proven on a tenant a person connected first, and the re-run after a fix. */
-async function runAutoConnect(btn) {
-  const name = btn.dataset.name || 'this team';
-  if (!armed(btn, 'Run it?', { keep: 'Do not run it' })) return;
-  D.showError('tnError', '');
-  const done = busy(btn, `Connecting ${name} on its own…`);
-  try {
-    const d = await D.apiFetch(`${ADMIN_TENANTS_URL}/${encodeURIComponent(btn.dataset.env)}/auto-connect`, { method: 'POST' });
-    const r = d?.result || {};
-    const main = document.getElementById('acctMain');
-    if (main) await renderTenants(main, D);
-    if (r.done && r.consentExisted) partnerCenterFlash(`${name}: ${r.orgName || 'the tenant'} was consented already; the platform's own connection through the partner relationship is verified.`);
-    else if (r.done) partnerCenterFlash(`${name}: ${r.orgName || 'the tenant'} connected by the platform through the partner relationship.`);
-    else if (r.busy) partnerCenterFlash(`${name}: ${r.why}`);
-    else D.showError('tnError', `${name}: ${r.why || AUTO_WORDS[r.status] || r.status || 'not connected yet'}`);
-  } catch (ex) {
-    D.showError('tnError', ex?.sessionInvalidated ? '' : (ex?.data?.error || D.friendlyError(ex, 'The automatic connect did not run.')));
-  } finally { done(); }
-}
-
-/* WHAT PARTNER CENTER ITSELF SAYS (2026-10-02; backend GET v1/admin/tenants/{environmentId}/gdap-diagnostic). The route
- * has existed since the auto-connect was built and nothing could press it, so a stuck connect could only be read as our
- * own error string. It reads the relationship, every access assignment with its status, and the operations, next to the
- * row's own fields. Read only. This is how "assigning" is told apart from an assignment Microsoft never activated. */
-async function runGdapDiagnostic(btn) {
-  const name = btn.dataset.name || 'this team';
-  D.showError('tnError', '');
-  const done = busy(btn, `Reading ${name} at Partner Center…`);
-  try {
-    const d = await D.apiFetch(`${ADMIN_TENANTS_URL}/${encodeURIComponent(btn.dataset.env)}/gdap-diagnostic`);
-    const rels = Array.isArray(d?.relationships) ? d.relationships : [];
-    const lines = rels.map((r) => {
-      const asg = (r.assignments || []).map((a) => `${a.status || '?'}${a.id ? ` (${String(a.id).slice(0, 8)})` : ''}`).join(', ') || 'none';
-      return `${r.displayName || r.relationshipId}: relationship ${r.status || '?'}${r.activatedAt ? `, activated ${r.activatedAt}` : ', never activated'}; assignments ${asg}`;
-    });
-    // Microsoft's own facts first (2026-10-03): whether the app can read the tenant right now (consent effective) and
-    // when Microsoft actually made it, then the relationship and assignment state. The real picture in one line.
-    const m = d?.microsoft || {};
-    const msBit = m.readable
-      ? `Microsoft: readable, made ${m.createdDateTime || '?'}`
-      : `Microsoft: NOT readable${m.code ? ` (${m.code})` : ''}${m.error ? ` ${m.error}` : ''}`;
-    const msg = `${name}: ${msBit}. Group ${d?.groupId || '?'}; row ${d?.row?.gdapStatus || '?'}, consent ${d?.row?.consentVerifiedAt ? 'verified' : (d?.row?.consentAt ? 'recorded' : 'none')}. ${lines.join(' | ') || 'no relationship found'}`;
-    partnerCenterFlash(msg);
-    try { console.log('[gdap-diagnostic]', JSON.stringify(d, null, 1)); } catch { /* fine */ }
-  } catch (ex) {
-    D.showError('tnError', ex?.sessionInvalidated ? '' : (ex?.data?.error || D.friendlyError(ex, 'The diagnostic did not run.')));
-  } finally { done(); }
-}
-
 /* THE REAL ORDERS SWITCH (Part 1 close-out, 2026-09-24; backend auth/realOrders.js, v1/admin/real-orders). The dev lane
  * runs Pax8 in test mode: every order is validated and nothing is placed at Microsoft. To prove the first real order
  * without flipping the whole lane, the operator arms ONE environment from this desk: its orders are placed and charged at
@@ -1192,95 +1136,14 @@ function tnFlash(text) {
   el.hidden = !text;
 }
 /** The line above the desk on the dev lane: the lane's note, and which environment is armed now, if any. */
-/* PARTNER CENTER, THE OPERATOR'S ONE SIGN-IN (2026-09-28; backend v1/admin/partner-center). Tenants PragOptics makes
- * connect on their own through the partner relationship, acting as a dedicated on-behalf-of user in the partner tenant;
- * that user signs in once here, with MFA, and the platform keeps only its refresh token. The card says who is signed in
- * and since when, never the token; Connect sends the operator to Microsoft and back to this desk. */
-const PARTNER_CENTER_URL = `${PRAG_API_BASE}/admin/partner-center`;
-function partnerCenterFlash(text, bad = false) {
-  const el = document.getElementById('tnFlash');
-  if (!el) return;
-  el.textContent = text; el.classList.toggle('is-bad', !!bad); el.hidden = !text;
-  // The line is one status for the whole section and stands above the table, so an answer to a button pressed far down
-  // in a row was written somewhere the reader never looks (Cameron, 2026-10-02: "that is up in a spot you can not see,
-  // no where near the card"). Setting it brings the reader to it.
-  if (text) { try { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch { el.scrollIntoView(); } }
-}
-/** The return from Microsoft: #account?section=tenants&pc=connected&upn= or pc=failed&why=, said once and taken off the address. */
-function partnerCenterReturn() {
-  const q = new URLSearchParams(String(location.hash || '').split('?')[1] || '');
-  const pc = q.get('pc');
-  if (!pc) return;
-  if (pc === 'connected' && q.get('mfa') === 'no') partnerCenterFlash(`Partner Center is signed in${q.get('upn') ? ` as ${q.get('upn')}` : ''}, but the sign-in has no multi-factor authentication and Partner Center refuses it. Enforce multi-factor authentication for that account in the partner tenant, then Sign Partner Center out and connect again.`, true);
-  else if (pc === 'connected') partnerCenterFlash(`Partner Center is signed in${q.get('upn') ? ` as ${q.get('upn')}` : ''}${q.get('mfa') === 'yes' ? ' with multi-factor authentication' : ''}. Tenants PragOptics makes now connect on their own.`);
-  else partnerCenterFlash(q.get('why') || 'The Partner Center sign-in did not complete.', true);
-  try { history.replaceState(null, '', '#account?section=tenants'); } catch { /* the flash still shows */ }
-}
-async function loadPartnerCenter() {
-  const host = document.getElementById('tnPartnerCenter');
-  if (!host) return;
-  const e = D.escapeHtml;
-  let d = null;
-  try { d = await D.apiFetch(PARTNER_CENTER_URL); } catch (ex) { if (ex?.status === 404) { host.innerHTML = ''; return; } host.innerHTML = `<p class="adm-note tn-real">${e(D.friendlyError(ex, 'Partner Center could not be read.'))}</p>`; return; }
-  if (!host.isConnected) return;
-  // one card, the panel's own (2026-09-28, Cameron: the desk read as scattered text): the state in the summary, one
-  // sentence and one labelled button in the body; the sign-out is a two-press confirm, never a bare icon
-  let summary, body;
-  if (!d?.configured) {
-    summary = 'not set up on this lane';
-    body = `<p class="acct-card-note">Not set up on this lane: MS_PARTNER_TENANT_ID, MS_PC_VAULT and the app's Partner Center permission. Until it is, a tenant PragOptics makes waits on this desk for Connect this tenant.</p>`;
-  } else if (d.signedIn) {
-    summary = `signed in as ${d.upn || 'the on-behalf-of user'}`;
-    body = `
-      <div class="lic-facts">
-        <div class="lic-fact"><span class="lic-k">Signed in as</span><span class="lic-v"><span class="ev-code">${e(d.upn || '')}</span></span></div>
-        ${d.savedAt ? `<div class="lic-fact"><span class="lic-k">Since</span><span class="lic-v">${e(D.fmtDate(d.savedAt))}</span></div>` : ''}
-        ${d.rotatedAt ? `<div class="lic-fact"><span class="lic-k">Renewed</span><span class="lic-v">${e(D.fmtDate(d.rotatedAt))}</span></div>` : ''}
-        <div class="lic-fact"><span class="lic-k">Multi-factor</span><span class="lic-v">${d.mfa === true ? 'yes' : d.mfa === false ? '<span class="acct-tag is-bad">no: Partner Center refuses this sign-in</span>' : 'not checked yet'}</span></div>
-      </div>
-      ${d.mfa === false ? `<p class="acct-card-note">Microsoft requires multi-factor authentication on every Partner Center call. Enforce it for this account in the partner tenant, then Sign Partner Center out and connect again; the prompt must appear.</p>` : `<p class="acct-card-note">Tenants PragOptics makes connect on their own. The sign-in renews itself by use and lapses after 90 days unused.</p>`}
-      <div class="acct-actions-row">${leadBtn({ tenant: 'pc-forget' }, 'x', 'Sign Partner Center out', '', 'btn-quiet')}</div>
-      <p class="lic-hint">Signed out, a tenant PragOptics makes waits on this desk for Connect this tenant until the next sign-in.</p>`;
-  } else {
-    summary = 'not signed in';
-    body = `
-      <p class="acct-card-note">The platform's on-behalf-of user in the partner tenant signs in once, with MFA. After that, tenants PragOptics makes connect on their own; until then each waits on this desk for Connect this tenant.</p>
-      <div class="acct-actions-row">${leadBtn({ tenant: 'pc-connect' }, 'link', 'Connect Partner Center', '', 'btn-primary')}</div>`;
-  }
-  host.innerHTML = cardHtml({ key: 'tenants:partner-center', icon: 'link', title: 'Partner Center', summary: e(summary), body });
-  initCards();
-}
-async function connectPartnerCenter(btn) {
-  const done = busy(btn, 'Opening Microsoft…');
-  try {
-    const d = await D.apiFetch(`${PARTNER_CENTER_URL}/connect?origin=${encodeURIComponent(location.origin)}`);
-    if (!d?.url) throw new Error('No sign-in address came back.');
-    location.href = d.url;
-  } catch (ex) { done(); D.showError('tnError', D.friendlyError(ex, 'The Partner Center sign-in could not be started.')); }
-}
-async function forgetPartnerCenter(btn) {
-  if (!armed(btn, 'Sign Partner Center out?', { keep: 'Stay signed in' })) return;
-  const done = busy(btn, 'Signing out…');
-  try { await D.apiFetch(`${PARTNER_CENTER_URL}/forget`, { method: 'POST' }); partnerCenterFlash('Partner Center signed out.'); await loadPartnerCenter(); }
-  catch (ex) { D.showError('tnError', D.friendlyError(ex, 'Could not sign Partner Center out.')); }
-  finally { done(); }
-}
-
-/* The environment's Microsoft tenant on its row (2026-09-28; backend adminTenants microsoft): its name, and for a tenant the
- * platform made, where the automatic connect stands, in words, so the desk says what the platform is doing right now. */
-const AUTO_WORDS = {
-  'waiting-relationship': 'waiting for the admin relationship from the distributor', approving: 'approving the admin relationship', assigning: 'assigning the roles',
-  assigned: 'roles assigned; consenting the app', consented: 'app consented; reading the tenant', connected: 'connected', retrying: 'retrying next hour', 'needs-operator': 'stopped: see Needs attention',
-  'owner-ready': "the owner's own account is ready; the owner approves once", 'owner-seat': "waiting for the owner's mailbox seat"
-};
 function tenantLineHtml(t) {
   const m = t.microsoft;
   if (!m) return '';
   const e = D.escapeHtml;
-  const state = m.connected ? `connected${m.consentBy === 'platform' ? ' by the platform' : m.consentVerifiedAt ? "; the platform's connection verified" : ''}` : m.madeByPlatform ? (AUTO_WORDS[m.autoConnect?.status] || (m.tenantId ? 'made; connecting on the next pass' : 'ordered; waiting for Microsoft')) : (m.tenantId ? 'not connected' : 'named');
-  const cls = m.connected ? 'is-verified' : m.autoConnect?.status === 'needs-operator' ? 'is-bad' : 'is-pending';
-  const err = !m.connected && m.autoConnect?.error ? ` title="${e(m.autoConnect.error)}"` : '';
-  return `<div class="adm-muted tn-ms"><span class="acct-tag ${cls}"${err}>tenant: ${e(state)}</span> <span class="ev-code">${e(m.name)}</span></div>`;
+  const state = m.connected ? 'connected' : m.madeByPlatform ? (m.tenantId ? 'made; waiting for the owner to connect' : 'ordered; waiting for Microsoft') : (m.tenantId ? 'not connected' : 'named');
+  const cls = m.connected ? 'is-verified' : 'is-pending';
+  const mode = m.connected && m.accessMode ? ` <span class="acct-tag ${m.accessMode === 'app' ? 'is-verified' : 'is-bad'}" title="${m.accessMode === 'app' ? "App consent: an app-only token on the customer's permanent consent; it does not expire with GDAP" : 'On-behalf-of: the removed partner path; reconnect this tenant through the wizard'}">access: ${e(m.accessMode)}</span>` : '';
+  return `<div class="adm-muted tn-ms"><span class="acct-tag ${cls}">tenant: ${e(state)}</span>${mode} <span class="ev-code">${e(m.name)}</span></div>`;
 }
 
 function realOrdersLineHtml(d, rows) {
@@ -1343,11 +1206,8 @@ export async function renderTenants(main, deps) {
     <p class="adm-note">Every team on the platform: who owns it, its plan, its storage against the allowance, seats in use. Counts and names only; tenant data never renders here. Repair runs the one-pass provisioning for an environment that stalled: it creates what is missing and changes nothing that exists.</p>
     <p class="adm-error" id="tnError" hidden></p>
     <p class="na-flash" id="tnFlash" role="status" aria-live="polite" hidden></p>
-    <div id="tnPartnerCenter"></div>
     <div id="tnBody"><p class="adm-note">Loading…</p></div>
   `;
-  partnerCenterReturn();
-  loadPartnerCenter();
   const host = document.getElementById('tnBody');
   try {
     const d = await D.apiFetch(ADMIN_TENANTS_URL);
@@ -1369,7 +1229,7 @@ export async function renderTenants(main, deps) {
                 <td class="adm-num cell-tight">${e(String(t.seats?.used ?? 0))} / ${e(String(t.seats?.limit ?? 0))}${Number(t.seats?.pending) ? `<div class="adm-muted">+${e(String(t.seats.pending))} pending</div>` : ''}</td>
                 <td class="adm-num cell-tight">${e(String(t.members ?? 0))}${Number(t.viewers) ? `<div class="adm-muted">${e(String(t.viewers))} viewer${t.viewers === 1 ? '' : 's'}</div>` : ''}</td>
                 <td class="adm-muted cell-tight">${e(D.fmtDate(t.createdAt))}</td>
-                <td class="cell-tight tm-actions">${repairable(t) ? iconBtn({ tenant: 'repair' }, 'tool', 'Repair: run provisioning', `data-user="${e(t.ownerUserId)}" data-name="${e(t.organizationName || t.ownerEmail || 'this team')}"`) : ''}${iconBtn({ tenant: 'conduct' }, 'shield', 'Community standards', `data-env="${e(t.environmentId)}"`)}${t.microsoft?.madeByPlatform && t.microsoft?.tenantId && t.microsoft?.consentBy !== 'platform' ? iconBtn({ tenant: 'auto-connect' }, 'plug', t.microsoft.connected ? "Move it onto the platform's own connection now" : 'Run the automatic connect now', `data-env="${e(t.environmentId)}" data-name="${e(t.organizationName || t.ownerEmail || 'this team')}"`) + iconBtn({ tenant: 'gdap-diag' }, 'search', 'What Partner Center says about this tenant', `data-env="${e(t.environmentId)}" data-name="${e(t.organizationName || t.ownerEmail || 'this team')}"`) : ''}${realOrdersBtnHtml(t, realOrdersOn)}${t.conduct && (t.conduct.held || t.conduct.sitesHeld?.live || t.conduct.sitesHeld?.sandbox) ? `<div><span class="acct-tag is-bad" title="${e(t.conduct.held ? 'Suspended for the community standards' : 'Sites taken down for the community standards')}">held</span></div>` : ''}</td>
+                <td class="cell-tight tm-actions">${repairable(t) ? iconBtn({ tenant: 'repair' }, 'tool', 'Repair: run provisioning', `data-user="${e(t.ownerUserId)}" data-name="${e(t.organizationName || t.ownerEmail || 'this team')}"`) : ''}${iconBtn({ tenant: 'conduct' }, 'shield', 'Community standards', `data-env="${e(t.environmentId)}"`)}${realOrdersBtnHtml(t, realOrdersOn)}${t.conduct && (t.conduct.held || t.conduct.sitesHeld?.live || t.conduct.sitesHeld?.sandbox) ? `<div><span class="acct-tag is-bad" title="${e(t.conduct.held ? 'Suspended for the community standards' : 'Sites taken down for the community standards')}">held</span></div>` : ''}</td>
               </tr>`).join('')}
           </tbody>
         </table>
