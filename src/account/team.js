@@ -1202,8 +1202,17 @@ export async function renderTenants(main, deps) {
   D = deps;
   const e = D.escapeHtml;
   main.innerHTML = `
-    <header class="adm-sec-head"><h2 class="adm-sec-title">Tenants</h2></header>
-    <p class="adm-note">Every team on the platform: who owns it, its plan, its storage against the allowance, seats in use. Counts and names only; tenant data never renders here. Repair runs the one-pass provisioning for an environment that stalled: it creates what is missing and changes nothing that exists.</p>
+    <header class="adm-sec-head">
+      <h2 class="adm-sec-title">Tenants</h2>
+      <div class="adm-toolbar">
+        <select class="adm-select" id="tnStatus" aria-label="Which environments to show" title="A closed account's environment stays paused for the retention window, then the nightly purge removes it">
+          <option value="">Open environments</option>
+          <option value="CLOSED">Closed</option>
+          <option value="ALL">All</option>
+        </select>
+      </div>
+    </header>
+    <p class="adm-note">Every team on the platform: who owns it, its plan, its storage against the allowance, seats in use. Counts and names only; tenant data never renders here. Repair runs the one-pass provisioning for an environment that stalled: it creates what is missing and changes nothing that exists. A closed account's environment is kept paused for the retention window and listed under Closed until the purge removes it.</p>
     <p class="adm-error" id="tnError" hidden></p>
     <p class="na-flash" id="tnFlash" role="status" aria-live="polite" hidden></p>
     <div id="tnBody"><p class="adm-note">Loading…</p></div>
@@ -1214,13 +1223,26 @@ export async function renderTenants(main, deps) {
     const rows = d.tenants || [];
     if (!rows.length) { host.innerHTML = `<p class="adm-empty">No tenants yet. The first paying owner to open Team creates one.</p>`; return; }
     const realOrdersOn = !!d.realOrders?.available;
-    host.innerHTML = `
-      ${realOrdersLineHtml(d, rows)}
+    // a closed account's environment stays paused for the retention window, then the purge removes it; the desk reads open
+    // environments by default and keeps the closed ones under their own filter, as the Users desk does (2026-10-04)
+    const isClosed = (t) => String(t.ownerStatus || '').toUpperCase() === 'CLOSED';
+    const pick = (mode) => mode === 'ALL' ? rows : mode === 'CLOSED' ? rows.filter(isClosed) : rows.filter(t => !isClosed(t));
+    // the row's hold tag: a community-standards hold, or the sites a closing took down (never called a hold)
+    const holdTag = (t) => {
+      const c = t.conduct || {};
+      if (!(c.held || c.sitesHeld?.live || c.sitesHeld?.sandbox)) return '';
+      if (c.held) return '<div><span class="acct-tag is-bad" title="Suspended for the community standards">held</span></div>';
+      if (isClosed(t)) return '<div><span class="acct-tag is-pending" title="Its published sites came down when the account closed">sites down</span></div>';
+      return '<div><span class="acct-tag is-bad" title="Sites taken down for the community standards">held</span></div>';
+    };
+    const tableHtml = (list, mode) => !list.length
+      ? `<p class="adm-empty">${mode === 'CLOSED' ? 'No closed environments.' : 'No open environments.'}</p>`
+      : `
       <div class="adm-table-scroll">
         <table class="adm-table adm-table--wrap">
           <thead><tr><th>Team</th><th>Owner</th><th>Plan</th><th>Storage</th><th class="adm-num">Seats</th><th class="adm-num">Members</th><th>Created</th><th></th></tr></thead>
           <tbody>
-            ${rows.map(t => `
+            ${list.map(t => `
               <tr>
                 <td class="cell-ellip" title="${e(t.environmentId)}">${e(t.organizationName || 'Unnamed')}<div class="adm-muted"><code>${e(String(t.environmentId).slice(0, 8))}</code></div>${t.realOrders?.armed ? '<div><span class="acct-tag is-bad" title="Real orders are on: this environment\'s orders are placed at Pax8 and billed to PragOptics">real orders</span></div>' : ''}${tenantLineHtml(t)}</td>
                 <td class="cell-ellip adm-cell-email" title="${e(t.ownerEmail)}">${e(t.ownerEmail || '')}${t.ownerStatus && t.ownerStatus !== 'ACTIVE' ? ` <span class="acct-tag is-pending">${e(String(t.ownerStatus).toLowerCase())}</span>` : ''}</td>
@@ -1229,13 +1251,19 @@ export async function renderTenants(main, deps) {
                 <td class="adm-num cell-tight">${e(String(t.seats?.used ?? 0))} / ${e(String(t.seats?.limit ?? 0))}${Number(t.seats?.pending) ? `<div class="adm-muted">+${e(String(t.seats.pending))} pending</div>` : ''}</td>
                 <td class="adm-num cell-tight">${e(String(t.members ?? 0))}${Number(t.viewers) ? `<div class="adm-muted">${e(String(t.viewers))} viewer${t.viewers === 1 ? '' : 's'}</div>` : ''}</td>
                 <td class="adm-muted cell-tight">${e(D.fmtDate(t.createdAt))}</td>
-                <td class="cell-tight tm-actions">${repairable(t) ? iconBtn({ tenant: 'repair' }, 'tool', 'Repair: run provisioning', `data-user="${e(t.ownerUserId)}" data-name="${e(t.organizationName || t.ownerEmail || 'this team')}"`) : ''}${iconBtn({ tenant: 'conduct' }, 'shield', 'Community standards', `data-env="${e(t.environmentId)}"`)}${realOrdersBtnHtml(t, realOrdersOn)}${t.conduct && (t.conduct.held || t.conduct.sitesHeld?.live || t.conduct.sitesHeld?.sandbox) ? `<div><span class="acct-tag is-bad" title="${e(t.conduct.held ? 'Suspended for the community standards' : 'Sites taken down for the community standards')}">held</span></div>` : ''}</td>
+                <td class="cell-tight tm-actions">${repairable(t) ? iconBtn({ tenant: 'repair' }, 'tool', 'Repair: run provisioning', `data-user="${e(t.ownerUserId)}" data-name="${e(t.organizationName || t.ownerEmail || 'this team')}"`) : ''}${iconBtn({ tenant: 'conduct' }, 'shield', 'Community standards', `data-env="${e(t.environmentId)}"`)}${realOrdersBtnHtml(t, realOrdersOn)}${holdTag(t)}</td>
               </tr>`).join('')}
           </tbody>
         </table>
       </div>
-      ${d.truncated ? `<p class="adm-note">Showing the first ${rows.length}.</p>` : ''}
-    `;
+      ${d.truncated ? `<p class="adm-note">Showing the first ${rows.length}.</p>` : ''}`;
+    const sel = document.getElementById('tnStatus');
+    const mode = () => String(sel?.value || '');
+    host.innerHTML = `${realOrdersLineHtml(d, rows)}<div id="tnTable">${tableHtml(pick(mode()), mode())}</div>`;
+    if (sel && !sel.dataset.bound) {
+      sel.dataset.bound = '1';
+      sel.addEventListener('change', () => { const t = document.getElementById('tnTable'); if (t) t.innerHTML = tableHtml(pick(mode()), mode()); });
+    }
   } catch (ex) {
     host.innerHTML = '';
     if (ex?.status === 404) { host.innerHTML = `<p class="adm-empty">The tenant routes are not on this lane yet. Deploy the backend that carries them, then reload.</p>`; return; }
