@@ -2877,7 +2877,7 @@ function applyUserFilters(users) {
     if (q && !String(u.email || '').toLowerCase().includes(q)) return false;
     // FROZEN is a view, not a status: accounts whose phone changes are paused.
     if (status === 'FROZEN') { if (u.phoneChangesFrozen !== true) return false; }
-    else if (status && String(u.status || '').toUpperCase() !== status) return false;
+    else if (status) { if (String(u.status || '').toUpperCase() !== status) return false; } else if (String(u.status || '').toUpperCase() === 'CLOSED') return false;
     if (tier && String(u.tier || '').toLowerCase() !== tier) return false;
     return true;
   });
@@ -3171,7 +3171,7 @@ async function renderUsers(main) {
       <div class="adm-toolbar">
         <input class="adm-search" id="admUserSearch" type="search" placeholder="Search email…" aria-label="Search users by email">
         <select class="adm-select" id="admUserStatus" aria-label="Filter by status" title="FROZEN is a view: accounts whose phone changes are paused">
-          <option value="">Any status</option>
+          <option value="">Open accounts</option>
           <option value="ACTIVE">Active</option>
           <option value="SUSPENDED">Suspended</option>
           <option value="CLOSED">Closed</option>
