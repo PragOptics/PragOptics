@@ -2939,7 +2939,7 @@ function userManageHtml(u, { self }) {
   const status = String(u.status || '').toUpperCase();
   const closed = status === 'CLOSED';
   const tier = String(u.tier || 'free').toLowerCase();
-  const email = u.email || '';
+  const email = u.email || ''; const noEmail = !String(email).trim();
   const lockTitle = 'You cannot change your own role, status, or admin flag.';
   const lock = self ? `disabled title="${lockTitle}"` : '';
   return `
@@ -3019,12 +3019,12 @@ function userManageHtml(u, { self }) {
       </section>
       <section class="um-sec um-sec--danger">
         <div class="um-sec-h">Close account</div>
-        <p class="acct-modal-note">Permanent. Ends any subscription now, removes the sign-in, and signs the account out everywhere. An account still holding Microsoft license commitments is shown what is left of them first, and closes only once that amount is charged on the customer's final bill. Type the account email to enable the button.</p>
-        <input class="adm-input" id="umCloseEmail" type="email" autocomplete="off" spellcheck="false" placeholder="${escapeHtml(email)}" ${lock} aria-label="Type the account email to confirm">
+        <p class="acct-modal-note">Permanent. Ends any subscription now, removes the sign-in, and signs the account out everywhere. An account still holding Microsoft license commitments is shown what is left of them first, and closes only once that amount is charged on the customer's final bill. ${noEmail ? "This account's email was cleared when it closed, so confirm by its account id instead: copy it below and paste it to enable the button." : 'Type the account email to enable the button.'}</p>
+        ${noEmail ? `<div class="acct-actions-row um-close-idrow"><code class="ev-code um-close-id">${escapeHtml(u.userId)}</code><button class="btn btn-sm btn-ghost" type="button" data-um-copy-id data-tip="Copy the account id" aria-label="Copy the account id">${ico('copy')}<span>Copy id</span></button></div>` : ''}<input class="adm-input" id="umCloseEmail" type="${noEmail ? 'text' : 'email'}" autocomplete="off" spellcheck="false" placeholder="${noEmail ? 'Paste the account id' : escapeHtml(email)}" ${lock} aria-label="${noEmail ? 'Paste the account id to confirm' : 'Type the account email to confirm'}">
         <div class="um-close-bill" id="umCloseBill" role="status" aria-live="polite" hidden></div>
         <div class="um-actions">
           <button class="btn btn-sm btn-lead is-danger" type="button" data-um-close-account disabled
-            data-tip="${self ? lockTitle : 'Enabled once the email above matches this account'}">${ico('power')}<span>Close account</span></button>
+            data-tip="${self ? lockTitle : (noEmail ? 'Enabled once the account id above matches this account' : 'Enabled once the email above matches this account')}">${ico('power')}<span>Close account</span></button>
         </div>
       </section>
       <p class="acct-error" id="umError" hidden></p>
@@ -3058,7 +3058,9 @@ function paintCloseBill(um) {
 /** Whether the email typed to enable the close is this account's. */
 function closeMatches(um) {
   const typed = (um.$('#umCloseEmail')?.value || '').trim().toLowerCase();
-  return !!typed && typed === String(um.row.email || '').trim().toLowerCase();
+  // the email is cleared when an account closes; a row with no email is confirmed by its account id instead
+  const want = String(um.row.email || '').trim().toLowerCase() || String(um.row.userId || '').trim().toLowerCase();
+  return !!typed && typed === want;
 }
 /** One change to the account (role, flags, status, phone freeze, second-factor reset), its button busy while it is out; the window repaints from the answer. */
 async function runPatch(btn, patch, um) {
@@ -3113,6 +3115,7 @@ const USER_MANAGE_ACTIONS = [
     armConfirm(btn, `Confirm: ${next === 'ACTIVE' ? 'reactivate' : 'suspend'} ${um.row.email || ''}`, () => runPatch(btn, { status: next }, um));
   }],
   ['[data-um-unfreeze]', (btn, um) => runPatch(btn, { phoneChangesFrozen: false }, um)],
+  ['[data-um-copy-id]', (btn, um) => copyButton(btn, um.row.userId, { select: () => um.$('.um-close-id') })],
   // the community standards (2026-09-24): its own window over this one; the roster reloads after an action
   ['[data-um-conduct]', (btn, um) => {
     if (um.working) return;
@@ -3128,7 +3131,7 @@ const USER_MANAGE_ACTIONS = [
     armConfirm(btn, `Confirm: reset the second factor of ${um.row.email || ''}`, () => runPatch(btn, { secondFactorReset: true, reason }, um));
   }],
   ['[data-um-close-account]', (btn, um) => {
-    if (!closeMatches(um)) { showError('umError', 'Type the account email exactly to enable the close.'); return; }
+    if (!closeMatches(um)) { showError('umError', String(um.row.email || '').trim() ? 'Type the account email exactly to enable the close.' : 'Paste the account id exactly to enable the close.'); return; }
     runClose(btn, um);
   }]
 ];
