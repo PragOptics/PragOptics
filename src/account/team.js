@@ -15,7 +15,7 @@
 // server would refuse anyway.
 
 import { PRAG_API_BASE } from '../runtime/config.js';
-import { tierName } from '../components/tierCopy.js';
+import { tierName, tierBadge } from '../components/tierCopy.js';
 import { explainLink } from '../components/explainer.js';
 import { cardHtml, iconBtn, leadBtn, ico, armed, busy, hold, stateLead, copyButton, initCards } from './cards.js';
 
@@ -357,7 +357,7 @@ function summaryHtml(v) {
     <section class="acct-card tm-summary">
       <div class="tm-summary-head">
         <div class="tm-summary-id">
-          <div class="tm-tags"><span class="acct-tag is-primary">${e(tierName(t.tier))}</span><span class="acct-tag">${e(cap(me.role))}</span>${t.provisioned ? '' : '<span class="acct-tag is-pending" title="No storage has been provisioned for this team yet. The software does that.">no storage yet</span>'}</div>
+          <div class="tm-tags">${tierBadge(t.tier)}<span class="acct-tag">${e(cap(me.role))}</span>${t.provisioned ? '' : '<span class="acct-tag is-pending" title="No storage has been provisioned for this team yet. The software does that.">no storage yet</span>'}</div>
           <h3 class="acct-card-h tm-name">${e(name || (isOwner ? 'Your team' : 'Unnamed team'))}</h3>
           <p class="acct-card-note tm-owner">Owner ${e(t.ownerEmail || '')}. ${e(ROLE_HELP[me.role] || '')}</p>
         </div>
@@ -1272,7 +1272,7 @@ export async function renderTenants(main, deps) {
               <tr>
                 <td class="cell-ellip" title="${e(t.environmentId)}">${e(t.organizationName || 'Unnamed')}<div class="adm-muted"><code>${e(String(t.environmentId).slice(0, 8))}</code></div>${t.realOrders?.armed ? '<div><span class="acct-tag is-bad" title="Real orders are on: this environment\'s orders are placed at Pax8 and billed to PragOptics">real orders</span></div>' : ''}${tenantLineHtml(t)}</td>
                 <td class="cell-ellip adm-cell-email" title="${e(t.ownerEmail)}">${e(t.ownerEmail || '')}${t.ownerStatus && t.ownerStatus !== 'ACTIVE' ? ` <span class="acct-tag is-pending">${e(String(t.ownerStatus).toLowerCase())}</span>` : ''}</td>
-                <td class="cell-tight"><span class="adm-tier adm-tier-${e(t.tier)}">${e(tierName(t.tier))}</span></td>
+                <td class="cell-tight">${tierBadge(t.tier)}</td>
                 <td class="cell-tight">${storageCell(t)}</td>
                 <td class="adm-num cell-tight">${e(String(t.seats?.used ?? 0))} / ${e(String(t.seats?.limit ?? 0))}${Number(t.seats?.pending) ? `<div class="adm-muted">+${e(String(t.seats.pending))} pending</div>` : ''}</td>
                 <td class="adm-num cell-tight">${e(String(t.members ?? 0))}${Number(t.viewers) ? `<div class="adm-muted">${e(String(t.viewers))} viewer${t.viewers === 1 ? '' : 's'}</div>` : ''}</td>

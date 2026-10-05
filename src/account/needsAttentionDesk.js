@@ -461,6 +461,21 @@ function paintCard(id) {
   const fresh = document.querySelector(sel);
   for (const c of open) fresh?.querySelector(`details.${c}`)?.setAttribute('open', '');
 }
+/**
+ * A press that settled one item may have settled its siblings on the server too (2026-10-04: Handed over clears the same
+ * environment's Connect and Plan-ended items; a close clears every item of the account). The open list is read again and
+ * every card no longer open comes off, one by one, so the cards that stay keep their open "Recorded data" (2026-10-05).
+ */
+async function dropSettled() {
+  if (na.status !== 'OPEN') return;
+  const seq = na.seq;
+  try {
+    const d = await D.apiFetch(`${NA_URL}?status=OPEN`);
+    if (seq !== na.seq) return;   // a full load ran meanwhile and owns the view
+    const still = new Set((Array.isArray(d?.items) ? d.items : []).map(idOf));
+    for (const it of [...na.items]) { const id = idOf(it); if (!still.has(id)) dropCard(id); }
+  } catch { /* the next load shows them gone */ }
+}
 /** Take one card off the list (resolved, here or elsewhere); the last one out paints the empty desk. */
 function dropCard(id) {
   na.items = na.items.filter(i => idOf(i) !== id);
@@ -565,6 +580,7 @@ async function runAction(btn) {
       paintFlash();
       // take the one card out, so a "Recorded data" open on another card stays open
       dropCard(id);
+      dropSettled();
     } else {
       na.items = na.items.map(i => idOf(i) === id ? next : i);
       paintCard(id);

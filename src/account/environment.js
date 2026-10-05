@@ -25,7 +25,7 @@
 // wording, dates) arrive through `deps` from account.js.
 
 import { PRAG_API_BASE, STUDIO_URL, LANE } from '../runtime/config.js';
-import { tierName } from '../components/tierCopy.js';
+import { tierName, tierBadge } from '../components/tierCopy.js';
 import { explainLink } from '../components/explainer.js';
 import { accessToken } from '../runtime/session.js';
 import { stripeAppearance } from '../api/stripeAppearance.js';
@@ -456,7 +456,7 @@ function summaryHtml(v) {
     <section class="acct-card ev-summary">
       <div class="ev-head">
         <div class="ev-id">
-          <div class="ev-tags"><span class="acct-tag is-primary">${e(tierName(t.tier))}</span>${phaseTag(phase)}<span class="acct-tag">${e(cap(me.role || 'viewer'))}</span></div>
+          <div class="ev-tags">${tierBadge(t.tier)}${phaseTag(phase)}<span class="acct-tag">${e(cap(me.role || 'viewer'))}</span></div>
           <h3 class="acct-card-h ev-name">${e(name || (isOwner ? 'Your environment' : 'Team environment'))}</h3>
           <p class="ev-owner adm-muted">${e(t.ownerEmail || '')}</p>
         </div>

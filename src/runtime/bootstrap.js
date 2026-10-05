@@ -1010,6 +1010,9 @@ window.applyPostLoginResolution = applyPostLoginResolution;
           const ping = await pingRes.json();
           sessionStorage.setItem("pragoptics_ping", JSON.stringify(ping));
           syncUserTheme();
+          // the sign-in box opened for the signed-out page while the handoff was redeemed: the session is live now, so
+          // it closes here instead of sitting over the panel with the last lane's fields filled (2026-10-05, Cameron)
+          closeLoginModal();
           window.setConsoleAuthenticated?.();
           applyPostLoginResolution({ ping });
         } catch {

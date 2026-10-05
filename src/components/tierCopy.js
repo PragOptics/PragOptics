@@ -81,5 +81,15 @@ export function tierName(t) {
   return TIER_NAME[String(t || 'free').toLowerCase()] || 'Free';
 }
 
+// THE ONE TIER BADGE (2026-10-05, Cameron: the Plan badge on the Tenants desk did not match the Tier badge on the Users
+// desk, and the same badge was drawn four ways across the panel). Every place a tier is shown as a badge uses this:
+// the panel's tag shape (acct-tag) with the tier's own colour (is-tier-*). The text is the tier's name, nothing
+// else, so no escaping is needed: an unknown tier reads Free.
+export function tierBadge(t) {
+  const key = String(t || 'free').toLowerCase();
+  const known = TIER_NAME[key] ? key : 'free';
+  return `<span class="acct-tag is-tier-${known}">${TIER_NAME[known]}</span>`;
+}
+
 // Customer-facing name per backend add-on state key.
 export const ADDON_NAME = { domains: 'Custom domains', storage: 'Storage +5 GB', flows: 'Flows +10k', api: 'API +50k' };

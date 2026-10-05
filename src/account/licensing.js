@@ -30,7 +30,7 @@
 // says which step a control waits on: steps 2 to 4 stand before the account exists, folded, their one control
 // disabled with that sentence under it.
 
-import { tierName } from '../components/tierCopy.js';
+import { tierName, tierBadge } from '../components/tierCopy.js';
 import { explainLink } from '../components/explainer.js';
 import { ico, leadBtn, armed, initCards } from './cards.js';
 import { LIC_URL, lc, st, url, cardHtml, countWord, cap, dayWord, sentence, perms, isOperator, me, call, send, reqLead, reqIcon, errHtml, noteHtml, setNote, kept, forget, keepInput, withLink, cardLink, showsLicensing, stepWord, stepGate } from './licensingShared.js';
@@ -168,7 +168,7 @@ function headHtml() {
     <section class="acct-card ev-summary">
       <div class="ev-head">
         <div class="ev-id">
-          <div class="ev-tags"><span class="acct-tag is-primary">${e(tierName(v.tier))}</span>${state}</div>
+          <div class="ev-tags">${tierBadge(v.tier)}${state}</div>
           <h3 class="acct-card-h ev-name">Microsoft 365 for your team</h3>
           <p class="ev-owner adm-muted">${e(mailSummary(v))} · a mailbox for each team seat is included; other licenses at Microsoft's list price</p>
           ${role ? `<p class="ev-owner adm-muted lic-role">${e(role)}</p>` : ''}

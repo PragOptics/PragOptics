@@ -16,7 +16,7 @@ import { registerPasskey, passkeySupported } from '../auth/passkey.js';
 import { switchLane, isPlatformOperator } from '../runtime/lane.js';
 import { stripeAppearance } from '../api/stripeAppearance.js';
 import { ensureStripeJs } from '../runtime/stripeLoader.js';
-import { tierName, ADDON_NAME } from '../components/tierCopy.js';
+import { tierName, ADDON_NAME, tierBadge } from '../components/tierCopy.js';
 import { mountPricingSelect } from '../components/pricingCards.js';
 import { openReportAnomaly, openSupportRequest, installErrorCapture } from './report.js';
 import { renderTeam, renderTenants, bindTeamActions } from './team.js';
@@ -2813,10 +2813,7 @@ async function loadAdminCosts(force) {
 
 /* ---------- users ---------- */
 
-function tierPill(tier) {
-  const t = String(tier || 'free').toLowerCase();
-  return `<span class="adm-pill adm-tier adm-tier-${escapeHtml(t)}">${escapeHtml(t)}</span>`;
-}
+function tierPill(tier) { return tierBadge(tier); }   // the one tier badge (src/components/tierCopy.js)
 function statusPill(status) {
   const s = String(status || '').toUpperCase();
   const cls = s === 'ACTIVE' ? 'is-available' : (s === 'SUSPENDED' || s === 'CLOSED') ? 'is-bad' : 'is-claimed';
