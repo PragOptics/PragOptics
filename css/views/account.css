@@ -484,7 +484,10 @@ select.acct-input { background-color: var(--surface-deep); }
 .su-card.is-open { padding-bottom: 6px; }
 .su-row { display: flex; align-items: center; gap: 12px; min-height: 32px; }
 .su-ring { position: relative; flex: 0 0 auto; width: 32px; height: 32px; display: inline-grid; place-items: center; }
-.su-ring svg { position: absolute; inset: 0; width: 32px; height: 32px; transform: rotate(-90deg); }
+/* the ring's own svg starts its arc at twelve o'clock; the check icon inside it is an svg too, so the rule names the first child only
+   (2026-10-05: the done check sat rotated with the ring on the final walk) */
+.su-ring > svg:first-child { position: absolute; inset: 0; width: 32px; height: 32px; transform: rotate(-90deg); }
+.su-ring > svg:not(:first-child) { position: relative; z-index: 1; transform: none; width: 11px; height: 11px; }
 .su-ring-track { fill: none; stroke: var(--border); stroke-width: 3.5; }
 .su-ring-fill { fill: none; stroke: var(--brand-600); stroke-width: 3.5; stroke-linecap: round; stroke-dasharray: 100; transition: stroke-dashoffset .5s ease; }
 .su-ring.is-done .su-ring-fill { stroke: var(--brand-cyan); }
