@@ -126,7 +126,8 @@ function paint() {
   if (lc.landed === 'connected') {
     lc.landed = '';
     const lead = host.querySelector('.lic-wiz-lead');
-    if (lead) requestAnimationFrame(() => lead.scrollIntoView({ block: 'start', behavior: 'smooth' }));
+    // the rail above the lead and the lead's heading both in view, under the fixed header (scrollIntoView put the heading behind it)
+    if (lead) requestAnimationFrame(() => { const target = lead.previousElementSibling || lead; window.scrollTo({ top: target.getBoundingClientRect().top + window.scrollY - 92, behavior: 'smooth' }); });
   }
 }
 
