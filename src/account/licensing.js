@@ -42,6 +42,7 @@ import { tenantHtml, tenantAction, resetTenant, reopenTenant, loadTenantStatus, 
 import { requestsHtml, requestsAction, loadRequests, pendingMailbox, ask } from './licensingRequests.js';
 import { owedHtml, moneyAction } from './licensingMoney.js';
 import { phase1Html, phase2Card, wizardAction, wizardStage, tenantConnected, phaseRail, phase2Lead, phase3Lead } from './licensingWizard.js';
+import { markSetupStale } from './setup.js';
 
 const LIVE_INCLUDED = ['PAID', 'ORDERED', 'ACTIVE'];
 
@@ -49,7 +50,7 @@ const LIVE_INCLUDED = ['PAID', 'ORDERED', 'ACTIVE'];
 // it is open, for at most ten minutes (nothing retries forever), then says it is taking longer than usual.
 const SETUP_EVERY_MS = 15000, SETUP_FOR_MS = 10 * 60 * 1000;
 const SLOW_WORDS = 'Your environment is taking longer than usual to set up. Look again in a few minutes; nothing is lost.';
-const setup = { since: 0, timer: 0, slow: false };
+const setup = { since: 0, timer: 0, slow: false, stage: '' };
 function watchSetup(waiting) {
   clearTimeout(setup.timer); setup.timer = 0;
   if (!waiting) { setup.since = 0; setup.slow = false; return; }
@@ -61,7 +62,7 @@ function watchSetup(waiting) {
 export async function renderLicensing(main, deps) {
   st.D = deps; st.paint = paint; st.load = load;
   Object.assign(lc, { view: null, reqs: null, canDecide: false, busy: '', busyWord: '', draft: {}, err: {}, links: {}, notes: {}, add: null, needPhone: false, tnMode: '', tnEdit: false, bizEdit: false, acctConfirm: '', declining: '', bill: null, p8: null, loadMsg: '', seatQuote: {}, reqQuote: {} });
-  clearTimeout(setup.timer); Object.assign(setup, { since: 0, timer: 0, slow: false });
+  clearTimeout(setup.timer); Object.assign(setup, { since: 0, timer: 0, slow: false, stage: '' });
   resetTenant();
   initCards();
   main.innerHTML = `
@@ -88,6 +89,12 @@ async function load() {
     // never sits on the state from before the approval
     const mine = lc.tn?.mine;
     const awaitingMailbox = !!(mine && mine.seat && mine.connected && mine.state !== 'ready' && mine.state !== 'failed');
+    // 2026-10-05 (+final3): the setup checklist above this tab keeps its answer for thirty seconds and re-reads only after a
+    // write, but the tenant lands, connects and the mailbox is made by reads; on +final3 the header still said "9 of 10,
+    // Next: Your Microsoft sign-in" over a Ready mailbox. When a re-read moves the stage, the checklist is told to read again.
+    const stage = `${v?.microsoft?.tenantId ? 't' : ''}${lc.tn?.tenant?.connected ? 'c' : ''}:${mine?.state || ''}`;
+    if (setup.stage && setup.stage !== stage) { try { markSetupStale(); } catch { /* the list reloads on the next section */ } }
+    setup.stage = stage;
     watchSetup(!!v?.settingUp || awaitingTenant || awaitingMailbox);
   } catch (ex) {
     const setupWait = ex?.status === 404 && !!ex?.data?.needsTenant;
