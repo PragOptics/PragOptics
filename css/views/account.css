@@ -610,7 +610,10 @@ select.acct-input { background-color: var(--surface-deep); }
 .lic-wiz-lead { margin: 0 0 14px; }
 .lic-wiz-lead-head { margin: 0 0 6px; font-weight: 700; font-size: 1rem; line-height: 1.35; color: var(--card-title); display: flex; align-items: center; gap: 8px; }
 .lic-wiz-lead.is-done .lic-wiz-lead-head svg { color: var(--brand-600); }
-@media (max-width: 480px) { .lic-rail-label { display: none; } .lic-rail-step:not(:last-child)::after { margin-left: 6px; } }
+/* Reset my password stands in its own row, with air above it, under Show my first password (2026-10-05) */
+.lic-reset-row { margin-top: 14px; }
+/* on a phone the rail keeps the word of the step the person is on (2026-10-05: circles alone read as nothing); the done steps keep their checks */
+@media (max-width: 480px) { .lic-rail-label { display: none; } .lic-rail-step.is-on .lic-rail-label { display: inline; } .lic-rail-step:not(:last-child)::after { margin-left: 6px; } }
 
 /* The Phase 2 wait, made loud: a tenant takes about ten minutes to build and the email is what the owner waits for. */
 .lic-wait { margin-top: 12px; padding: 16px 18px; border-radius: var(--radius-card, 10px); border: 1.5px solid color-mix(in srgb, var(--brand-600) 45%, transparent); background: color-mix(in srgb, var(--brand-600) 10%, transparent); }

@@ -446,7 +446,8 @@ export function myMailboxHtml() {
   // a seat that is the person's own existing Microsoft account (created: false from the server) is not the platform's
   // to reset: their organization manages that password, so no Reset row, and the ready-state note says so
   const own = mine.created === false;
-  const reset = mine.hasMailbox && !own && (t.writes !== false) ? `<div class="acct-actions-row">${reqLead('mb-reset', { lic: 'mb-reset' }, 'key', 'Reset my password', 'Resetting…', '', 'is-risky')}</div>` : '';
+  // its own row with room above it: it sat flush under Show my first password (2026-10-05, Cameron: "no breathing room")
+  const reset = mine.hasMailbox && !own && (t.writes !== false) ? `<div class="acct-actions-row lic-reset-row">${reqLead('mb-reset', { lic: 'mb-reset' }, 'key', 'Reset my password', 'Resetting…', '', 'is-risky')}</div>` : '';
   // Choose your own mailbox name, or one press puts it back to automatic (2026-09-30). Only before the mailbox is made,
   // and only once the tenant has a name to make the address on.
   // the name is chosen in the setup form before anything is ordered (licensingWizard.js, 2026-10-05); once the tenant is
