@@ -107,6 +107,8 @@ export function resetTenant() {
   if (r && r.outcome) {
     const good = r.outcome === 'connected';
     setNote('tenant', good ? RETURN_SAID.connected : sentence(r.why || RETURN_SAID[r.outcome] || RETURN_SAID.failed), !good);
+    // back from Microsoft with the tenant connected: the first paint lands on step 3 (2026-10-05, Cameron)
+    lc.landed = r.outcome;
   }
 }
 
@@ -423,7 +425,9 @@ export function myMailboxHtml() {
   if (!showsLicensing() || !v?.account || !mine || !mine.seat) return '';
   const e = st.D.escapeHtml, t = tn() || {};
   const STATE = { ready: ['is-verified', 'Ready'], waiting: ['is-pending', 'Waiting for Microsoft\'s license'], 'waiting-license': ['is-pending', 'Waiting for Microsoft\'s license'], failed: ['is-bad', 'Not made yet. We are looking into it.'], planned: ['is-pending', 'Waiting'] };
-  const [cls, word] = !mine.connected ? ['is-pending', 'Waiting for your Microsoft tenant'] : STATE[mine.state] || ['is-pending', 'Waiting for your Microsoft tenant'];
+  // connected but not yet synced (the first read after Microsoft's redirect, 2026-10-05): the mailbox is being made by that very
+  // read or the next; never "waiting for your tenant" once the tenant is there
+  const [cls, word] = !mine.connected ? ['is-pending', 'Waiting for your Microsoft tenant'] : STATE[mine.state] || ['is-pending', 'Being made now. This card updates itself when it is ready.'];
   const address = mine.address ? `<span class="ev-code">${e(mine.address)}</span>` : '<span class="adm-muted">Your address is made with your mailbox</span>';
   const pw = mbShown && mbShown.address === mine.address ? mbShown : null;
   let first = '';

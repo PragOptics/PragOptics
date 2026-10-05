@@ -73,10 +73,17 @@ export function phase2Lead() {
 /** Phase 3, done: the tenant is connected; the owner's own admin account and the mailboxes are made. */
 export function phase3Lead(v) {
   if (!perms().isOwner) return '';
+  // the lead tells the truth of the moment (2026-10-05, the final walk): right after the approval the owner's mailbox and
+  // administrator account are still being made, by this read on the server or the next; the page keeps reading until ready
+  const mine = lc.tn?.mine;
+  const making = !!(mine && mine.seat && mine.state !== 'ready' && mine.state !== 'failed');
+  const note = making
+    ? 'Your tenant is connected. Your mailbox and your own administrator account are being made now, a minute or two; this page updates itself when they are ready.'
+    : 'Your tenant is connected. Your own administrator account and its first password are on your My mailbox card below, so you run your tenant with that, not the login from the setup email. Add people on the Team tab and give each one a mailbox here.';
   return `
     <div class="lic-wiz-lead is-done">
-      <p class="lic-wiz-lead-head">${ico('check', 16)}Your Microsoft 365 is set up</p>
-      <p class="acct-card-note">Your tenant is connected. Your own administrator account and its first password are on your My mailbox card below, so you run your tenant with that, not the login from the setup email. Add people on the Team tab and give each one a mailbox here.</p>
+      <p class="lic-wiz-lead-head">${ico('check', 16)}Your Microsoft 365 is ${making ? 'almost ready' : 'set up'}</p>
+      <p class="acct-card-note">${note}</p>
     </div>`;
 }
 

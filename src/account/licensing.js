@@ -83,7 +83,12 @@ async function load() {
     // keep reading while Microsoft is still making the tenant (about ten minutes), so Phase 2 flips from the wait to the
     // sign-in by itself when it lands; the existing SETUP timer does the re-read and says if it takes much longer
     const awaitingTenant = !!(v?.account && v?.microsoft?.domainPrefix && !v.microsoft.tenantId && !lc.tn?.tenant?.connected);
-    watchSetup(!!v?.settingUp || awaitingTenant);
+    // 2026-10-05 (the final walk): once the tenant is connected the owner's mailbox is made by this very read on the server
+    // (the on-demand seat sync) or by the next; until the card reads ready the page keeps reading on the same timer, so it
+    // never sits on the state from before the approval
+    const mine = lc.tn?.mine;
+    const awaitingMailbox = !!(mine && mine.seat && mine.connected && mine.state !== 'ready' && mine.state !== 'failed');
+    watchSetup(!!v?.settingUp || awaitingTenant || awaitingMailbox);
   } catch (ex) {
     const setupWait = ex?.status === 404 && !!ex?.data?.needsTenant;
     // a read that failed on the way (no answer, a 5xx, too many) while the tab was waiting on the setup keeps waiting:
@@ -116,6 +121,13 @@ function paint() {
   // not connected and not eligible: the old account card carries the plan upsell
   else cards = `${accountHtml()}${tenantHtml()}${agreementHtml()}${mailboxesHtml()}${myMailboxHtml()}${licensesHtml()}${catalogHtml()}`;
   host.innerHTML = `${headHtml()}${errHtml('load')}<div class="ev-cards">${owedHtml()}${cards}${requestsHtml()}${billingHtml()}${pax8Html()}</div>`;
+  // back from Microsoft's approval page: the first paint lands on step 3 (2026-10-05, Cameron: the redirect brings the
+  // customer to the final card, not to the top of the tab)
+  if (lc.landed === 'connected') {
+    lc.landed = '';
+    const lead = host.querySelector('.lic-wiz-lead');
+    if (lead) requestAnimationFrame(() => lead.scrollIntoView({ block: 'start', behavior: 'smooth' }));
+  }
 }
 
 /* ---------- the head ---------- */
