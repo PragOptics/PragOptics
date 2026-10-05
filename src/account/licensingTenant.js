@@ -450,8 +450,8 @@ export function myMailboxHtml() {
   const reset = mine.hasMailbox && !own && (t.writes !== false) ? `<div class="acct-actions-row lic-reset-row">${reqLead('mb-reset', { lic: 'mb-reset' }, 'key', 'Reset my password', 'Resetting…', '', 'is-risky')}</div>` : '';
   // Choose your own mailbox name, or one press puts it back to automatic (2026-09-30). Only before the mailbox is made,
   // and only once the tenant has a name to make the address on.
-  // the name is chosen in the setup form before anything is ordered (licensingWizard.js, 2026-10-05); once the tenant is
-  // connected the mailbox is seconds away, so no field appears here to be beaten by it
+  // the mailbox is named automatically from the person's email (2026-10-05, Cameron: simple and clean; aliases on top of it
+  // are a later feature); once the tenant is connected the mailbox is seconds away, so no field appears here to be beaten by it
   const canName = !mine.nameLocked && mine.plannedAddress && t.writes !== false && !mine.connected;
   const suffix = mine.plannedAddress ? `@${mine.plannedAddress.split('@')[1]}` : '';
   const chosenNow = !!mine.mailName;
