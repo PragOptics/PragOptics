@@ -120,7 +120,10 @@ function endingsHtml(p) {
 }
 
 export function pax8Html() {
-  if (!isOperator() || !lc.view?.account) return '';
+  // the operator's Pax8 tools read the whole lane (the daily check, the webhook, the endings), not this team's account:
+  // after Start licensing over on Bridges Bench (2026-10-05) the card vanished with the operator's own licensing account
+  // and the endings could not be read until it had one again. Operator only; the account is not a condition.
+  if (!isOperator()) return '';
   const e = st.D.escapeHtml, p = ps(), r = p.report;
   const summary = r ? (r.drift.length || r.orphans.length ? `${r.drift.length + r.orphans.length} to look at` : 'in agreement') : 'operator view';
   const reportHtml = !r ? '' : `
