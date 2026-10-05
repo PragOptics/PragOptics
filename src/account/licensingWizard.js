@@ -152,6 +152,7 @@ export function phase1Html(v) {
       ${checklist}
       ${form}
       ${progress}
+      ${v.lane?.test ? '<p class="acct-card-note ev-note is-bad">Test lane: this environment is not armed for real orders, so the mail order below is a test and no tenant will be made. The operator arms real orders for it on the Tenants desk first (2026-10-05: the final walk\'s first account ordered before it was armed).</p>' : ''}
       <div class="acct-actions-row">${leadBtn({ lic: 'wiz-go' }, 'rocket', done ? 'Finish setup' : 'Set up Microsoft 365', lc.busy === 'wizard' ? 'disabled' : '', 'btn-primary btn-lg')}</div>
       <p class="lic-hint">After this, Microsoft sends you one administrator sign-in to approve, and then everything else happens on its own.</p>`
   });

@@ -1012,6 +1012,7 @@ const TEAM_ACTIONS = {
 const TENANT_ACTIONS = {
   repair: (tb) => repairTenant(tb),
   'real-orders': (tb) => toggleRealOrders(tb),
+  'licensing-reset': (tb) => resetLicensing(tb),
   conduct: (tb) => {
     const done = busy(tb, 'Opening…');
     import('./conductDesk.js')
@@ -1174,6 +1175,31 @@ function realOrdersBtnHtml(t, available) {
     on ? `Real orders are on for ${name}: turn them off` : `Turn on real orders for ${name}: its orders are placed at Pax8 and billed to PragOptics`,
     `data-env="${e(t.environmentId)}" data-name="${e(name)}" data-real="${on ? '1' : '0'}"`, on ? 'is-danger' : '');
 }
+/** The row's Start licensing over (2026-10-05): the wizard starts at step one on the same account; the server refuses while a real Pax8 subscription is live. */
+function licensingResetBtnHtml(t) {
+  if (!t.microsoft) return '';
+  const e = D.escapeHtml;
+  const name = t.organizationName || t.ownerEmail || 'this environment';
+  return iconBtn({ tenant: 'licensing-reset' }, 'undo',
+    `Start licensing over for ${name}: clears its licensing account link, agreement, tenant name and test-lane lines so the wizard starts at step one; refused while a real Pax8 subscription is live`,
+    `data-env="${e(t.environmentId)}" data-name="${e(name)}"`, 'is-risky');
+}
+async function resetLicensing(btn) {
+  const id = String(btn.dataset.env || ''), name = btn.dataset.name || 'this environment';
+  if (!armed(btn, `Start licensing over for ${name}? Its licensing account link, agreement, tenant name and test-lane lines are cleared; a real Pax8 subscription stops it.`)) return;
+  D.showError('tnError', ''); tnFlash('');
+  const others = [...document.querySelectorAll('#tnBody button')].filter(b => b !== btn);
+  const done = busy(btn, `Starting licensing over for ${name}…`, { hold: others, why: 'Wait for the licensing reset to finish' });
+  try {
+    const d = await D.apiFetch(`${ADMIN_TENANTS_URL}/licensing/reset`, { method: 'POST', body: JSON.stringify({ environmentId: id, expectEnvironmentId: id }) });
+    const r = d?.result || {};
+    const main = document.getElementById('acctMain');
+    if (main && document.getElementById('tnBody')) await renderTenants(main, D);
+    tnFlash(`${name} starts licensing over: ${r.linesCanceled || 0} test-lane line${r.linesCanceled === 1 ? '' : 's'} ended, ${r.billItemsRemoved || 0} off the bill, ${r.itemsClosed || 0} desk item${r.itemsClosed === 1 ? '' : 's'} closed. Its wizard begins at step one.`);
+  } catch (ex) {
+    D.showError('tnError', ex?.sessionInvalidated ? '' : (ex?.data?.error || D.friendlyError(ex, 'Licensing was not reset. Nothing changed.')));
+  } finally { done(); }
+}
 async function toggleRealOrders(btn) {
   const id = String(btn.dataset.env || ''), name = btn.dataset.name || 'this environment';
   // data-real is the switch's own state: cards.js armed() uses data-armed for its press-again state, and the two clashed
@@ -1251,7 +1277,7 @@ export async function renderTenants(main, deps) {
                 <td class="adm-num cell-tight">${e(String(t.seats?.used ?? 0))} / ${e(String(t.seats?.limit ?? 0))}${Number(t.seats?.pending) ? `<div class="adm-muted">+${e(String(t.seats.pending))} pending</div>` : ''}</td>
                 <td class="adm-num cell-tight">${e(String(t.members ?? 0))}${Number(t.viewers) ? `<div class="adm-muted">${e(String(t.viewers))} viewer${t.viewers === 1 ? '' : 's'}</div>` : ''}</td>
                 <td class="adm-muted cell-tight">${e(D.fmtDate(t.createdAt))}</td>
-                <td class="cell-tight tm-actions">${repairable(t) ? iconBtn({ tenant: 'repair' }, 'tool', 'Repair: run provisioning', `data-user="${e(t.ownerUserId)}" data-name="${e(t.organizationName || t.ownerEmail || 'this team')}"`) : ''}${iconBtn({ tenant: 'conduct' }, 'shield', 'Community standards', `data-env="${e(t.environmentId)}"`)}${realOrdersBtnHtml(t, realOrdersOn)}${holdTag(t)}</td>
+                <td class="cell-tight tm-actions">${repairable(t) ? iconBtn({ tenant: 'repair' }, 'tool', 'Repair: run provisioning', `data-user="${e(t.ownerUserId)}" data-name="${e(t.organizationName || t.ownerEmail || 'this team')}"`) : ''}${iconBtn({ tenant: 'conduct' }, 'shield', 'Community standards', `data-env="${e(t.environmentId)}"`)}${realOrdersBtnHtml(t, realOrdersOn)}${licensingResetBtnHtml(t)}${holdTag(t)}</td>
               </tr>`).join('')}
           </tbody>
         </table>
