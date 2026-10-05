@@ -428,7 +428,11 @@ export function myMailboxHtml() {
   // connected but not yet synced (the first read after Microsoft's redirect, 2026-10-05): the mailbox is being made by that very
   // read or the next; never "waiting for your tenant" once the tenant is there
   const [cls, word] = !mine.connected ? ['is-pending', 'Waiting for your Microsoft tenant'] : STATE[mine.state] || ['is-pending', 'Being made now. This card updates itself when it is ready.'];
-  const address = mine.address ? `<span class="ev-code">${e(mine.address)}</span>` : '<span class="adm-muted">Your address is made with your mailbox</span>';
+  // the address with its own Copy (2026-10-05, Cameron: "a copy button svg for it and the whole 9 yards"); copyButton says
+  // Copied on the button, or selects the text when the clipboard is refused, so nobody retypes an address
+  const address = mine.address
+    ? `<span class="lic-addr"><span class="ev-code" id="licMbAddr">${e(mine.address)}</span>${iconBtn({ lic: 'mb-addr-copy' }, 'copy', 'Copy your address')}</span>`
+    : '<span class="adm-muted">Your address is made with your mailbox</span>';
   const pw = mbShown && mbShown.address === mine.address ? mbShown : null;
   let first = '';
   if (pw) first = `
@@ -472,8 +476,10 @@ export function myMailboxHtml() {
         <div class="lic-fact"><span class="lic-k">State</span><span class="lic-v"><span class="lic-state ${cls}">${e(mine.state === 'failed' && mine.why ? sentence(mine.why) : word)}</span></span></div>
       </div>
       ${naming}
-      ${mine.state === 'ready' ? `<p class="acct-card-note">Sign in at <a href="https://outlook.office.com" target="_blank" rel="noopener noreferrer">outlook.office.com</a>, or in the Outlook app on your phone. ${own ? 'This is your own Microsoft account, so your password is managed by your organization, not reset here.' : 'Nobody at PragOptics, and no administrator on your team, can see or set your password: it is yours alone.'}</p>` : ''}
       ${first}
+      ${mine.state === 'ready' ? `
+      <div class="acct-actions-row lic-outlook-row">${leadBtn({ lic: 'mb-outlook' }, 'external', 'Sign in to your mailbox', '', mine.firstPasswordWaiting ? '' : 'btn-primary')}</div>
+      <p class="acct-card-note">Outlook on the web opens in a new tab; the Outlook app on your phone signs in with the same address. ${own ? 'This is your own Microsoft account, so your password is managed by your organization, not reset here.' : 'Nobody at PragOptics, and no administrator on your team, can see or set your password: it is yours alone.'}</p>` : ''}
       ${reset}`
   });
 }
@@ -742,6 +748,18 @@ export function tenantAction(a, btn) {
   // decision 17: the person's own mailbox
   if (a === 'mb-pw') { showMyPassword(); return true; }
   if (a === 'mb-pw-copy') { copyMyPassword(btn); return true; }
+  if (a === 'mb-addr-copy') { copyButton(btn, String(lc.tn?.mine?.address || ''), { select: () => document.getElementById('licMbAddr') }); return true; }
+  if (a === 'mb-outlook') {
+    // Outlook on the web in a new tab (the platform tab stays); the card says so, with the address to sign in with, and
+    // says the truth when a pop-up blocker keeps the tab from opening
+    const w = window.open('https://outlook.office.com', '_blank', 'noopener,noreferrer');
+    const addr = lc.tn?.mine?.address || 'your address';
+    setNote('mailbox-mine', w === null
+      ? `Your browser blocked the new tab. Allow pop-ups for this site, or open outlook.office.com yourself and sign in as ${addr}.`
+      : `Outlook opened in a new tab. Sign in there as ${addr}.`, w === null);
+    st.paint();
+    return true;
+  }
   if (a === 'mb-pw-hide') { mbShown = null; setNote('mailbox-mine', 'Hidden. The password is not kept anywhere any more.'); st.paint(); return true; }
   if (a === 'mb-name-save') { saveMyMailName(); return true; }
   if (a === 'mb-name-auto') { autoMyMailName(); return true; }

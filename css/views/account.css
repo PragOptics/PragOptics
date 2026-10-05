@@ -612,6 +612,11 @@ select.acct-input { background-color: var(--surface-deep); }
 .lic-wiz-lead.is-done .lic-wiz-lead-head svg { color: var(--brand-600); }
 /* Reset my password stands in its own row, with air above it, under Show my first password (2026-10-05) */
 .lic-reset-row { margin-top: 14px; }
+/* My mailbox: the address with its Copy beside it, and the Outlook button in its own row (2026-10-05) */
+.lic-addr { display: flex; align-items: center; gap: 10px; max-width: 100%; }
+.lic-addr .ev-code { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
+.lic-addr .ev-icon-btn, .lic-addr button { flex: none; }
+.lic-outlook-row { margin-top: 14px; }
 /* on a phone the rail keeps the word of the step the person is on (2026-10-05: circles alone read as nothing); the done steps keep their checks */
 @media (max-width: 480px) { .lic-rail-label { display: none; } .lic-rail-step.is-on .lic-rail-label { display: inline; } .lic-rail-step:not(:last-child)::after { margin-left: 6px; } }
 
