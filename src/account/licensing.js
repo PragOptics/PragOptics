@@ -439,8 +439,11 @@ function mailboxesHtml() {
       </div>`;
   const state = MAIL_WORDS[v.mail?.state] || 'mail off';
   const summary = v.account ? `${state} · ${seats.filter(s => s.included).length} of ${countWord(seats.length, 'team seat', 'team seats')} with a mailbox` : 'after the licensing account';
+  // no step number: the six-step numbering is gone with the three-phase wizard (2026-10-05, Cameron: "step 4 of 6" under My
+  // mailbox); and once the tenant is connected a team of one sees this card folded under their own, one step, not two cards
+  const folded = tenantConnected() && seats.length <= 1;
   return cardHtml({
-    key: 'mailboxes', icon: 'mail', title: 'Mailboxes', summary: stepWord('mail', e(summary)), open: !!v.account,
+    key: 'mailboxes', icon: 'mail', title: 'Mailboxes', summary: e(summary), open: !!v.account && !folded,
     explain: explainLink('licensing', 'A mailbox for every seat'),
     body: `
       <p class="acct-card-note">Each team seat can have one mailbox, included with your plan: Exchange Online Kiosk, 2 GB, for Outlook on the web and the Outlook phone apps (not the desktop Outlook app). A mailbox ends when it is taken back, when its seat ends, or when the person becomes a viewer. Once a mailbox ends, Microsoft keeps its mail for 30 days, then deletes it.</p>

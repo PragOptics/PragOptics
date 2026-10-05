@@ -17,7 +17,7 @@
 // (POST /account, POST /microsoft, POST /microsoft {accept}, POST /enroll), in order, on one button.
 
 import { leadBtn, ico } from './cards.js';
-import { LIC_URL, lc, st, cardHtml, call, send, perms, reqLead, errHtml, noteHtml, setNote, kept, forget, sentence, tenantNamed, agreementStands, saveAccountName } from './licensingShared.js';
+import { LIC_URL, lc, st, cardHtml, call, send, perms, me, reqLead, errHtml, noteHtml, setNote, kept, forget, sentence, tenantNamed, agreementStands, saveAccountName } from './licensingShared.js';
 
 const MCA_URL = 'https://www.microsoft.com/licensing/docs/customeragreement';
 const WEBSITE_RE = /^[a-z][a-z0-9+.-]*:\/\//i;
@@ -91,6 +91,9 @@ export function phase3Lead(v) {
 
 /** The business's legal name to set up under: what they confirmed on Billing, kept editable here. */
 function bizNameDefault(v) { return v.account?.businessName || v.accountDraft?.businessName || ''; }
+// the mailbox name the server would make from the signed-in email (auth/tenantAccess.js aliasOf: the +tag dropped), as the placeholder
+function autoMailName() { return String(me().email || '').split('@')[0].toLowerCase().replace(/\+.*$/, '').replace(/[^a-z0-9._-]/g, '') || 'user'; }
+const MAIL_NAME_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,59}$/;
 
 export function phase1Html(v) {
   const e = st.D.escapeHtml, m = v.microsoft || {}, p = perms();
@@ -137,6 +140,11 @@ export function phase1Html(v) {
         <input class="acct-input" id="licWizWeb" type="url" inputmode="url" data-keep value="${e(kept('licWizWeb', ''))}" placeholder="yourbusiness.com" autocomplete="url" aria-describedby="licWizWebHint">
         <p class="lic-hint" id="licWizWebHint">Microsoft files your licensing account under your website's domain.</p>
       </div>
+      <div class="lic-wiz-field">
+        <label class="acct-label" for="licWizMail">Your mailbox name <span class="adm-muted">(optional)</span></label>
+        <div class="lic-suffix"><input class="acct-input" id="licWizMail" type="text" data-keep value="${e(kept('licWizMail', ''))}" maxlength="60" spellcheck="false" autocapitalize="off" autocomplete="off" placeholder="${e(autoMailName())}" aria-describedby="licWizMailHint"><span id="licWizMailSuffix">@${e(tnPreview)}</span></div>
+        <p class="lic-hint" id="licWizMailHint">Letters, numbers, dots, dashes. Left empty, it is made from your email. It cannot be changed once the mailbox exists, which is why it is asked here and not after.</p>
+      </div>
       ${nameRow}
       <label class="lic-wiz-agree" for="licWizMca">
         <input type="checkbox" id="licWizMca" ${kept('licWizMca', false) ? 'checked' : ''} data-keep>
@@ -165,6 +173,9 @@ function wizInput() {
     website: String(kept('licWizWeb', document.getElementById('licWizWeb')?.value || '') || '').trim(),
     firstName: String(kept('licWizFirst', document.getElementById('licWizFirst')?.value || '') || '').trim(),
     lastName: String(kept('licWizLast', document.getElementById('licWizLast')?.value || '') || '').trim(),
+    // the mailbox name, chosen here before anything is ordered (2026-10-05: the step 3 field came and went in the seconds
+    // before the mailbox was made; the choice belongs in this form or nowhere)
+    mailName: String(kept('licWizMail', document.getElementById('licWizMail')?.value || '') || '').trim().toLowerCase(),
     agree: !!(document.getElementById('licWizMca')?.checked)
   };
 }
@@ -178,6 +189,7 @@ function checkWizard(v, inp) {
   if (!inp.website) return { error: "Give your business's website. Your licensing account is filed under its domain.", focus: 'licWizWeb' };
   if (/\s/.test(inp.website) || !inp.website.replace(WEBSITE_RE, '').split('/')[0].includes('.')) return { error: 'That is not a website address. Give it as yourbusiness.com.', focus: 'licWizWeb' };
   if (!haveName && (!inp.firstName || !inp.lastName)) return { error: 'Add your first and last name. The Microsoft agreement is signed in your name.', focus: inp.firstName ? 'licWizLast' : 'licWizFirst' };
+  if (inp.mailName && !MAIL_NAME_RE.test(inp.mailName)) return { error: 'The mailbox name is letters, numbers, dots, dashes or underscores, starting with a letter or digit, up to 60.', focus: 'licWizMail' };
   if (!inp.agree) return { error: 'Accept the Microsoft Customer Agreement to continue.', focus: 'licWizMca' };
   return null;
 }
@@ -223,8 +235,15 @@ async function runWizard() {
       await call(`${LIC_URL}/enroll`, 'POST');
       await st.load();
     }
+    // the mailbox name chosen in the form, saved on the owner's seat now that the seat exists and long before the mailbox
+    // is made (after the connect); a name that cannot be set never fails the setup, the automatic one stands instead
+    if (inp.mailName) {
+      lc.wizStep = 'Keeping your mailbox name…'; st.paint();
+      try { await call(`${LIC_URL}/tenant/mailbox/name`, 'POST', { name: inp.mailName }); }
+      catch (ex) { setNote('wizard', `Your mailbox name could not be kept (${ex?.data?.error || 'no reason given'}); the automatic one is used.`, true); }
+    }
     lc.wizStep = '';
-    forget('licWizBiz', 'licWizWeb', 'licWizFirst', 'licWizLast', 'licWizMca');
+    forget('licWizBiz', 'licWizWeb', 'licWizMail', 'licWizFirst', 'licWizLast', 'licWizMca');
     setNote('wizard', 'Done. Microsoft is making your tenant now. Next, approve PragOptics with the sign-in it emails you.');
     await st.load();
   }, {
@@ -249,7 +268,11 @@ if (typeof document !== 'undefined') {
   document.addEventListener('input', (ev) => {
     if (ev.target?.id !== 'licWizBiz') return;
     const prev = document.getElementById('licWizTnPreview');
-    if (prev) { const s = slugName(ev.target.value); prev.textContent = s ? `${s}.onmicrosoft.com` : 'yourbusiness.onmicrosoft.com'; }
+    const s = slugName(ev.target.value);
+    const tenant = s ? `${s}.onmicrosoft.com` : 'yourbusiness.onmicrosoft.com';
+    if (prev) prev.textContent = tenant;
+    const suffix = document.getElementById('licWizMailSuffix');
+    if (suffix) suffix.textContent = `@${tenant}`;
   });
 }
 
