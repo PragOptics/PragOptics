@@ -134,6 +134,10 @@ function hasLiveSession() {
 function isAdmin() {
   return hasLiveSession() && cachedPing()?.user?.isAdmin === true;
 }
+/** The platform owner (2026-10-06): the one session that may grant or remove the Admin flag; the API refuses everyone else. */
+function isOwner() {
+  return hasLiveSession() && cachedPing()?.user?.isOwner === true;
+}
 // The primary address as the server last reported it. cachedPing() is a
 // snapshot taken at sign-in and is NEVER refreshed when the primary changes,
 // so reading the address from it after a switch returns the OLD one. That is
@@ -2972,8 +2976,8 @@ function userManageHtml(u, { self }) {
             <div class="um-field">
               <span class="adm-label">Operator flags</span>
               <div class="um-checks">
-                <label class="um-check ${self ? 'is-locked' : ''}" title="${self ? lockTitle : 'Admin accounts see the Internal sections and every admin route'}">
-                  <input type="checkbox" id="umAdmin" ${u.isAdmin ? 'checked' : ''} ${self ? 'disabled' : ''}> Admin
+                <label class="um-check ${self || !isOwner() ? 'is-locked' : ''}" title="${self ? lockTitle : !isOwner() ? 'Only the platform owner grants or removes Admin' : 'Admin accounts see the Internal sections and every admin route'}">
+                  <input type="checkbox" id="umAdmin" ${u.isAdmin ? 'checked' : ''} ${self || !isOwner() ? 'disabled' : ''}> Admin
                 </label>
                 <label class="um-check" title="Dev accounts can route this browser to the dev lane">
                   <input type="checkbox" id="umDev" ${u.isDev ? 'checked' : ''}> Dev
