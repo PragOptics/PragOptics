@@ -49,19 +49,16 @@
   padding: 16px 18px 18px;
 }
 
+/* the face of a card title is the one shared with .acct-card-h (account.css, 2026-10-05) */
 .admin .adm-h2 {
   margin: 0 0 4px;
-  font-size: .78rem;
-  font-weight: 700;
-  letter-spacing: .1em;
-  text-transform: uppercase;
-  color: var(--muted);
 }
 
+/* the loading line and the note are one voice (2026-10-05): .acct-loading lives here with .adm-note, since the desks'
+   .od-note, .od-warn and .adm-frozen-count below have to outrank it and account.css loads after this file */
+.acct-loading, .adm-note { color: var(--muted); font-size: .86rem; }
 .adm-note {
   margin: 0 0 14px;
-  color: var(--muted);
-  font-size: .84rem;
   line-height: 1.55;
 }
 .adm-note code {
@@ -72,13 +69,8 @@
   font-size: .92em;
 }
 
-.adm-empty {
-  margin: 0;
-  padding: 26px 0;
-  text-align: center;
-  color: var(--muted);
-  font-size: .86rem;
-}
+/* the empty line is .acct-empty's (account.css, 2026-10-05); a <p>, so its own margin stays off */
+.adm-empty { margin: 0; }
 
 /* ---------- mint form ---------- */
 .adm-fields { display: flex; flex-direction: column; gap: 3px; }
@@ -92,36 +84,13 @@
   margin-top: 12px;
 }
 
-.adm-input {
-  width: 100%;
-  padding: 8px 10px;
-  border-radius: var(--radius-ctl);
-  border: 1px solid var(--border);
-  background: var(--surface-2);
-  color: var(--ink);
-  font: inherit;
-  font-size: .9rem;
-  transition: border-color 140ms ease;
-}
-.adm-input:hover { border-color: color-mix(in srgb, var(--ink) 18%, transparent); }
-.adm-input:focus-visible {
-  outline: none;
-  border-color: var(--brand-600);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand-600) 15%, transparent);
-}
+/* the field's fill, border, hover and focus ring are .acct-input's (account.css, 2026-10-05); the sizes sit with the toolbar rule below */
+.adm-input { width: 100%; }
 #admCount { font-variant-numeric: tabular-nums; }
 
 .adm-actions { display: flex; gap: 10px; margin-top: 18px; flex-wrap: wrap; }
 
-.adm-error {
-  margin: 12px 0 0;
-  padding: 8px 10px;
-  border-radius: 7px;
-  border: 1px solid color-mix(in srgb, var(--danger) 35%, transparent);
-  background: color-mix(in srgb, var(--danger) 10%, transparent);
-  color: var(--danger-text);
-  font-size: .84rem;
-}
+/* .adm-error: the one red error line, .acct-error in account.css (2026-10-05) */
 
 /* ---------- mint result ---------- */
 .adm-result {
@@ -143,7 +112,7 @@
 }
 /* Copy-all sits inside the compact result head; the default .btn padding
    dwarfs it, so scale to the .btn-sm / console copy-button size. */
-.adm-copy { padding: 6px 12px; font-size: .8rem; min-height: 32px; border-radius: var(--radius-btn-sm); white-space: nowrap; }
+.adm-copy { padding: 6px 12px; font-size: .8rem; min-height: var(--ctl-h); border-radius: var(--radius-btn-sm); white-space: nowrap; }
 
 .adm-codes {
   list-style: none;
@@ -188,7 +157,7 @@
 
 .adm-tab {
   background: transparent;
-  border: 0;
+  border: 1px solid transparent; /* so the chosen tab's brand border (environment.css) can paint */
   color: var(--muted);
   border-radius: 6px;
   padding: 5px 12px;
@@ -200,10 +169,7 @@
 }
 .adm-tab:hover { color: var(--ink); background: color-mix(in srgb, var(--ink) 5%, transparent); }
 .adm-tab:active { transform: translateY(1px); }
-.adm-tab.is-active {
-  background: color-mix(in srgb, var(--ink) 8%, transparent);
-  color: var(--ink);
-}
+/* .adm-tab.is-active: the one chosen tint, with the other tabs and segments, in environment.css (2026-10-05) */
 .adm-tab:focus-visible { outline: 2px solid var(--brand-600); outline-offset: 1px; }
 
 /* summary strip: state before the table */
@@ -283,7 +249,7 @@
 th.adm-num { text-align: right; }
 /* Money moves in standard colors: green in, red out. Never decorative.
    (Element-qualified: the table's own td color rule outranks a lone class.) */
-.adm-money-pos, .adm-table td.adm-money-pos, .adm-table td .adm-money-pos { color: var(--brand-hi); }
+.adm-money-pos, .adm-table td.adm-money-pos, .adm-table td .adm-money-pos { color: var(--ok-text); }
 .adm-money-neg, .adm-table td.adm-money-neg, .adm-table td .adm-money-neg { color: var(--danger); }
 /* Column content policy for tables that must fit their container at desktop
    width. Prose cells wrap at WORD BOUNDARIES only (never mid-token); short
@@ -307,29 +273,13 @@ th.adm-num { text-align: right; }
 .adm-table td:nth-child(4),
 .adm-table td:nth-child(5) { color: var(--muted); }
 
-.adm-pill.is-bad {
-  color: var(--danger);
-  border: 1px solid color-mix(in srgb, var(--danger) 45%, transparent);
-  background: color-mix(in srgb, var(--danger) 8%, transparent);
-}
-.adm-pill {
-  display: inline-block;
-  font-size: .64rem;
-  font-weight: 700;
-  letter-spacing: .07em;
-  padding: .15rem .5rem;
-  border-radius: 4px;
-  white-space: nowrap;
-}
+/* The pill is the one tag, .acct-tag in account.css (2026-10-05): its shape, its is-bad and its is-claimed (the quiet
+   state) live there. is-available is the green ok state: the thing exists (an unclaimed code, a paid charge). */
+.adm-pill { white-space: nowrap; }
 .adm-pill.is-available {
-  color: #2fbf87;
-  background: rgba(47, 191, 135, .12);
-  border: 1px solid rgba(47, 191, 135, .25);
-}
-.adm-pill.is-claimed {
-  color: var(--muted);
-  background: color-mix(in srgb, var(--ink) 5%, transparent);
-  border: 1px solid var(--border);
+  color: var(--ok-text);
+  background: color-mix(in srgb, var(--ok) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ok) 30%, transparent);
 }
 
 /* ============================================================
@@ -424,10 +374,10 @@ th.adm-num { text-align: right; }
 .adm-side-who { color: var(--ink); font-size: .8rem; font-weight: 600; word-break: break-all; }
 .adm-side-role { color: var(--muted); font-size: .68rem; letter-spacing: .08em; text-transform: uppercase; }
 
-/* Report Anomaly: the alien beside its button, sitting with the sign-out foot
-   at the bottom of the rail, above the divider. No box around them: the rail is
-   the container. The alien is painted through a mask in the primary color
-   (teal on dark, purple on light); the button wears the same highlight wash the
+/* Report Anomaly and Support: each button carries its own glyph (the alien
+   through a mask in currentColor, the help circle as its SVG), sitting with the
+   sign-out foot at the bottom of the rail, above the divider. No box around
+   them: the rail is the container. The buttons wear the same highlight wash the
    badges and active tabs use: one color, no gradient, no pill. */
 .adm-side-report {
   margin-top: auto;
@@ -439,23 +389,16 @@ th.adm-num { text-align: right; }
 }
 .adm-side-report + .adm-side-foot { margin-top: 0; }
 .adm-side-report-btns { display: grid; gap: 6px; flex: 1 1 auto; min-width: 0; }
-/* on the wide rail the words carry the buttons; the glyphs appear only on the phone's icon rail */
-.adm-side-report-btn .ev-ico, .adm-side-alien { display: none; }
 .adm-side-alien {
-  width: 26px; height: 30px; flex: none; background-color: currentColor;
-  /* the whole alien inside its box (2026-09-28: at 132% the head and feet were cut off on the phone rail) */
+  display: block; width: 16px; height: 16px; flex: none; background-color: currentColor;
+  /* the whole alien inside its box (2026-09-28: at 132% the head and feet were cut off on the phone rail);
+     the box is the button's icon size, the same 16px as the help glyph, so both buttons stay one height */
   -webkit-mask: url("/images/anomaly.png") center / contain no-repeat;
   mask: url("/images/anomaly.png") center / contain no-repeat;
 }
 .adm-side .acct-signout { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
-.adm-side .acct-signout .ev-ico { width: 16px; height: 16px; }
+.adm-side .acct-signout .ev-ico, .adm-side .adm-side-report-btn .ev-ico { width: 16px; height: 16px; }
 .acct-report.is-support .acct-report-img { display: none; }
-.adm-side-report-img {
-  width: 34px; height: 52px; flex: none;
-  background-color: var(--brand-600);
-  -webkit-mask: url("/images/anomaly.png") 52% center / auto 100% no-repeat;
-  mask: url("/images/anomaly.png") 52% center / auto 100% no-repeat;
-}
 .adm-side .adm-side-report-btn.btn {
   flex: 1 1 auto;
   min-width: 0;
@@ -496,48 +439,32 @@ th.adm-num { text-align: right; }
 }
 .admin .adm-sec-title {
   margin: 0;
-  font-size: 1.3rem;
+  font-size: 1.5rem;
   font-weight: 700;
   letter-spacing: -.015em;
   color: var(--ink);
 }
+/* the same two sizes as the customer sections' .acct-sec-title (account.css), one shell, one heading size */
+@media (min-width: 1100px) { .admin .adm-sec-title { font-size: 1.7rem; } }
 
 /* ---------- toolbar (users filters) ----------
-   Same control language as the API Console: dark glass fields, purple glow on
-   hover, hard ring on focus, a 1px press, themed option lists. Retro
-   instrument panel, modern feedback. */
+   The panel's one field (account.css .acct-input, 2026-10-05): its fill, border, hover and focus ring are shared there;
+   these keep their own sizes, a 1px press, themed option lists. */
 .adm-toolbar { display: flex; gap: 8px; flex-wrap: wrap; }
 .adm-search, .adm-select, .adm-input {
   padding: 7px 10px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-ctl);
-  background: var(--surface-2);
-  color: var(--ink);
   font: inherit;
   font-size: .86rem;
-  transition: border-color 160ms ease, box-shadow 160ms ease, transform 120ms ease;
 }
 .adm-search { min-width: 200px; }
 .adm-search::placeholder, .adm-input::placeholder { color: var(--muted); opacity: .75; }
 .adm-search::-webkit-search-cancel-button { -webkit-appearance: none; appearance: none; }
 
-.adm-search:hover, .adm-select:hover, .adm-input:hover {
-  border-color: color-mix(in srgb, var(--brand) 55%, var(--border));
-  box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--brand-purp-solid) 22%, transparent),
-    0 0 16px color-mix(in srgb, var(--brand-purp-solid) 14%, transparent);
-}
-.adm-search:focus-visible, .adm-select:focus-visible, .adm-input:focus-visible {
-  outline: none;
-  border-color: var(--brand-600);
-  box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--brand-purp-solid) 45%, transparent),
-    0 0 14px color-mix(in srgb, var(--brand-purp-solid) 30%, transparent);
-}
 .adm-select:active, select.adm-input:active { transform: translateY(1px); }
 
 /* Native selects: kill the UA chrome, draw the console's twin-gradient
-   chevron, theme the option list (Chromium honors it; elsewhere harmless). */
+   chevron. The option list's colours are left to the root color-scheme
+   (base.css says why: a hard-set option colour broke the highlighted row on light). */
 select.adm-select, select.adm-input {
   -webkit-appearance: none;
   -moz-appearance: none;
@@ -552,13 +479,7 @@ select.adm-select, select.adm-input {
   background-size: 6px 6px;
 }
 select.adm-select option, select.adm-input option {
-  background-color: var(--bg-deep);
-  color: var(--muted);
   font-weight: 650;
-}
-select.adm-select option:checked, select.adm-input option:checked {
-  background-color: color-mix(in srgb, var(--brand-purp) 22%, var(--bg-deep));
-  color: var(--brand-600);
 }
 
 /* ---------- overview stat cards ---------- */
@@ -619,8 +540,9 @@ select.adm-select option:checked, select.adm-input option:checked {
 
 /* The tier badge moved to the one shared one: .acct-tag.is-tier-* in account.css (tierCopy.js tierBadge, 2026-10-05). */
 
-.adm-flag-admin { color: #2fbf87; background: rgba(47, 191, 135, .12); border: 1px solid rgba(47, 191, 135, .28); margin-right: 4px; }
-.adm-flag-dev   { color: var(--danger-text); background: color-mix(in srgb, var(--danger) 12%, transparent); border: 1px solid color-mix(in srgb, var(--danger) 30%, transparent); }
+/* qualified with the pill, since the tag's base rule in account.css loads after this file and would otherwise take the colours */
+.adm-pill.adm-flag-admin { color: var(--ok-text); background: color-mix(in srgb, var(--ok) 12%, transparent); border: 1px solid color-mix(in srgb, var(--ok) 30%, transparent); margin-right: 4px; }
+.adm-pill.adm-flag-dev   { color: var(--danger-text); background: color-mix(in srgb, var(--danger) 12%, transparent); border: 1px solid color-mix(in srgb, var(--danger) 30%, transparent); }
 
 /* ---------- coming-soon sections ---------- */
 .adm-soon {
@@ -658,24 +580,21 @@ select.adm-select option:checked, select.adm-input option:checked {
      before, the phone had no way to report, ask, or sign out from the panel. */
   .adm-side-report, .adm-side-foot { display: flex; flex: none; margin: 0; padding: 0 0 0 6px; border: 0; gap: 4px; }
   .adm-side-report { margin-left: auto; border-left: 1px solid var(--border); padding-left: 8px; }
-  .adm-side-report-img, .adm-side-btn-text { display: none; }
+  .adm-side-btn-text { display: none; }
   .adm-side-report-btns { display: flex; gap: 4px; }
   .adm-side .adm-side-report-btn.btn, .adm-side .acct-signout {
     width: var(--ctl-h, 40px); min-width: var(--ctl-h, 40px); height: var(--ctl-h, 40px); min-height: var(--ctl-h, 40px);
     padding: 0; display: inline-grid; place-items: center; flex: none;
   }
-  .adm-side-report-btn .ev-ico, .adm-side-alien { display: block; }
   .adm-side .acct-signout { background: transparent; }
+  /* the icon-only rail shows the whole alien at its former size */
+  .adm-side-alien { width: 26px; height: 30px; }
 }
 
 /* ---- Catalog section ---- */
 .adm-actions-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
-.adm-card-h {
-  margin: 0 0 10px;
-  font: 700 .7rem/1.4 ui-monospace, "Cascadia Code", Consolas, monospace;
-  letter-spacing: .2em; text-transform: uppercase;
-  color: var(--brand-600);
-}
+/* the face is .acct-card-h's (account.css, 2026-10-05); the margin under it is this card's own */
+.adm-card-h { margin: 0 0 10px; }
 
 /* ---- Users: frozen count and the manage modal ---- */
 .adm-frozen-count { margin: -6px 0 12px; color: var(--danger-text); font-size: .82rem; }
@@ -717,7 +636,7 @@ select.adm-select option:checked, select.adm-input option:checked {
 .nt-group { font-size: .68rem; letter-spacing: .08em; text-transform: uppercase; margin-top: 4px; }
 .nt-auds { display: flex; flex-wrap: wrap; gap: 6px 12px; }
 .nt-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
-.nt-chip { display: inline-flex; align-items: center; gap: 6px; }
+.adm-pill.nt-chip { display: inline-flex; align-items: center; gap: 6px; }   /* qualified: the tag's base display in account.css loads later */
 .nt-chip button { border: 0; background: transparent; color: inherit; cursor: pointer; font: inherit; font-size: .9rem; padding: 0 2px; line-height: 1; }
 .nt-chip button:hover { color: var(--danger); }
 .nt-add { max-width: 16rem; }
@@ -830,17 +749,16 @@ select.adm-select option:checked, select.adm-input option:checked {
 }
 .na-desk .adm-tab:disabled { cursor: progress; opacity: .6; }
 .na-desk .adm-tab:disabled:hover { background: transparent; color: var(--muted); }
+/* the tint is the brand note box's (environment.css .ev-key-result list, 2026-10-05) */
 .na-flash {
-  margin: 0 0 12px; padding: 8px 10px; border-radius: 7px;
-  border: 1px solid color-mix(in srgb, var(--brand-600) 35%, transparent);
-  background: color-mix(in srgb, var(--brand-600) 10%, transparent);
+  margin: 0 0 12px; padding: 8px 10px;
   color: var(--ink); font-size: .84rem; line-height: 1.5; overflow-wrap: anywhere;
 }
 .na-card { margin-bottom: 12px; min-width: 0; }
 .na-card.is-resolved { background: transparent; }
 .na-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-bottom: 8px; }
 .na-ago { font-size: .78rem; }
-.na-title { margin: 0 0 12px; font-weight: 700; color: var(--ink); font-size: .98rem; line-height: 1.4; overflow-wrap: anywhere; }
+.na-title { margin: 0 0 12px; line-height: 1.4; overflow-wrap: anywhere; }   /* its face is .acct-card-h's (account.css) */
 .na-facts { display: grid; grid-template-columns: repeat(auto-fill, minmax(8rem, 1fr)); gap: 10px 16px; margin: 0 0 12px; }
 .na-facts > div { min-width: 0; }
 .na-facts .na-wide { grid-column: 1 / -1; }
@@ -853,7 +771,7 @@ select.adm-select option:checked, select.adm-input option:checked {
   color: var(--ink); overflow-wrap: anywhere; word-break: break-all; user-select: all;
 }
 .na-id .btn-ico.is-done { color: var(--brand-600); }
-.na-detail {
+.na-detail, .adm-pre {
   margin: 0 0 12px; padding: 10px 12px;
   border: 1px solid var(--border); border-radius: 9px; background: var(--surface-deep);
   font: .78rem/1.5 ui-monospace, "Cascadia Code", Consolas, monospace; color: var(--ink);
@@ -928,7 +846,10 @@ select.adm-select option:checked, select.adm-input option:checked {
 .cd .cd-site-name { font-weight: 700; color: var(--ink); overflow-wrap: anywhere; }
 .cd .cd-site-addr { font-size: .8rem; overflow-wrap: anywhere; min-width: 0; }
 .cd .cd-site .um-actions { margin: 0; }
+/* the window's worded buttons wrap instead of running off a phone, the same recipe as .na-actions .btn-lead */
+.cd .um-actions .btn-lead { white-space: normal; text-align: left; max-width: 100%; }
 @media (max-width: 560px) {
+  .cd .um-actions .btn-lead { flex: 1 1 100%; justify-content: center; text-align: center; }
   .cd .cd-site .um-actions, .cd .cd-site .um-actions .btn-lead { width: 100%; }
   .cd .cd-site .um-actions .btn-lead { justify-content: center; }
 }

@@ -217,7 +217,7 @@
 }
 
 .dna-container.is-complete .dna-label{
-  color:rgba(167,255,241,.95);
+  color:var(--brand-600);
 }
 
 @keyframes dnaFadeOut{
@@ -276,7 +276,7 @@ body.is-processing header {
 body.is-processing::after {
   content: "";
   position: fixed;
-  top: 56px;              /* height of your header */
+  top: 0;
   left: 0;
   right: 0;
   bottom: 0;

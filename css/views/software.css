@@ -86,7 +86,7 @@
   border: 1px solid color-mix(in srgb, var(--ink) 14%, transparent); color: var(--ink);
 }
 .sw-access--free { color: var(--teal-bright); border-color: color-mix(in srgb, var(--brand-hi) 40%, transparent); }
-.sw-access--subscription { color: #cdaaff; border-color: color-mix(in srgb, var(--brand-purp-solid) 42%, transparent); }
+.sw-access--subscription { color: var(--purp-bright); border-color: color-mix(in srgb, var(--brand-purp-solid) 42%, transparent); }
 
 .scard-name { margin: 5px 0 0; font-size: 1.2rem; font-weight: 800; letter-spacing: -.01em; color: var(--card-title); }
 .scard-tag { margin: 0; color: var(--brand-600); font-weight: 700; font-size: .82rem; letter-spacing: .01em; }

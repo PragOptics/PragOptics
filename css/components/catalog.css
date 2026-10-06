@@ -170,7 +170,7 @@
 }
 
 .fast-path-body.open{
-  max-height:120px;
+  max-height:40rem;
   opacity:1;
   margin-bottom:6px;
 }
@@ -191,7 +191,7 @@
 }
 
 .cap-body.open{
-  max-height:140px;
+  max-height:40rem;
   opacity:1;
   margin-bottom:8px;
 }

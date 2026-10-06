@@ -19,6 +19,24 @@
   font-size:12px;
 }
 
+/* the console's status pills: one state class each, drawn from the page's own
+   roles so they read on both themes; neutral is the base .pill */
+.pill.is-good{
+  color:var(--brand-cyan);
+  background:color-mix(in srgb, var(--brand-cyan) 12%, transparent);
+  border-color:color-mix(in srgb, var(--brand-cyan) 30%, transparent);
+}
+.pill.is-warn{
+  color:var(--gold-soft);
+  background:color-mix(in srgb, var(--gold-soft) 12%, transparent);
+  border-color:color-mix(in srgb, var(--gold-soft) 30%, transparent);
+}
+.pill.is-bad{
+  color:var(--danger-text);
+  background:color-mix(in srgb, var(--danger-text) 12%, transparent);
+  border-color:color-mix(in srgb, var(--danger-text) 30%, transparent);
+}
+
 .pill-enabled{
   border-color:var(--brand-600);
   box-shadow:var(--aura);

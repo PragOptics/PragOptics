@@ -26,13 +26,12 @@
 .wr-select {
   width: 100%; appearance: none; -webkit-appearance: none; cursor: pointer;
   padding: 14px 44px 14px 16px; border-radius: 12px;
-  font: 600 1rem/1.2 inherit; color: var(--ink);
+  font: inherit; font-size: 1rem; font-weight: 600; line-height: 1.2; color: var(--ink);
   background: var(--surface-deep); border: 1px solid var(--border);
   transition: border-color 160ms ease, box-shadow 160ms ease;
 }
 .wr-select:hover { border-color: color-mix(in srgb, var(--brand-600) 45%, transparent); }
 .wr-select:focus-visible { outline: none; border-color: var(--brand-600); box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand-600) 18%, transparent); }
-.wr-select option { background: #0b1020; color: #e6edf7; }
 .wr-select-caret {
   position: absolute; right: 16px; top: 50%; transform: translateY(-50%);
   color: var(--brand-600); pointer-events: none; font-size: .9rem;
@@ -90,19 +89,20 @@
 .wr-go:focus-visible { outline: 2px solid var(--brand-600); outline-offset: 2px; }
 .wr-go-ico { display: block; }
 
-.wr-error { margin: 2px 0 0; color: var(--danger-text); font-size: .88rem; }
+.wr-error { margin: 2px 0 0; padding: 8px 10px; border-radius: 7px; border: 1px solid color-mix(in srgb, var(--danger) 35%, transparent); background: color-mix(in srgb, var(--danger) 10%, transparent); color: var(--danger-text); font-size: .84rem; }
 
 /* ---- contact step ---- */
 .wr-step-contact { gap: 14px; }
 .wr-code-chip {
   align-self: center; display: inline-flex; align-items: center; gap: 12px;
+  flex-wrap: wrap; justify-content: center; max-width: 100%;
   padding: 8px 14px; border-radius: var(--radius-pill);
   border: 1px solid color-mix(in srgb, var(--brand-600) 35%, transparent); background: color-mix(in srgb, var(--brand-600) 7%, transparent);
 }
 .wr-chip-device { font-weight: 800; font-size: .88rem; color: var(--ink); }
 .wr-chip-code {
   font: 700 .85rem/1 ui-monospace, "SF Mono", "Cascadia Code", Menlo, monospace;
-  letter-spacing: .1em; color: var(--brand-600); background: none; padding: 0;
+  letter-spacing: .1em; color: var(--brand-600); background: none; padding: 0; overflow-wrap: anywhere;
 }
 .wr-contact-lede { margin: 0; text-align: center; color: var(--muted); }
 .wr-fields { display: grid; grid-template-columns: 1.4fr 1fr; gap: 12px; }
@@ -122,9 +122,9 @@
 .wr-done-badge {
   width: 62px; height: 62px; border-radius: 50%;
   display: inline-flex; align-items: center; justify-content: center;
-  color: var(--brand-hi); border: 1.5px solid color-mix(in srgb, var(--brand-hi) 50%, transparent);
-  background: color-mix(in srgb, var(--brand-hi) 8%, transparent);
-  box-shadow: 0 0 34px color-mix(in srgb, var(--brand-hi) 25%, transparent);
+  color: var(--ok-text); border: 1.5px solid color-mix(in srgb, var(--ok) 50%, transparent);
+  background: color-mix(in srgb, var(--ok) 8%, transparent);
+  box-shadow: 0 0 34px color-mix(in srgb, var(--ok) 25%, transparent);
 }
 .wr-done-hint { margin: 0; color: var(--muted); font-size: .92rem; }
 .wr-done-actions { margin-top: 10px; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
@@ -136,19 +136,19 @@
   background: var(--surface-deep);
 }
 .wr-tab {
-  padding: 9px 22px; border: 0; border-radius: var(--radius-btn-sm); cursor: pointer;
-  font: 700 .9rem/1 inherit; letter-spacing: .02em;
+  padding: 9px 22px; border: 1px solid transparent; border-radius: var(--radius-btn-sm); cursor: pointer;
+  font: inherit; font-size: .9rem; font-weight: 700; line-height: 1; letter-spacing: .02em;
   color: var(--muted); background: transparent;
   transition: color 160ms ease, background 160ms ease;
 }
 .wr-tab:hover { color: var(--ink); }
-.wr-tab.is-active { background: var(--hi-bg); color: var(--hi-fg); border: 1px solid var(--hi-border); }
+/* .wr-tab.is-active: the one chosen tint, with the panel's tabs, in css/views/environment.css (2026-10-05) */
 
 /* ---- transfer flow ---- */
 .tr-fine { margin: 12px 0 0; font-size: .82rem; text-align: center; line-height: 1.5; }
 .tr-change {
   border: 0; background: transparent; cursor: pointer; padding: 0;
-  font: 700 .8rem/1 inherit; color: var(--brand-600);
+  font: inherit; font-size: .8rem; font-weight: 700; line-height: 1; color: var(--brand-600);
   border-bottom: 1px solid color-mix(in srgb, var(--brand-600) 35%, transparent);
 }
 .tr-change:hover { color: var(--card-title); }
@@ -178,6 +178,8 @@
   .wr-fields, .wr-paths { grid-template-columns: 1fr; }
   .wr-code-row { flex-wrap: nowrap; }
   .wr-code-input { width: 100%; min-width: 0; flex: 1; }
+  .wr-tabs { display: flex; width: 100%; box-sizing: border-box; }
+  .wr-tab { flex: 1 1 0; padding: 9px 10px; text-align: center; }
 }
 
 /* ---------- How-To button, code hint, and warranty terms ---------- */

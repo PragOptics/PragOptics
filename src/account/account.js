@@ -501,7 +501,6 @@ function shellHtml() {
           ` : ''}
         </ul>
         <div class="adm-side-report">
-          <span class="adm-side-report-img" aria-hidden="true"></span>
           <span class="adm-side-report-btns">
             <button class="btn btn-sm adm-side-report-btn" type="button" data-acct-action="report-anomaly"
               aria-label="Report an anomaly" data-tip="Report a bug or anything that looked wrong; page details come along"><span class="adm-side-alien" aria-hidden="true"></span><span class="adm-side-btn-text">Report Anomaly</span></button>
@@ -1552,13 +1551,13 @@ function showRecoveryCodesModal(codes) {
           ${codes.map(c => `<code>${escapeHtml(c)}</code>`).join('')}
         </div>
         <div class="acct-modal-actions">
-          <button class="btn btn-ghost" type="button" data-rc-copy>Copy</button>
+          ${leadBtn({ rc: 'copy' }, 'copy', 'Copy')}
           <button class="cta" type="button" data-rc-done>I have saved these</button>
         </div>
       </div>`;
     hostEl.hidden = false;
     function onClick(e) {
-      const rc = e.target.closest('[data-rc-copy]');
+      const rc = e.target.closest('[data-rc-action="copy"]');
       if (rc) { copyButton(rc, codes.join('\n'), { select: () => hostEl.querySelector('.acct-alias-list') }); return; }
       if (e.target.closest('[data-rc-done]')) { hostEl.removeEventListener('click', onClick); hostEl.hidden = true; hostEl.innerHTML = ''; resolve(); }
     }
@@ -2602,7 +2601,7 @@ async function renderAdminAi(main) {
   main.innerHTML = `
     <header class="adm-sec-head"><h2 class="adm-sec-title">AI</h2></header>
     <p class="acct-error" id="admAiError" hidden></p>
-    <div id="admAiBody"><p class="adm-loading">Loading…</p></div>`;
+    <div id="admAiBody"><p class="acct-loading">Loading…</p></div>`;
   const host = document.getElementById('admAiBody');
   try {
     const d = await apiFetch(ADMIN_AI_URL);
@@ -2816,8 +2815,8 @@ async function loadAdminCosts(force) {
 function tierPill(tier) { return tierBadge(tier); }   // the one tier badge (src/components/tierCopy.js)
 function statusPill(status) {
   const s = String(status || '').toUpperCase();
-  const cls = s === 'ACTIVE' ? 'is-available' : (s === 'SUSPENDED' || s === 'CLOSED') ? 'is-bad' : 'is-claimed';
-  return `<span class="adm-pill ${cls}">${escapeHtml(s || '—')}</span>`;
+  const cls = s === 'ACTIVE' ? 'is-verified' : (s === 'SUSPENDED' || s === 'CLOSED') ? 'is-bad' : 'is-quiet';
+  return `<span class="acct-tag ${cls}">${escapeHtml(s || '—')}</span>`;
 }
 
 // The per-row entry to the manage modal. A closed account is finished unless
@@ -3017,7 +3016,7 @@ function userManageHtml(u, { self }) {
       <section class="um-sec um-sec--danger">
         <div class="um-sec-h">Close account</div>
         <p class="acct-modal-note">Permanent. Ends any subscription now, removes the sign-in, and signs the account out everywhere. An account still holding Microsoft license commitments is shown what is left of them first, and closes only once that amount is charged on the customer's final bill. ${noEmail ? "This account's email was cleared when it closed, so confirm by its account id instead: copy it below and paste it to enable the button." : 'Type the account email to enable the button.'}</p>
-        ${noEmail ? `<div class="acct-actions-row um-close-idrow"><code class="ev-code um-close-id">${escapeHtml(u.userId)}</code><button class="btn btn-sm btn-ghost" type="button" data-um-copy-id data-tip="Copy the account id" aria-label="Copy the account id">${ico('copy')}<span>Copy id</span></button></div>` : ''}<input class="adm-input" id="umCloseEmail" type="${noEmail ? 'text' : 'email'}" autocomplete="off" spellcheck="false" placeholder="${noEmail ? 'Paste the account id' : escapeHtml(email)}" ${lock} aria-label="${noEmail ? 'Paste the account id to confirm' : 'Type the account email to confirm'}">
+        ${noEmail ? `<div class="acct-actions-row um-close-idrow"><code class="ev-code um-close-id">${escapeHtml(u.userId)}</code>${iconBtn({ um: 'copy-id' }, 'copy', 'Copy the account id')}</div>` : ''}<input class="adm-input" id="umCloseEmail" type="${noEmail ? 'text' : 'email'}" autocomplete="off" spellcheck="false" placeholder="${noEmail ? 'Paste the account id' : escapeHtml(email)}" ${lock} aria-label="${noEmail ? 'Paste the account id to confirm' : 'Type the account email to confirm'}">
         <div class="um-close-bill" id="umCloseBill" role="status" aria-live="polite" hidden></div>
         <div class="um-actions">
           <button class="btn btn-sm btn-lead is-danger" type="button" data-um-close-account disabled
@@ -3112,7 +3111,7 @@ const USER_MANAGE_ACTIONS = [
     armConfirm(btn, `Confirm: ${next === 'ACTIVE' ? 'reactivate' : 'suspend'} ${um.row.email || ''}`, () => runPatch(btn, { status: next }, um));
   }],
   ['[data-um-unfreeze]', (btn, um) => runPatch(btn, { phoneChangesFrozen: false }, um)],
-  ['[data-um-copy-id]', (btn, um) => copyButton(btn, um.row.userId, { select: () => um.$('.um-close-id') })],
+  ['[data-um-action="copy-id"]', (btn, um) => copyButton(btn, um.row.userId, { select: () => um.$('.um-close-id') })],
   // the community standards (2026-09-24): its own window over this one; the roster reloads after an action
   ['[data-um-conduct]', (btn, um) => {
     if (um.working) return;
@@ -3978,7 +3977,7 @@ async function renderPayments(main) {
                   <tr>
                     <td class="adm-muted">${escapeHtml(fmtDate(c.createdAt))}</td>
                     <td class="adm-num ${c.refunded ? 'adm-money-neg' : c.status === 'succeeded' ? 'adm-money-pos' : ''}">${c.refunded ? '-' : ''}${escapeHtml(usdCents(c.amountCents))}</td>
-                    <td><span class="adm-pill ${c.refunded ? 'is-bad' : c.status === 'succeeded' ? 'is-available' : 'is-claimed'}">${escapeHtml(c.refunded ? 'refunded' : c.status)}</span></td>
+                    <td><span class="acct-tag ${c.refunded ? 'is-bad' : c.status === 'succeeded' ? 'is-verified' : 'is-quiet'}">${escapeHtml(c.refunded ? 'refunded' : c.status)}</span></td>
                     <td class="adm-cell-email cell-ellip" title="${escapeHtml(c.email || '')}">${escapeHtml(c.email || '—')}</td>
                     <td>${safeUrl(c.receiptUrl) ? `<a class="acct-inline-link" href="${escapeHtml(safeUrl(c.receiptUrl))}" target="_blank" rel="noopener">Receipt</a>` : ''}</td>
                   </tr>
@@ -4000,7 +3999,7 @@ async function renderPayments(main) {
                     <td class="adm-muted">${escapeHtml(fmtDate(p.createdAt))}</td>
                     <td class="adm-muted">${escapeHtml(fmtDate(p.arrivalAt))}</td>
                     <td class="adm-num ${p.status === 'paid' ? 'adm-money-pos' : ''}">${escapeHtml(usdCents(p.amountCents))}</td>
-                    <td><span class="adm-pill ${p.status === 'paid' ? 'is-available' : 'is-claimed'}">${escapeHtml(p.status)}</span></td>
+                    <td><span class="acct-tag ${p.status === 'paid' ? 'is-verified' : 'is-quiet'}">${escapeHtml(p.status)}</span></td>
                   </tr>
                 `).join('')}
               </tbody>

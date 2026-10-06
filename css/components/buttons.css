@@ -70,7 +70,8 @@
    the .cta re-assert keeps its gradient at rest. No pointer-events:none - the
    disabled lane buttons carry title tooltips that it would suppress. */
 .btn:disabled,
-.cta:disabled{
+.cta:disabled,
+.codeBtn:disabled{
   opacity:.55;
   cursor:not-allowed;
 }
@@ -85,6 +86,11 @@
 .cta:disabled:hover{
   background:linear-gradient(180deg, var(--brand), var(--brand-600));
   color:var(--on-brand);
+}
+/* A disabled text field or select reads the same way as a disabled button. */
+:is(.form-field input, .acct-input, .adm-input, .adm-select, .adm-search, select):disabled{
+  opacity:.55;
+  cursor:not-allowed;
 }
 
 /* Keyboard focus: the same teal ring the rest of the site uses. */
@@ -142,11 +148,11 @@
   transform: translateX(-25%);
 }
 
-.codeBtn:hover {
+.codeBtn:not(:disabled):hover {
   transform: translateY(-2px);
 }
 
-.codeBtn:hover::before {
+.codeBtn:not(:disabled):hover::before {
   opacity: 0.6;
   animation: scan 1.2s ease-in-out infinite alternate;
 }

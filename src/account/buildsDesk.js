@@ -47,7 +47,7 @@ function rowHtml(b, { operator = false } = {}) {
         ${b.summary ? `<div class="adm-muted">${e(b.summary)}</div>` : ''}
         <div class="adm-muted">${e(TYPE_LABEL[b.type] || 'Build')}${settings ? ` · ${settings} setting${settings === 1 ? '' : 's'}` : ''} · ${e(fmtSize(b.size))}${assistantReady(b) ? ' · <span class="acct-tag">Assistant-ready</span>' : ''}</div></td>
       <td class="cell-ellip">${e(b.handle || '')}</td>
-      <td class="cell-tight"><span class="acct-tag${status === 'published' ? ' is-ok' : status === 'pending' ? ' is-pending' : status === 'rejected' ? ' is-off' : ''}">${e(statusLabel(b))}</span>${b.revision ? ` <span class="adm-muted">rev ${e(String(b.revision))}</span>` : ''}
+      <td class="cell-tight"><span class="acct-tag${status === 'published' ? ' is-verified' : status === 'pending' ? ' is-pending' : status === 'rejected' ? ' is-bad' : ''}">${e(statusLabel(b))}</span>${b.revision ? ` <span class="adm-muted">rev ${e(String(b.revision))}</span>` : ''}
         ${status === 'rejected' && b.reason ? `<div class="adm-muted">${e(b.reason)}</div>` : ''}${Number(b.installs) ? `<div class="adm-muted">installed ${e(String(b.installs))} time${b.installs === 1 ? '' : 's'}</div>` : ''}</td>
       <td class="adm-muted cell-tight">${e(D.fmtDate(b.publishedAt || b.updatedAt || b.createdAt))}</td>
       <td class="cell-tight tm-actions"><span class="act-row">

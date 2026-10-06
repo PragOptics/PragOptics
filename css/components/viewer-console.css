@@ -30,7 +30,7 @@
 }
 
 #consoleView .login-panel strong{
-  color: var(--console-prop) !important;
+  color: var(--card-title) !important;
 }
 
 .login-panel label {
@@ -43,8 +43,8 @@
   width:140px; 
   padding:6px; 
   border-radius:8px; 
-  border:1px solid var(--grad); 
-  background:black; 
+  border:1px solid var(--grad);
+  background:var(--console-ground);
   color:var(--ink);
 }
 
@@ -134,7 +134,7 @@ pre{
 }
 
 .copy-btn:hover{
-  background:rgba(33,188,165,0.12);
+  background:color-mix(in srgb, var(--brand-600) 12%, transparent);
   transform:translateY(-2px);
 }
 
@@ -151,19 +151,22 @@ pre{
 }
 
 .json-status.ok {
-  color: var(--console-succ);
+  color: var(--brand-600);
 }
 
 .json-status.err {
-  color: var(--console-err);
+  color: var(--danger-text);
 }
 
 /* === PragOptics JSON Editor Overlay === */
+/* The editor and the raw view sit on --console-ground (css/tokens.css: black
+   on dark, white on light); the syntax engine reads the --console-* tokens,
+   which are re-valued for light there too. */
 .po-json-editor{
   position: relative;
   border-radius: 12px;
-  border: px solid var(--border);
-  background: var(--bg-deep);
+  border: 1px solid var(--border);
+  background: var(--console-ground);
   max-height: 60vh;
   overflow: hidden;            
   box-sizing: border-box;
@@ -285,6 +288,7 @@ pre{
 
 #po-raw-view {
   overflow:auto;
+  background: var(--console-ground);
 }
 
 
@@ -295,8 +299,8 @@ pre{
   opacity: 0.95;
 }
 
-.po-json-highlight .tok-colon { color: rgba(255,255,255,.70); }
-.po-json-highlight .tok-comma { color: rgba(255,255,255,.55); }
+.po-json-highlight .tok-colon { color: color-mix(in srgb, var(--ink) 70%, transparent); }
+.po-json-highlight .tok-comma { color: color-mix(in srgb, var(--ink) 55%, transparent); }
 
 /* Depth palette (6-step rotation) */
 .po-json-highlight .d0 { color: var(--console-prop) }
@@ -304,6 +308,7 @@ pre{
 .po-json-highlight .d2 { color: var(--console-num); }
 .po-json-highlight .d3 { color: var(--console-bool); }
 .po-json-highlight .d4 { color: var(--console-null); }
+.po-json-highlight .d5 { color: var(--console-succ); }
 
 
 /* ===== Render modes (pretty vs minified) ===== */
@@ -357,7 +362,7 @@ pre{
 
 /* ===== Ghost suggestion (inline at caret) ===== */
 .po-json-highlight .tok-ghost{
-  color: rgba(255,255,255,.35);
+  color: color-mix(in srgb, var(--ink) 35%, transparent);
   font-style: italic;
 }
 /* =========================
@@ -386,7 +391,7 @@ pre{
   border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
   box-shadow: var(--aura);
 
-  color: rgba(255,255,255,.85);
+  color: color-mix(in srgb, var(--ink) 85%, transparent);
   font-size: .82rem;
   line-height: 1.25;
   max-width: min(420px, 90%);
@@ -398,8 +403,8 @@ pre{
 
 .po-json-ghost code{
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
-  color: rgba(255,255,255,.92);
-  background: rgba(0,0,0,.35);
+  color: var(--ink);
+  background: color-mix(in srgb, var(--ink) 10%, transparent);
   padding: 2px 6px;
   border-radius: 8px;
 }
@@ -428,8 +433,8 @@ pre{
   overflow: hidden;
   isolation: isolate;
   border: none;
-  color: #061311;
-  background: rgba(33,188,165,0.92);  
+  color: var(--on-brand);
+  background: var(--brand-600);  
   font-weight: 850;
 }
 
@@ -448,9 +453,9 @@ pre{
 
   background: linear-gradient(
     120deg,
-    #ae5df0da,
-    #21bca5,
-    #ae5df0da
+    color-mix(in srgb, var(--brand-purp-solid) 85%, transparent),
+    var(--brand-600),
+    color-mix(in srgb, var(--brand-purp-solid) 85%, transparent)
   );
   background-size: 200% 200%;
   opacity: 0;
@@ -488,7 +493,7 @@ pre{
 
 #consoleView #po-api-send:hover,
 #consoleView #po-api-send:focus-visible{
-  color:black !important;
+  color: var(--on-brand) !important;
   transform: translateY(-2px);
 }
 
@@ -497,7 +502,7 @@ pre{
 /* Hover: animate ooze (overrides global .btn:hover via ID specificity) */
 @media (hover:hover) and (pointer:fine){
   #consoleView #po-api-send:hover{
-    color:black !important;
+    color: var(--on-brand) !important;
     transform: translateY(-2px);
   }
   #consoleView #po-api-send:hover::before{
@@ -636,17 +641,17 @@ pre{
   + .po-view-toggle-track{
   background: linear-gradient(
     120deg,
-    rgba(33, 188, 165, 0.521),
-    rgba(162, 0, 255, 0.479)
+    color-mix(in srgb, var(--brand-600) 52%, transparent),
+    color-mix(in srgb, var(--brand-purp-solid) 48%, transparent)
   );
-  border-color: rgba(33,188,165,0.55);
+  border-color: color-mix(in srgb, var(--brand-600) 55%, transparent);
 }
 
 #consoleView .po-view-toggle-input:checked
   + .po-view-toggle-track{
   box-shadow:
-    0 0 0 1px rgba(33,188,165,0.4) inset,
-    0 0 14px rgba(33,188,165,0.35);
+    0 0 0 1px color-mix(in srgb, var(--brand-600) 40%, transparent) inset,
+    0 0 14px color-mix(in srgb, var(--brand-600) 35%, transparent);
 }
 
 #consoleView .view-toggle-label{
@@ -678,7 +683,7 @@ pre{
 
   position: absolute;
   bottom: calc(100% + 8px);
-  left: -50%;
+  left: 50%;
   transform: translateX(-50%) translateY(4px);
 
   padding: 6px 10px;
@@ -760,8 +765,8 @@ pre{
   padding: 2px 6px;
   border-radius: 6px;
 
-  background: rgba(0,0,0,0.35);
-  border: 1px solid rgba(255,255,255,0.12);
+  background: color-mix(in srgb, var(--ink) 6%, transparent);
+  border: 1px solid var(--border);
 
   color: var(--brand-600);
   font-weight: 600;
@@ -778,8 +783,8 @@ pre{
   margin-top: 8px;
   padding: 10px 12px;
   border-radius: 10px;
-  border: 1px solid rgba(255,255,255,0.08);
-  background: rgba(0,0,0,0.25);
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--ink) 6%, transparent);
   overflow: auto;
   white-space: pre;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
@@ -912,16 +917,16 @@ pre{
 #consoleView #po-api-method:hover{
   border-color: color-mix(in srgb, var(--brand) 55%, var(--border));
   box-shadow:
-    0 0 0 1px rgba(162,0,255,0.25),
-    0 0 18px rgba(162,0,255,0.18);
+    0 0 0 1px color-mix(in srgb, var(--brand-purp-solid) 25%, transparent),
+    0 0 18px color-mix(in srgb, var(--brand-purp-solid) 18%, transparent);
 }
 /* focus */
 #consoleView #po-api-method:focus-visible{
   outline: none;
   border-color: var(--brand-600);
   box-shadow:
-    0 0 0 1px rgba(162,0,255,0.45),
-    0 0 14px rgba(162,0,255,0.35);
+    0 0 0 1px color-mix(in srgb, var(--brand-purp-solid) 45%, transparent),
+    0 0 14px color-mix(in srgb, var(--brand-purp-solid) 35%, transparent);
 }
 
 /* active (press) */
@@ -929,40 +934,14 @@ pre{
   transform: translateY(1px);
 }
 
-/* options (best-effort, browser-limited) */
-#consoleView #po-api-method option{
-  background: var(--bg-deep);
-  color: var(--brand-600);
-}
-
 /* =========================
    API METHOD SELECT – OPTION LIST (Best-effort)
    ========================= */
 
-/* options — works reliably on Windows, partially on macOS */
+/* options: no author colours, so the list follows the root color-scheme (base.css records why: an author ink
+   sticks to the highlighted row and reads dark on the dark highlight bar on light) */
 #consoleView #po-api-method option{
-  background-color: var(--bg-deep);
-  color: var(--muted);
   font-weight: 650;
-}
-
-/* selected option (Windows / Chromium-based) */
-#consoleView #po-api-method option:checked{
-  background-color: color-mix(
-    in srgb,
-    var(--brand-purp) 22%,
-    var(--bg-deep)
-  );
-  color: var(--brand-600);
-}
-
-/* hover (Windows / Chromium only; ignored elsewhere) */
-#consoleView #po-api-method option:hover{
-  background-color: color-mix(
-    in srgb,
-    var(--brand-purp) 18%,
-    var(--bg-deep)
-  );
 }
 
 
@@ -974,7 +953,7 @@ pre{
 }
 
 .po-json-editor textarea::-webkit-scrollbar-track{
-  background: color-mix(in srgb, var(--bg-deep) 85%, transparent);
+  background: color-mix(in srgb, var(--console-ground) 85%, transparent);
 }
 
 .po-json-editor textarea::-webkit-scrollbar-thumb{
@@ -992,7 +971,7 @@ pre{
 .po-json-editor textarea{
   scrollbar-width: thin;
   scrollbar-color: color-mix(in srgb, var(--muted) 55%, black)
-                   color-mix(in srgb, var(--bg-deep) 85%, transparent);
+                   color-mix(in srgb, var(--console-ground) 85%, transparent);
 }
 
 
@@ -1016,9 +995,9 @@ pre{
 #consoleView #po-api-format:focus-visible,
 #consoleView #po-api-minify:focus-visible,
 #consoleView #po-api-repair:focus-visible{
-  background: rgba(162,0,255,0.16) !important;
+  background: color-mix(in srgb, var(--brand-purp-solid) 16%, transparent) !important;
   border-style: solid !important;
-  color: var(--json-mod) !important;
+  color: var(--brand-600) !important;
   transform: translateY(-1px);
 }
 
@@ -1067,7 +1046,7 @@ pre{
   bottom: calc(100% + 8px);
 
   /* match your existing tooltip positioning */
-  left: -50%;
+  left: 50%;
   transform: translateX(-50%) translateY(4px);
 
   padding: 6px 10px;

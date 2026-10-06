@@ -97,11 +97,8 @@
   .tm-invite-email { grid-column: 1 / -1; }
   .tm-invite-role { min-width: 0; width: 100%; }
 }
-.tm-invite-result {
-  margin-top: 12px; padding: 12px 14px; border-radius: var(--radius-ctl);
-  border: 1px solid color-mix(in srgb, var(--brand-600) 32%, transparent);
-  background: color-mix(in srgb, var(--brand-600) 8%, transparent);
-}
+/* the tint is the brand note box's (environment.css .ev-key-result list, 2026-10-05), as for .tm-scopes-yours and .tm-status */
+.tm-invite-result { margin-top: 12px; padding: 12px 14px; }
 .tm-invite-result p { margin: 0 0 8px; font-size: .88rem; line-height: 1.5; }
 .tm-invite-result p b { color: var(--card-title); }
 .tm-link { font-family: ui-monospace, Consolas, monospace; font-size: .8rem; }
@@ -124,9 +121,6 @@
 .tm-scopes-retry { margin-top: 10px; }
 .tm-scopes-yours {
   display: flex; gap: 8px; align-items: flex-start; margin: 0 0 12px; padding: 8px 12px;
-  border-radius: var(--radius-ctl);
-  border: 1px solid color-mix(in srgb, var(--brand-600) 30%, transparent);
-  background: color-mix(in srgb, var(--brand-600) 7%, transparent);
   color: var(--ink); font-size: .88rem; line-height: 1.45;
 }
 .tm-scopes-yours .ev-ico { flex: none; margin-top: 2px; color: var(--brand-600); }
@@ -178,11 +172,11 @@
   position: relative; flex: none; width: 44px; height: 24px; border-radius: var(--radius-pill);
   background: color-mix(in srgb, var(--ink) 18%, transparent); transition: background 160ms ease;
 }
-/* the same thumb as the AI switch (environment.css .ev-switch-thumb): its fill is that switch's own var(--card, #fff),
-   so the two switches always match; its shadow is drawn from the shade token */
+/* the same thumb as the AI switch (environment.css .ev-switch-thumb): its fill is var(--card-title), near-white on dark
+   and deep indigo on light, so the knob reads against its 18% ink track in both themes; its shadow is the shade token */
 .tm-sw-thumb {
   position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%;
-  background: var(--card, #fff); box-shadow: 0 1px 3px color-mix(in srgb, var(--shade) 25%, transparent); transition: transform 160ms ease;
+  background: var(--card-title); box-shadow: 0 1px 3px color-mix(in srgb, var(--shade) 25%, transparent); transition: transform 160ms ease;
 }
 .tm-sw.is-on .tm-sw-track { background: var(--brand-600); }
 .tm-sw.is-on .tm-sw-thumb { transform: translateX(20px); }
@@ -197,9 +191,7 @@
 /* a change out (src/account/team.js applyLocks): the sentence under the heading, and the turning "Saving…" beside a
    role picker. The words are what a phone reads, since it has no hover for the tips. */
 .tm-status {
-  display: flex; align-items: center; gap: 8px; margin: 0 0 12px; padding: 8px 10px; border-radius: var(--radius-ctl);
-  border: 1px solid color-mix(in srgb, var(--brand-600) 35%, transparent);
-  background: color-mix(in srgb, var(--brand-600) 9%, transparent);
+  display: flex; align-items: center; gap: 8px; margin: 0 0 12px; padding: 8px 10px;
   color: var(--ink); font-size: .86rem; line-height: 1.45; overflow-wrap: anywhere;
 }
 .tm-status[hidden] { display: none; }

@@ -83,6 +83,20 @@ export function mountDnaSwirl(target, opts = {}) {
     glowBridge: opts.glowBridge ?? true,           // adds soft glow to visually connect dots
   };
 
+  // The strand colours follow the theme (2026-10-05): the two brand tokens, read at mount and again on every theme
+  // switch (theme.js announces it); the dark literals above stand in when the read is empty. step() reads cfg each
+  // frame, so a switch shows on the next frame. A caller's own colorA/colorB are kept.
+  const brandToken = (name, fallback) => {
+    try { return (getComputedStyle(document.documentElement).getPropertyValue(name) || '').trim() || fallback; }
+    catch { return fallback; }
+  };
+  const readThemeColors = () => {
+    if (opts.colorA == null) cfg.colorA = brandToken('--brand-purp', '#a200ffc5');
+    if (opts.colorB == null) cfg.colorB = brandToken('--brand', '#1ca490da');
+  };
+  readThemeColors();
+  addEventListener('pragoptics:themechange', readThemeColors);
+
   // ----- canvas -----
   const canvas = document.createElement('canvas');
   canvas.style.width = '100%';
@@ -679,6 +693,7 @@ export function mountDnaSwirl(target, opts = {}) {
   function cleanup() {
     cancelAnimationFrame(raf);
     ro.disconnect();
+    removeEventListener('pragoptics:themechange', readThemeColors);
     host.__dnaSwirlCleanup = null;
     try { host.removeChild(canvas); } catch {}
   }

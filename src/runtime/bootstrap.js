@@ -249,7 +249,7 @@
       bar.style.cssText =
         "position:fixed;left:0;right:0;bottom:0;z-index:1200;display:flex;gap:12px;align-items:center;" +
         "justify-content:center;flex-wrap:wrap;padding:10px 16px;background:color-mix(in srgb, var(--danger) 16%, transparent);" +
-        "border-top:1px solid color-mix(in srgb, var(--danger) 45%, transparent);color:#ffd7db;font:600 0.85rem system-ui,sans-serif;";
+        "border-top:1px solid color-mix(in srgb, var(--danger) 45%, transparent);color:var(--danger-text);font:600 0.85rem system-ui,sans-serif;";
       const msg = document.createElement("span");
       msg.textContent = "Your last payment did not go through. Update your payment method to keep your subscription active.";
       const manage = document.createElement("button");
@@ -257,7 +257,7 @@
       manage.textContent = "Manage billing";
       manage.style.cssText =
         "cursor:pointer;border:1px solid color-mix(in srgb, var(--danger) 60%, transparent);background:color-mix(in srgb, var(--danger) 20%, transparent);" +
-        "color:#ffd7db;border-radius:8px;padding:5px 12px;font:inherit;";
+        "color:var(--danger-text);border-radius:8px;padding:5px 12px;font:inherit;";
       manage.onclick = () => {
         document.getElementById("pragConsoleBanner")?.remove();
         window.presetAccountSection?.("subscription");
@@ -267,7 +267,7 @@
       dismiss.type = "button";
       dismiss.setAttribute("aria-label", "Dismiss");
       dismiss.textContent = "✕";
-      dismiss.style.cssText = "cursor:pointer;border:none;background:transparent;color:#ffd7db;font:inherit;";
+      dismiss.style.cssText = "cursor:pointer;border:none;background:transparent;color:var(--danger-text);font:inherit;";
       dismiss.onclick = () => document.getElementById("pragConsoleBanner")?.remove();
       bar.append(msg, manage, dismiss);
       document.body.appendChild(bar);
@@ -1044,7 +1044,7 @@ window.applyPostLoginResolution = applyPostLoginResolution;
   const banner = document.createElement("div");
   banner.id = "billingCanceledBanner";
   banner.className = "login-panel";
-  banner.style.borderColor = "rgba(255,107,107,.45)";
+  banner.style.borderColor = "color-mix(in srgb, var(--danger) 45%, transparent)";
   banner.innerHTML = `
     <strong>Subscription canceled</strong>
     <div class="hint" style="margin-top:6px;">

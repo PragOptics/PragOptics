@@ -105,9 +105,7 @@
 .vo-backdrop {
   position: absolute;
   inset: 0;
-  background: rgba(4, 7, 14, .82);
-  -webkit-backdrop-filter: blur(8px);
-  backdrop-filter: blur(8px);
+  /* the veil itself: the scrim rule in modals.css */
 }
 .vo-panel {
   position: relative;
@@ -136,7 +134,6 @@
   color: var(--muted);
   font-size: 1.5rem;
   line-height: 1;
-  width: 34px; height: 34px;
   border-radius: 8px;
   cursor: pointer;
   transition: color 140ms ease, background 140ms ease;

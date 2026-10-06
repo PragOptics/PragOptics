@@ -4,9 +4,7 @@
   position: fixed;
   inset: 0;
   z-index: 11000;
-  background: radial-gradient(1200px 800px at 50% 10%, color-mix(in srgb, var(--brand-600) 10%, transparent), transparent 55%),
-              radial-gradient(900px 650px at 80% 60%, color-mix(in srgb, var(--purp-bright) 10%, transparent), transparent 60%),
-              color-mix(in srgb, var(--shade) 72%, transparent);
+  /* the veil itself: the scrim rule in modals.css */
   display: none;
 }
 
@@ -27,7 +25,7 @@
 .legal-head,
 .legal-body,
 .legal-foot{
-  width: min(980px, 94vw);
+  width: 100%;
 }
 
 .legal-head{

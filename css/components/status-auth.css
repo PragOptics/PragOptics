@@ -27,19 +27,19 @@
 .po-status-backdrop{
   position:absolute;
   inset:0;
-  background:var(--grad);
-  -webkit-backdrop-filter:blur(6px);
-  backdrop-filter:blur(6px);
+  /* the veil itself: the scrim rule in modals.css */
 }
 
 .po-status-card{
   position:relative;
-  max-width:420px;
+  width:min(420px, calc(100vw - 32px));
   margin:12vh auto;
-  background:var(--grad);
-  border-radius:12px;
-  border:1px solid var(--brand);
-  box-shadow:0 0 20px color-mix(in srgb, var(--ink) 50%, transparent);
+  background:var(--glass);
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  box-shadow:var(--aura);
+  -webkit-backdrop-filter:blur(14px) saturate(160%);
+  backdrop-filter:blur(14px) saturate(160%);
   padding:28px;
   text-align:center;
   color:var(--ink);
@@ -49,26 +49,7 @@
   position:absolute;
   top:8px;
   right:8px;
-  width:32px;
-  height:32px;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  background:none;
-  border:0;
-  color:var(--muted);
   cursor:pointer;
-  font-weight:700;
-  border-radius:8px;
-  transition:transform 160ms ease, box-shadow 160ms ease;
-}
-
-.po-status-close:hover{
-  background:var(--brandsoft);
-  border:1px solid var(--brand);
-  transform:translateY(-2px);
-  color:var(--brandsoft-purp);
-  font-weight:800;
 }
 
 .po-status-icon{
@@ -81,7 +62,7 @@
   animation:spin 1.2s linear infinite;
 }
 
-.po-status-icon.success{ color:#3ddc97; }
+.po-status-icon.success{ color:var(--ok-text); }
 .po-status-icon.error{ color:var(--danger); }
 
 @keyframes spin{

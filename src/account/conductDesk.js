@@ -33,7 +33,7 @@ function normalize(d) {
   return { user: o ? { ...o, hold: d?.holds?.conduct || null } : null, env: d?.environment || null, holds: d?.holds || null, sites: d?.sites || [] };
 }
 
-function pill(text, cls = '') { return `<span class="adm-pill ${cls}">${e(text)}</span>`; }
+function pill(text, cls = '') { return `<span class="acct-tag ${cls}">${e(text)}</span>`; }
 
 function sitesHtml(s, locked) {
   if (!s.env) return '<p class="acct-modal-note">This account owns no environment, so it has no published sites.</p>';
@@ -94,7 +94,7 @@ function windowHtml(s, st) {
           <p class="um-email"><strong>${e(heading)}</strong>${s.env && u?.email ? ` <span class="adm-muted">owner ${e(u.email)}</span>` : ''}</p>
         </div>
         <div class="um-pills">
-          ${u ? pill(status.toLowerCase() || 'active', status === 'ACTIVE' ? 'is-ok' : 'is-bad') : ''}
+          ${u ? pill(status.toLowerCase() || 'active', status === 'ACTIVE' ? 'is-verified' : 'is-bad') : ''}
           ${held ? pill('suspended for the standards', 'is-bad') : ''}
           ${s.holds?.closedForCauseAt ? pill('closed for cause', 'is-bad') : ''}
         </div>

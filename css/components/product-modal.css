@@ -6,8 +6,7 @@
 
 .pm-mask {
   position: fixed; inset: 0; z-index: 990;
-  background: color-mix(in srgb, var(--shade) 72%, transparent);
-  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  /* the veil itself: the scrim rule in modals.css */
   transition: opacity 220ms ease;
 }
 .pm-mask.is-open { visibility: visible; opacity: 1; }
@@ -30,7 +29,7 @@
 
 .pm-close {
   position: absolute; top: 14px; right: 14px; z-index: 3;
-  width: 36px; height: 36px; border-radius: 12px; border: 1px solid var(--border);
+  border-radius: 12px; border: 1px solid var(--border);
   background: color-mix(in srgb, var(--shade) 35%, transparent); color: var(--ink);
   font-size: 1.1rem; cursor: pointer;
   display: inline-flex; align-items: center; justify-content: center;
@@ -374,6 +373,7 @@
   .pm-panel { width: 96vw; top: 2vh; max-height: 96vh; }
   .pm-grid { grid-template-columns: 1fr; }
   .pm-spec-grid { grid-template-columns: 1fr; }
+  .pm-spec-row { grid-template-columns: minmax(0, 1fr); gap: 2px; }
   .pm-kit-list { grid-template-columns: 1fr; }
   .pm-kit-item:last-child:nth-child(odd) { grid-column: auto; }
   .pm-name { font-size: 1.6rem; }

@@ -14,7 +14,7 @@
   background: var(--surface-deep);
 }
 .pc-toggle-btn {
-  border: 0; cursor: pointer; padding: 8px 18px;
+  border: 1px solid transparent; cursor: pointer; padding: 8px 18px;
   border-radius: var(--radius-btn-sm);
   background: transparent; color: var(--muted);
   font: 700 .88rem/1 inherit;
@@ -23,9 +23,7 @@
 .pc-toggle-btn:hover { color: var(--ink); }
 .pc-toggle-btn:active { transform: translateY(1px); }
 .pc-toggle-btn:focus-visible { outline: 2px solid var(--brand-600); outline-offset: 2px; }
-.pc-toggle-btn.is-active {
-  background: var(--hi-bg); color: var(--hi-fg); border: 1px solid var(--hi-border);
-}
+/* .pc-toggle-btn.is-active: the one chosen tint, with the panel's tabs, in css/views/environment.css (2026-10-05) */
 .pc-save {
   white-space: nowrap;
   margin-left: 6px; padding: 2px 8px; border-radius: var(--radius-pill);

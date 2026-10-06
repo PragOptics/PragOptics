@@ -40,7 +40,7 @@
 /* the line over the rows: the count, and Sign in while signed out; it wraps under the words on a phone */
 .bd-gate { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 14px; margin: 0 0 4px; }
 .bd-gate .bd-count { margin: 0 0 0 4px; flex: 1 1 240px; min-width: 0; }
-.bd-error { margin: 0; padding: 8px 12px; border-radius: 10px; border: 1px solid color-mix(in srgb, var(--danger) 35%, transparent); background: color-mix(in srgb, var(--danger) 10%, transparent); color: var(--danger-text); font-size: .84rem; }
+.bd-error { margin: 0; padding: 8px 10px; border-radius: 7px; border: 1px solid color-mix(in srgb, var(--danger) 35%, transparent); background: color-mix(in srgb, var(--danger) 10%, transparent); color: var(--danger-text); font-size: .84rem; }
 .bd-error[hidden] { display: none; }
 
 /* the kind, as a glyph in a ring */
@@ -52,9 +52,9 @@
 .bd-r-glyph.is-big { width: 52px; height: 52px; border-radius: 14px; }
 .bd-r-glyph--module     { color: var(--brand-600); border-color: color-mix(in srgb, var(--brand-600) 45%, transparent); background: color-mix(in srgb, var(--brand-600) 10%, transparent); }
 .bd-r-glyph--template   { color: var(--gold-soft); border-color: color-mix(in srgb, var(--gold-soft) 40%, transparent); background: color-mix(in srgb, var(--gold-soft) 8%, transparent); }
-.bd-r-glyph--plugin     { color: #c98fff; border-color: color-mix(in srgb, var(--brand-purp-solid) 50%, transparent); background: color-mix(in srgb, var(--brand-purp-solid) 12%, transparent); }
+.bd-r-glyph--plugin     { color: var(--purp-bright); border-color: color-mix(in srgb, var(--purp-bright) 35%, transparent); background: color-mix(in srgb, var(--purp-bright) 7%, transparent); }
 .bd-r-glyph--automation { color: var(--brand-600); border-color: color-mix(in srgb, var(--brand-600) 45%, transparent); background: color-mix(in srgb, var(--brand-600) 8%, transparent); }
-.bd-r-glyph--tool       { color: #a9c4e8; border-color: rgba(169, 196, 232, .35); background: rgba(169, 196, 232, .07); }
+.bd-r-glyph--tool       { color: var(--brand-cyan); border-color: color-mix(in srgb, var(--brand-cyan) 35%, transparent); background: color-mix(in srgb, var(--brand-cyan) 7%, transparent); }
 
 .bd-r-main { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 .bd-r-name { font-weight: 800; font-size: 1rem; color: var(--ink); letter-spacing: -.01em; }
@@ -97,7 +97,8 @@
 /* ================= the card: a native dialog in the top layer; two columns on a desk, one on a phone ================= */
 
 dialog.bd-modal { position: fixed; inset: 0; border: 0; padding: 0; margin: auto; background: transparent; width: fit-content; height: fit-content; max-width: 96vw; max-height: 92vh; overflow: visible; color: inherit; }
-dialog.bd-modal::backdrop { background: rgba(4, 6, 12, .66); backdrop-filter: blur(8px); }
+/* the scrim recipe (css/components/modals.css), written here because ::backdrop stays out of that selector list */
+dialog.bd-modal::backdrop { background: var(--grad); -webkit-backdrop-filter: blur(6px) saturate(120%); backdrop-filter: blur(6px) saturate(120%); }
 dialog.bd-modal.is-fallback { display: grid; place-items: center; }
 
 .bd-card {
@@ -106,7 +107,7 @@ dialog.bd-modal.is-fallback { display: grid; place-items: center; }
   display: flex; align-items: stretch;
   border-radius: 20px; border: 1px solid var(--border);
   background: var(--surface-deep, #0b0f1a);
-  box-shadow: 0 30px 90px rgba(0, 0, 0, .6), 0 0 0 1px color-mix(in srgb, var(--brand-purp-solid) 18%, transparent);
+  box-shadow: 0 30px 90px color-mix(in srgb, var(--shade) 60%, transparent), 0 0 0 1px color-mix(in srgb, var(--brand-purp-solid) 18%, transparent);
   overflow: hidden;
   animation: bd-in 160ms ease-out;
 }
@@ -230,10 +231,10 @@ dialog.bd-modal.is-fallback { display: grid; place-items: center; }
   font: 500 .78rem/1.55 ui-monospace, "Cascadia Code", Consolas, monospace; color: var(--ink);
   tab-size: 2;
 }
-/* the box stays dark in both themes (the site's rule, css/theme-light.css "Terminals stay terminals": code keeps a dark
-   surface and light text), so inside it the light theme takes the dark theme's inks (css/tokens.css, the dark block):
-   with the light theme's own dark inks the code read at 1.4:1 and the scrollbar's thumb did not show (measured
-   2026-09-24). Its ground takes the dark value too, so the box is the same box in both themes. */
+/* the box stays dark in both themes on its own rule (the only site-wide pins left are the markdown and legal viewers'
+   code blocks in css/theme-light.css; the API console follows the theme since 2026-10-05), so inside it the light
+   theme takes the dark theme's inks (css/tokens.css, the dark block): with the light theme's own dark inks the code
+   read at 1.4:1 and the scrollbar's thumb did not show (measured 2026-09-24). Its ground takes the dark value too. */
 :root[data-theme="light"] .bd-code { --ink: #dcdbf0e1; --muted: #c6d0f0a6; --brand-600: #21bca5; --gold-soft: #ffd489; --border: #ffffff1a; --surface-deep: rgba(12,16,26,.66); }
 .bd-code:not(.is-nowrap) { overflow-x: hidden; }
 .bd-code:focus-visible { outline: 2px solid color-mix(in srgb, var(--brand-600) 70%, transparent); outline-offset: 2px; }

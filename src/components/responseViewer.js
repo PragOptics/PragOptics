@@ -162,13 +162,8 @@ function renderEmptyVisual() {
   );
 
   const pill = (text, tone="neutral") => {
-    const styles = {
-      good:   "border-color:rgba(33,188,165,.35); color:#a7fff1;",
-      warn:   "border-color:rgba(255,190,120,.35); color:#ffd7b0;",
-      bad:    "border-color:rgba(255,107,107,.35); color:#ffb3b3;",
-      neutral:"border-color:rgba(255,255,255,.14); color:rgba(255,255,255,.92);"
-    };
-    return `<span class="pill" style="${styles[tone] || styles.neutral}">${esc(text)}</span>`;
+    const cls = { good:"is-good", warn:"is-warn", bad:"is-bad" }[tone];
+    return `<span class="pill${cls ? " " + cls : ""}">${esc(text)}</span>`;
   };
 
   const flow = authDoc?.flow || {};
@@ -286,13 +281,8 @@ function renderEmptyVisual() {
   };
 
   const pill = (text, tone="neutral") => {
-    const styles = {
-      good:   "border-color:rgba(33,188,165,.35); color:#a7fff1;",
-      warn:   "border-color:rgba(255,190,120,.35); color:#ffd7b0;",
-      bad:    "border-color:rgba(255,107,107,.35); color:#ffb3b3;",
-      neutral:"border-color:rgba(255,255,255,.14); color:rgba(255,255,255,.92);"
-    };
-    return `<span class="pill" style="${styles[tone] || styles.neutral}">${esc(text)}</span>`;
+    const cls = { good:"is-good", warn:"is-warn", bad:"is-bad" }[tone];
+    return `<span class="pill${cls ? " " + cls : ""}">${esc(text)}</span>`;
   };
 
   const kv = (k, v) => `

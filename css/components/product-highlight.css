@@ -282,14 +282,14 @@
 .ph-btn::after {
   content: ""; position: absolute; left: 0; right: 0; top: 100%; height: 5px;
 }
-.ph-btn:hover::after { height: 11px; }
-.ph-btn:hover { background: linear-gradient(120deg, var(--brand-600), var(--brand-purp)); color: var(--card-title); box-shadow: var(--aura); transform: translateY(-3px); }
+.ph-btn:not(:disabled):hover::after { height: 11px; }
+.ph-btn:not(:disabled):hover { color: var(--on-brand); box-shadow: var(--aura); transform: translateY(-3px); }
 
 /* Featured-card action row + price line */
 .ph-actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
 .ph-price { margin: 0; font-weight: 800; font-size: .98rem; color: var(--brand-600); }
 .ph-price .muted { font-weight: 600; }
-.ph-btn:active { transform: translateY(1px); }
+.ph-btn:not(:disabled):active { transform: translateY(1px); }
 .ph-btn:focus-visible { outline: 2px solid var(--brand-600); outline-offset: 3px; }
 
 /* Ghost variant + disabled state (composes with .ph-btn) */
@@ -304,7 +304,7 @@
   background: linear-gradient(120deg, color-mix(in srgb, var(--brand-600) 28%, transparent), color-mix(in srgb, var(--brand-purp-solid) 28%, transparent)) !important;
   border-color: transparent !important;
 }
-.ph-btn.disabled, .ph-btn[aria-disabled="true"] {
+.ph-btn.disabled, .ph-btn[aria-disabled="true"], .ph-btn:disabled {
   opacity: .55; cursor: not-allowed; pointer-events: none;
 }
 

@@ -118,7 +118,7 @@
   background: color-mix(in srgb, var(--panel-deep-a) 86%, transparent);
 }
 .chip-avail { color: var(--teal-bright); border-color: color-mix(in srgb, var(--brand-hi) 40%, transparent); }
-.chip-pre   { color: #ffcc7a; border-color: rgba(255, 178, 61, .42); }
+.chip-pre   { color: var(--gold-soft); border-color: color-mix(in srgb, var(--gold-soft) 42%, transparent); }
 .chip-soon  { color: var(--muted); border-color: color-mix(in srgb, var(--ink) 18%, transparent); }
 
 .pcard-body { padding: 16px 18px 18px; display: flex; flex-direction: column; gap: 6px; }

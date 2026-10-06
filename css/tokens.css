@@ -23,6 +23,7 @@
       --console-err: #ff49d8;
       --console-ind: #ff4545;
       --console-succ: #2ccc69e8;
+      --console-ground: #000000;           /* the API console's raw view and body editor ground */
       --brandsoft-purp: #7e09c37b;
 
       /* ---- Named roles that were hard-coded literals until 2026-09-07.
@@ -34,6 +35,8 @@
       --gold-soft:#ffd489;                 /* soft gold: savings tags, warnings */
       --danger:#ff5d6c;                    /* refusals, destructive actions */
       --danger-text:#ff9aa2;               /* error copy */
+      --ok:#2fbf87;                        /* success, confirmations */
+      --ok-text:#2fbf87;                   /* success copy */
       --media-ground:#05070d;              /* the tile behind product media */
       --surface-2:rgba(0,0,0,.28);         /* card fill on the dark ground */
       --surface-3:rgba(0,0,0,.2);          /* row / list fill */
@@ -106,10 +109,10 @@
    !important — except --bg-deep, which is !important in the dark block and
    therefore needs !important here too.
 
-   NOTE: the API-console syntax tokens (--console-*, --json-mod) and a few
-   ambiguous accents are intentionally NOT redefined here yet. The console is
-   a dark terminal in both themes; those are finalized after the CSS audit
-   confirms which tokens are console-only vs general-use.
+   NOTE: the API-console syntax tokens (--console-*, --json-mod) and the
+   console ground (--console-ground) are re-valued in the light block below,
+   so the raw view and the body editor follow the theme like every other
+   surface (2026-10-05).
    ========================================================================= */
 /* =========================================================================
    LIGHT: the dark theme inverted (Cameron, 2026-09-07). Black ground becomes
@@ -119,8 +122,8 @@
    change value, so no component rule needs to know which theme is on.
    Text on a brand fill is white (the fill is purple now). Surfaces that were
    black washes on black are white washes on white; hairlines and subtle
-   fills are ink-based and invert on their own. The API console stays a dark
-   terminal in both themes (theme-light.css pins it).
+   fills are ink-based and invert on their own. The API console follows the
+   theme: its ground and its syntax colours are re-valued here.
    ========================================================================= */
 :root[data-theme="light"]{
       color-scheme: light;
@@ -151,7 +154,22 @@
       --brand-warn:#a8730a;
       --danger:#c2273b;
       --danger-text:#b4232f;
+      --ok:#15803d;
+      --ok-text:#15803d;
       --on-brand:#ffffff;                                            /* white text on the purple fill */
+
+      /* API console on a white ground: the syntax engine's colours, darkened
+         so every token reads on white, and the console ground itself. */
+      --console-ground:#ffffff;
+      --console-prop:#0b6b8c;                                        /* property names, punctuation */
+      --console-num:#1f7a3d;
+      --console-bool:#a3158c;
+      --console-str:#b24a06;
+      --console-null:#8a6a1a;
+      --json-mod:#6d28d9;
+      --console-err:#b4232f;
+      --console-ind:#c2273b;
+      --console-succ:#15803d;
 
       --media-ground:#ebe6f7;
       --surface-2:rgba(255,255,255,.72);

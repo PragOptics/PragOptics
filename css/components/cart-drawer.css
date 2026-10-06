@@ -4,7 +4,7 @@
 
 .cart-mask { visibility: hidden; opacity: 0;
   position: fixed; inset: 0; z-index: 980;
-  background: color-mix(in srgb, var(--shade) 55%, transparent); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+  /* the veil itself: the scrim rule in modals.css */
   transition: opacity 220ms ease;
 }
 .cart-mask.is-open { visibility: visible; opacity: 1; }
@@ -35,7 +35,7 @@
   -webkit-background-clip: text; background-clip: text; color: transparent;
 }
 .cart-close {
-  width: 34px; height: 34px; border-radius: 10px; border: 1px solid var(--border);
+  border-radius: 10px; border: 1px solid var(--border);
   background: color-mix(in srgb, var(--shade) 35%, transparent); color: var(--ink); cursor: pointer; font-size: 1rem;
   display: inline-flex; align-items: center; justify-content: center;
   transition: background 160ms ease, color 160ms ease, border-color 160ms ease;
