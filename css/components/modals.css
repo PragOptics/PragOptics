@@ -1,11 +1,18 @@
 /* /css/components/modal.css */
 
 /* ====== MODAL (Agreement / README) ====== */
+/* THE SCRIM (2026-10-06): one veil behind every pop-up (the sign-in and agreement windows, the account prompts, the
+   status message, the product window, the cart drawer, the legal viewer, the video overlay; the Builds card's
+   ::backdrop carries the same values in builds.css). Each keeps its own position, layer and transition in its sheet. */
+.modal-overlay, .acct-modal-mask, .po-status-backdrop, .pm-mask, .cart-mask, .legal-mask, .vo-backdrop{
+  background: var(--grad);
+  -webkit-backdrop-filter: blur(6px) saturate(120%);
+  backdrop-filter: blur(6px) saturate(120%);
+}
 .modal-overlay{
   position:fixed;
   inset:0;
   z-index:10000;
-  background:var(--grad);
   display:none;
 }
 
