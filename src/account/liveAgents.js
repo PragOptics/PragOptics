@@ -247,7 +247,7 @@ function agentsCard() {
     const owed = cents(a.earnings?.owedCents);
     const earned = cents(a.earnings?.earnedCents);
     return `<tr>
-      <td data-th="Agent"><span class="la-agent-id"><span class="la-agent-av" aria-hidden="true">${e((a.email || '?').slice(0, 1).toUpperCase())}</span>${e(a.email || a.userId)}</span></td>
+      <td data-th="Agent">${e(a.email || a.userId)}</td>
       <td data-th="Earned">${money(earned)}</td>
       <td data-th="Owed" class="la-amt ${owed ? 'is-minus' : 'is-free'}">${money(owed)}</td>
       <td data-th="" class="la-agent-act">${iconBtn({ la: 'revoke-agent' }, 'x', 'Remove the agent badge', `data-user="${e(a.userId)}" data-email="${e(a.email || '')}"`, '')}</td>
