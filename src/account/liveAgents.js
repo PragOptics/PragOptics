@@ -78,13 +78,12 @@ async function load() {
 function paint() {
   const host = document.getElementById('laBody');
   if (!host) return;
-  const onOwn = isEnvOwnerView();
   const cards = [];
   let lead;
   if (la.mode === 'desk') {
     // the internal agent desk, for the roster (the owner and anyone with the agent grant)
-    if (la.support && la.support.me && !onOwn) {
-      // working a customer's environment (switched to their team): the session, the price, the ledger
+    if (la.support && la.support.me) {
+      // you are an agent on the environment in view (a customer's): the session, the price, the ledger
       lead = 'You are an agent on this environment. Start a session to log your time, set your price for this customer, and your work shows in the ledger below.';
       cards.push(myWorkCard());
       cards.push(ledgerCard());
@@ -93,14 +92,16 @@ function paint() {
       lead = 'Your agent desk. Customers ask for a live hand here; take one to join their environment, then switch to their team at the top of the panel to work on it.';
       cards.push(queueCard());
     }
-  } else if (!isEnvOwnerView()) {
-    // a member viewing a team they are part of: agent support for that team is its OWNER's to request, not theirs
-    lead = 'Agent support for this team is the owner\'s to request. Switch to your own team at the top of the panel to ask for a live hand on your environment.';
-  } else {
-    // the customer side, on your OWN environment: ask for a live hand, your balance, your ledger
+  } else if (la.support && (la.support.youOwn !== undefined ? la.support.youOwn : !teamId())) {
+    // the OWNER of the environment in view (their own, however it was selected): ask for a live hand, balance, ledger
+    // (youOwn comes from the backend; the !teamId() fallback keeps it working before that deploy lands)
     lead = 'A real person, not an AI. Bring a live human from the PragOptics team into your environment to build it with you.';
     cards.push(requestCard());
-    if (la.support) { cards.push(balanceCard()); cards.push(ledgerCard()); }
+    cards.push(balanceCard());
+    cards.push(ledgerCard());
+  } else {
+    // a member viewing a team they are part of: agent support for that team is its OWNER's to request, not theirs
+    lead = 'Agent support for this team is the owner\'s to request. Switch to your own team at the top of the panel to ask for a live hand on your environment.';
   }
   host.innerHTML = `<p class="acct-card-note la-lead">${lead} ${explain('How it works')}</p><div class="ev-cards">${cards.join('')}</div>`;
   initCards();
