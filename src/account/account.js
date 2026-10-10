@@ -2919,8 +2919,9 @@ function usersTableHtml(users) {
               <td>
                 ${u.isAdmin ? '<span class="adm-pill adm-flag-admin">admin</span>' : ''}
                 ${u.isDev ? '<span class="adm-pill adm-flag-dev">dev</span>' : ''}
+                ${u.isAgent ? '<span class="adm-pill adm-flag-agent">agent</span>' : ''}
                 ${u.phoneChangesFrozen ? '<span class="adm-pill is-bad" title="Phone changes are paused pending review">phone paused</span>' : ''}
-                ${!u.isAdmin && !u.isDev && !u.phoneChangesFrozen ? '<span class="adm-muted">—</span>' : ''}
+                ${!u.isAdmin && !u.isDev && !u.isAgent && !u.phoneChangesFrozen ? '<span class="adm-muted">—</span>' : ''}
               </td>
               <td class="adm-muted">${escapeHtml((u.createdAt || '').slice(0, 10) || '—')}</td>
               <td class="cell-tight">${userManageButtonHtml(u)}</td>
@@ -3017,6 +3018,7 @@ function userManageHtml(u, { self }) {
           ${tierPill(tier)} ${statusPill(status)}
           ${u.isAdmin ? '<span class="adm-pill adm-flag-admin">admin</span>' : ''}
           ${u.isDev ? '<span class="adm-pill adm-flag-dev">dev</span>' : ''}
+          ${u.isAgent ? '<span class="adm-pill adm-flag-agent">agent</span>' : ''}
           ${u.phoneChangesFrozen ? '<span class="adm-pill is-bad" title="Phone changes are paused pending review">phone paused</span>' : ''}
         </div>
       </header>
@@ -3044,6 +3046,9 @@ function userManageHtml(u, { self }) {
                 </label>
                 <label class="um-check" title="Dev accounts can route this browser to the dev lane">
                   <input type="checkbox" id="umDev" ${u.isDev ? 'checked' : ''}> Dev
+                </label>
+                <label class="um-check ${self || !isOwner() ? 'is-locked' : ''}" title="${!isOwner() ? 'Only the platform owner grants or removes the Agent role' : 'Agents take support requests and build in a customer\'s environment; no operator panel'}">
+                  <input type="checkbox" id="umAgent" ${u.isAgent ? 'checked' : ''} ${self || !isOwner() ? 'disabled' : ''}> Agent
                 </label>
               </div>
             </div>
@@ -3166,10 +3171,11 @@ async function runClose(btn, um) {
 const USER_MANAGE_ACTIONS = [
   ['[data-um-save]', (btn, um) => {
     const patch = {};
-    const roleEl = um.$('#umRole'), adminEl = um.$('#umAdmin'), devEl = um.$('#umDev');
+    const roleEl = um.$('#umRole'), adminEl = um.$('#umAdmin'), devEl = um.$('#umDev'), agentEl = um.$('#umAgent');
     if (roleEl && !roleEl.disabled && roleEl.value !== String(um.row.role || '')) patch.role = roleEl.value;
     if (adminEl && !adminEl.disabled && adminEl.checked !== (um.row.isAdmin === true)) patch.isAdmin = adminEl.checked;
     if (devEl && devEl.checked !== (um.row.isDev === true)) patch.isDev = devEl.checked;
+    if (agentEl && !agentEl.disabled && agentEl.checked !== (um.row.isAgent === true)) patch.isAgent = agentEl.checked;
     if (!Object.keys(patch).length) { showError('umError', 'Nothing to save: the role and flags match the account.'); return; }
     runPatch(btn, patch, um);
   }],

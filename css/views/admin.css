@@ -545,6 +545,7 @@ select.adm-select option, select.adm-input option {
 /* qualified with the pill, since the tag's base rule in account.css loads after this file and would otherwise take the colours */
 .adm-pill.adm-flag-admin { color: var(--ok-text); background: color-mix(in srgb, var(--ok) 12%, transparent); border: 1px solid color-mix(in srgb, var(--ok) 30%, transparent); margin-right: 4px; }
 .adm-pill.adm-flag-dev   { color: var(--danger-text); background: color-mix(in srgb, var(--danger) 12%, transparent); border: 1px solid color-mix(in srgb, var(--danger) 30%, transparent); }
+.adm-pill.adm-flag-agent { color: var(--brand-cyan); background: color-mix(in srgb, var(--brand-cyan) 12%, transparent); border: 1px solid color-mix(in srgb, var(--brand-cyan) 30%, transparent); margin-right: 4px; }
 
 /* ---------- coming-soon sections ---------- */
 .adm-soon {
