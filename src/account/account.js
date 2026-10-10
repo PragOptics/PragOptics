@@ -412,6 +412,8 @@ function licensingBlocked() {
 }
 /** The entry in the sidebar: hidden while the role is unknown, and for anyone below member. */
 function licensingHidden() { return TEAM_ON && (roleInView() === null || licensingBlocked()); }
+/** The customer Live Agents tab: only the OWNER of the environment in view requests support, so hide it otherwise. */
+function liveAgentsHidden() { return TEAM_ON && roleInView() !== 'owner'; }
 /** Every answer from the team view says the role on the team it was asked about (no tenant= is the default team). */
 function noteTeamView(url, options, data) {
   if (String(options?.method || 'GET').toUpperCase() !== 'GET') return;
@@ -457,6 +459,10 @@ function syncLicensingNav() {
   const li = document.querySelector('.adm-nav-item[data-acct-section="licensing"]')?.closest('li');
   if (li) li.hidden = licensingHidden();
   if (licensingBlocked() && mounted && activeSection === 'licensing') showSection('profile');
+  // the customer Live Agents tab tracks the team in view the same way: only the owner of that environment sees it
+  const la = document.querySelector('.adm-nav-item[data-acct-section="liveagents"]')?.closest('li');
+  if (la) la.hidden = liveAgentsHidden();
+  if (liveAgentsHidden() && mounted && activeSection === 'liveagents') showSection('profile');
 }
 /**
  * Licensing was asked for (its entry, its address, a link) while the role on the team in view is not known: the
@@ -493,7 +499,7 @@ function navItemsHtml(sections) {
   // title carries the label to the icon-only responsive rail, where the text
   // span is hidden and the glyph is all a user gets.
   return sections.map(s => `
-    <li ${s.id === 'licensing' && licensingHidden() ? 'hidden' : ''}><button class="adm-nav-item ${s.id === activeSection ? 'is-active' : ''}" type="button"
+    <li ${(s.id === 'licensing' && licensingHidden()) || (s.id === 'liveagents' && liveAgentsHidden()) ? 'hidden' : ''}><button class="adm-nav-item ${s.id === activeSection ? 'is-active' : ''}" type="button"
         data-acct-section="${s.id}" aria-current="${s.id === activeSection ? 'page' : 'false'}"
         title="${escapeHtml(s.label)}" aria-label="${escapeHtml(s.label)}">
       <span class="adm-nav-ico">${icon(s.id)}</span><span>${escapeHtml(s.label)}</span>
@@ -4646,6 +4652,7 @@ function showSection(id) {
   // and nobody lands on Team while it is off for this lane.
   if (cachedPing() && !isAdmin() && INTERNAL_SECTIONS.some(s => s.id === id) && !(id === 'agentdesk' && isRoster())) id = 'profile';
   if (id === 'liveagents' && isRoster()) id = 'agentdesk';   // the roster works the desk, not the customer tab
+  if (id === 'liveagents' && !isRoster() && liveAgentsHidden()) id = 'profile';   // only the owner of the env in view requests support
   if (!TEAM_ON && TEAM_IDS.has(id)) id = 'profile';
   // below member on the team in view there is no Licensing (a stale link, the address bar)
   if (id === 'licensing' && TEAM_ON && licensingBlocked()) id = 'profile';

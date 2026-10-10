@@ -326,7 +326,7 @@ function sandboxSetupHtml(v) {
   const e = D.escapeHtml;
   const t = v.tenant, me = v.membership || {};
   const sb = sandboxState(t) || { phase: 'NONE', available: false, note: '' };
-  const isOwner = me.role === 'owner';
+  const canSetup = me.role === 'owner' || me.role === 'admin';   // the owner or an admin sets up the sandbox
   if (!sb.available) {
     return `
       <section class="acct-card">
@@ -346,9 +346,9 @@ function sandboxSetupHtml(v) {
     <section class="acct-card">
       <h3 class="acct-card-h">A place to build and test</h3>
       <p class="acct-card-note">A sandbox is a second environment of your own: its own storage account, its own vault, its own connected accounts. Build and test here with test keys, and nothing touches what your customers use. When you are ready, the software pushes your work live. ${explainLink('environment', 'How your environment works')}</p>
-      ${isOwner
+      ${canSetup
         ? `<div class="acct-actions-row">${stateLead('sandbox-setup', 'plus', 'Set up a sandbox', { out: !!ev.sandboxBusy, busyWord: 'Setting up…' }, '', 'btn-primary')}</div>`
-        : `<p class="acct-card-note ev-note">The owner sets up the sandbox. Once it exists, it shows here for everyone on the team.</p>`}
+        : `<p class="acct-card-note ev-note">The owner or an admin sets up the sandbox. Once it exists, it shows here for the team's builders.</p>`}
       <p class="acct-error" id="evSandboxError" hidden></p>
     </section>`;
 }
