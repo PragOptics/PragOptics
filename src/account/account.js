@@ -22,6 +22,8 @@ import { openReportAnomaly, openSupportRequest, installErrorCapture } from './re
 import { renderTeam, renderTenants, bindTeamActions } from './team.js';
 import { renderEnvironment, bindEnvironmentActions } from './environment.js';
 import { renderLicensing, bindLicensingActions } from './licensing.js';
+import { renderLiveAgents, bindLiveAgentsActions } from './liveAgents.js';
+import { avatarHtml, fileToAvatar, saveAvatar } from './avatar.js';
 import { renderBuildsQueue, renderMyBuilds } from './buildsDesk.js';
 import { renderNeedsAttention } from './needsAttentionDesk.js';
 import { renderAgreementNotice } from './agreementNotice.js';
@@ -321,7 +323,8 @@ const ICONS = {
   licensing:    '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/>',
   ai:           '<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>',
   attention:    '<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
-  support:      '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M9 10a3 3 0 0 1 6 0c0 2-3 2-3 4"/><path d="M12 17h.01"/>'
+  support:      '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M9 10a3 3 0 0 1 6 0c0 2-3 2-3 4"/><path d="M12 17h.01"/>',
+  liveagents:   '<path d="M4 15v-3a8 8 0 0 1 16 0v3"/><path d="M4 15a2 2 0 0 0 2 2h1v-5H6a2 2 0 0 0-2 2z"/><path d="M20 15a2 2 0 0 1-2 2h-1v-5h1a2 2 0 0 1 2 2z"/><path d="M18 17v1a3 3 0 0 1-3 3h-3"/>'
 };
 
 const ACCOUNT_SECTIONS = [
@@ -331,6 +334,7 @@ const ACCOUNT_SECTIONS = [
   { id: 'team',         label: 'Team' },
   { id: 'environment',  label: 'Environment' },
   { id: 'licensing',    label: 'Licensing' },
+  { id: 'liveagents',   label: 'Live Agents' },
   { id: 'orders',       label: 'Orders' },
   { id: 'builds',       label: 'My Builds' }
 ];
@@ -356,7 +360,7 @@ const INTERNAL_SECTIONS = [
 // only when the lanes carry it and TEAM_LIVE is flipped. Until then the live
 // lane never shows them; dev always does.
 const TEAM_ON = (LANE !== 'live') || TEAM_LIVE;
-const TEAM_IDS = new Set(['team', 'environment', 'licensing', 'tenants']);
+const TEAM_IDS = new Set(['team', 'environment', 'licensing', 'liveagents', 'tenants']);
 function customerSections() { return ACCOUNT_SECTIONS.filter(s => TEAM_ON || !TEAM_IDS.has(s.id)); }
 function internalSections() { return INTERNAL_SECTIONS.filter(s => TEAM_ON || !TEAM_IDS.has(s.id)); }
 
@@ -494,8 +498,11 @@ function shellHtml() {
     <div class="adm-shell">
       <nav class="adm-side" aria-label="Account sections">
         <div class="adm-side-brand">
-          <span class="adm-side-kicker">Account</span>
-          <span class="adm-side-title">${escapeHtml(currentEmail() || 'You')}</span>
+          <span class="adm-side-avatar">${avatarHtml(cachedPing()?.user, 36)}</span>
+          <div class="adm-side-brand-text">
+            <span class="adm-side-kicker">Account</span>
+            <span class="adm-side-title">${escapeHtml(currentEmail() || 'You')}</span>
+          </div>
         </div>
         <ul class="adm-nav">
           ${navItemsHtml(customerSections())}
@@ -737,6 +744,18 @@ async function renderProfile(main) {
     <header class="acct-sec-head"><h2 class="acct-sec-title">Profile</h2></header>
     ${mailOfferHtml()}
     <div class="acct-grid">
+    ${cardHtml({ key: 'profile:photo', icon: 'user', title: 'Your photo', body: `
+      <div class="av-edit">
+        ${avatarHtml(cachedPing()?.user, 60)}
+        <div class="av-edit-main">
+          <p class="acct-card-note ev-dom-door">A photo of you, shown as a circle, so the people who help you see who they are talking to. No photo shows the default alien, and it carries to the studio.</p>
+          <div class="acct-add-row act-row">
+            <label class="btn btn-sm btn-lead btn-primary av-pick">${ico('upload')}<span>Choose photo</span><input type="file" id="acctAvatarFile" accept="image/*" hidden></label>
+            ${cachedPing()?.user?.avatar ? iconBtn({ acct: 'avatar-remove' }, 'trash', 'Remove the photo, back to the alien') : ''}
+          </div>
+          <p class="acct-error" id="acctAvatarError" hidden></p>
+        </div>
+      </div>` })}
     ${nameCardHtml()}
     ${cardHtml({ key: 'profile:appearance', icon: 'sun', title: 'Appearance', summary: `${escapeHtml(theme)} · stars ${escapeHtml(stars)}`, body: `
       <div class="acct-seg" role="group" aria-label="Theme">
@@ -803,6 +822,32 @@ async function renderProfile(main) {
   await loadPasskeys();
   await loadNotifyPrefs();
   await nameRead;
+}
+
+/* The profile photo (2026-10-10): a picked file is shrunk client-side and saved; removing it returns the alien. */
+async function onAvatarPick(input) {
+  const file = input?.files?.[0];
+  try { input.value = ''; } catch { /* ignore */ }
+  if (!file) return;
+  showError('acctAvatarError', '');
+  try {
+    const dataUrl = await fileToAvatar(file);
+    await saveAvatar(viewApiFetch, dataUrl);
+    refreshAfterAvatar();
+  } catch (e) { showError('acctAvatarError', friendlyError(e) || 'Could not set that photo.'); }
+}
+async function removeAvatar(btn) {
+  showError('acctAvatarError', '');
+  const done = busy(btn, 'Removing…');
+  try { await saveAvatar(viewApiFetch, ''); refreshAfterAvatar(); }
+  catch (e) { showError('acctAvatarError', friendlyError(e) || 'Could not remove the photo.'); }
+  finally { done(); }
+}
+function refreshAfterAvatar() {
+  const chip = document.querySelector('.adm-side-avatar');
+  if (chip) chip.innerHTML = avatarHtml(cachedPing()?.user, 36);
+  const main = document.getElementById('acctMain');
+  if (main && activeSection === 'profile') renderProfile(main);
 }
 
 /* ---------- close account ---------- */
@@ -4625,6 +4670,7 @@ function paintSection(id, main) {
   if (id === 'team')         return void renderTeam(main, teamDeps());
   if (id === 'environment')  return void renderEnvironment(main, teamDeps());
   if (id === 'licensing')    return void renderLicensing(main, teamDeps());
+  if (id === 'liveagents')   return void renderLiveAgents(main, teamDeps());
   if (id === 'builds')       return void renderMyBuilds(main, teamDeps());
   if (id === 'overview')     return void renderOverview(main);
   if (id === 'users')        return void renderUsers(main);
@@ -4654,6 +4700,7 @@ function bindOnce() {
   bindTeamActions(teamDeps());
   bindEnvironmentActions(teamDeps());
   bindLicensingActions(teamDeps());
+  bindLiveAgentsActions(teamDeps());
   initCards();
 
   document.addEventListener('click', (e) => {
@@ -4709,6 +4756,7 @@ function bindOnce() {
       if (a === 'theme-set') return void setThemePreference(act.dataset.theme, act);
       if (a === 'starfield-set') return void setStarfieldPreference(act.dataset.starfield);
       if (a === 'name-save') return void saveName(act);
+      if (a === 'avatar-remove') return void removeAvatar(act);
       if (a === 'bd-edit') return void editBillingDetails();
       if (a === 'bd-cancel') { if (act.disabled) return; return void cancelBillingDetails(); }
       if (a === 'bd-save') return void saveBillingDetails(act, { apiFetch, url: BILLING_DETAILS_URL });
@@ -4835,6 +4883,8 @@ function bindOnce() {
     if (e.key === 'Enter' && (e.target.id === 'acctFirstName' || e.target.id === 'acctLastName')) { e.preventDefault(); document.querySelector('[data-acct-action="name-save"]')?.click(); }
   });
   document.addEventListener('change', (e) => {
+    // The profile photo: a picked file is shrunk and saved (2026-10-10)
+    if (e.target.id === 'acctAvatarFile') { onAvatarPick(e.target); return; }
     // Appearance: the starfield is a switch (2026-09-23 polish)
     if (e.target.id === 'acctStarsSwitch') { setStarfieldPreference(e.target.checked ? 'on' : 'off'); return; }
     if (e.target.id === 'admUserStatus' || e.target.id === 'admUserTier') renderUserRows();

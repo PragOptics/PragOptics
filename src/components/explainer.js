@@ -34,6 +34,7 @@ const DOCS = {
   keys:        { title: 'API keys' },
   domains:     { title: 'Connecting a domain' },
   licensing:   { title: 'Licenses and mailboxes' },
+  'live-agents': { title: 'Live agents, not AI' },
   ai:          { title: 'AI and its credit' }
 };
 const KICKER = 'How it works';

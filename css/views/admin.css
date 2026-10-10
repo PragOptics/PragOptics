@@ -303,7 +303,9 @@ th.adm-num { text-align: right; }
   background: var(--surface-3);
   padding: 16px 12px;
 }
-.adm-side-brand { padding: 6px 10px 14px; }
+.adm-side-brand { padding: 6px 10px 14px; display: flex; align-items: center; gap: 10px; }
+.adm-side-avatar { flex: none; }
+.adm-side-brand-text { display: flex; flex-direction: column; min-width: 0; }
 .adm-side-kicker {
   display: block;
   font-size: .62rem;
