@@ -363,10 +363,12 @@ const INTERNAL_SECTIONS = [
 // lane never shows them; dev always does.
 const TEAM_ON = (LANE !== 'live') || TEAM_LIVE;
 const TEAM_IDS = new Set(['team', 'environment', 'licensing', 'liveagents', 'agentdesk', 'tenants']);
-// The agent roster (2026-10-10): the platform owner and anyone granted the agent flag. They work the internal Agents
-// desk, not the customer Live Agents tab, so that tab is hidden for them and the desk is shown even without admin.
+// The agent roster (2026-10-10): the platform owner and anyone granted the agent flag. The agent flag is identity, not a
+// team role: it unlocks the internal Agents desk on ANY of their environments (rosterSections, shown even without admin).
+// It does NOT take away the customer Live Agents tab: an agent in their OWN environment still requests support like any
+// owner (the tab keys off owning the env in view, liveAgentsHidden, not off holding the flag).
 function isRoster() { try { const u = cachedPing()?.user; return u?.isOwner === true || u?.isAgent === true; } catch { return false; } }
-function customerSections() { return ACCOUNT_SECTIONS.filter(s => (TEAM_ON || !TEAM_IDS.has(s.id)) && !(s.id === 'liveagents' && isRoster())); }
+function customerSections() { return ACCOUNT_SECTIONS.filter(s => (TEAM_ON || !TEAM_IDS.has(s.id))); }
 function internalSections() { return INTERNAL_SECTIONS.filter(s => TEAM_ON || !TEAM_IDS.has(s.id)); }
 /** The Agents desk a non-admin agent still sees, without the rest of the operator panel. */
 function rosterSections() { return internalSections().filter(s => s.id === 'agentdesk'); }
@@ -4661,8 +4663,7 @@ function showSection(id) {
   // A customer must never land on an internal section id (stale deep link),
   // and nobody lands on Team while it is off for this lane.
   if (cachedPing() && !isAdmin() && INTERNAL_SECTIONS.some(s => s.id === id) && !(id === 'agentdesk' && isRoster())) id = 'profile';
-  if (id === 'liveagents' && isRoster()) id = 'agentdesk';   // the roster works the desk, not the customer tab
-  if (id === 'liveagents' && !isRoster() && liveAgentsHidden()) id = 'profile';   // only the owner of the env in view requests support
+  if (id === 'liveagents' && liveAgentsHidden()) id = 'profile';   // the customer tab is for whoever OWNS the env in view, agent or not
   if (!TEAM_ON && TEAM_IDS.has(id)) id = 'profile';
   // below member on the team in view there is no Licensing (a stale link, the address bar)
   if (id === 'licensing' && TEAM_ON && licensingBlocked()) id = 'profile';
