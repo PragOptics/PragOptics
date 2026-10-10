@@ -46,7 +46,6 @@ export async function renderLiveAgents(main, deps) {
   la.err = '';
   main.innerHTML = `
     <header class="acct-sec-head has-explain"><h2 class="acct-sec-title">Live Agents</h2>${explain()}</header>
-    <p class="acct-card-note la-lead">A real person, not an AI. Bring a live human from the PragOptics team into your environment to build it with you. ${explain('Learn how it works')}</p>
     <p class="acct-error" id="laError" hidden></p>
     <div id="laBody"><p class="acct-loading">Loading…</p></div>`;
   await load();
@@ -73,15 +72,25 @@ async function load() {
 function paint() {
   const host = document.getElementById('laBody');
   if (!host) return;
+  const onOwn = isEnvOwnerView();
   const cards = [];
-  if (la.canSupport) cards.push(queueCard());
-  cards.push(requestCard());
-  if (la.support) {
-    if (la.support.me) cards.push(myWorkCard());
-    if (!la.support.me || la.support.me.isOwner || isEnvOwnerView()) cards.push(balanceCard());
+  let lead;
+  if (la.canSupport && onOwn) {
+    // the agent desk: the roster's view of requests to take. No "request support" here, you are the support.
+    lead = 'You are on the agent roster. Customers ask for a live hand here; take one to drop into their environment and build it with them.';
+    cards.push(queueCard());
+  } else if (la.support && la.support.me) {
+    // an agent working a customer's environment: their session, their own price for this customer, the ledger
+    lead = 'You are an agent on this environment. Start a session to log your time, set your price for this customer, and your work shows in the ledger.';
+    cards.push(myWorkCard());
     cards.push(ledgerCard());
+  } else {
+    // a customer: ask for a live hand, their balance, their ledger
+    lead = 'A real person, not an AI. Bring a live human from the PragOptics team into your environment to build it with you.';
+    cards.push(requestCard());
+    if (la.support) { cards.push(balanceCard()); cards.push(ledgerCard()); }
   }
-  host.innerHTML = `<div class="ev-cards">${cards.join('')}</div>`;
+  host.innerHTML = `<p class="acct-card-note la-lead">${lead} ${explain('How it works')}</p><div class="ev-cards">${cards.join('')}</div>`;
   initCards();
 }
 
@@ -133,7 +142,7 @@ function balanceCard() {
         <p class="acct-card-note">${loaded > 0 ? `${money(spent)} of ${money(loaded)} used.` : 'No funds added yet. Your first contact is free; add a balance when you want paid help beyond that.'}</p>
       </div>
     </div>
-    <p class="acct-card-note">An agent's time draws from this balance at their rate. It can never go below zero, so you are never surprised by a bill. The owner is ${rateWord(15000)}, an agent is ${rateWord(7500)}; each sets their own price for you and can discount or waive it.</p>
+    <p class="acct-card-note">An agent's time draws from this balance at their rate. It can never go below zero, so you are never surprised by a bill. The owner is ${rateWord(15000)}, an agent is ${rateWord(7500)}. Whoever takes your request shows you their rate before any billable time.</p>
     <div class="la-throttle">
       <label class="acct-label" for="laThrottle">Spend cap (optional)</label>
       <div class="la-req-row">
