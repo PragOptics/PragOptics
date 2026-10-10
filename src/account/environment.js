@@ -144,6 +144,8 @@ function canWrite() { return SEAT_ROLES.has(myRole()) && !paused(); }
 function canManageKeys() { return myRole() === 'owner' || myRole() === 'admin'; }
 function canManageDomains() { return DOMAIN_ROLES.has(myRole()) && !paused(); }
 function canManageConnections() { return (myRole() === 'owner' || myRole() === 'admin') && !paused(); }   // credentials are settings: owner and admin
+const BUILD_ROLES = new Set(['owner', 'admin', 'developer']);   // the sandbox lane is for the people who build and test; members and viewers only use live
+function canUseSandbox() { return BUILD_ROLES.has(myRole()); }
 
 /* ================================================================
    render
@@ -211,6 +213,8 @@ async function loadNow() {
   D.showError('evError', '');
   try {
     ev.view = await fetchView();
+    // a member or viewer only uses live; a stale sandbox pick (or a role change) falls back to live
+    if (!canUseSandbox() && ev.lane === 'sandbox') { ev.lane = 'live'; try { sessionStorage.setItem(LANE_KEY, 'live'); } catch { /* ignore */ } }
     if (!ev.view.tenant) { host.innerHTML = emptyHtml(ev.view); return; }
     paint();
     if (['READY', 'SUSPENDED'].includes(phaseOf(ev.view.tenant))) {
@@ -305,6 +309,7 @@ function paint() {
 /* ---------- lanes ---------- */
 
 function laneSwitchHtml(t) {
+  if (!canUseSandbox()) return '';   // members and viewers only see live; no lane switch for them
   const l = lanesOf(t);
   if (!l) return '';
   const sb = sandboxState(t);
@@ -349,6 +354,7 @@ function sandboxSetupHtml(v) {
 }
 
 async function setLane(lane) {
+  if (lane === 'sandbox' && !canUseSandbox()) return;   // only the builders switch to the sandbox lane
   ev.lane = lane === 'sandbox' ? 'sandbox' : 'live';
   try { sessionStorage.setItem(LANE_KEY, ev.lane); } catch { /* fine */ }
   ev.files = null; ev.keys = null; ev.domains = null; ev.connections = null; ev.connPick = ''; ev.connResult = ''; ev.madeKey = null; ev.filesNote = '';
