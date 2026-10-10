@@ -414,8 +414,9 @@ function licensingBlocked() {
 }
 /** The entry in the sidebar: hidden while the role is unknown, and for anyone below member. */
 function licensingHidden() { return TEAM_ON && (roleInView() === null || licensingBlocked()); }
-/** The customer Live Agents tab: only the OWNER of the environment in view requests support, so hide it otherwise. */
-function liveAgentsHidden() { return TEAM_ON && roleInView() !== 'owner'; }
+/** The customer Live Agents tab: the user side, for whoever OWNS the env in view. NEVER the platform owner (isOwner):
+ *  the platform provides agents, it does not request them. The platform owner works this from the internal Agents page. */
+function liveAgentsHidden() { const u = cachedPing()?.user; return u?.isOwner === true || (TEAM_ON && roleInView() !== 'owner'); }
 /** Every answer from the team view says the role on the team it was asked about (no tenant= is the default team). */
 function noteTeamView(url, options, data) {
   if (String(options?.method || 'GET').toUpperCase() !== 'GET') return;

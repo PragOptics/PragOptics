@@ -57,7 +57,11 @@ async function mount(main, deps, mode, title) {
   await load();
 }
 
-function explain(label, key) { try { return explainLink(key || 'live-agents', label || 'How it works'); } catch { return ''; } }
+// Two faces, two explainers: the user side (what bringing an agent in means, and the relationship they control) and the
+// internal agent side (what being an agent is, and how you get paid). They are deliberately different documents.
+function explainKey() { return la.mode === 'desk' ? 'agent-desk' : 'live-agents'; }
+function explainLabel() { return la.mode === 'desk' ? 'How being an agent works' : 'How it works'; }
+function explain(label, key) { try { return explainLink(key || explainKey(), label || explainLabel()); } catch { return ''; } }
 
 async function load() {
   try {
@@ -81,15 +85,22 @@ function paint() {
   const cards = [];
   let lead;
   if (la.mode === 'desk') {
-    // the internal agent desk, for the roster (the owner and anyone with the agent grant)
+    // the internal agent page, gated by the agent flag (isOwner or isAgent). Two faces:
+    //   - the platform owner (isOwner): manages it all, every request across the platform.
+    //   - an agent: their own work, scoped to them by their flag.
+    const owner = isPlatformOwner();
     if (la.support && la.support.me) {
-      // you are an agent on the environment in view (a customer's): the session, the price, the ledger
+      // on a customer's environment you are an agent on: the session, the price, the ledger
       lead = 'You are an agent on this environment. Start a session to log your time, set your price for this customer, and your work shows in the ledger below.';
       cards.push(myWorkCard());
       cards.push(ledgerCard());
+    } else if (owner) {
+      // the owner's management view: every request across the platform is yours to take or assign
+      lead = 'Agent management. Every request for a live hand across the platform lands here. Take one to join that environment, or switch to a customer\'s team at the top of the panel to work on it.';
+      cards.push(queueCard());
     } else {
-      // the desk itself: the queue of requests to take; switch to a customer's team (top of the panel) to work on it
-      lead = 'Your agent desk. Customers ask for a live hand here; take one to join their environment, then switch to their team at the top of the panel to work on it.';
+      // an agent's own desk: the open cases they may answer, scoped to them; plus how they get paid
+      lead = 'Your agent desk. These are the open cases you can answer. Take one to join that environment, then switch to it at the top of the panel to work.';
       cards.push(queueCard());
     }
   } else if (la.support && (la.support.youOwn !== undefined ? la.support.youOwn : !teamId())) {
@@ -227,11 +238,12 @@ function queueCard() {
         ? leadBtn({ la: 'take' }, 'check', 'Take it', `${la.busy === 'take:' + x.environmentId ? 'disabled' : ''} data-env="${e(x.environmentId)}"`, 'btn-primary')
         : iconBtn({ la: 'open-env' }, 'external', 'Open this environment', `data-env="${e(x.environmentId)}"`, '')}</div>
     </div>`;
+  const owner = isPlatformOwner();
   const body = `
-    <p class="acct-card-note">Requests from customers for a live hand. Take one to join their environment as an agent, then switch to it to work.</p>
-    ${open.length ? open.map(rowOf).join('') : '<p class="acct-empty">No open requests.</p>'}
+    <p class="acct-card-note">${owner ? 'Every request for a live hand across the platform. Take one to join that environment as an agent, then switch to it to work.' : 'Open cases you can answer. Take one to join that environment as an agent, then switch to it to work.'}</p>
+    ${open.length ? open.map(rowOf).join('') : `<p class="acct-empty">${owner ? 'No open requests.' : 'No open cases right now.'}</p>`}
     ${taken.length ? `<p class="su-kicker" style="margin-top:14px">In progress</p>${taken.map(rowOf).join('')}` : ''}`;
-  return card({ key: 'queue', icon: 'bell', title: 'Requests to you', summary: `${open.length} open`, explain: explain(), body });
+  return card({ key: 'queue', icon: 'bell', title: owner ? 'Requests across the platform' : 'Open cases', summary: `${open.length} open`, explain: explain(), body });
 }
 
 /* ---------- the agent's own work on a customer's environment ---------- */
@@ -268,6 +280,7 @@ function myWorkCard() {
   return card({ key: 'mywork', icon: 'tool', title: 'Your work here', summary: working ? 'working' : 'ready', explain: explain(), body });
 }
 function myId() { try { return String(D.cachedPing?.()?.user?.userId || ''); } catch { return ''; } }
+function isPlatformOwner() { try { return D.cachedPing?.()?.user?.isOwner === true; } catch { return false; } }
 function effRate(base, p) { return p.waived ? 0 : Math.round((Number(base) || 0) * (100 - (Number(p.discountPercent) || 0)) / 100); }
 
 /* ---------- actions ---------- */
