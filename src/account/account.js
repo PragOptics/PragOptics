@@ -4649,8 +4649,12 @@ async function catalogImport(btn) {
 // What the Team module borrows from this panel, so it carries no second copy. Its fetch notes the role each read
 // of the team view answers with, so the Licensing entry follows the team in view (licensingHidden above);
 // teamPicked is called when the Team tab changes the team in view, so the entry hides until that team's role is read.
+/** Grant or remove the owner-only agent flag (the admin users patch); the Team tab uses this for its agent toggle. */
+async function grantAgentFlag(userId, email, on) {
+  return apiFetch(USER_PATCH_URL, { method: 'POST', body: JSON.stringify({ userId, expectEmail: email, isAgent: on === true }) });
+}
 function teamDeps() {
-  return { apiFetch: viewApiFetch, escapeHtml, friendlyError, showError, fmtDate, cachedPing, teamPicked: syncLicensingNav };
+  return { apiFetch: viewApiFetch, escapeHtml, friendlyError, showError, fmtDate, cachedPing, teamPicked: syncLicensingNav, grantAgent: grantAgentFlag };
 }
 
 function showSection(id) {

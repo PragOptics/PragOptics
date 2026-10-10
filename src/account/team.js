@@ -456,7 +456,7 @@ function membersHtml(v) {
     const suspended = String(m.status).toUpperCase() === 'SUSPENDED';
     return `
       <tr>
-        <td class="cell-ellip" data-th="Person" title="${e(m.email)}">${e(m.email)}${self ? ' <span class="adm-muted">(you)</span>' : ''}</td>
+        <td class="cell-ellip" data-th="Person" title="${e(m.email)}">${e(m.email)}${self ? ' <span class="adm-muted">(you)</span>' : ''}${isPlatformOwner() && m.isAgent ? ' <span class="acct-tag is-verified">agent</span>' : ''}</td>
         <td class="cell-tight" data-th="Role">${roleCell}</td>
         <td class="cell-tight" data-th="Status">${statusTag(m.status)}${m.seat ? '' : ' <span class="adm-muted">no seat</span>'}</td>
         <td class="cell-tight" data-th="Allowance"><span class="tm-allow">${e(allowanceText(m))}</span></td>
@@ -467,6 +467,9 @@ function membersHtml(v) {
               ? `<span class="adm-muted">Only the owner restores</span>`
               : iconBtn({ team: 'restore' }, 'play', `Restore ${m.email}`, `data-user="${e(m.userId)}" data-email="${e(m.email)}"`))
             : iconBtn({ team: 'suspend' }, 'pause', `Suspend ${m.email}: they stay on the team but cannot use it until restored`, `data-user="${e(m.userId)}" data-email="${e(m.email)}"`, 'is-risky')}
+          ${isPlatformOwner() && m.role !== 'owner'
+            ? iconBtn({ team: m.isAgent ? 'agent-off' : 'agent-on' }, 'badge', m.isAgent ? `Remove the agent role from ${m.email}` : `Make ${m.email} an agent`, `data-user="${e(m.userId)}" data-email="${e(m.email)}"`, m.isAgent ? 'is-on' : '')
+            : ''}
           ${iconBtn({ team: 'remove' }, 'userMinus', `Remove ${m.email} from the team`, `data-user="${e(m.userId)}" data-email="${e(m.email)}"`, 'is-risky')}
         </span>` : ''}</td>
       </tr>
@@ -860,7 +863,9 @@ async function post(path, payload, errorId = 'tmError') {
  * picker, is disabled with the tip "Wait for the change being saved". The line under the heading says it in words,
  * for a phone that has no hover. When the answer comes the team is read again and painted, or, for an invite that
  * failed, the button comes back as it was with the reason under it. */
-const REQUEST_ACTIONS = new Set(['rename-save', 'leave', 'invite', 'revoke', 'suspend', 'restore', 'remove', 'allow-clear', 'allow-save', 'confirm-leave', 'confirm-remove', 'confirm-viewer']);
+const REQUEST_ACTIONS = new Set(['rename-save', 'leave', 'invite', 'revoke', 'suspend', 'restore', 'remove', 'allow-clear', 'allow-save', 'confirm-leave', 'confirm-remove', 'confirm-viewer', 'agent-on', 'agent-off']);
+/** The platform owner, the only one who grants or removes the agent role (also gated on the backend). */
+function isPlatformOwner() { try { return D.cachedPing?.()?.user?.isOwner === true; } catch { return false; } }
 const WAIT_TIP = 'Wait for the change being saved';
 
 function teamBusy() { return !!(tm.acting || tm.scopesBusy); }
@@ -988,6 +993,11 @@ const TEAM_ACTIONS = {
   },
   restore: (btn, { userId, who }) => act(() => post(`${TENANT_URL}/members/patch`, { userId, status: 'ACTIVE' }),
     { el: btn, word: 'Restoring…', status: `Restoring ${who}…` }),
+  // the platform owner grants or removes the agent role from the team (the admin users patch, owner-gated on the backend)
+  'agent-on': (btn, { userId, who }) => act(async () => { await D.grantAgent(userId, who, true); },
+    { el: btn, word: 'Making agent…', status: `Making ${who} an agent…` }),
+  'agent-off': (btn, { userId, who }) => act(async () => { await D.grantAgent(userId, who, false); },
+    { el: btn, word: 'Removing…', status: `Removing the agent role from ${who}…` }),
   remove: (btn, { userId, who }) => {
     tm.confirm = { kind: 'remove', userId, email: who }; tm.editing = null; paint();
     document.querySelector(`[data-team-action="confirm-remove"][data-user="${CSS.escape(userId)}"]`)?.focus();
