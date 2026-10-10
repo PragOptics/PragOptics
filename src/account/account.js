@@ -22,7 +22,7 @@ import { openReportAnomaly, openSupportRequest, installErrorCapture } from './re
 import { renderTeam, renderTenants, bindTeamActions } from './team.js';
 import { renderEnvironment, bindEnvironmentActions } from './environment.js';
 import { renderLicensing, bindLicensingActions } from './licensing.js';
-import { renderLiveAgents, bindLiveAgentsActions } from './liveAgents.js';
+import { renderLiveAgents, renderAgentDesk, bindLiveAgentsActions } from './liveAgents.js';
 import { avatarHtml, fileToAvatar, saveAvatar } from './avatar.js';
 import { renderBuildsQueue, renderMyBuilds } from './buildsDesk.js';
 import { renderNeedsAttention } from './needsAttentionDesk.js';
@@ -324,7 +324,8 @@ const ICONS = {
   ai:           '<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>',
   attention:    '<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
   support:      '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M9 10a3 3 0 0 1 6 0c0 2-3 2-3 4"/><path d="M12 17h.01"/>',
-  liveagents:   '<path d="M4 15v-3a8 8 0 0 1 16 0v3"/><path d="M4 15a2 2 0 0 0 2 2h1v-5H6a2 2 0 0 0-2 2z"/><path d="M20 15a2 2 0 0 1-2 2h-1v-5h1a2 2 0 0 1 2 2z"/><path d="M18 17v1a3 3 0 0 1-3 3h-3"/>'
+  liveagents:   '<path d="M4 15v-3a8 8 0 0 1 16 0v3"/><path d="M4 15a2 2 0 0 0 2 2h1v-5H6a2 2 0 0 0-2 2z"/><path d="M20 15a2 2 0 0 1-2 2h-1v-5h1a2 2 0 0 1 2 2z"/><path d="M18 17v1a3 3 0 0 1-3 3h-3"/>',
+  agentdesk:    '<path d="M4 15v-3a8 8 0 0 1 16 0v3"/><path d="M4 15a2 2 0 0 0 2 2h1v-5H6a2 2 0 0 0-2 2z"/><path d="M20 15a2 2 0 0 1-2 2h-1v-5h1a2 2 0 0 1 2 2z"/><path d="M18 17v1a3 3 0 0 1-3 3h-3"/>'
 };
 
 const ACCOUNT_SECTIONS = [
@@ -344,6 +345,7 @@ const INTERNAL_SECTIONS = [
   { id: 'attention',  label: 'Needs attention' },
   { id: 'users',      label: 'Users' },
   { id: 'tenants',    label: 'Tenants' },
+  { id: 'agentdesk',  label: 'Agents' },
   { id: 'buildsqueue', label: 'Builds' },
   { id: 'notify',     label: 'Notifications' },
   { id: 'reports',    label: 'Anomalies' },
@@ -360,12 +362,19 @@ const INTERNAL_SECTIONS = [
 // only when the lanes carry it and TEAM_LIVE is flipped. Until then the live
 // lane never shows them; dev always does.
 const TEAM_ON = (LANE !== 'live') || TEAM_LIVE;
-const TEAM_IDS = new Set(['team', 'environment', 'licensing', 'liveagents', 'tenants']);
-function customerSections() { return ACCOUNT_SECTIONS.filter(s => TEAM_ON || !TEAM_IDS.has(s.id)); }
+const TEAM_IDS = new Set(['team', 'environment', 'licensing', 'liveagents', 'agentdesk', 'tenants']);
+// The agent roster (2026-10-10): the platform owner and anyone granted the agent flag. They work the internal Agents
+// desk, not the customer Live Agents tab, so that tab is hidden for them and the desk is shown even without admin.
+function isRoster() { try { const u = cachedPing()?.user; return u?.isOwner === true || u?.isAgent === true; } catch { return false; } }
+function customerSections() { return ACCOUNT_SECTIONS.filter(s => (TEAM_ON || !TEAM_IDS.has(s.id)) && !(s.id === 'liveagents' && isRoster())); }
 function internalSections() { return INTERNAL_SECTIONS.filter(s => TEAM_ON || !TEAM_IDS.has(s.id)); }
+/** The Agents desk a non-admin agent still sees, without the rest of the operator panel. */
+function rosterSections() { return internalSections().filter(s => s.id === 'agentdesk'); }
 
 function allSections() {
-  return isAdmin() ? [...customerSections(), ...internalSections()] : customerSections();
+  if (isAdmin()) return [...customerSections(), ...internalSections()];
+  if (isRoster()) return [...customerSections(), ...rosterSections()];
+  return customerSections();
 }
 
 /* LICENSING IS FOR MEMBERS AND ABOVE (2026-09-23, Part 1: "viewers never see the Licensing tab"). The role that
@@ -509,7 +518,10 @@ function shellHtml() {
           ${admin ? `
             <li class="adm-nav-div" aria-hidden="true">Internal</li>
             ${navItemsHtml(internalSections())}
-          ` : ''}
+          ` : (isRoster() ? `
+            <li class="adm-nav-div" aria-hidden="true">Agent</li>
+            ${navItemsHtml(rosterSections())}
+          ` : '')}
         </ul>
         <div class="adm-side-report">
           <span class="adm-side-report-btns">
@@ -4632,7 +4644,8 @@ function teamDeps() {
 function showSection(id) {
   // A customer must never land on an internal section id (stale deep link),
   // and nobody lands on Team while it is off for this lane.
-  if (cachedPing() && !isAdmin() && INTERNAL_SECTIONS.some(s => s.id === id)) id = 'profile';
+  if (cachedPing() && !isAdmin() && INTERNAL_SECTIONS.some(s => s.id === id) && !(id === 'agentdesk' && isRoster())) id = 'profile';
+  if (id === 'liveagents' && isRoster()) id = 'agentdesk';   // the roster works the desk, not the customer tab
   if (!TEAM_ON && TEAM_IDS.has(id)) id = 'profile';
   // below member on the team in view there is no Licensing (a stale link, the address bar)
   if (id === 'licensing' && TEAM_ON && licensingBlocked()) id = 'profile';
@@ -4671,6 +4684,7 @@ function paintSection(id, main) {
   if (id === 'environment')  return void renderEnvironment(main, teamDeps());
   if (id === 'licensing')    return void renderLicensing(main, teamDeps());
   if (id === 'liveagents')   return void renderLiveAgents(main, teamDeps());
+  if (id === 'agentdesk')    return void renderAgentDesk(main, teamDeps());
   if (id === 'builds')       return void renderMyBuilds(main, teamDeps());
   if (id === 'overview')     return void renderOverview(main);
   if (id === 'users')        return void renderUsers(main);

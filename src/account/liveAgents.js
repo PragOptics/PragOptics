@@ -18,7 +18,7 @@ import { cardHtml as sharedCard, ico, leadBtn, iconBtn, openModal, initCards } f
 import { explainLink } from '../components/explainer.js';
 
 let D = null;
-const la = { reqs: null, canSupport: false, mine: null, support: null, busy: '', err: '', note: '', amount: '' };
+const la = { mode: 'customer', reqs: null, canSupport: false, mine: null, support: null, busy: '', err: '', note: '', amount: '' };
 
 const TEAM_KEY = 'pragoptics_team_id';
 function teamId() { try { return sessionStorage.getItem(TEAM_KEY) || ''; } catch { return ''; } }
@@ -40,12 +40,18 @@ function ringHtml(pct, done) {
 
 /* ---------- reads ---------- */
 
-export async function renderLiveAgents(main, deps) {
+// The CUSTOMER side (a subscriber's own account): request a live hand, the balance, the ledger.
+export async function renderLiveAgents(main, deps) { return mount(main, deps, 'customer', 'Live Agents'); }
+// The AGENT DESK (internal, the roster): the queue of requests to take, and the work on a customer's environment.
+export async function renderAgentDesk(main, deps) { return mount(main, deps, 'desk', 'Agents'); }
+
+async function mount(main, deps, mode, title) {
   D = deps;
+  la.mode = mode;
   initCards();
   la.err = '';
   main.innerHTML = `
-    <header class="acct-sec-head has-explain"><h2 class="acct-sec-title">Live Agents</h2>${explain()}</header>
+    <header class="acct-sec-head has-explain"><h2 class="acct-sec-title">${title}</h2>${explain()}</header>
     <p class="acct-error" id="laError" hidden></p>
     <div id="laBody"><p class="acct-loading">Loading…</p></div>`;
   await load();
@@ -75,17 +81,20 @@ function paint() {
   const onOwn = isEnvOwnerView();
   const cards = [];
   let lead;
-  if (la.canSupport && onOwn) {
-    // the agent desk: the roster's view of requests to take. No "request support" here, you are the support.
-    lead = 'You are on the agent roster. Customers ask for a live hand here; take one to drop into their environment and build it with them.';
-    cards.push(queueCard());
-  } else if (la.support && la.support.me) {
-    // an agent working a customer's environment: their session, their own price for this customer, the ledger
-    lead = 'You are an agent on this environment. Start a session to log your time, set your price for this customer, and your work shows in the ledger.';
-    cards.push(myWorkCard());
-    cards.push(ledgerCard());
+  if (la.mode === 'desk') {
+    // the internal agent desk, for the roster (the owner and anyone with the agent grant)
+    if (la.support && la.support.me && !onOwn) {
+      // working a customer's environment (switched to their team): the session, the price, the ledger
+      lead = 'You are an agent on this environment. Start a session to log your time, set your price for this customer, and your work shows in the ledger below.';
+      cards.push(myWorkCard());
+      cards.push(ledgerCard());
+    } else {
+      // the desk itself: the queue of requests to take; switch to a customer's team (top of the panel) to work on it
+      lead = 'Your agent desk. Customers ask for a live hand here; take one to join their environment, then switch to their team at the top of the panel to work on it.';
+      cards.push(queueCard());
+    }
   } else {
-    // a customer: ask for a live hand, their balance, their ledger
+    // the customer side: ask for a live hand, their balance, their ledger
     lead = 'A real person, not an AI. Bring a live human from the PragOptics team into your environment to build it with you.';
     cards.push(requestCard());
     if (la.support) { cards.push(balanceCard()); cards.push(ledgerCard()); }
@@ -324,7 +333,8 @@ async function doPricing() {
 function openEnv(env) {
   if (!env) return;
   try { sessionStorage.setItem(TEAM_KEY, env); } catch { /* the pick is not remembered; the view still changes */ }
-  try { document.querySelector('[data-acct-section="liveagents"]')?.click(); } catch { /* ignore */ }
+  const sec = la.mode === 'desk' ? 'agentdesk' : 'liveagents';
+  try { document.querySelector(`[data-acct-section="${sec}"]`)?.click(); } catch { /* ignore */ }
   load();
 }
 /** Top up is finished with the site's card entry in the next pass; for now it explains the free path. */
