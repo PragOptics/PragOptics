@@ -14,7 +14,7 @@
 // POST .../throttle /pricing /session /topup (the balance and sessions, auth/agentBilling.js).
 
 import { PRAG_API_BASE } from '../runtime/config.js';
-import { cardHtml as sharedCard, ico, leadBtn, iconBtn, openModal, initCards } from './cards.js';
+import { cardHtml as sharedCard, ico, leadBtn, iconBtn, openModal, initCards, armed } from './cards.js';
 import { explainLink } from '../components/explainer.js';
 
 let D = null;
@@ -351,7 +351,8 @@ export function bindLiveAgentsActions(deps) {
     e.preventDefault();
     try {
       if (a === 'request') return void await doRequest();
-      if (a === 'withdraw') return void await doClose();
+      // Closing the door is guarded: the first press arms it with a clear warning and a timer, the second confirms.
+      if (a === 'withdraw') { if (!armed(btn, 'This closes the door and ends the agent’s access. Press again.', { keep: 'Keep it open', ms: 6000 })) return; return void await doClose(); }
       if (a === 'take') return void await doTake(env, btn);
       if (a === 'revoke-agent') return void await doRevokeAgent(btn.dataset.user || '', btn.dataset.email || '');
       if (a === 'open-env') return void openEnv(env);
