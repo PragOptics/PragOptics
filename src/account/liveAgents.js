@@ -110,7 +110,7 @@ function paint() {
     const owner = isPlatformOwner();
     if (la.support && la.support.me) {
       // on a customer's environment you are an agent on: the session, the price, the ledger
-      lead = 'You are an agent on this environment. Start a session to log your time, set your price for this customer, and your work shows in the ledger below.';
+      lead = `You are working in ${D.escapeHtml(currentEnvName() || 'a customer environment')}. Start a session to log your time, set your price for this customer, and your work shows in the ledger below.`;
       cards.push(myWorkCard());
       cards.push(ledgerCard());
     } else if (owner) {
@@ -303,8 +303,9 @@ function myWorkCard() {
   const fee = me.isOwner ? 100 : Number(me.feePercent || 20);
   const keepPerHr = me.isOwner ? 0 : Math.round(eff * (100 - fee) / 100);
   const earn = me.earnings || {};
+  const envName = currentEnvName();
   const body = `
-    <p class="acct-card-note">You are an agent on this environment. Your rate here is ${rateWord(me.baseRateCents)}${p.waived ? ', currently waived (free)' : p.discountPercent ? `, with ${p.discountPercent}% off (${rateWord(eff)})` : ''}.</p>
+    <p class="acct-card-note">You are an agent on ${envName ? `<strong>${e(envName)}</strong>` : 'this environment'}. Your rate here is ${rateWord(me.baseRateCents)}${p.waived ? ', currently waived (free)' : p.discountPercent ? `, with ${p.discountPercent}% off (${rateWord(eff)})` : ''}.</p>
     ${me.isOwner ? '' : `<p class="acct-card-note">You keep ${100 - fee}% of what you charge here; the platform's fee is ${fee}%. At ${rateWord(eff)} that is ${rateWord(keepPerHr)} to you. ${explain('How you get paid', 'agent-pay')}</p>`}
     ${!me.isOwner && earn.earnedCents !== undefined ? `<p class="acct-card-note">Across your customers: earned ${money(earn.earnedCents)}, owed to you ${money(earn.owedCents)}.</p>` : ''}
     <div class="la-session">
@@ -322,10 +323,18 @@ function myWorkCard() {
       <div class="ev-dom-actions">${leadBtn({ la: 'pricing' }, 'check', 'Save my price', la.busy === 'pricing' ? 'disabled' : '', '')}</div>
       <p class="acct-card-note">A discount is up to 50%. To work free, waive the fee. The customer sees your rate before any billable time.</p>
     </div>`;
-  return card({ key: 'mywork', icon: 'tool', title: 'Your work here', summary: working ? 'working' : 'ready', body });
+  return card({ key: 'mywork', icon: 'tool', title: envName ? `Your work on ${envName}` : 'Your work here', summary: working ? 'working' : 'ready', body });
 }
 function myId() { try { return String(D.cachedPing?.()?.user?.userId || ''); } catch { return ''; } }
 function isPlatformOwner() { try { return D.cachedPing?.()?.user?.isOwner === true; } catch { return false; } }
+/** The customer environment the agent is currently working in (the picked team), named from the queue, never a bare id. */
+function currentEnvName() {
+  const id = teamId();
+  if (!id) return '';
+  const q = Array.isArray(la.reqs?.queue) ? la.reqs.queue : [];
+  const hit = q.find(x => String(x.environmentId) === String(id));
+  return (hit && (hit.environmentName || hit.requesterEmail)) || id;
+}
 function effRate(base, p) { return p.waived ? 0 : Math.round((Number(base) || 0) * (100 - (Number(p.discountPercent) || 0)) / 100); }
 
 /* ---------- actions ---------- */
