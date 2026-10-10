@@ -1,33 +1,52 @@
 # Live Agents, not AI
 
-A real person. When you need a hand building or fixing your environment, you can bring in a live human from the PragOptics team to work on it with you. Not a bot, not an assistant, a person who signs in and does the work alongside you.
+A real person, not a bot. When you want a hand building or fixing your
+environment, you can bring in a live human from the PragOptics team to work on
+it right alongside you. Someone who signs in, rolls up their sleeves, and does
+the work with you.
 
-The little alien you see is just the placeholder until someone adds a photo. There is always a real human behind it.
+The little alien is just a stand-in until that person adds a photo. There is
+always a real human behind it.
 
-## How it works
+## Opening the door
+
+You are in charge of the door to your environment. Nobody comes in unless you
+ask.
 
 ```flow
-Ask | Press Request agent support on your account. Your first contact is always free.
-Someone takes it | The platform owner, or an agent they have brought onto the roster, picks it up. You see who, and their rate, before any billable time.
-They build with you | They drop into your environment with the power to set things up: connections, your domain and mail, licensing, the dev work. They cannot touch your billing, close your account, or read your passwords or secrets.
-You stay in control | You can watch what they are doing, and remove them with one press at any time.
+Open the door | Press Request agent support. That is you asking for a live hand. Your very first contact is always free.
+Someone comes in | The platform owner, or an agent they have put on the roster, picks it up. You see exactly who, and their rate, before a single billable minute.
+They build it with you | They work inside your environment: connections, your domain and mail, licensing, the developer work. They can build, not spend.
+You stay in control | You watch what they do, every action is logged against their name, and you can show them out with one press whenever you like.
 ```
 
-They can work even when you are offline, and so can you. While an agent is in your environment you will see it, who they are and whether they are working right now.
+They can keep working while you are offline, and you can keep working while they
+are. Whenever an agent is in your environment you will see it: who they are, and
+whether they are working right now.
 
 ## What it costs
 
-Your first contact is free. After that you keep a small prepaid balance and the agent's time draws from it, so you are never surprised by a bill: you spend only what you have added, and the balance can never go below zero.
+Your first contact is free. After that you keep a small prepaid balance, and an
+agent's time draws from it. You spend only what you have put in, and the balance
+can never drop below zero, so a bill never surprises you.
 
-Rates are per hour: the platform owner is $150, an agent is $75. Each person sets their own price for you, so one agent might give you a discount, or waive the fee entirely and work for free, while another charges their full rate. Whoever takes your request shows you their rate first, and every minute they log shows up in your ledger with what it cost.
+Rates are by the hour: the platform owner is $150, an agent is $75. Each person
+sets their own price for you. One might give you a discount, or waive the fee and
+work for free; another charges full rate. Whoever comes in shows you their rate
+first, and every minute they log lands in your ledger with what it cost.
 
-You set a cap on how much you are willing to spend on agent help, and you top the balance up whenever you want. When the balance runs low, billable work stops until you add more, and the owner can always step in for free.
+Set a spend cap if you want a ceiling, and top the balance up whenever you like.
+If it runs low, paid work pauses until you add more. The owner can always step in
+for free.
 
 ## What an agent can and cannot do
 
-An agent is there to build and support your environment, nothing more.
+An agent is here to build and support your environment, and nothing beyond that.
 
-- They can: connect accounts, set up your own domain and mail, run the licensing wizard, and do the developer work your build needs.
-- They cannot: change your plan or billing, buy a domain or place a license order for you (those stay yours), close your account, invite or remove your team, or read any password or secret.
+```ladder
+They can | Connect accounts, set up your own domain and mail, run the licensing wizard, and do the developer work your build needs.
+They cannot | Change your plan or billing, buy a domain or place a license order for you, close your account, add or remove your team, or read any password or secret.
+```
 
-Every action an agent takes is recorded against their name and your environment, so you always know what was done and by whom.
+Everything an agent does is recorded against their name and your environment, so
+you always know what was done, and by whom.
