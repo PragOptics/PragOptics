@@ -10,7 +10,7 @@
 // The switcher is the existing team picker: an agent's agent-memberships show there, so they pick a customer's
 // environment and this section follows the team in view.
 //
-// Backend: GET/POST v1/support/request(s) (the queue, auth/agentSupport.js); GET v1/environment/agent-support and
+// Backend: GET/POST v1/support/requests (the queue, auth/agentSupport.js; POST on the plural collection to raise); GET v1/environment/agent-support and
 // POST .../throttle /pricing /session /topup (the balance and sessions, auth/agentBilling.js).
 
 import { PRAG_API_BASE } from '../runtime/config.js';
@@ -302,7 +302,7 @@ function checked(id) { const el = document.getElementById(id); return !!(el && e
 
 async function doRequest() {
   la.note = val('laNote'); la.busy = 'request'; paint();
-  try { await D.apiFetch(`${base()}/support/request`, { method: 'POST', body: JSON.stringify({ note: la.note }) }); la.note = ''; }
+  try { await D.apiFetch(`${base()}/support/requests`, { method: 'POST', body: JSON.stringify({ note: la.note }) }); la.note = ''; }
   finally { la.busy = ''; }
   await load();
 }
