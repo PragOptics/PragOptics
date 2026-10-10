@@ -93,8 +93,11 @@ function paint() {
       lead = 'Your agent desk. Customers ask for a live hand here; take one to join their environment, then switch to their team at the top of the panel to work on it.';
       cards.push(queueCard());
     }
+  } else if (!isEnvOwnerView()) {
+    // a member viewing a team they are part of: agent support for that team is its OWNER's to request, not theirs
+    lead = 'Agent support for this team is the owner\'s to request. Switch to your own team at the top of the panel to ask for a live hand on your environment.';
   } else {
-    // the customer side: ask for a live hand, their balance, their ledger
+    // the customer side, on your OWN environment: ask for a live hand, your balance, your ledger
     lead = 'A real person, not an AI. Bring a live human from the PragOptics team into your environment to build it with you.';
     cards.push(requestCard());
     if (la.support) { cards.push(balanceCard()); cards.push(ledgerCard()); }
