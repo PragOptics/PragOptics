@@ -57,7 +57,7 @@ async function mount(main, deps, mode, title) {
   await load();
 }
 
-function explain(label) { try { return explainLink('live-agents', label || 'How it works'); } catch { return ''; } }
+function explain(label, key) { try { return explainLink(key || 'live-agents', label || 'How it works'); } catch { return ''; } }
 
 async function load() {
   try {
@@ -238,8 +238,14 @@ function myWorkCard() {
   const p = me.pricing || {};
   const active = la.support.active;
   const working = active && String(active.agentUserId) === String(myId());
+  const eff = effRate(me.baseRateCents, p);
+  const fee = me.isOwner ? 100 : Number(me.feePercent || 20);
+  const keepPerHr = me.isOwner ? 0 : Math.round(eff * (100 - fee) / 100);
+  const earn = me.earnings || {};
   const body = `
-    <p class="acct-card-note">You are an agent on this environment. Your rate here is ${rateWord(me.baseRateCents)}${p.waived ? ', currently waived (free)' : p.discountPercent ? `, with ${p.discountPercent}% off (${rateWord(effRate(me.baseRateCents, p))})` : ''}.</p>
+    <p class="acct-card-note">You are an agent on this environment. Your rate here is ${rateWord(me.baseRateCents)}${p.waived ? ', currently waived (free)' : p.discountPercent ? `, with ${p.discountPercent}% off (${rateWord(eff)})` : ''}.</p>
+    ${me.isOwner ? '' : `<p class="acct-card-note">You keep ${100 - fee}% of what you charge here; the platform's fee is ${fee}%. At ${rateWord(eff)} that is ${rateWord(keepPerHr)} to you. ${explain('How you get paid', 'agent-pay')}</p>`}
+    ${!me.isOwner && earn.earnedCents !== undefined ? `<p class="acct-card-note">Across your customers: earned ${money(earn.earnedCents)}, owed to you ${money(earn.owedCents)}.</p>` : ''}
     <div class="la-session">
       ${working
         ? `<p class="la-status"><span class="la-dot is-live"></span> Working since ${e(when(active.startedAt))}.</p>${leadBtn({ la: 'session-stop' }, 'stop', 'Stop and log time', la.busy === 'session' ? 'disabled' : '', 'btn-primary')}`

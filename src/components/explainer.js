@@ -35,6 +35,7 @@ const DOCS = {
   domains:     { title: 'Connecting a domain' },
   licensing:   { title: 'Licenses and mailboxes' },
   'live-agents': { title: 'Live agents, not AI' },
+  'agent-pay': { title: 'How you get paid' },
   ai:          { title: 'AI and its credit' }
 };
 const KICKER = 'How it works';
