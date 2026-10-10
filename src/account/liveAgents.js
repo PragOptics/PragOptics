@@ -80,9 +80,20 @@ async function load() {
     la.mine = reqs && reqs.mine !== undefined ? reqs.mine : null;
     la.canSupport = !!(reqs && reqs.canSupport);
     la.support = support && support.ok !== false ? support : null;   // null when the viewer cannot read billing here
-    la.agents = agents && agents.ok !== false && Array.isArray(agents.agents) ? agents.agents : null;   // owner only
+    la.agents = ownerDesk ? await resolveRoster(agents) : null;
   } catch (e) { la.err = D.friendlyError ? D.friendlyError(e) : 'Could not load Live Agents.'; }
   paint();
+}
+
+/** The owner's roster. Prefer GET /support/agents (carries earnings), but fall back to the already-deployed admin Users
+ *  list filtered to the agent flag, so the roster shows without waiting on a backend deploy. */
+async function resolveRoster(agents) {
+  if (agents && agents.ok !== false && Array.isArray(agents.agents)) return agents.agents;
+  const u = await D.apiFetch(`${base()}/admin/users`).catch(() => null);
+  if (u && Array.isArray(u.users)) {
+    return u.users.filter(x => x.isAgent === true).map(x => ({ userId: x.userId, email: x.email, environmentId: x.environmentId || '' }));
+  }
+  return [];
 }
 
 /* ---------- paint ---------- */
