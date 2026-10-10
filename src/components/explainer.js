@@ -36,6 +36,7 @@ const DOCS = {
   licensing:   { title: 'Licenses and mailboxes' },
   'live-agents': { title: 'Live agents, not AI' },
   'agent-desk': { title: 'Being a live agent' },
+  'agent-admin': { title: 'Running live agents' },
   'agent-pay': { title: 'How you get paid' },
   ai:          { title: 'AI and its credit' }
 };

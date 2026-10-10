@@ -18,7 +18,7 @@ import { cardHtml as sharedCard, ico, leadBtn, iconBtn, openModal, initCards } f
 import { explainLink } from '../components/explainer.js';
 
 let D = null;
-const la = { mode: 'customer', reqs: null, canSupport: false, mine: null, support: null, busy: '', err: '', note: '', amount: '' };
+const la = { mode: 'customer', reqs: null, canSupport: false, mine: null, support: null, agents: null, busy: '', err: '', note: '', amount: '' };
 
 const TEAM_KEY = 'pragoptics_team_id';
 function teamId() { try { return sessionStorage.getItem(TEAM_KEY) || ''; } catch { return ''; } }
@@ -57,22 +57,30 @@ async function mount(main, deps, mode, title) {
   await load();
 }
 
-// Two faces, two explainers: the user side (what bringing an agent in means, and the relationship they control) and the
-// internal agent side (what being an agent is, and how you get paid). They are deliberately different documents.
-function explainKey() { return la.mode === 'desk' ? 'agent-desk' : 'live-agents'; }
-function explainLabel() { return la.mode === 'desk' ? 'How being an agent works' : 'How it works'; }
+// Three levels, three deliberately different explainers:
+//   user  (live-agents):  what bringing a live person in means, and the relationship you control.
+//   agent (agent-desk):   what being an agent is, taking cases, and getting paid.
+//   owner (agent-admin):  running the whole program, the roster and every case across the platform.
+function explainKey() { return la.mode === 'desk' ? (isPlatformOwner() ? 'agent-admin' : 'agent-desk') : 'live-agents'; }
+function explainLabel() {
+  if (la.mode !== 'desk') return 'How it works';
+  return isPlatformOwner() ? 'Running live agents' : 'How being an agent works';
+}
 function explain(label, key) { try { return explainLink(key || explainKey(), label || explainLabel()); } catch { return ''; } }
 
 async function load() {
   try {
-    const [reqs, support] = await Promise.all([
+    const ownerDesk = la.mode === 'desk' && isPlatformOwner();
+    const [reqs, support, agents] = await Promise.all([
       D.apiFetch(`${base()}/support/requests`).catch(() => null),
-      D.apiFetch(tq('/environment/agent-support')).catch(() => null)
+      D.apiFetch(tq('/environment/agent-support')).catch(() => null),
+      ownerDesk ? D.apiFetch(`${base()}/support/agents`).catch(() => null) : Promise.resolve(null)
     ]);
     la.reqs = reqs || null;
     la.mine = reqs && reqs.mine !== undefined ? reqs.mine : null;
     la.canSupport = !!(reqs && reqs.canSupport);
     la.support = support && support.ok !== false ? support : null;   // null when the viewer cannot read billing here
+    la.agents = agents && agents.ok !== false && Array.isArray(agents.agents) ? agents.agents : null;   // owner only
   } catch (e) { la.err = D.friendlyError ? D.friendlyError(e) : 'Could not load Live Agents.'; }
   paint();
 }
@@ -95,8 +103,9 @@ function paint() {
       cards.push(myWorkCard());
       cards.push(ledgerCard());
     } else if (owner) {
-      // the owner's management view: every request across the platform is yours to take or assign
-      lead = 'Agent management. Every request for a live hand across the platform lands here. Take one to join that environment, or switch to a customer\'s team at the top of the panel to work on it.';
+      // the OWNER'S ADMIN PANEL: the whole program. Every agent on the roster, and every request across the platform.
+      lead = 'Your live agents, end to end. Every agent you have put on the roster, and every request across the platform. Take a request yourself, or hand it to an agent.';
+      cards.push(agentsCard());
       cards.push(queueCard());
     } else {
       // an agent's own desk: the open cases they may answer, scoped to them; plus how they get paid
@@ -114,7 +123,7 @@ function paint() {
     // a member viewing a team they are part of: agent support for that team is its OWNER's to request, not theirs
     lead = 'Agent support for this team is the owner\'s to request. Switch to your own team at the top of the panel to ask for a live hand on your environment.';
   }
-  host.innerHTML = `<p class="acct-card-note la-lead">${lead} ${explain('How it works')}</p><div class="ev-cards">${cards.join('')}</div>`;
+  host.innerHTML = `<p class="acct-card-note la-lead">${lead}</p><div class="ev-cards">${cards.join('')}</div>`;
   initCards();
 }
 
@@ -144,7 +153,7 @@ function requestCard() {
       <p class="la-status"><span class="la-dot is-live"></span> ${e(m.takenByEmail || 'An agent')} is helping with your environment.</p>
       <p class="acct-card-note">You can remove them from your Team tab at any time. What they do shows in the ledger below.</p>
       <div class="ev-dom-actions">${iconBtn({ la: 'withdraw' }, 'check', 'Mark it done', '', '')}</div>` : ''}`;
-  return card({ key: 'request', icon: 'message', title: 'Agent support', summary: open ? 'requested' : taken ? 'an agent is helping' : 'ready', explain: explain(), body });
+  return card({ key: 'request', icon: 'message', title: 'Agent support', summary: open ? 'requested' : taken ? 'an agent is helping' : 'ready', body });
 }
 
 /* ---------- the balance ---------- */
@@ -176,7 +185,7 @@ function balanceCard() {
       <p class="acct-card-note">The most you want drawn toward agents. Leave blank for no cap beyond the balance itself.</p>
     </div>
     <div class="ev-dom-actions act-row">${leadBtn({ la: 'topup' }, 'plus', 'Add to balance', '', 'btn-primary')}</div>`;
-  return card({ key: 'balance', icon: 'dollar', title: 'Your support balance', summary: money(bal), explain: explain(), body });
+  return card({ key: 'balance', icon: 'dollar', title: 'Your support balance', summary: money(bal), body });
 }
 
 /* ---------- the ledger ---------- */
@@ -204,7 +213,7 @@ function ledgerCard() {
         <tbody>${rows || '<tr><td colspan="4">Nothing yet.</td></tr>'}</tbody>
       </table>
     </div>`;
-  return card({ key: 'ledger', icon: 'list', title: 'Ledger', summary: `${entries.length} ${entries.length === 1 ? 'entry' : 'entries'}`, explain: explain(), body });
+  return card({ key: 'ledger', icon: 'list', title: 'Ledger', summary: `${entries.length} ${entries.length === 1 ? 'entry' : 'entries'}`, body });
 }
 function lineDetail(x) {
   if (x.firstContact) return 'First contact, free';
@@ -216,6 +225,31 @@ function lineDetail(x) {
   if (x.freeMinutesApplied) bits.push(`${x.freeMinutesApplied} free min`);
   if (x.reason === 'charged-capped') bits.push('capped at balance');
   return bits.join(', ');
+}
+
+/* ---------- the owner's roster of agents (admin) ---------- */
+
+function agentsCard() {
+  const e = D.escapeHtml;
+  const list = Array.isArray(la.agents) ? la.agents : [];
+  const rowOf = (a) => {
+    const owed = cents(a.earnings?.owedCents);
+    const earned = cents(a.earnings?.earnedCents);
+    return `<tr>
+      <td data-th="Agent"><span class="la-agent-id"><span class="la-agent-av" aria-hidden="true">${e((a.email || '?').slice(0, 1).toUpperCase())}</span>${e(a.email || a.userId)}</span></td>
+      <td data-th="Earned">${money(earned)}</td>
+      <td data-th="Owed" class="la-amt ${owed ? 'is-minus' : 'is-free'}">${money(owed)}</td>
+      <td data-th="" class="la-agent-act">${iconBtn({ la: 'revoke-agent' }, 'x', 'Remove the agent badge', `data-user="${e(a.userId)}" data-email="${e(a.email || '')}"`, '')}</td>
+    </tr>`;
+  };
+  const body = list.length
+    ? `<p class="acct-card-note">The people you have put on the agent roster. The badge is yours to grant or remove; an agent keeps no seat.</p>
+       <div class="adm-table-scroll"><table class="adm-table adm-table--wrap">
+         <thead><tr><th>Agent</th><th>Earned</th><th>Owed</th><th></th></tr></thead>
+         <tbody>${list.map(rowOf).join('')}</tbody>
+       </table></div>`
+    : '<p class="acct-empty">No agents yet. Grant the agent badge from a person\'s row on the Team tab or the Users desk, and they appear here.</p>';
+  return card({ key: 'roster', icon: 'users', title: 'Your agents', summary: `${list.length} on roster`, body });
 }
 
 /* ---------- the agent's queue ---------- */
@@ -243,7 +277,7 @@ function queueCard() {
     <p class="acct-card-note">${owner ? 'Every request for a live hand across the platform. Take one to join that environment as an agent, then switch to it to work.' : 'Open cases you can answer. Take one to join that environment as an agent, then switch to it to work.'}</p>
     ${open.length ? open.map(rowOf).join('') : `<p class="acct-empty">${owner ? 'No open requests.' : 'No open cases right now.'}</p>`}
     ${taken.length ? `<p class="su-kicker" style="margin-top:14px">In progress</p>${taken.map(rowOf).join('')}` : ''}`;
-  return card({ key: 'queue', icon: 'bell', title: owner ? 'Requests across the platform' : 'Open cases', summary: `${open.length} open`, explain: explain(), body });
+  return card({ key: 'queue', icon: 'bell', title: owner ? 'Requests across the platform' : 'Open cases', summary: `${open.length} open`, body });
 }
 
 /* ---------- the agent's own work on a customer's environment ---------- */
@@ -277,7 +311,7 @@ function myWorkCard() {
       <div class="ev-dom-actions">${leadBtn({ la: 'pricing' }, 'check', 'Save my price', la.busy === 'pricing' ? 'disabled' : '', '')}</div>
       <p class="acct-card-note">A discount is up to 50%. To work free, waive the fee. The customer sees your rate before any billable time.</p>
     </div>`;
-  return card({ key: 'mywork', icon: 'tool', title: 'Your work here', summary: working ? 'working' : 'ready', explain: explain(), body });
+  return card({ key: 'mywork', icon: 'tool', title: 'Your work here', summary: working ? 'working' : 'ready', body });
 }
 function myId() { try { return String(D.cachedPing?.()?.user?.userId || ''); } catch { return ''; } }
 function isPlatformOwner() { try { return D.cachedPing?.()?.user?.isOwner === true; } catch { return false; } }
@@ -299,6 +333,7 @@ export function bindLiveAgentsActions(deps) {
       if (a === 'request') return void await doRequest();
       if (a === 'withdraw') return void await doClose();
       if (a === 'take') return void await doTake(env, btn);
+      if (a === 'revoke-agent') return void await doRevokeAgent(btn.dataset.user || '', btn.dataset.email || '');
       if (a === 'open-env') return void openEnv(env);
       if (a === 'throttle') return void await doThrottle();
       if (a === 'topup') return void await doTopup();
@@ -328,6 +363,12 @@ async function doTake(env, btn) {
   la.busy = 'take:' + env; paint();
   try { await D.apiFetch(`${base()}/support/requests/${encodeURIComponent(env)}/take`, { method: 'POST', body: '{}' }); }
   finally { la.busy = ''; }
+  await load();
+}
+async function doRevokeAgent(userId, email) {
+  if (!userId || typeof D.grantAgent !== 'function') return;
+  if (!confirm(`Remove the agent badge from ${email || 'this person'}? They keep their account and team role; they just stop being an agent.`)) return;
+  await D.grantAgent(userId, email, false);
   await load();
 }
 async function doThrottle() {
