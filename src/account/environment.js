@@ -1031,32 +1031,53 @@ function domainsHtml() {
   const list = rows == null ? '<p class="acct-loading">Loading domains…</p>'
     : !rows.length ? (regs.length ? '' : `<p class="acct-empty">No domain yet.</p>`)
     : `<div class="ev-domains">${rows.map(domainHtml).join('')}</div>`;
-  const tabs = manage ? [
-    ['connect', 'Connect'],
-    ...(dnsConnections().length ? [['link', 'Link']] : []),
-    ['dns', 'Manage DNS here'],
-    ...(myRole() === 'owner' && !ev.domainNote ? [['register', 'Register']] : [])
-  ] : [];
-  if (manage && !tabs.some(x => x[0] === ev.domTab)) ev.domTab = 'connect';
-  const tabBar = tabs.length ? `<div class="ev-tabs" role="tablist" aria-label="How to bring a domain in">${tabs.map(([k, label]) => `<button class="ev-tab ${ev.domTab === k ? 'is-on' : ''}" type="button" role="tab" aria-selected="${ev.domTab === k}" data-env-action="dom-tab" data-tab="${k}">${e(label)}</button>`).join('')}</div>` : '';
+  // THE GUIDED DOMAIN WIZARD (2026-10-09, Cameron: a real interactive walk, both paths spelled out, not terse tabs).
+  // Two clear choices up front, then the walk for each, reusing the connect / link / dns / register doors and their ops.
+  const owner = myRole() === 'owner';
+  const CONNECT_WAYS = new Set(['connect', 'link', 'dns']);
+  if (manage && !CONNECT_WAYS.has(ev.domTab) && ev.domTab !== 'register') ev.domTab = 'connect';
+  const ownOn = manage && CONNECT_WAYS.has(ev.domTab);
+  const buyOn = manage && ev.domTab === 'register';
+  const chooser = manage ? `
+    <p class="acct-card-note ev-dom-lead">Set up a domain for your team. Your mail, licenses and website go on a domain you control. Start with one you already own, or get one.</p>
+    <div class="ev-dom-choose" role="group" aria-label="How do you want to set up your domain">
+      <button class="ev-dom-pick ${ownOn ? 'is-on' : ''}" type="button" data-env-action="dom-tab" data-tab="connect" aria-pressed="${ownOn}">
+        <span class="ev-dom-pick-ico">${ico('globe', 20)}</span>
+        <span class="ev-dom-pick-t">I already own a domain</span>
+        <span class="ev-dom-pick-d">Point a domain you have at PragOptics. Add one record to prove it is yours.</span>
+      </button>
+      ${owner && !ev.domainNote ? `<button class="ev-dom-pick ${buyOn ? 'is-on' : ''}" type="button" data-env-action="dom-tab" data-tab="register" aria-pressed="${buyOn}">
+        <span class="ev-dom-pick-ico">${ico('search', 20)}</span>
+        <span class="ev-dom-pick-t">I need a domain</span>
+        <span class="ev-dom-pick-d">Search a name, see the registrar's price with no markup, and register it in your name.</span>
+      </button>` : ''}
+    </div>` : '';
   let door = '';
   if (manage) {
-    if (ev.domTab === 'connect') door = `
-      <div class="ev-dom-row">
-        <input class="acct-input" type="text" id="evDomainHost" maxlength="253" placeholder="www.example.com" autocomplete="off" spellcheck="false" autocapitalize="off" ${full ? 'disabled' : ''} />
-        ${leadBtn('domain-add', 'plus', 'Connect', full ? 'disabled' : '', 'btn-primary')}
-      </div>
-      <p class="acct-card-note ev-dom-door">A domain you already own. One TXT record proves it is yours; nothing else changes.${full ? ' This plan is full: remove one to connect another, or move up a plan.' : ''}</p>`;
-    else if (ev.domTab === 'link') door = linkDoorHtml(full);
-    else if (ev.domTab === 'dns') door = dnsDoorHtml(full);
-    else if (ev.domTab === 'register') door = registerHtml();
+    if (ownOn) {
+      // the ways to connect a domain you own: the universal TXT record, a connected registrar (when one is linked), or moving DNS to PragOptics
+      const ways = [['connect', 'Add a record'], ...(dnsConnections().length ? [['link', 'Use a connected registrar']] : []), ['dns', 'Move your DNS here']];
+      const waysBar = `<div class="ev-dom-ways" role="tablist" aria-label="How to connect the domain you own">${ways.map(([k, label]) => `<button class="ev-dom-way ${ev.domTab === k ? 'is-on' : ''}" type="button" role="tab" aria-selected="${ev.domTab === k}" data-env-action="dom-tab" data-tab="${k}">${e(label)}</button>`).join('')}</div>`;
+      let inner = '';
+      if (ev.domTab === 'connect') inner = `
+        <div class="ev-dom-row">
+          <input class="acct-input" type="text" id="evDomainHost" maxlength="253" placeholder="www.example.com" autocomplete="off" spellcheck="false" autocapitalize="off" ${full ? 'disabled' : ''} />
+          ${leadBtn('domain-add', 'plus', 'Connect', full ? 'disabled' : '', 'btn-primary')}
+        </div>
+        <p class="acct-card-note ev-dom-door">Enter the domain you own. We give you one TXT record to add at your registrar; nothing else changes. Then press Verify.${full ? ' This plan is full: remove one to connect another, or move up a plan.' : ''}</p>`;
+      else if (ev.domTab === 'link') inner = linkDoorHtml(full);
+      else if (ev.domTab === 'dns') inner = dnsDoorHtml(full);
+      door = `${waysBar}${inner}`;
+    } else if (buyOn) {
+      door = registerHtml();
+    }
   } else {
     door = `<p class="acct-card-note">The owner, an admin or a developer connects domains; everyone on the team sees them here.</p>`;
   }
   return cardHtml({
     key: 'domains', icon: 'globe', title: 'Domains', summary, explain: explainLink('domains', 'How domains work'),
     body: `
-      ${tabBar}
+      ${chooser}
       ${door}
       <p class="acct-error" id="evDomainError" hidden></p>
       ${ev.domainNote ? `<p class="acct-card-note">${e(ev.domainNote)}</p>` : ''}

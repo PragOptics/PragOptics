@@ -540,6 +540,9 @@ select.acct-input, select.adm-select, select.adm-input { background-color: var(-
 .su-step.is-off .su-step-title, .su-step.is-off .su-why { color: var(--muted); opacity: .75; }
 .su-main { min-width: 0; flex: 1 1 auto; }
 .su-step-head { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+/* "Step N" marks each required step (2026-10-09); the brand tint ties it to the step's dot, and it reads on both themes */
+.su-num { flex: none; font-size: .6rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--brand-600); background: color-mix(in srgb, var(--brand-600) 13%, transparent); border-radius: 999px; padding: 2px 7px; line-height: 1.5; }
+.su-step.is-done .su-num { color: var(--muted); background: color-mix(in srgb, var(--ink) 7%, transparent); }
 .su-step-title { font-size: .92rem; font-weight: 600; color: var(--card-title); }
 .su-step.is-next .su-step-title { color: var(--brand-600); }
 .su-step.is-done .su-step-title { text-decoration: none; }
@@ -594,6 +597,13 @@ select.acct-input, select.adm-select, select.adm-input { background-color: var(-
 .lic-uses { margin-top: 4px; }
 
 /* The guided licensing wizard (licensingWizard.js): the checklist of what Phase 1 sets up, the one form, the agreement. */
+/* the domain gate on the licensing page (2026-10-09): a clear banner, and the page visibly locked until a domain verifies */
+.lic-domain-block { display: flex; flex-wrap: wrap; gap: 12px 16px; align-items: center; justify-content: space-between; padding: 14px 16px; margin: 0 0 14px; border-radius: var(--radius-card, 10px); border: 1px solid var(--brand-600); background: color-mix(in srgb, var(--brand-600) 10%, var(--surface-3)); }
+.lic-domain-block-main { display: flex; gap: 12px; align-items: flex-start; flex: 1 1 320px; }
+.lic-domain-block-main > svg { color: var(--brand-600); flex: none; margin-top: 2px; }
+.lic-domain-block-t { font-weight: 700; color: var(--card-title); margin: 0; }
+.lic-domain-block-d { color: var(--muted); font-size: .88rem; margin: 3px 0 0; }
+.lic-locked button, .lic-locked input, .lic-locked select, .lic-locked textarea, .lic-locked .lic-wiz-agree { pointer-events: none; opacity: .5; }
 .lic-wiz-steps { list-style: none; margin: 14px 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
 .lic-wiz-step { display: flex; align-items: center; gap: 10px; font-size: .92rem; color: var(--muted); }
 .lic-wiz-step svg { color: var(--brand-600); flex: none; }

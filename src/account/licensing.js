@@ -127,7 +127,16 @@ function paint() {
   else if (tenantConnected()) cards = `${phaseRail('manage')}${phase3Lead(lc.view)}${myMailboxHtml()}${mailboxesHtml()}`;
   // not connected and not eligible: the old account card carries the plan upsell
   else cards = `${accountHtml()}${tenantHtml()}${agreementHtml()}${mailboxesHtml()}${myMailboxHtml()}${licensesHtml()}${catalogHtml()}`;
-  host.innerHTML = `${headHtml()}${errHtml('load')}<div class="ev-cards">${owedHtml()}${cards}${requestsHtml()}${billingHtml()}${pax8Html()}</div>`;
+  // THE DOMAIN GATE ON THE LICENSING PAGE (2026-10-09, Cameron): until a domain the owner proved is verified, the page is
+  // visible and readable but its fields and buttons are locked, with a clear reason and a button back to the domain step.
+  // Gone the moment a domain verifies. This gates the screen; it does not change the licensing flow.
+  const domainBlocked = lc.view.eligible && !(lc.view.mailDomains || []).length;
+  const block = domainBlocked ? `
+    <div class="lic-domain-block" role="note">
+      <div class="lic-domain-block-main">${ico('lock')}<div><p class="lic-domain-block-t">Connect a domain you own first</p><p class="lic-domain-block-d">Microsoft licensing and mail go on a domain you control, never a onmicrosoft.com address, so this is locked until you connect or register a domain and verify it. You can still read everything here.</p></div></div>
+      <button class="btn btn-sm btn-lead btn-primary" type="button" data-acct-section="environment" data-acct-card="domains">${ico('globe')}<span>Go to your domain step</span></button>
+    </div>` : '';
+  host.innerHTML = `${headHtml()}${errHtml('load')}${block}<div class="ev-cards${domainBlocked ? ' lic-locked' : ''}">${owedHtml()}${cards}${requestsHtml()}${billingHtml()}${pax8Html()}</div>`;
   // back from Microsoft's approval page: the first paint lands on step 3 (2026-10-05, Cameron: the redirect brings the
   // customer to the final card, not to the top of the tab)
   if (lc.landed === 'connected') {

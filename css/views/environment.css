@@ -169,6 +169,22 @@
 .ev-tab:hover { border-color: color-mix(in srgb, var(--brand-600) 60%, transparent); color: var(--card-title); }
 .ev-tab:focus-visible { outline: 2px solid var(--brand-600); outline-offset: 2px; }
 .ev-tabs + .ev-dom-row { margin-top: 10px; }
+/* the guided domain wizard (2026-10-09): two spelled-out choices, then a walk for each */
+.ev-dom-lead { margin-top: 12px; }
+.ev-dom-choose { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+.ev-dom-pick { display: grid; grid-template-columns: auto 1fr; grid-template-areas: "ico t" "ico d"; gap: 2px 10px; text-align: left; padding: 14px; border-radius: var(--radius-ctl); border: 1px solid var(--border); background: var(--surface-3); color: var(--card-title); font: inherit; cursor: pointer; transition: border-color 140ms ease, background 140ms ease, box-shadow 140ms ease; }
+.ev-dom-pick:hover { border-color: color-mix(in srgb, var(--brand-600) 60%, transparent); }
+.ev-dom-pick:focus-visible { outline: 2px solid var(--brand-600); outline-offset: 2px; }
+.ev-dom-pick.is-on { border-color: var(--brand-600); background: color-mix(in srgb, var(--brand-600) 10%, var(--surface-3)); box-shadow: inset 0 0 0 1px var(--brand-600); }
+.ev-dom-pick-ico { grid-area: ico; color: var(--brand-600); align-self: start; display: inline-flex; }
+.ev-dom-pick-t { grid-area: t; font-weight: 700; }
+.ev-dom-pick-d { grid-area: d; color: var(--muted); font-size: .86rem; font-weight: 400; }
+.ev-dom-ways { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 14px; }
+.ev-dom-way { padding: 5px 10px; border-radius: var(--radius-btn-sm); border: 1px solid color-mix(in srgb, var(--ink) 18%, transparent); background: transparent; color: var(--muted); font: inherit; font-size: .82rem; font-weight: 600; cursor: pointer; transition: background 140ms ease, color 140ms ease, border-color 140ms ease; }
+.ev-dom-way:hover { color: var(--card-title); border-color: color-mix(in srgb, var(--brand-600) 60%, transparent); }
+.ev-dom-way:focus-visible { outline: 2px solid var(--brand-600); outline-offset: 2px; }
+.ev-dom-way.is-on { background: color-mix(in srgb, var(--brand-600) 14%, transparent); color: var(--card-title); border-color: var(--brand-600); }
+@media (max-width: 640px) { .ev-dom-choose { grid-template-columns: 1fr; } }
 /* THE CHOSEN TAB OR SEGMENT (2026-10-05): the tint buttons.css gives .btn[aria-selected="true"], on every tab and segment of
    the panel and the pages (the desks' .adm-tab, the lanes and the Domains tabs, the Warranty page's Register and Transfer,
    the plan selector's cadence). Each keeps its own size and shape. This file loads last of the views, so it holds on hover. */

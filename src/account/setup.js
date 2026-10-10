@@ -183,18 +183,24 @@ function rowHtml(d, open, t, reqComplete, allComplete) {
   return `<div class="su-head ${reqComplete ? 'is-done' : ''}"><span class="su-title">${e(title)}</span>${toggle}</div>${rings}`;
 }
 
-/** One step of the stepper: its dot, its title as a link, Optional when it is, and its sentence. */
-function stepHtml(s) {
+/**
+ * One step of the stepper: its dot, its number, its title as a link, Optional when it is, and its sentence.
+ * `num` is the step's place in the required run (1..N), 0 for an optional step or one the plan does not offer; only a
+ * numbered step shows "Step N" (2026-10-09, Cameron: "the step assistant doesnt have step numbers in it... step 4 is
+ * the environment provisioning... Microsoft Licensing and Mail as Step 6"), so the badges mirror the walk a person takes.
+ */
+function stepHtml(s, num) {
   const e = D.escapeHtml;
   const state = STATES.has(s?.state) ? s.state : 'open';
   // what is said under the title: the fact or the wait (why), and what an optional step is needed for
   const why = String(s?.why || '').trim(), needs = s?.optional ? String(s?.needs || '').trim() : '';
   const note = [why, needs && needs !== why ? needs : ''].filter(Boolean).join(' ');
+  const badge = num ? `<span class="su-num" aria-hidden="true">Step ${num}</span>` : '';
   return `<li class="su-step is-${state}">
       <span class="su-dot" aria-hidden="true">${state === 'done' ? ico('check', 10) : ''}</span>
       <div class="su-main">
-        <span class="su-sr">${e(STATE_WORDS[state])}: </span>
-        <span class="su-step-head">${linkHtml(s)}${s?.optional ? '<span class="acct-tag is-quiet su-opt">Optional</span>' : ''}</span>
+        <span class="su-sr">${num ? `Step ${num}, ` : ''}${e(STATE_WORDS[state])}: </span>
+        <span class="su-step-head">${badge}${linkHtml(s)}${s?.optional ? '<span class="acct-tag is-quiet su-opt">Optional</span>' : ''}</span>
         ${note ? `<p class="su-why">${e(note)}</p>` : ''}
       </div>
     </li>`;
@@ -203,10 +209,14 @@ function stepHtml(s) {
 /** The groups in the server's order, each a kicker and its steps as a vertical stepper. */
 function bodyHtml(d, open) {
   const e = D.escapeHtml;
+  // "Step N" counts the required steps across every group in order (optional and off steps are not numbered), so the
+  // badges read as the one path a person walks: You, the plan, billing, the environment, the domain, then licensing.
+  let n = 0;
+  const numberOf = (s) => (!s?.optional && String(s?.state || '') !== 'off') ? ++n : 0;
   const groups = (d.groups || []).filter(g => Array.isArray(g?.steps) && g.steps.length).map(g => `
     <div class="su-group">
       <p class="su-kicker">${e(g.title || g.id || '')}</p>
-      <ol class="su-steps">${g.steps.map(stepHtml).join('')}</ol>
+      <ol class="su-steps">${g.steps.map(s => stepHtml(s, numberOf(s))).join('')}</ol>
     </div>`).join('');
   return `<div class="su-body" id="${ID}Body" ${open ? '' : 'hidden'}><div class="su-groups">${groups}</div></div>`;
 }
