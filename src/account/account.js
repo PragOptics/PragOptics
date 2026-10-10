@@ -748,7 +748,7 @@ async function renderProfile(main) {
       <div class="av-edit">
         ${avatarHtml(cachedPing()?.user, 60)}
         <div class="av-edit-main">
-          <p class="acct-card-note ev-dom-door">A photo of you, shown as a circle, so the people who help you see who they are talking to. No photo shows the default alien, and it carries to the studio.</p>
+          <p class="acct-card-note ev-dom-door">A photo of you, so the people who help you see who they are talking to. No photo shows the default alien, and it carries to the studio.</p>
           <div class="acct-add-row act-row">
             <label class="btn btn-sm btn-lead btn-primary av-pick">${ico('upload')}<span>Choose photo</span><input type="file" id="acctAvatarFile" accept="image/*" hidden></label>
             ${cachedPing()?.user?.avatar ? iconBtn({ acct: 'avatar-remove' }, 'trash', 'Remove the photo, back to the alien') : ''}
