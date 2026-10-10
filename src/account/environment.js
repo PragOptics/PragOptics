@@ -1055,9 +1055,17 @@ function domainsHtml() {
   let door = '';
   if (manage) {
     if (ownOn) {
-      // the ways to connect a domain you own: the universal TXT record, a connected registrar (when one is linked), or moving DNS to PragOptics
-      const ways = [['connect', 'Add a record'], ...(dnsConnections().length ? [['link', 'Use a connected registrar']] : []), ['dns', 'Move your DNS here']];
-      const waysBar = `<div class="ev-dom-ways" role="tablist" aria-label="How to connect the domain you own">${ways.map(([k, label]) => `<button class="ev-dom-way ${ev.domTab === k ? 'is-on' : ''}" type="button" role="tab" aria-selected="${ev.domTab === k}" data-env-action="dom-tab" data-tab="${k}">${e(label)}</button>`).join('')}</div>`;
+      // the ways to connect a domain you own (2026-10-10, Cameron: name the buttons for an everyday, non-coding person;
+      // the mechanics live in the tooltip and the explainer, not the label): keep it where it is and add records, let a
+      // connected registrar do it, or hand the whole domain's settings to the platform. "Transfer" is kept out of the
+      // last one on purpose: nothing is transferred (the domain stays at its registrar), and that word belongs to the
+      // real registrar-transfer feature still to come.
+      const ways = [
+        ['connect', 'Link PragOptics', 'Keep your domain where it is. Add the records we give you, nothing else changes.'],
+        ...(dnsConnections().length ? [['link', 'Use a connected registrar', 'We write the records for you through a registrar account you connected.']] : []),
+        ['dns', 'Let PragOptics run it', 'Hand the domain\'s settings to us. We copy what it has, then run it, and you can hand it back any time.']
+      ];
+      const waysBar = `<div class="ev-dom-ways" role="tablist" aria-label="How to connect the domain you own">${ways.map(([k, label, tip]) => `<button class="ev-dom-way ${ev.domTab === k ? 'is-on' : ''}" type="button" role="tab" aria-selected="${ev.domTab === k}" data-env-action="dom-tab" data-tab="${k}"${tip ? ` data-tip="${e(tip)}"` : ''}>${e(label)}</button>`).join('')}</div>`;
       let inner = '';
       if (ev.domTab === 'connect') inner = `
         <div class="ev-dom-row">

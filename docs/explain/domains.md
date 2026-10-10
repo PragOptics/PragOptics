@@ -1,14 +1,20 @@
 # Connecting a domain
 
-A domain you own can serve what you build here. There are three ways in, and the same proof of ownership stands behind each.
+A domain you own can serve what you build here. The card starts with one question: do you already own a domain, or do you need one. If you own one, there are three ways to set it up, and the same proof of ownership stands behind each. If you need one, the card registers one for you.
 
-## Three ways in
+## If you already own a domain
 
-Connect a domain you already own, wherever it is. You add one TXT record at your registrar and the platform reads it back. The platform never needs your registrar login, and you keep managing the domain's records yourself.
+The card shows three buttons. Pick the one that matches how much you want the platform to do.
 
-Link the registrar account that holds the domain. If your domain is at GoDaddy, connect that account once under Connected accounts, then link the name on the Domains card. The platform checks the name is really in that account, writes the proof record itself, and from then on writes every record the name needs: the ones that serve your site, and later the ones that carry your mail. Nothing to paste.
+**Link PragOptics.** The lightest way, and it works with any registrar. Your domain stays exactly where it is and keeps answering as it does today. You add the records the card gives you at your registrar: first one TXT record to prove the domain is yours, then, when you are ready to serve your site, two more that point visitors at it. The platform never needs your registrar login, and you keep managing every other record yourself.
 
-Register a new name here. If you do not have a domain yet, the card registers one for you at the registrar's own price, with its records kept by the platform.
+**Use a connected registrar.** For a domain held at a registrar you have connected under Connected accounts. The platform checks the name is really in that account, then writes every record the name needs itself: the proof record, the ones that serve your site, and later the ones that carry your mail. Nothing to paste.
+
+**Let PragOptics run it.** For when you want the platform to handle the whole domain. It copies the records the domain carries today, shows them to you, and once you say so, points the domain at the platform's own DNS. From then on the platform runs the domain's settings. The domain still belongs to you and stays registered where you bought it: nothing is transferred, and you can hand it back any time.
+
+## If you need a domain
+
+Register a new name here. The card checks what is free, shows the registrar's price with no markup, and registers the name in your own name. Its records are kept by the platform, so there is nothing to point anywhere.
 
 ## How it goes
 
@@ -34,9 +40,9 @@ The name is already connected to another environment. One environment holds a na
 
 A verified domain whose record later disappears is marked failed after three daily checks. Put the record back and press Verify.
 
-## Letting PragOptics manage the domain's settings
+## Let PragOptics run it, step by step
 
-The fourth way in, for a domain you already own anywhere. Type it and press Manage its DNS here. The platform looks the domain up, copies every record it can find (its own lookups, the DNS host's scan, a zone file you paste, names you add), and shows you the copy as plain rows: Website, Email, Verification, Other. Nothing has changed for the domain at this point.
+This is the "Let PragOptics run it" button above, for a domain you own anywhere. Type it and press Manage its DNS here. The platform looks the domain up, copies every record it can find (its own lookups, the DNS host's scan, a zone file you paste, names you add), and shows you the copy as plain rows: Website, Email, Verification, Other. Nothing has changed for the domain at this point.
 
 When you press Switch, the platform points the domain at its own DNS. For a name registered through PragOptics at Spaceship, or held in a Spaceship account you connected, it does that itself. Otherwise it shows you the lines to paste where your registrar says nameservers, and you press I did it. The card reads Checking until the internet answers from PragOptics, usually minutes, sometimes up to a day, and everything keeps working while you wait. Then it reads DNS managed here, and email, your website and the software's address are set from the card from then on. The domain itself stays where you bought it; nothing is transferred and nothing is charged.
 
