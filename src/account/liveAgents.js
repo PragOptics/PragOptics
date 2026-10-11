@@ -81,8 +81,10 @@ async function load() {
     la.canSupport = !!(reqs && reqs.canSupport);
     la.support = support && support.ok !== false ? support : null;   // null when the viewer cannot read billing here
     la.agents = ownerDesk ? await resolveRoster(agents) : null;
+    la.err = '';
   } catch (e) { la.err = D.friendlyError ? D.friendlyError(e) : 'Could not load Live Agents.'; }
   paint();
+  setErr(la.err || '');
 }
 
 /** The owner's roster. Prefer GET /support/agents (carries earnings), but fall back to the already-deployed admin Users
@@ -139,6 +141,18 @@ function paint() {
   host.innerHTML = `<p class="acct-card-note la-lead">${lead}</p><div class="ev-cards">${cards.join('')}</div>`;
   initCards();
   startClock();
+  startHeartbeat();
+}
+
+// THE AGENT ACCESS WINDOW heartbeat: while an agent is present on a customer's environment (the work card is up), beat
+// every few minutes so the short server-side window stays open. Leave the page and the beats stop, so the window lapses
+// and the agent is booted out, which is the customer's "they cannot linger" guarantee. Beat interval is under the window.
+let hbTimer = null;
+function startHeartbeat() {
+  if (hbTimer) { clearInterval(hbTimer); hbTimer = null; }
+  if (la.mode !== 'desk' || !(la.support && la.support.me)) return;
+  const beat = () => { try { D.apiFetch(tq('/environment/agent-support/heartbeat'), { method: 'POST', body: '{}' }).catch(() => {}); } catch { /* ignore */ } };
+  hbTimer = setInterval(beat, 300000);   // every 5 minutes; the window is 15
 }
 
 // The work clock: a live ticking elapsed time while a session runs. Start is the clock, not the access gate; access is the
