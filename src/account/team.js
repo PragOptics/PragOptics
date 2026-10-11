@@ -333,7 +333,9 @@ function emptyHtml(view) {
 }
 
 function switcherHtml(v) {
-  const teams = v.teams || [];
+  // An agent relationship (role 'agent') is NOT a team you belong to: it is a support case reached through the Live Agents
+  // gate, never the team switcher. Keep it out of this dropdown so "their" environment never shows as one of your teams.
+  const teams = (v.teams || []).filter(t => String(t.role || '').toLowerCase() !== 'agent');
   if (teams.length < 2) return '';
   const current = tm.teamId || v.tenant.environmentId;
   return `
