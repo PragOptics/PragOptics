@@ -268,7 +268,9 @@ async function loadTeam({ keepScopes = false } = {}) {
       view.canManage ? D.apiFetch(url(`${TENANT_URL}/audit`, { limit: 20 })).catch(() => null) : Promise.resolve(null),
       readsScopes && !reuse ? fetchScopes() : Promise.resolve()
     ]);
-    tm.members = mem?.members || [];
+    // A support agent (role 'agent') is a service membership, not a team member: it is managed on the Live Agents page,
+    // not here, so it never shows on the Team tab (where its role would render as a misleading, editable "Admin").
+    tm.members = (mem?.members || []).filter(m => String(m.role || '').toLowerCase() !== 'agent');
     tm.invites = mem?.invites || [];
     if (Array.isArray(mem?.roles) && mem.roles.length) tm.roles = mem.roles;
     tm.assignable = Array.isArray(mem?.assignable) ? mem.assignable : null;

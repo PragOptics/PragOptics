@@ -663,6 +663,10 @@ select.acct-input, select.adm-select, select.adm-input { background-color: var(-
 .la-ok { color: var(--ok-text); font-weight: 600; }
 .la-warn { color: var(--danger-text); font-weight: 600; }
 .la-clock { font-variant-numeric: tabular-nums; font-weight: 700; color: var(--brand-600); }
+.la-helper { display: flex; align-items: center; gap: 12px; margin: 4px 0 10px; }
+.la-helper-av { flex: none; width: 44px; height: 44px; display: inline-flex; }
+.la-helper-av img, .la-helper-av .av-alien { width: 44px; height: 44px; border-radius: 50%; }
+.la-helper .la-status { margin: 0 0 2px; }
 .la-dot { width: 9px; height: 9px; border-radius: 50%; flex: none; background: var(--border); }
 .la-dot.is-open { background: var(--brand-600); }
 .la-dot.is-live { background: var(--brand-cyan); box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand-cyan) 25%, transparent); }

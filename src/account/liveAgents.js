@@ -16,6 +16,7 @@
 import { PRAG_API_BASE } from '../runtime/config.js';
 import { cardHtml as sharedCard, ico, leadBtn, iconBtn, openModal, initCards, armed } from './cards.js';
 import { explainLink } from '../components/explainer.js';
+import { avatarHtml } from './avatar.js';
 
 let D = null;
 const la = { mode: 'customer', reqs: null, canSupport: false, mine: null, support: null, agents: null, busy: '', err: '', note: '', amount: '' };
@@ -196,8 +197,13 @@ function requestCard() {
       ${m.note ? `<p class="acct-card-note">"${e(m.note)}"</p>` : ''}
       <div class="ev-dom-actions">${iconBtn({ la: 'withdraw' }, 'x', 'Withdraw the request', '', '')}</div>` : ''}
     ${taken ? `
-      <p class="la-status"><span class="la-dot is-live"></span> ${e(m.takenByEmail || 'An agent')} is helping with your environment.</p>
-      <p class="acct-card-note">You can remove them from your Team tab at any time. What they do shows in the ledger below.</p>
+      <div class="la-helper">
+        <span class="la-helper-av">${avatarHtml({ avatar: m.takenByAvatar, email: m.takenByEmail }, 44)}</span>
+        <div>
+          <p class="la-status"><span class="la-dot is-live"></span> ${e(m.takenByEmail || 'An agent')} is helping with your environment.</p>
+          <p class="acct-card-note">End their access any time with Mark it done below. What they do shows in the ledger.</p>
+        </div>
+      </div>
       <div class="ev-dom-actions">${iconBtn({ la: 'withdraw' }, 'check', 'Mark it done', '', '')}</div>` : ''}`;
   return card({ key: 'request', icon: 'message', title: 'Agent support', summary: open ? 'requested' : taken ? 'an agent is helping' : 'ready', body });
 }
