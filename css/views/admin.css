@@ -305,6 +305,12 @@ th.adm-num { text-align: right; }
 }
 .adm-side-brand { padding: 6px 10px 14px; display: flex; align-items: center; gap: 10px; }
 .adm-side-avatar { flex: none; }
+/* Agent mode: the whole shell carries a brand accent so it is never mistaken for your own account. */
+.adm-shell--agent .adm-side { border-left: 3px solid var(--brand-600); }
+.adm-side-brand--agent { flex-direction: column; align-items: flex-start; gap: 2px; border-bottom: 1px solid var(--border); margin-bottom: 8px; }
+.adm-side-brand--agent .adm-side-kicker { color: var(--brand-600); }
+.adm-side-brand--agent .adm-side-title { font-weight: 800; font-size: 1rem; }
+.adm-exit-agent { color: var(--danger-text); }
 .adm-side-brand-text { display: flex; flex-direction: column; min-width: 0; }
 .adm-side-kicker {
   display: block;
