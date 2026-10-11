@@ -17,6 +17,9 @@ import { PRAG_API_BASE } from '../runtime/config.js';
 import { cardHtml as sharedCard, ico, leadBtn, iconBtn, openModal, initCards, armed } from './cards.js';
 import { explainLink } from '../components/explainer.js';
 import { avatarHtml } from './avatar.js';
+import { ensureStripeJs } from '../runtime/stripeLoader.js';
+import { stripeAppearance } from '../api/stripeAppearance.js';
+import { cardErrorWords } from '../api/stripeWords.js';
 
 let D = null;
 const la = { mode: 'customer', reqs: null, canSupport: false, mine: null, support: null, agents: null, busy: '', err: '', note: '', amount: '' };
@@ -153,7 +156,8 @@ function startHeartbeat() {
   if (hbTimer) { clearInterval(hbTimer); hbTimer = null; }
   if (la.mode !== 'desk' || !(la.support && la.support.me)) return;
   const beat = () => { try { D.apiFetch(tq('/environment/agent-support/heartbeat'), { method: 'POST', body: '{}' }).catch(() => {}); } catch { /* ignore */ } };
-  hbTimer = setInterval(beat, 300000);   // every 5 minutes; the window is 15
+  beat();                                 // at once, so opening the environment re-opens a lapsed window before any Start
+  hbTimer = setInterval(beat, 300000);   // then every 5 minutes; the window is 15
 }
 
 // The work clock: a live ticking elapsed time while a session runs. Start is the clock, not the access gate; access is the
@@ -499,12 +503,66 @@ function openEnv(env) {
   try { document.querySelector(`[data-acct-section="${la.mode === 'desk' ? 'agentdesk' : 'liveagents'}"]`)?.click(); } catch { /* ignore */ }
   load();
 }
-/** Top up is finished with the site's card entry in the next pass; for now it explains the free path. */
-function doTopup() {
+/** Add to balance: a one-time Stripe charge on the owner's card (the site's Payment Element, as the domain order uses).
+ *  POST .../topup opens the PaymentIntent; Stripe's webhook credits the balance a moment after it confirms. */
+async function doTopup() {
+  let stripe = null, elements = null, amountCents = 0;
   const m = openModal('laTopup', `
-    <div class="acct-modal"><div class="acct-modal-card">
-      <h3>Add to your balance</h3>
-      <p class="acct-card-note">Card top-ups are being finished. Your first contact is free, and an agent can waive their fee, so you can start without a balance. Adding funds with your card arrives in the next update.</p>
-      <div class="ev-dom-actions act-row"><button class="btn btn-sm btn-primary" type="button" data-close>Got it</button></div>
-    </div></div>`, { onClick: (ev) => { if (ev.target.closest('[data-close]')) m.close(); } });
+    <div class="acct-modal"><div class="acct-modal-card la-topup">
+      <h3>Add to your support balance</h3>
+      <p class="acct-card-note">A one-time charge to your card. Only an agent's logged time draws from it, and it can never go below zero. $5 to $5,000.</p>
+      <p class="acct-error" id="laTopupErr" hidden></p>
+      <div id="laTopupStep1">
+        <label class="acct-label" for="laTopupAmt">Amount (USD)</label>
+        <div class="la-req-row">
+          <input class="acct-input" id="laTopupAmt" inputmode="decimal" placeholder="50.00" />
+          <button class="btn btn-sm btn-primary" type="button" data-topup="continue">Continue</button>
+        </div>
+      </div>
+      <div id="laTopupStep2" hidden>
+        <div id="laTopupPayEl"></div>
+        <div class="ev-dom-actions act-row">
+          <button class="btn btn-sm" type="button" data-close>Cancel</button>
+          <button class="btn btn-sm btn-primary" type="button" data-topup="pay">Pay</button>
+        </div>
+      </div>
+    </div></div>`, { onClick: async (ev) => {
+      if (ev.target.closest('[data-close]')) return void m.close();
+      const b = ev.target.closest('[data-topup]'); if (!b) return;
+      const err = (t) => { const el = m.host.querySelector('#laTopupErr'); if (el) { el.textContent = t || ''; el.hidden = !t; } };
+      if (b.dataset.topup === 'continue') {
+        const dollars = Number(String(m.host.querySelector('#laTopupAmt')?.value || '').replace(/[$,\s]/g, ''));
+        if (!Number.isFinite(dollars) || dollars < 5 || dollars > 5000) return err('Enter an amount from $5 to $5,000.');
+        amountCents = Math.round(dollars * 100);
+        b.disabled = true; err('');
+        try {
+          const data = await D.apiFetch(tq('/environment/agent-support/topup'), { method: 'POST', body: JSON.stringify({ amountCents }) });
+          await ensureStripeJs().catch(() => null);
+          stripe = window.Stripe?.(window.STRIPE_PUBLISHABLE_KEY);
+          if (!stripe) throw new Error('Stripe is not available right now.');
+          elements = stripe.elements({ clientSecret: data.clientSecret, appearance: stripeAppearance() });
+          elements.create('payment').mount(m.host.querySelector('#laTopupPayEl'));
+          m.host.querySelector('#laTopupStep1').hidden = true;
+          const s2 = m.host.querySelector('#laTopupStep2'); s2.hidden = false;
+          const pay = s2.querySelector('[data-topup="pay"]'); if (pay) pay.textContent = `Pay ${money(amountCents)}`;
+        } catch (ex) { b.disabled = false; err(D.friendlyError ? D.friendlyError(ex) : 'Could not start the top-up.'); }
+        return;
+      }
+      if (b.dataset.topup === 'pay') {
+        if (!stripe || !elements) return;
+        b.disabled = true; err('');
+        try {
+          const { error, paymentIntent } = await stripe.confirmPayment({
+            elements, confirmParams: { return_url: `${location.origin}${location.pathname}#account?section=liveagents` }, redirect: 'if_required'
+          });
+          // the site's own sentence for what Stripe answered, never Stripe's own text
+          if (error) throw Object.assign(new Error(cardErrorWords(error, { doing: 'pay' })), { plain: true });
+          if (paymentIntent && !['succeeded', 'processing'].includes(paymentIntent.status)) throw Object.assign(new Error('The payment did not go through. Try again, or use another card.'), { plain: true });
+          m.close();
+          // Stripe's webhook credits the balance a moment after it confirms: read again until it lands
+          const before = cents(la.support?.balanceCents);
+          for (let i = 0; i < 5; i++) { await new Promise(r => setTimeout(r, 1500)); await load(); if (cents(la.support?.balanceCents) > before) break; }
+        } catch (ex) { b.disabled = false; err(ex?.plain ? ex.message : cardErrorWords(ex, { doing: 'pay' })); }
+      }
+    } });
 }
