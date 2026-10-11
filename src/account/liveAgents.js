@@ -138,6 +138,25 @@ function paint() {
   }
   host.innerHTML = `<p class="acct-card-note la-lead">${lead}</p><div class="ev-cards">${cards.join('')}</div>`;
   initCards();
+  startClock();
+}
+
+// The work clock: a live ticking elapsed time while a session runs. Start is the clock, not the access gate; access is the
+// door (taking the case). It stops itself when the element is gone (a repaint without a running session).
+let clockTimer = null;
+function startClock() {
+  if (clockTimer) { clearInterval(clockTimer); clockTimer = null; }
+  const tick = () => {
+    const el = document.getElementById('laClock');
+    if (!el) { if (clockTimer) { clearInterval(clockTimer); clockTimer = null; } return; }
+    const since = Date.parse(el.dataset.since || '');
+    const s = Number.isFinite(since) ? Math.max(0, Math.floor((Date.now() - since) / 1000)) : 0;
+    const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+    el.textContent = (h ? `${h}:${String(m).padStart(2, '0')}` : `${m}`) + `:${String(sec).padStart(2, '0')}`;
+  };
+  if (!document.getElementById('laClock')) return;
+  tick();
+  clockTimer = setInterval(tick, 1000);
 }
 
 /** The viewer is looking at their OWN environment (no team override), so the balance is theirs to manage. */
@@ -340,7 +359,7 @@ function myWorkCard() {
     ${!me.isOwner && earn.earnedCents !== undefined ? `<p class="acct-card-note">Across your customers: earned ${money(earn.earnedCents)}, owed to you ${money(earn.owedCents)}.</p>` : ''}
     <div class="la-session">
       ${working
-        ? `<p class="la-status"><span class="la-dot is-live"></span> Working since ${e(when(active.startedAt))}.</p>${leadBtn({ la: 'session-stop' }, 'stop', 'Stop and log time', la.busy === 'session' ? 'disabled' : '', 'btn-primary')}`
+        ? `<p class="la-status"><span class="la-dot is-live"></span> On the clock , <span id="laClock" class="la-clock" data-since="${e(active.startedAt)}">0:00</span>.</p>${leadBtn({ la: 'session-stop' }, 'stop', 'Stop and log time', la.busy === 'session' ? 'disabled' : '', 'btn-primary')}`
         : leadBtn({ la: 'session-start' }, 'play', 'Start working', la.busy === 'session' ? 'disabled' : '', 'btn-primary')}
     </div>
     <div class="la-price">
