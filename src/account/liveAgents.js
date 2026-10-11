@@ -272,7 +272,9 @@ function ledgerCard() {
   const entries = Array.isArray(la.support?.entries) ? la.support.entries : [];
   const rows = entries.map(x => {
     const topup = x.kind === 'topup';
-    const amt = cents(x.amountCents);
+    // a charge is stored NEGATIVE (-250 for $2.50); cents() floors negatives to 0, which showed every charge as $0.00
+    // (found on the first real charge, 2026-10-11). The size is the absolute value; the sign comes from the kind.
+    const amt = Math.abs(Math.round(Number(x.amountCents) || 0));
     const sign = topup ? '+' : (amt ? '-' : '');
     const who = topup ? 'Top-up' : (x.agentEmail || 'Agent');
     const detail = topup ? (x.source ? 'Card' : 'Added') : lineDetail(x);
