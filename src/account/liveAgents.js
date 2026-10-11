@@ -128,6 +128,8 @@ function paint() {
     // (youOwn comes from the backend; the !teamId() fallback keeps it working before that deploy lands)
     lead = 'A real person, not an AI. Bring a live human from the PragOptics team into your environment to build it with you.';
     cards.push(requestCard());
+    const prop = proposalsCard();
+    if (prop) cards.push(prop);
     cards.push(balanceCard());
     cards.push(ledgerCard());
   } else {
@@ -165,6 +167,27 @@ function requestCard() {
       <p class="acct-card-note">You can remove them from your Team tab at any time. What they do shows in the ledger below.</p>
       <div class="ev-dom-actions">${iconBtn({ la: 'withdraw' }, 'check', 'Mark it done', '', '')}</div>` : ''}`;
   return card({ key: 'request', icon: 'message', title: 'Agent support', summary: open ? 'requested' : taken ? 'an agent is helping' : 'ready', body });
+}
+
+/* ---------- the customer accepts an agent's proposed rate ---------- */
+
+function proposalsCard() {
+  const e = D.escapeHtml;
+  const rates = Array.isArray(la.support?.agentRates) ? la.support.agentRates : [];
+  const pending = rates.filter(r => !r.waived && !r.accepted && cents(r.rateCents) > 0);
+  if (!pending.length) return '';
+  const rows = pending.map(r => `
+    <div class="la-qrow">
+      <div class="la-qrow-main">
+        <span class="la-dot is-open"></span>
+        <div>
+          <p class="la-qrow-t">${e(r.agentEmail || 'An agent')}</p>
+          <p class="acct-card-note">Proposes ${rateWord(r.rateCents)}. Nothing is charged until you accept, and your first contact is free.</p>
+        </div>
+      </div>
+      <div class="la-qrow-act">${leadBtn({ la: 'accept-rate' }, 'check', 'Accept this rate', `data-agent="${e(r.agentUserId)}"`, 'btn-primary')}</div>
+    </div>`).join('');
+  return card({ key: 'proposals', icon: 'dollar', title: 'A rate to accept', summary: `${pending.length} proposed`, body: `<p class="acct-card-note">An agent set a rate for helping you. You are never charged a rate you did not accept; if they change it, billing stops until you accept the new one.</p>${rows}` });
 }
 
 /* ---------- the balance ---------- */
@@ -304,8 +327,15 @@ function myWorkCard() {
   const keepPerHr = me.isOwner ? 0 : Math.round(eff * (100 - fee) / 100);
   const earn = me.earnings || {};
   const envName = currentEnvName();
+  const accRate = cents(p.acceptedRateCents);
+  const consent = p.waived
+    ? '<p class="acct-card-note la-ok">Waived: you work this customer for free, so no acceptance is needed.</p>'
+    : p.accepted
+      ? `<p class="acct-card-note la-ok">The customer accepted ${rateWord(accRate)}. You can run billable sessions.</p>`
+      : `<p class="acct-card-note la-warn">Your rate of ${rateWord(cents(p.rateCents) || eff || me.baseRateCents)} is proposed. The customer must accept it before you can bill. You can still do the free first contact, or waive your fee.</p>`;
   const body = `
     <p class="acct-card-note">You are an agent on ${envName ? `<strong>${e(envName)}</strong>` : 'this environment'}. Your rate here is ${rateWord(me.baseRateCents)}${p.waived ? ', currently waived (free)' : p.discountPercent ? `, with ${p.discountPercent}% off (${rateWord(eff)})` : ''}.</p>
+    ${consent}
     ${me.isOwner ? '' : `<p class="acct-card-note">You keep ${100 - fee}% of what you charge here; the platform's fee is ${fee}%. At ${rateWord(eff)} that is ${rateWord(keepPerHr)} to you. ${explain('How you get paid', 'agent-pay')}</p>`}
     ${!me.isOwner && earn.earnedCents !== undefined ? `<p class="acct-card-note">Across your customers: earned ${money(earn.earnedCents)}, owed to you ${money(earn.owedCents)}.</p>` : ''}
     <div class="la-session">
@@ -355,6 +385,7 @@ export function bindLiveAgentsActions(deps) {
       if (a === 'withdraw') { if (!armed(btn, 'This closes the door and ends the agent’s access. Press again.', { keep: 'Keep it open', ms: 6000 })) return; return void await doClose(); }
       if (a === 'take') return void await doTake(env, btn);
       if (a === 'revoke-agent') return void await doRevokeAgent(btn.dataset.user || '', btn.dataset.email || '');
+      if (a === 'accept-rate') return void await doAcceptRate(btn.dataset.agent || '');
       if (a === 'open-env') return void openEnv(env);
       if (a === 'throttle') return void await doThrottle();
       if (a === 'topup') return void await doTopup();
@@ -390,6 +421,11 @@ async function doRevokeAgent(userId, email) {
   if (!userId || typeof D.grantAgent !== 'function') return;
   if (!confirm(`Remove the agent badge from ${email || 'this person'}? They keep their account and team role; they just stop being an agent.`)) return;
   await D.grantAgent(userId, email, false);
+  await load();
+}
+async function doAcceptRate(agentId) {
+  if (!agentId) return;
+  await D.apiFetch(tq('/environment/agent-support/pricing/accept'), { method: 'POST', body: JSON.stringify({ agentUserId: agentId }) });
   await load();
 }
 async function doThrottle() {
