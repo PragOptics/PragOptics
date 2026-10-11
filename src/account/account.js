@@ -22,7 +22,7 @@ import { openReportAnomaly, openSupportRequest, installErrorCapture } from './re
 import { renderTeam, renderTenants, bindTeamActions } from './team.js';
 import { renderEnvironment, bindEnvironmentActions } from './environment.js';
 import { renderLicensing, bindLicensingActions } from './licensing.js';
-import { renderLiveAgents, renderAgentDesk, bindLiveAgentsActions } from './liveAgents.js';
+import { renderLiveAgents, renderAgentDesk, bindLiveAgentsActions, stopLiveAgentsTimers } from './liveAgents.js';
 import { avatarHtml, fileToAvatar, saveAvatar } from './avatar.js';
 import { renderBuildsQueue, renderMyBuilds } from './buildsDesk.js';
 import { renderNeedsAttention } from './needsAttentionDesk.js';
@@ -4778,6 +4778,9 @@ const SETUP_SECTIONS = new Set(ACCOUNT_SECTIONS.map(s => s.id));
 
 /** The section's own paint into main (each writes its shell at once and reads into it after). */
 function paintSection(id, main) {
+  // leaving the Live Agents work card stops its heartbeat and clock: module-level timers would otherwise keep beating
+  // from a page the agent is no longer on, holding the access window open and defeating the anti-linger (2026-10-11)
+  if (id !== 'agentdesk' && id !== 'liveagents') { try { stopLiveAgentsTimers(); } catch { /* fine */ } }
   if (id === 'profile')      return void renderProfile(main);
   if (id === 'products')     return void renderProducts(main);
   if (id === 'subscription') return void renderSubscription(main);

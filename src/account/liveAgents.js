@@ -152,6 +152,13 @@ function paint() {
 // every few minutes so the short server-side window stays open. Leave the page and the beats stop, so the window lapses
 // and the agent is booted out, which is the customer's "they cannot linger" guarantee. Beat interval is under the window.
 let hbTimer = null;
+/** Stop the beats (and the clock tick). Called by the panel when the person leaves the work card for another section,
+ *  because these timers are module-level and would otherwise keep beating from a page the agent is no longer looking at,
+ *  which would hold the access window open and defeat the anti-linger (found 2026-10-11). */
+export function stopLiveAgentsTimers() {
+  if (hbTimer) { clearInterval(hbTimer); hbTimer = null; }
+  if (clockTimer) { clearInterval(clockTimer); clockTimer = null; }
+}
 function startHeartbeat() {
   if (hbTimer) { clearInterval(hbTimer); hbTimer = null; }
   if (la.mode !== 'desk' || !(la.support && la.support.me)) return;
