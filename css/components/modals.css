@@ -224,6 +224,11 @@
   border: 1px solid var(--border);
   background: color-mix(in srgb, var(--shade) 30%, transparent);
   color: var(--ink);
+  /* The glyph sits dead center in every one of these (Cameron, 2026-10-11: the X was nudged off center on the session
+     pop-up and others). Only .modal-close had flex centering; the rest fell to the button's default padding (1px 6px)
+     and start alignment, which put the X 5px left and 8px high. Centering and zero padding live here, once. */
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 0; box-sizing: border-box; font-family: inherit;
 }
 .modal-close:hover,
 .po-status-close:hover,

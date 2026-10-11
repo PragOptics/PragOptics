@@ -100,7 +100,7 @@ function ensureOverlay() {
     <div class="vo-panel" role="dialog" aria-modal="true" aria-label="Video">
       <div class="vo-head">
         <strong class="vo-title"></strong>
-        <button class="vo-close" type="button" data-vo-close aria-label="Close video">&times;</button>
+        <button class="vo-close" type="button" data-vo-close aria-label="Close video">✕</button>
       </div>
       <div class="vo-stage"></div>
     </div>
