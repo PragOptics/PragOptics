@@ -374,6 +374,7 @@ function internalSections() { return INTERNAL_SECTIONS.filter(s => TEAM_ON || !T
 function rosterSections() { return internalSections().filter(s => s.id === 'agentdesk'); }
 
 function allSections() {
+  if (agentMode()) return agentModeSections();
   if (isAdmin()) return [...customerSections(), ...internalSections()];
   if (isRoster()) return [...customerSections(), ...rosterSections()];
   return customerSections();
@@ -395,6 +396,49 @@ function allSections() {
 const TEAM_PICK_KEY = 'pragoptics_team_id';
 const TEAM_VIEW_URL = `${PRAG_API_BASE}/tenant`;
 const TEAM_RANK = { owner: 5, admin: 4, developer: 3, member: 2, viewer: 1, guest: 0 };
+
+// THE AGENT PORTAL (2026-10-11, Cameron). "Open this environment" on the internal Live Agents page is a DOOR into the
+// customer's account AS AN AGENT: a distinct portal, labeled Agent (Owner for the platform owner), that shows the
+// customer's build surface (their Environment, Team, Licensing) and carries the operator's internal tools over (minus
+// Support and Anomaly), with a deliberate Exit back to your own account. It is NOT a team switch inside your own account:
+// there is no team switcher, and your own sections (Profile, Billing, Orders) are not here. It is an isolated overlay:
+// when agentMode() is false NOTHING here changes the normal account flow. The Exit button is always in the shell, so you
+// can never be trapped.
+const AGENT_ENV_KEY = 'pragoptics_agent_env';
+const AGENT_ENV_LABEL_KEY = 'pragoptics_agent_env_label';
+function agentEnv() { try { return sessionStorage.getItem(AGENT_ENV_KEY) || ''; } catch { return ''; } }
+function agentEnvLabel() { try { return sessionStorage.getItem(AGENT_ENV_LABEL_KEY) || ''; } catch { return ''; } }
+function agentMode() { return !!agentEnv(); }
+/** The portal's menu: Live Agents (the home and the way out), the customer's build surface, then the operator's internal
+ *  tools minus Support and Anomaly (shown to an operator/admin; a rostered agent gets the build surface, more later). */
+function agentModeSections() {
+  const home = [{ id: 'agentdesk', label: 'Live Agents' }];
+  const build = [{ id: 'environment', label: 'Environment' }, { id: 'team', label: 'Team' }, { id: 'licensing', label: 'Licensing' }];
+  const EXCLUDE = new Set(['support', 'reports', 'agentdesk']);   // no Support/Anomaly in agent mode; agentdesk is the home above
+  const internal = isAdmin() ? INTERNAL_SECTIONS.filter(s => !EXCLUDE.has(s.id)) : [];
+  return [...home, ...build, ...internal];
+}
+function enterAgentEnv(envId, label) {
+  if (!envId) return;
+  try {
+    sessionStorage.setItem(AGENT_ENV_KEY, String(envId));
+    sessionStorage.setItem(AGENT_ENV_LABEL_KEY, String(label || ''));
+    sessionStorage.setItem(TEAM_PICK_KEY, String(envId));   // the data layer reads the customer env through the tenant pick
+  } catch { /* fine */ }
+  activeSection = 'agentdesk';
+  mounted = false;            // force the whole shell to re-render in the scoped agent layout
+  onAccountEnter();
+}
+function exitAgentEnv() {
+  try {
+    sessionStorage.removeItem(AGENT_ENV_KEY);
+    sessionStorage.removeItem(AGENT_ENV_LABEL_KEY);
+    sessionStorage.removeItem(TEAM_PICK_KEY);               // leave the customer env entirely; back to your own panel
+  } catch { /* fine */ }
+  activeSection = 'profile';
+  mounted = false;
+  onAccountEnter();
+}
 // role: the membership's role on that team, or 'none' when the view answered that the person has no team at all
 let teamRole = { userId: '', teamId: '', role: '' };
 let roleRead = null, roleReadKey = '', roleReadError = '', licRoleWait = 0;
@@ -511,6 +555,7 @@ function navItemsHtml(sections) {
 }
 
 function shellHtml() {
+  if (agentMode()) return agentShellHtml();
   const admin = isAdmin();
   return `
     <div class="adm-shell">
@@ -542,6 +587,32 @@ function shellHtml() {
         </div>
         <div class="adm-side-foot">
           <button class="btn acct-signout" type="button" data-acct-action="logout" aria-label="Sign out" data-tip="Sign out of this browser">${ico('logOut')}<span class="adm-side-btn-text">Sign out</span></button>
+        </div>
+      </nav>
+      <main class="adm-main" id="acctMain"><!-- section --></main>
+    </div>
+  `;
+}
+
+// The agent portal shell: the customer's account, as an agent. Labeled with WHO you are here (Owner for the platform
+// owner, Agent otherwise) and WHICH environment you are in. No team switcher. The Exit is always present, so no trap.
+function agentShellHtml() {
+  const label = agentEnvLabel() || 'this environment';
+  const who = isOwner() ? 'Owner' : 'Agent';
+  return `
+    <div class="adm-shell adm-shell--agent">
+      <nav class="adm-side" aria-label="Agent portal">
+        <div class="adm-side-brand adm-side-brand--agent">
+          <span class="adm-side-kicker">${escapeHtml(who)} , in their environment</span>
+          <span class="adm-side-title">${escapeHtml(label)}</span>
+        </div>
+        <ul class="adm-nav">
+          <li class="adm-nav-div" aria-hidden="true">${escapeHtml(who)}</li>
+          ${navItemsHtml(agentModeSections())}
+        </ul>
+        <div class="adm-side-foot">
+          <button class="btn acct-signout adm-exit-agent" type="button" data-acct-action="exit-agent-env"
+            aria-label="Exit ${escapeHtml(label)} and go back to your own account" data-tip="Leave this environment and go back to your own account">${ico('logOut')}<span class="adm-side-btn-text">Exit ${escapeHtml(label)}</span></button>
         </div>
       </nav>
       <main class="adm-main" id="acctMain"><!-- section --></main>
@@ -4657,10 +4728,22 @@ async function grantAgentFlag(userId, email, on) {
   return apiFetch(USER_PATCH_URL, { method: 'POST', body: JSON.stringify({ userId, expectEmail: email, isAgent: on === true }) });
 }
 function teamDeps() {
-  return { apiFetch: viewApiFetch, escapeHtml, friendlyError, showError, fmtDate, cachedPing, teamPicked: syncLicensingNav, grantAgent: grantAgentFlag };
+  return { apiFetch: viewApiFetch, escapeHtml, friendlyError, showError, fmtDate, cachedPing, teamPicked: syncLicensingNav, grantAgent: grantAgentFlag, enterAgentEnv, exitAgentEnv };
 }
 
 function showSection(id) {
+  // AGENT PORTAL: only the portal's own sections can open, however the id was reached. The Exit lives in the shell, not
+  // the section list, so the portal can never trap you. The setup checklist is never rendered inside a customer's env.
+  if (agentMode()) {
+    const ok = new Set(agentModeSections().map(s => s.id));
+    if (!ok.has(id)) id = 'agentdesk';
+    activeSection = id;
+    try { if (/^#account/i.test(String(location.hash || '')) || !location.hash) history.replaceState(null, '', `#account?section=${encodeURIComponent(id)}`); } catch { /* the section still opens */ }
+    document.querySelectorAll('.adm-nav-item').forEach(b => { const on = b.dataset.acctSection === id; b.classList.toggle('is-active', on); b.setAttribute('aria-current', on ? 'page' : 'false'); });
+    const main = document.getElementById('acctMain');
+    if (main) paintSection(id, main);
+    return;
+  }
   // A customer must never land on an internal section id (stale deep link),
   // and nobody lands on Team while it is off for this lane.
   if (cachedPing() && !isAdmin() && INTERNAL_SECTIONS.some(s => s.id === id) && !(id === 'agentdesk' && isRoster())) id = 'profile';
@@ -4754,6 +4837,7 @@ function bindOnce() {
       e.preventDefault();
       const a = act.dataset.acctAction;
       if (a === 'logout') return void window.logout?.();
+      if (a === 'exit-agent-env') return void exitAgentEnv();
       if (a === 'subscribe') {
         if (act.disabled) return;
         // the wizard reads the account's state first: the button waits for that answer, saying so

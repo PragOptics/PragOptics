@@ -488,12 +488,15 @@ async function doPricing() {
   finally { la.busy = ''; }
   await load();
 }
-/** Switch the team in view to a customer's environment, then open this section for it. */
+/** Enter the customer's environment through the AGENT PORTAL: a deliberate, scoped mode, not a team switch in your account. */
 function openEnv(env) {
   if (!env) return;
+  const q = Array.isArray(la.reqs?.queue) ? la.reqs.queue : [];
+  const name = q.find(x => String(x.environmentId) === String(env))?.environmentName || env;
+  if (typeof D.enterAgentEnv === 'function') { D.enterAgentEnv(env, name); return; }
+  // fallback for an older shell: set the pick and open the desk
   try { sessionStorage.setItem(TEAM_KEY, env); } catch { /* the pick is not remembered; the view still changes */ }
-  const sec = la.mode === 'desk' ? 'agentdesk' : 'liveagents';
-  try { document.querySelector(`[data-acct-section="${sec}"]`)?.click(); } catch { /* ignore */ }
+  try { document.querySelector(`[data-acct-section="${la.mode === 'desk' ? 'agentdesk' : 'liveagents'}"]`)?.click(); } catch { /* ignore */ }
   load();
 }
 /** Top up is finished with the site's card entry in the next pass; for now it explains the free path. */
