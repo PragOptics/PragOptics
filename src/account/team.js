@@ -470,7 +470,7 @@ function membersHtml(v) {
               : iconBtn({ team: 'restore' }, 'play', `Restore ${m.email}`, `data-user="${e(m.userId)}" data-email="${e(m.email)}"`))
             : iconBtn({ team: 'suspend' }, 'pause', `Suspend ${m.email}: they stay on the team but cannot use it until restored`, `data-user="${e(m.userId)}" data-email="${e(m.email)}"`, 'is-risky')}
           ${isPlatformOwner() && m.role !== 'owner'
-            ? iconBtn({ team: m.isAgent ? 'agent-off' : 'agent-on' }, 'badge', m.isAgent ? `Remove the agent role from ${m.email}` : `Make ${m.email} an agent`, `data-user="${e(m.userId)}" data-email="${e(m.email)}"`, m.isAgent ? 'is-on' : '')
+            ? iconBtn({ team: m.isAgent ? 'agent-off' : 'agent-on' }, m.isAgent ? 'x' : 'badge', m.isAgent ? `Remove the agent role from ${m.email}` : `Make ${m.email} an agent`, `data-user="${e(m.userId)}" data-email="${e(m.email)}"`, m.isAgent ? 'is-on' : '')
             : ''}
           ${iconBtn({ team: 'remove' }, 'userMinus', `Remove ${m.email} from the team`, `data-user="${e(m.userId)}" data-email="${e(m.email)}"`, 'is-risky')}
         </span>` : ''}</td>

@@ -423,7 +423,7 @@ export function bindLiveAgentsActions(deps) {
       // Closing the door is guarded: the first press arms it with a clear warning and a timer, the second confirms.
       if (a === 'withdraw') { if (!armed(btn, 'This closes the door and ends the agent’s access. Press again.', { keep: 'Keep it open', ms: 6000 })) return; return void await doClose(); }
       if (a === 'take') return void await doTake(env, btn);
-      if (a === 'revoke-agent') return void await doRevokeAgent(btn.dataset.user || '', btn.dataset.email || '');
+      if (a === 'revoke-agent') { if (!armed(btn, 'Remove the agent badge from this person? Press again.', { keep: 'Keep it', ms: 6000 })) return; return void await doRevokeAgent(btn.dataset.user || '', btn.dataset.email || ''); }
       if (a === 'accept-rate') return void await doAcceptRate(btn.dataset.agent || '');
       if (a === 'open-env') return void openEnv(env);
       if (a === 'throttle') return void await doThrottle();
@@ -458,7 +458,6 @@ async function doTake(env, btn) {
 }
 async function doRevokeAgent(userId, email) {
   if (!userId || typeof D.grantAgent !== 'function') return;
-  if (!confirm(`Remove the agent badge from ${email || 'this person'}? They keep their account and team role; they just stop being an agent.`)) return;
   await D.grantAgent(userId, email, false);
   await load();
 }
