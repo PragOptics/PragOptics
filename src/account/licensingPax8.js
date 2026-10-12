@@ -187,10 +187,22 @@ export function pax8Action(a) {
   if (a === 'p8-events') { run('p8-events', 'Reading the events…', async () => { const d = await st.D.apiFetch(`${P8}/events`); p.events = d.events || []; }, 'The events could not be read.'); return true; }
   if (a === 'p8-endings') { run('p8-endings', 'Reading…', async () => { p.endings = await st.D.apiFetch(`${ADM}/endings`); }, 'The endings could not be read.'); return true; }
   if (a === 'p8-prime') {
+    // in pieces: the backend takes a few products per call (a Pax8 read each; Front Door gives an origin sixty seconds,
+    // and the whole catalog in one call died on live 2026-10-12 with the walk going on unseen); the desk calls until
+    // the backend names no next piece, adding the counts up and saying where it is between pieces
     run('p8-prime', 'Making the prices…', async () => {
-      const d = await st.D.apiFetch(`${ADM}/prices/prime`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
-      const errs = (d.errors || []).map(x => `${x.name || x.productId}: ${x.error}`);
-      setNote('pax8', `License prices: ${countWord(d.products, 'product', 'products')}, ${countWord(d.offers, 'offer', 'offers')}, ${d.made} made, ${d.found} already there${errs.length ? `. Not made: ${errs.join('; ')}` : '.'}`);
+      const sum = { products: 0, offers: 0, made: 0, found: 0, errors: [] };
+      let offset = 0, total = 0;
+      for (let guard = 0; guard < 200; guard++) {
+        const d = await st.D.apiFetch(`${ADM}/prices/prime`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ offset }) });
+        total = d.total || 0;
+        sum.products += d.products || 0; sum.offers += d.offers || 0; sum.made += d.made || 0; sum.found += d.found || 0; sum.errors.push(...(d.errors || []));
+        if (d.next == null) break;
+        offset = d.next;
+        setNote('pax8', `Making the license prices: ${sum.products} of ${total} products so far, ${sum.made} made, ${sum.found} already there…`);
+      }
+      const errs = sum.errors.map(x => `${x.name || x.productId}: ${x.error}`);
+      setNote('pax8', `License prices: ${countWord(sum.products, 'product', 'products')}, ${countWord(sum.offers, 'offer', 'offers')}, ${sum.made} made, ${sum.found} already there${errs.length ? `. Not made: ${errs.join('; ')}` : '.'}`);
     }, 'The license prices could not be made.');
     return true;
   }
