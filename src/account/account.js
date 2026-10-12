@@ -488,8 +488,23 @@ function noteTeamView(url, options, data) {
   if (`${u.origin}${u.pathname}` !== TEAM_VIEW_URL) return;
   const role = data?.tenant ? String(data?.membership?.role || '').toLowerCase() : 'none';
   teamRole = { userId: pingUserId(), teamId: u.searchParams.get('tenant') || '', role: role || 'unknown', name: String(data?.tenant?.organizationName || '') };
+  // how many environments this person can switch between (the same list the Team tab's switcher shows: agent
+  // relationships are not teams of theirs); the environment line shows its switch only past one (2026-10-12, Cameron:
+  // "why is there a button to switch the environment, when i only have one")
+  if (Array.isArray(data?.teams)) teamsKnown = { userId: pingUserId(), count: data.teams.filter(t => String(t.role || '').toLowerCase() !== 'agent').length };
   roleReadError = '';
   syncLicensingNav();
+}
+let teamsKnown = null;   // { userId, count } once a team view has answered for this person
+let teamsRead = null;    // the one read in flight for the count
+function teamsCount() { return teamsKnown && teamsKnown.userId === pingUserId() ? teamsKnown.count : null; }
+/** The count is not known yet (the owner's own view is never read for the role): read the team view once. */
+function ensureTeamsCount() {
+  if (!TEAM_ON || !hasLiveSession() || teamsCount() !== null || teamsRead) return;
+  const picked = pickedTeamId();
+  teamsRead = viewApiFetch(picked ? `${TEAM_VIEW_URL}?tenant=${encodeURIComponent(picked)}` : TEAM_VIEW_URL)
+    .catch(() => { /* the line stays without its switch; the next section paint asks again */ })
+    .finally(() => { teamsRead = null; });
 }
 
 /* THE ENVIRONMENT LINE (2026-10-12, Cameron: "better global visibility into the environment that is selected and active
@@ -503,10 +518,12 @@ function envInView() {
   if (agentMode()) return { name: agentEnvLabel() || 'this environment', role: isOwner() ? 'owner' : 'agent', switchable: false, agent: true };
   const u = cachedPing()?.user || {}, env = cachedPing()?.environment || {};
   const picked = pickedTeamId();
+  // the switch shows only when there is somewhere to switch to: more than one environment on the team view's list
+  const switchable = TEAM_ON && (teamsCount() || 0) > 1;
   // the ping describes the owner's environment with `name` (auth/provisionEnvironment.js describe)
-  if (u.environmentId && (!picked || picked === u.environmentId)) return { name: env.name || env.organizationName || 'Your environment', role: 'owner', switchable: TEAM_ON };
+  if (u.environmentId && (!picked || picked === u.environmentId)) return { name: env.name || env.organizationName || 'Your environment', role: 'owner', switchable };
   const known = teamRole.userId === pingUserId() && teamRole.teamId === picked;
-  return { name: (known && teamRole.name) || (picked ? `Environment ${picked.slice(0, 8)}` : 'Your environment'), role: known ? teamRole.role : null, switchable: TEAM_ON };
+  return { name: (known && teamRole.name) || (picked ? `Environment ${picked.slice(0, 8)}` : 'Your environment'), role: known ? teamRole.role : null, switchable };
 }
 function envLineHtml() {
   const v = envInView();
@@ -521,6 +538,7 @@ function paintEnvLine() {
   const el = document.getElementById('acctEnvLine');
   if (!el || !cachedPing()) return;
   el.innerHTML = envLineHtml();
+  if (!agentMode()) ensureTeamsCount();   // once per person: the switch appears when the list says there is more than one
 }
 async function viewApiFetch(url, options = {}) {
   const data = await apiFetch(url, options);
