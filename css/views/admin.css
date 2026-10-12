@@ -313,7 +313,7 @@ th.adm-num { text-align: right; }
 .adm-exit-agent { color: var(--danger-text); }
 /* VIEW ONLY (2026-10-11): a rostered agent reads the operator desks inside a customer's environment and changes nothing.
    The note is a pseudo-element on the pane, so a desk that rewrites its own markup can never drop it. */
-.adm-main.is-view-only::before {
+.adm-main.is-view-only::before, #acctMain.is-view-only::before {
   content: "View only: this desk is the operator's. You can read it, not change it.";
   display: block; margin: 0 0 14px; padding: 8px 12px;
   border: 1px solid color-mix(in srgb, var(--brand-600) 45%, transparent);
@@ -442,6 +442,14 @@ th.adm-num { text-align: right; }
 
 /* ---------- main ---------- */
 .adm-main { padding: 22px 24px 26px; min-width: 0; }
+/* THE ENVIRONMENT LINE (2026-10-12): the environment in view, the role, the switch, pinned above every section, outside
+   #acctMain so a section that rewrites itself never drops it. Empty until the ping is in (no height then). */
+.adm-envline { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 10px; min-width: 0; }
+.adm-envline:not(:empty) { margin: 0 0 16px; padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--radius-btn-sm); background: color-mix(in srgb, var(--brand-600) 7%, transparent); }
+.adm-envline-k { font-size: .62rem; letter-spacing: .16em; text-transform: uppercase; color: var(--brand-600); font-weight: 700; }
+.adm-envline-name { font-size: .98rem; color: var(--card-title); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 60vw; }
+.adm-envline-role.is-quiet { opacity: .7; }
+.adm-envline-switch { margin-left: auto; }
 /* The global `header { position: fixed }` rule is for the SITE nav. These are
    in-flow section headers; without this reset they rip out of the page and
    stamp themselves over the animated header. */

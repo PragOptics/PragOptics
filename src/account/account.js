@@ -484,9 +484,40 @@ function noteTeamView(url, options, data) {
   let u; try { u = new URL(url); } catch { return; }
   if (`${u.origin}${u.pathname}` !== TEAM_VIEW_URL) return;
   const role = data?.tenant ? String(data?.membership?.role || '').toLowerCase() : 'none';
-  teamRole = { userId: pingUserId(), teamId: u.searchParams.get('tenant') || '', role: role || 'unknown' };
+  teamRole = { userId: pingUserId(), teamId: u.searchParams.get('tenant') || '', role: role || 'unknown', name: String(data?.tenant?.organizationName || '') };
   roleReadError = '';
   syncLicensingNav();
+}
+
+/* THE ENVIRONMENT LINE (2026-10-12, Cameron: "better global visibility into the environment that is selected and active
+ * ... making it more obvious"). One line pinned above every section: the environment in view by name, the person's role
+ * in it, and the way to switch. Until now the name showed only on the Team tab, the Environment card, the agent portal's
+ * brand and the setup steps; on Profile, Billing, Licensing, Live Agents, Builds and every operator desk nothing said
+ * where you were. It lives outside #acctMain, so a section that rewrites itself never drops it. */
+const ROLE_WORDS = { owner: 'Owner', admin: 'Admin', developer: 'Developer', member: 'Member', viewer: 'Viewer', guest: 'Guest', agent: 'Agent', none: 'Not a member' };
+/** The environment in view: its name, the person's role in it, and whether the switch applies. */
+function envInView() {
+  if (agentMode()) return { name: agentEnvLabel() || 'this environment', role: isOwner() ? 'owner' : 'agent', switchable: false, agent: true };
+  const u = cachedPing()?.user || {}, env = cachedPing()?.environment || {};
+  const picked = pickedTeamId();
+  // the ping describes the owner's environment with `name` (auth/provisionEnvironment.js describe)
+  if (u.environmentId && (!picked || picked === u.environmentId)) return { name: env.name || env.organizationName || 'Your environment', role: 'owner', switchable: TEAM_ON };
+  const known = teamRole.userId === pingUserId() && teamRole.teamId === picked;
+  return { name: (known && teamRole.name) || (picked ? `Environment ${picked.slice(0, 8)}` : 'Your environment'), role: known ? teamRole.role : null, switchable: TEAM_ON };
+}
+function envLineHtml() {
+  const v = envInView();
+  const role = v.role === null ? '<span class="adm-pill adm-envline-role is-quiet">reading…</span>' : `<span class="adm-pill adm-envline-role${v.agent ? ' adm-flag-agent' : ''}">${escapeHtml(ROLE_WORDS[v.role] || v.role)}</span>`;
+  const sw = v.switchable
+    ? `<button class="btn btn-sm btn-ico adm-envline-switch" type="button" data-acct-section="team" data-acct-card="switch" aria-label="Switch environment" data-tip="Switch to another environment on the Team tab">${ico('refresh')}</button>`
+    : '';
+  return `<span class="adm-envline-k">${v.agent ? 'Their environment' : 'Environment'}</span><strong class="adm-envline-name">${escapeHtml(v.name)}</strong>${role}${sw}`;
+}
+/** Paint or repaint the line (after every section paint and every read of the team view). */
+function paintEnvLine() {
+  const el = document.getElementById('acctEnvLine');
+  if (!el || !cachedPing()) return;
+  el.innerHTML = envLineHtml();
 }
 async function viewApiFetch(url, options = {}) {
   const data = await apiFetch(url, options);
@@ -527,6 +558,7 @@ function syncLicensingNav() {
   const la = document.querySelector('.adm-nav-item[data-acct-section="liveagents"]')?.closest('li');
   if (la) la.hidden = liveAgentsHidden();
   if (liveAgentsHidden() && mounted && activeSection === 'liveagents') showSection('profile');
+  paintEnvLine();   // the environment line follows every read of the team view (its name and the role arrive with it)
 }
 /**
  * Licensing was asked for (its entry, its address, a link) while the role on the team in view is not known: the
@@ -606,7 +638,7 @@ function shellHtml() {
           <button class="btn acct-signout" type="button" data-acct-action="logout" aria-label="Sign out" data-tip="Sign out of this browser">${ico('logOut')}<span class="adm-side-btn-text">Sign out</span></button>
         </div>
       </nav>
-      <main class="adm-main" id="acctMain"><!-- section --></main>
+      <main class="adm-main"><div class="adm-envline" id="acctEnvLine" aria-live="polite"></div><div id="acctMain"><!-- section --></div></main>
     </div>
   `;
 }
@@ -632,7 +664,7 @@ function agentShellHtml() {
             aria-label="Exit ${escapeHtml(label)} and go back to your own account" data-tip="Leave this environment and go back to your own account">${ico('logOut')}<span class="adm-side-btn-text">Exit ${escapeHtml(label)}</span></button>
         </div>
       </nav>
-      <main class="adm-main" id="acctMain"><!-- section --></main>
+      <main class="adm-main"><div class="adm-envline" id="acctEnvLine" aria-live="polite"></div><div id="acctMain"><!-- section --></div></main>
     </div>
   `;
 }
@@ -4763,6 +4795,7 @@ function showSection(id) {
       // the view-only note rides on the pane itself (a CSS ::before), so a desk that rewrites its own markup can never drop it
       main.classList.toggle('is-view-only', viewOnly() && OPERATOR_DESKS.has(id));
       paintSection(id, main);
+      paintEnvLine();
     }
     return;
   }
@@ -4790,6 +4823,7 @@ function showSection(id) {
   if (TEAM_ON && id !== 'team' && id !== 'environment' && roleInView() === null) ensureTeamRole();
   consumeOpenCard(id);
   paintSection(id, main);
+  paintEnvLine();
   // the setup checklist at the top of every customer section (setup.js): mounted after the section's first paint, which
   // every section writes in one go; what each reads later lands inside its own hosts, so the block stays
   if (SETUP_SECTIONS.has(id)) renderSetup(main, teamDeps());
