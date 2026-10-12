@@ -2998,12 +2998,13 @@ function usersTableHtml(users) {
     <div class="adm-table-scroll">
       <table class="adm-table adm-users-table">
         <thead>
-          <tr><th>Email</th><th>Tier</th><th>Status</th><th>Role</th><th>Flags</th><th>Joined</th><th></th></tr>
+          <tr><th>Email</th><th>Account id</th><th>Tier</th><th>Status</th><th>Role</th><th>Flags</th><th>Joined</th><th></th></tr>
         </thead>
         <tbody>
           ${users.map(u => `
             <tr>
               <td class="adm-cell-email cell-ellip" title="${escapeHtml(u.email || '')}">${escapeHtml(u.email || '—')}</td>
+              <td class="adm-cell-id">${u.userId ? `<code class="ev-code" title="${escapeHtml(u.userId)}">${escapeHtml(String(u.userId).slice(0, 8))}</code>${iconBtn({ adm: 'user-copy-id' }, 'copy', `Copy the account id of ${escapeHtml(u.email || 'this account')}`, `data-user="${escapeHtml(u.userId)}"`)}` : '<span class="adm-muted">—</span>'}</td>
               <td>${tierPill(u.tier)}</td>
               <td>${statusPill(u.status)}</td>
               <td class="adm-muted">${escapeHtml(u.role ? roleLabel(u.role) : '—')}</td>
@@ -4947,6 +4948,8 @@ function bindOnce() {
         loadAdminCosts(true);
       }
       if (admAct.dataset.admAction === 'user-manage') openUserManage(admAct.dataset.user, admAct.dataset.email);
+      // the account id on every row (2026-10-12, Cameron): the operator close confirms by it, so it is copied off the list
+      if (admAct.dataset.admAction === 'user-copy-id') copyButton(admAct, admAct.dataset.user || '');
       if (admAct.dataset.admAction === 'wh-stripe') runWebhookSync(admAct, STRIPE_WH_SYNC_URL, 'Stripe');
       if (admAct.dataset.admAction === 'wh-stripe-connect') runWebhookSync(admAct, STRIPE_WH_SYNC_URL, 'Stripe Connect', { kind: 'connect' });
       if (admAct.dataset.admAction === 'wh-shippo') runWebhookSync(admAct, SHIPPO_WH_SYNC_URL, 'Shippo');
