@@ -556,8 +556,9 @@ select.adm-select option, select.adm-input option {
 .adm-cell-email { color: var(--ink); font-weight: 500; }
 .adm-users-table th, .adm-users-table td { white-space: nowrap; }
 /* the account id on every row (2026-10-12): the first eight characters as a code, the whole id in its title, one copy */
-.adm-cell-id { display: flex; align-items: center; gap: 6px; }
-.adm-cell-id .ev-code { font-size: .82rem; }
+.adm-cell-id { white-space: nowrap; }
+.adm-cell-id .ev-code { font-size: .82rem; white-space: nowrap; vertical-align: middle; }
+.adm-cell-id .btn { vertical-align: middle; margin-left: 6px; }
 
 /* The tier badge moved to the one shared one: .acct-tag.is-tier-* in account.css (tierCopy.js tierBadge, 2026-10-05). */
 
