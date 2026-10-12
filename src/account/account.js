@@ -195,6 +195,12 @@ function sessionKillReason(status, data) {
 let sessionKillFired = false;
 
 async function apiFetch(url, options = {}) {
+  // VIEW ONLY (2026-10-11, Cameron: "yes to all, and view only, no edit"): a rostered agent inside a customer's environment
+  // reads the operator desks and never writes through them. The server refuses too (auth/opsRead.js keeps every write
+  // admin-only); this says so first, in the desk's own error line, before a request leaves the browser.
+  if (viewOnly() && String(options.method || 'GET').toUpperCase() !== 'GET' && /\/(admin\/|warranty\/codes)/.test(String(url))) {
+    throw Object.assign(new Error(VIEW_ONLY_WORDS), { status: 403, code: 'VIEW_ONLY' });
+  }
   const token = accessToken();
   const res = await fetch(url, {
     ...options,
@@ -410,14 +416,21 @@ function agentEnv() { try { return sessionStorage.getItem(AGENT_ENV_KEY) || ''; 
 function agentEnvLabel() { try { return sessionStorage.getItem(AGENT_ENV_LABEL_KEY) || ''; } catch { return ''; } }
 function agentMode() { return !!agentEnv(); }
 /** The portal's menu: Live Agents (the home and the way out), the customer's build surface, then the operator's internal
- *  tools minus Support and Anomaly (shown to an operator/admin; a rostered agent gets the build surface, more later). */
+ *  tools minus Support and Anomaly. An operator/admin works them; a rostered agent without the admin flag reads them
+ *  (2026-10-11, Cameron: "yes to all, and view only, no edit": viewOnly below, auth/opsRead.js on the server). */
 function agentModeSections() {
   const home = [{ id: 'agentdesk', label: 'Live Agents' }];
   const build = [{ id: 'environment', label: 'Environment' }, { id: 'team', label: 'Team' }, { id: 'licensing', label: 'Licensing' }];
   const EXCLUDE = new Set(['support', 'reports', 'agentdesk']);   // no Support/Anomaly in agent mode; agentdesk is the home above
-  const internal = isAdmin() ? INTERNAL_SECTIONS.filter(s => !EXCLUDE.has(s.id)) : [];
+  const internal = (isAdmin() || isRoster()) ? INTERNAL_SECTIONS.filter(s => !EXCLUDE.has(s.id)) : [];
   return [...home, ...build, ...internal];
 }
+// VIEW ONLY: a rostered agent (no admin flag) inside a customer's environment. The operator desks paint with the note
+// below and every write through them is refused before it leaves the browser (apiFetch). The customer's own build
+// surface (Environment, Team, Licensing) is not view-only: that is the work, gated by the agent's membership on the server.
+function viewOnly() { return agentMode() && !isAdmin(); }
+const VIEW_ONLY_WORDS = "View only: this desk is the operator's. You can read it, not change it.";
+const OPERATOR_DESKS = new Set(INTERNAL_SECTIONS.map(s => s.id).filter(id => id !== 'agentdesk'));
 function enterAgentEnv(envId, label) {
   if (!envId) return;
   try {
@@ -4741,7 +4754,11 @@ function showSection(id) {
     try { if (/^#account/i.test(String(location.hash || '')) || !location.hash) history.replaceState(null, '', `#account?section=${encodeURIComponent(id)}`); } catch { /* the section still opens */ }
     document.querySelectorAll('.adm-nav-item').forEach(b => { const on = b.dataset.acctSection === id; b.classList.toggle('is-active', on); b.setAttribute('aria-current', on ? 'page' : 'false'); });
     const main = document.getElementById('acctMain');
-    if (main) paintSection(id, main);
+    if (main) {
+      // the view-only note rides on the pane itself (a CSS ::before), so a desk that rewrites its own markup can never drop it
+      main.classList.toggle('is-view-only', viewOnly() && OPERATOR_DESKS.has(id));
+      paintSection(id, main);
+    }
     return;
   }
   // A customer must never land on an internal section id (stale deep link),
