@@ -23,6 +23,7 @@ import { renderTeam, renderTenants, bindTeamActions } from './team.js';
 import { renderEnvironment, bindEnvironmentActions } from './environment.js';
 import { renderLicensing, bindLicensingActions } from './licensing.js';
 import { renderLiveAgents, renderAgentDesk, bindLiveAgentsActions, stopLiveAgentsTimers } from './liveAgents.js';
+import { renderHome, bindHomeActions } from './home.js';
 import { avatarHtml, fileToAvatar, saveAvatar } from './avatar.js';
 import { renderBuildsQueue, renderMyBuilds } from './buildsDesk.js';
 import { renderNeedsAttention } from './needsAttentionDesk.js';
@@ -107,7 +108,7 @@ let $body = null;
 let mounted = false;
 let mountedAsAdmin = false;
 let mountedAsRoster = false;   // the agent roster (the owner or the agent flag): the shell carries the Agents desk only for it
-let activeSection = 'profile';
+let activeSection = 'home';   // the environment home (2026-10-12): the first thing the panel and the switch land on
 // Small cache so switching sections does not re-hit the API every click.
 const cache = { users: null };
 
@@ -312,6 +313,7 @@ function friendlyError(ex, fallback, { passwordFlow = false } = {}) {
 /* ---------- shell ---------- */
 
 const ICONS = {
+  home:         '<path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/>',
   profile:      '<circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1"/>',
   products:     '<rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 1v3M15 1v3M9 20v3M15 20v3M1 9h3M1 15h3M20 9h3M20 15h3"/>',
   subscription: '<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/>',
@@ -339,6 +341,7 @@ const ICONS = {
 };
 
 const ACCOUNT_SECTIONS = [
+  { id: 'home',         label: 'Home' },
   { id: 'profile',      label: 'Profile' },
   { id: 'products',     label: 'Registered hardware' },
   { id: 'subscription', label: 'Billing' },
@@ -452,7 +455,7 @@ function exitAgentEnv() {
     sessionStorage.removeItem(AGENT_ENV_LABEL_KEY);
     sessionStorage.removeItem(TEAM_PICK_KEY);               // leave the customer env entirely; back to your own panel
   } catch { /* fine */ }
-  activeSection = 'profile';
+  activeSection = 'home';   // back to your own environment's home
   mounted = false;
   onAccountEnter();
 }
@@ -4837,6 +4840,7 @@ function paintSection(id, main) {
   // leaving the Live Agents work card stops its heartbeat and clock: module-level timers would otherwise keep beating
   // from a page the agent is no longer on, holding the access window open and defeating the anti-linger (2026-10-11)
   if (id !== 'agentdesk' && id !== 'liveagents') { try { stopLiveAgentsTimers(); } catch { /* fine */ } }
+  if (id === 'home')         return void renderHome(main, teamDeps());
   if (id === 'profile')      return void renderProfile(main);
   if (id === 'products')     return void renderProducts(main);
   if (id === 'subscription') return void renderSubscription(main);
@@ -4876,6 +4880,7 @@ function bindOnce() {
   bindEnvironmentActions(teamDeps());
   bindLicensingActions(teamDeps());
   bindLiveAgentsActions(teamDeps());
+  bindHomeActions(teamDeps());
   initCards();
 
   document.addEventListener('click', (e) => {
@@ -5193,7 +5198,7 @@ export function onAccountEnter() {
     // says who this is has not landed yet; showSection demotes it only once the answer is known (2026-09-21, Cameron
     // reloaded on the Builds queue and landed on Profile).
     const known = [...customerSections(), ...internalSections()];
-    if (!known.some(s => s.id === activeSection) || (cachedPing() && !allSections().some(s => s.id === activeSection))) activeSection = 'profile';
+    if (!known.some(s => s.id === activeSection) || (cachedPing() && !allSections().some(s => s.id === activeSection))) activeSection = 'home';
     // a fresh mount may be a different person: the role on the team in view is read again (the entry stays hidden until then)
     teamRole = { userId: '', teamId: '', role: '' }; roleReadError = '';
     $body.innerHTML = shellHtml();

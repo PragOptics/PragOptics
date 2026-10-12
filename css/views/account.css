@@ -693,3 +693,13 @@ select.acct-input, select.adm-select, select.adm-input { background-color: var(-
 .av-edit { display: flex; gap: 16px; align-items: flex-start; }
 .av-edit-main { min-width: 0; flex: 1 1 auto; }
 .av-pick { cursor: pointer; }
+
+/* THE ENVIRONMENT HOME (2026-10-12, src/account/home.js): one row per thing the environment holds, the way in beside it. */
+.hm-list { display: flex; flex-direction: column; }
+.hm-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 0; border-top: 1px solid var(--border); min-width: 0; }
+.hm-row:first-child { border-top: 0; }
+.hm-row-main { min-width: 0; flex: 1 1 auto; }
+.hm-row-t { margin: 0; font-weight: 600; color: var(--card-title); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hm-row-s { margin: 2px 0 0; color: var(--muted); font-size: .85rem; overflow-wrap: anywhere; }
+.hm-row-act { flex: 0 0 auto; }
+@media (max-width: 520px) { .hm-row { flex-wrap: wrap; } .hm-row-act { width: 100%; } .hm-row-act .btn { width: 100%; justify-content: center; } }
