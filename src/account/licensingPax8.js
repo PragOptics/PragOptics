@@ -23,6 +23,9 @@
 //                                               its first renewal on or after the effective date
 //   POST v1/admin/licensing/products/{id}/segment { segment }  who a license is sold to, corrected (licensing L3a:
 //                                               a product's name is only the first guess; decisions 37(6) and 37(7))
+//   POST v1/admin/licensing/prices/prime        every sellable license price made in this lane's Stripe account ahead
+//                                               of the first order (2026-10-12, Cameron: "i want them in now, before we
+//                                               order"); what exists is found, what is missing is made
 //
 // licensing.js paints the card and routes its clicks here.
 
@@ -146,6 +149,7 @@ export function pax8Html() {
         ${reqLead('p8-check', { lic: 'p8-check' }, 'search', 'Check against Pax8', 'Checking…', '', 'btn-primary')}
         ${reqLead('p8-sync', { lic: 'p8-sync' }, 'zap', 'Sync the webhook', 'Syncing…', 'data-tip="Points Pax8 at this lane, with every subscription and provisioning event"')}
         ${reqLead('p8-endings', { lic: 'p8-endings' }, 'refresh', 'Endings at Pax8', 'Reading…', 'data-tip="Every license set to end or ended, with what the sweep sent Pax8 and when"')}
+        ${reqLead('p8-prime', { lic: 'p8-prime' }, 'plus', 'Make the license prices', 'Making the prices…', 'data-tip="Makes every sellable license price in this lane\'s Stripe account ahead of the first order; a price that exists is found, not remade"')}
       </div>
       ${reportHtml}
       ${endingsHtml(p)}
@@ -182,6 +186,14 @@ export function pax8Action(a) {
   }
   if (a === 'p8-events') { run('p8-events', 'Reading the events…', async () => { const d = await st.D.apiFetch(`${P8}/events`); p.events = d.events || []; }, 'The events could not be read.'); return true; }
   if (a === 'p8-endings') { run('p8-endings', 'Reading…', async () => { p.endings = await st.D.apiFetch(`${ADM}/endings`); }, 'The endings could not be read.'); return true; }
+  if (a === 'p8-prime') {
+    run('p8-prime', 'Making the prices…', async () => {
+      const d = await st.D.apiFetch(`${ADM}/prices/prime`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+      const errs = (d.errors || []).map(x => `${x.name || x.productId}: ${x.error}`);
+      setNote('pax8', `License prices: ${countWord(d.products, 'product', 'products')}, ${countWord(d.offers, 'offer', 'offers')}, ${d.made} made, ${d.found} already there${errs.length ? `. Not made: ${errs.join('; ')}` : '.'}`);
+    }, 'The license prices could not be made.');
+    return true;
+  }
   if (a === 'adm-price') { priceAhead(false); return true; }
   if (a === 'adm-price-remove') { priceAhead(true); return true; }
   if (a === 'adm-seg') { saveSegment(); return true; }
