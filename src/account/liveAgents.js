@@ -345,6 +345,10 @@ function queueCard() {
   const q = Array.isArray(la.reqs?.queue) ? la.reqs.queue : [];
   const open = q.filter(x => x.status === 'OPEN');
   const taken = q.filter(x => x.status === 'TAKEN');
+  // the door into an in-progress case is its holder's alone (2026-10-12, found on the Stage B walk: the +alias's desk
+  // offered "Open this environment" on a case the owner held, a door onto an environment it was not a member of)
+  const me = String(D.cachedPing()?.user?.userId || '');
+  const mine = (x) => !!me && String(x.takenBy || '') === me;
   const rowOf = (x) => `
     <div class="la-qrow">
       <div class="la-qrow-main">
@@ -356,7 +360,7 @@ function queueCard() {
       </div>
       <div class="la-qrow-act">${x.status === 'OPEN'
         ? leadBtn({ la: 'take' }, 'check', 'Take it', `${la.busy === 'take:' + x.environmentId ? 'disabled' : ''} data-env="${e(x.environmentId)}"`, 'btn-primary')
-        : iconBtn({ la: 'open-env' }, 'external', 'Open this environment', `data-env="${e(x.environmentId)}"`, '')}</div>
+        : (mine(x) ? iconBtn({ la: 'open-env' }, 'external', 'Open this environment', `data-env="${e(x.environmentId)}"`, '') : '')}</div>
     </div>`;
   const owner = isPlatformOwner();
   const body = `
