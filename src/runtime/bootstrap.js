@@ -862,11 +862,12 @@ window.applyPostLoginResolution = applyPostLoginResolution;
     window.pragOpenStudio = (extra) => routeToSoftwareOnLoad(extra);
     window.pragSessionActive = () => isSessionActive();   // the shop's studio door asks before choosing the handoff
 
-    // Open Studio (2026-09-19): signed in, the studio, always; signed out, sign in first and land there.
+    // Open Studio (2026-10-13, Cameron: navigate, do not enforce sign-in): the studio is a no-account tool, so the
+    // button always opens it. Signed in, goToSoftware carries the session by a one-time handoff; signed out, the
+    // handoff mint fails and it opens the plain studio address. Sign-in is never forced here (it used to open the
+    // login modal for a signed-out click).
     function routeToSoftwareOnLoad(extra = "") {
-      if (isSessionActive()) { goToSoftware(STUDIO_URL, extra); return; }
-      try { sessionStorage.setItem("pragoptics_return_to", "software"); if (extra) sessionStorage.setItem("pragoptics_software_extra", String(extra)); } catch { /* falls back to the Environment section */ }
-      setTimeout(() => { openLoginModal("login"); }, 50);
+      goToSoftware(STUDIO_URL, extra);
     }
 
     /**
