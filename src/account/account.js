@@ -89,6 +89,7 @@ const USAGE_MINE_URL = `${PRAG_API_BASE}/usage/mine`;
 const ADMIN_USAGE_URL = `${PRAG_API_BASE}/admin/usage/overview`;
 const ADMIN_AI_URL = `${PRAG_API_BASE}/admin/ai/usage`;
 const ADMIN_COSTS_URL = `${PRAG_API_BASE}/admin/costs`;
+const ADMIN_COST_ALERT_URL = `${PRAG_API_BASE}/admin/costs/alert`;
 const NOTIFY_PREFS_URL = `${PRAG_API_BASE}/account/notifications`;
 const ADMIN_NOTIFY_URL = `${PRAG_API_BASE}/admin/notifications`;
 const ADMIN_NOTIFY_TEST_URL = `${PRAG_API_BASE}/admin/notifications/test`;
@@ -2907,9 +2908,11 @@ async function renderOverview(main) {
     </div>
     <div id="admUsageBlock"></div>
     <div id="admCostBlock"></div>
+    <div id="admCostAlertBlock"></div>
   `;
   loadAdminUsage();
   loadAdminCosts();
+  loadCostAlert();
   const grid = main.querySelector('#admOverviewGrid');
   try {
     const [users, avail, claimed] = await Promise.all([
@@ -3019,6 +3022,36 @@ async function loadAdminCosts(force) {
         <div class="adm-actions-row">${iconBtn({ adm: 'cost-refresh' }, 'refresh', 'Read Azure spend again')}</div>
       </div>`;
   }
+}
+
+/* ---------- cost alert (the platform's own, on top of the Azure budget) ---------- */
+async function loadCostAlert() {
+  const host = document.getElementById('admCostAlertBlock');
+  if (!host) return;
+  try {
+    const d = await apiFetch(ADMIN_COST_ALERT_URL);
+    renderCostAlert(host, (d && d.alert) || {});
+  } catch (ex) {
+    host.innerHTML = `<div class="adm-card" style="margin-top:12px;"><h3 class="adm-card-h">Cost alert</h3><p class="adm-note">${escapeHtml(friendlyError(ex, 'Could not read the cost alert.'))}</p></div>`;
+  }
+}
+function renderCostAlert(host, a) {
+  if (!host) return;
+  const thresholds = Array.isArray(a.thresholds) && a.thresholds.length ? a.thresholds : [50, 80, 100];
+  const fired = Array.isArray(a.firedBands) ? a.firedBands : [];
+  host.innerHTML = `
+    <div class="adm-card" style="margin-top:12px;">
+      <h3 class="adm-card-h">Cost alert</h3>
+      <p class="adm-note">The platform's own alert, on top of the Azure budget. It checks month-to-date Azure spend once a day and emails you when it crosses a band. The Azure budget alert is the independent backstop that fires even if the platform is down; this one you adjust here.</p>
+      <div class="adm-actions-row" style="flex-wrap:wrap;gap:12px;align-items:flex-end;">
+        <label class="adm-field"><span>On</span><input type="checkbox" id="admCostAlertOn" ${a.enabled ? 'checked' : ''}></label>
+        <label class="adm-field"><span>Monthly budget (USD)</span><input class="adm-input" type="number" min="1" step="1" id="admCostAlertAmt" value="${escapeHtml(String(a.amountUsd || ''))}" placeholder="150" style="width:8em;"></label>
+        <label class="adm-field"><span>Alert at (%)</span><input class="adm-input" type="text" id="admCostAlertPcts" value="${escapeHtml(thresholds.join(', '))}" style="width:9em;"></label>
+        <button class="btn btn-sm btn-lead btn-primary" type="button" data-adm-action="cost-alert-save" data-tip="Save the cost alert">${ico('check')}<span>Save</span></button>
+      </div>
+      ${fired.length ? `<p class="adm-note">Already alerted this month at ${escapeHtml(fired.map(p => p + '%').join(', '))}.</p>` : ''}
+      <p class="acct-error" id="admCostAlertErr" hidden></p>
+    </div>`;
 }
 
 /* ---------- users ---------- */
@@ -5003,6 +5036,23 @@ function bindOnce() {
         // the card paints anew with the answer; until then its refresh turns and says so
         busy(admAct, 'Reading Azure spend…');
         loadAdminCosts(true);
+      }
+      if (admAct.dataset.admAction === 'cost-alert-save' && !admAct.disabled) {
+        const on = document.getElementById('admCostAlertOn');
+        const amt = document.getElementById('admCostAlertAmt');
+        const pcts = document.getElementById('admCostAlertPcts');
+        const err = document.getElementById('admCostAlertErr');
+        if (err) err.hidden = true;
+        const body = {
+          enabled: !!(on && on.checked),
+          amountUsd: Number(amt && amt.value),
+          thresholds: String((pcts && pcts.value) || '').split(',').map(s => parseInt(s.trim(), 10)).filter(n => Number.isFinite(n))
+        };
+        const done = busy(admAct, 'Saving…');
+        apiFetch(ADMIN_COST_ALERT_URL, { method: 'POST', body: JSON.stringify(body) })
+          .then(d => renderCostAlert(document.getElementById('admCostAlertBlock'), (d && d.alert) || {}))
+          .catch(ex => { if (err) { err.textContent = friendlyError(ex, 'Could not save the cost alert.'); err.hidden = false; } })
+          .finally(done);
       }
       if (admAct.dataset.admAction === 'user-manage') openUserManage(admAct.dataset.user, admAct.dataset.email);
       // the account id on every row (2026-10-12, Cameron): the operator close confirms by it, so it is copied off the list
