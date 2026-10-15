@@ -3048,8 +3048,10 @@ function renderCostAlert(host, a) {
         <label class="adm-field"><span>Monthly budget (USD)</span><input class="adm-input" type="number" min="1" step="1" id="admCostAlertAmt" value="${escapeHtml(String(a.amountUsd || ''))}" placeholder="150" style="width:8em;"></label>
         <label class="adm-field"><span>Alert at (%)</span><input class="adm-input" type="text" id="admCostAlertPcts" value="${escapeHtml(thresholds.join(', '))}" style="width:9em;"></label>
         <button class="btn btn-sm btn-lead btn-primary" type="button" data-adm-action="cost-alert-save" data-tip="Save the cost alert">${ico('check')}<span>Save</span></button>
+        <button class="btn btn-sm btn-lead" type="button" data-adm-action="cost-alert-run" data-tip="Run the check now against live Azure spend and email a test alert if a band is crossed">${ico('refresh')}<span>Run now</span></button>
       </div>
       ${fired.length ? `<p class="adm-note">Already alerted this month at ${escapeHtml(fired.map(p => p + '%').join(', '))}.</p>` : ''}
+      <p class="adm-note" id="admCostAlertRun" hidden></p>
       <p class="acct-error" id="admCostAlertErr" hidden></p>
     </div>`;
 }
@@ -5052,6 +5054,26 @@ function bindOnce() {
         apiFetch(ADMIN_COST_ALERT_URL, { method: 'POST', body: JSON.stringify(body) })
           .then(d => renderCostAlert(document.getElementById('admCostAlertBlock'), (d && d.alert) || {}))
           .catch(ex => { if (err) { err.textContent = friendlyError(ex, 'Could not save the cost alert.'); err.hidden = false; } })
+          .finally(done);
+      }
+      if (admAct.dataset.admAction === 'cost-alert-run' && !admAct.disabled) {
+        const out = document.getElementById('admCostAlertRun');
+        if (out) out.hidden = true;
+        const done = busy(admAct, 'Running the check…');
+        apiFetch(ADMIN_COST_ALERT_URL, { method: 'POST', body: JSON.stringify({ run: true }) })
+          .then(d => {
+            const r = (d && d.run) || {};
+            const dollars = (n) => '$' + (Number(n) || 0).toFixed(2);
+            let msg;
+            if (!r.ran) msg = r.reason === 'disabled' ? 'Turn the alert on and save a budget first, then run it.'
+              : r.reason === 'needs-cost-role' ? 'The platform identity needs the Cost Management Reader role to read spend.'
+              : r.reason === 'no-subscription' ? 'No subscription id is set on the function app.'
+              : `Did not run: ${r.reason || 'unknown'}.`;
+            else if (r.crossed && r.crossed.length) msg = `Ran: ${dollars(r.cost)} crossed ${r.crossed.map(p => p + '%').join(', ')} of ${dollars(r.amountUsd)}; emailed ${r.mailed} admin${r.mailed === 1 ? '' : 's'}.`;
+            else msg = `Ran: ${dollars(r.cost)} is under every band of ${dollars(r.amountUsd)}, so no alert was sent. Lower the budget to test the email.`;
+            if (out) { out.textContent = msg; out.hidden = false; }
+          })
+          .catch(ex => { if (out) { out.textContent = friendlyError(ex, 'Could not run the check.'); out.hidden = false; } })
           .finally(done);
       }
       if (admAct.dataset.admAction === 'user-manage') openUserManage(admAct.dataset.user, admAct.dataset.email);
