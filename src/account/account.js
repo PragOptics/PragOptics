@@ -3055,7 +3055,6 @@ function renderCostAlert(host, a) {
       <p class="adm-note">The platform's own alert, on top of the Azure budget. It reads this month's Azure spend once a day and emails you when it reaches a share of your budget. The Azure budget alert is the independent backstop that fires even if the platform is down; this one you set here.</p>
 
       <div class="adm-budget-card${a.enabled ? '' : ' is-off'}">
-        <span class="adm-budget-ico">${ico('payments')}</span>
         <div class="adm-budget-main">
           <span class="adm-budget-n">${escapeHtml(budgetShown)}</span>
           <span class="adm-budget-l">Monthly budget</span>
