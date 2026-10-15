@@ -559,6 +559,57 @@ select.adm-select option, select.adm-input option {
   background: none; -webkit-text-fill-color: var(--brand-600); color: var(--brand-600);
 }
 
+/* ---------- cost alert: the budget card, and the alert rows (2026-10-15) ---------- */
+.adm-budget-card {
+  display: flex; align-items: center; gap: 14px;
+  border-radius: 14px; padding: 15px 18px; margin: 2px 0 18px;
+  background: linear-gradient(135deg, var(--brand-purp-solid), var(--brand-600));
+  color: #fff;
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--brand-purp-solid) 24%, transparent);
+}
+.adm-budget-card.is-off { filter: grayscale(.4) opacity(.92); }
+.adm-budget-ico {
+  flex: 0 0 auto; display: grid; place-items: center;
+  width: 44px; height: 44px; border-radius: 12px;
+  background: rgba(255, 255, 255, .18);
+}
+.adm-budget-ico svg { width: 22px; height: 22px; stroke: #fff; }
+.adm-budget-main { display: flex; flex-direction: column; min-width: 0; }
+.adm-budget-n {
+  font-size: 1.7rem; font-weight: 800; line-height: 1.05;
+  letter-spacing: -.01em; font-variant-numeric: tabular-nums;
+}
+.adm-budget-l {
+  font: 700 .6rem/1.3 ui-monospace, "Cascadia Code", Consolas, monospace;
+  letter-spacing: .16em; text-transform: uppercase;
+  color: rgba(255, 255, 255, .82); margin-top: 5px;
+}
+.adm-budget-state {
+  margin-left: auto; flex: 0 0 auto;
+  font: 700 .62rem/1 ui-monospace, Consolas, monospace;
+  letter-spacing: .08em; text-transform: uppercase;
+  color: #fff; background: rgba(255, 255, 255, .18);
+  border-radius: 999px; padding: 6px 11px; white-space: nowrap;
+}
+
+.adm-ca-grid { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 16px 24px; margin-bottom: 18px; }
+.adm-ca-field { display: flex; flex-direction: column; gap: 6px; }
+.adm-ca-flabel { font-size: .68rem; letter-spacing: .09em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+.adm-ca-amt { display: inline-flex; align-items: center; }
+.adm-ca-amt-sign { color: var(--muted); font-weight: 700; margin-right: 6px; font-size: 1.05rem; }
+.adm-ca-amtin { width: 7.5em; }
+.adm-ca-hint { font-size: .72rem; color: var(--muted); }
+.adm-ca-toggle { display: inline-flex; align-items: center; gap: 8px; font-size: .9rem; color: var(--ink); padding-bottom: 6px; cursor: pointer; }
+.adm-ca-toggle input { width: 18px; height: 18px; accent-color: var(--brand-purp-solid); }
+
+.adm-ca-alerts { display: flex; flex-direction: column; gap: 10px; margin-bottom: 6px; }
+.adm-ca-rows { display: flex; flex-direction: column; gap: 8px; }
+.adm-ca-row { display: flex; align-items: center; gap: 10px; }
+.adm-ca-pct { width: 6em; text-align: right; }
+.adm-ca-pctlabel { color: var(--muted); font-size: .88rem; }
+.adm-ca-del { margin-left: auto; }
+.adm-ca-add { align-self: flex-start; margin-top: 2px; }
+
 /* ---------- users table extras ---------- */
 .adm-muted { color: var(--muted); }
 .adm-cell-email { color: var(--ink); font-weight: 500; }

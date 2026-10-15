@@ -3035,20 +3035,55 @@ async function loadCostAlert() {
     host.innerHTML = `<div class="adm-card" style="margin-top:12px;"><h3 class="adm-card-h">Cost alert</h3><p class="adm-note">${escapeHtml(friendlyError(ex, 'Could not read the cost alert.'))}</p></div>`;
   }
 }
+function costAlertRowHtml(pct) {
+  return `<div class="adm-ca-row">
+      <input class="adm-input adm-ca-pct" type="number" min="1" max="1000" step="1" value="${escapeHtml(String(pct || ''))}" placeholder="50" aria-label="Alert at this percentage of the budget">
+      <span class="adm-ca-pctlabel">% of budget</span>
+      <button class="btn btn-sm btn-ico adm-ca-del" type="button" data-adm-action="cost-alert-remove-row" data-tip="Remove this alert" aria-label="Remove this alert">${ico('trash')}</button>
+    </div>`;
+}
+
 function renderCostAlert(host, a) {
   if (!host) return;
   const thresholds = Array.isArray(a.thresholds) && a.thresholds.length ? a.thresholds : [50, 80, 100];
   const fired = Array.isArray(a.firedBands) ? a.firedBands : [];
+  const amount = Number(a.amountUsd) || 0;
+  const budgetShown = amount > 0 ? '$' + amount.toLocaleString('en-US', { maximumFractionDigits: 2 }) : 'Not set';
   host.innerHTML = `
     <div class="adm-card" style="margin-top:12px;">
       <h3 class="adm-card-h">Cost alert</h3>
-      <p class="adm-note">The platform's own alert, on top of the Azure budget. It checks month-to-date Azure spend once a day and emails you when it crosses a band. The Azure budget alert is the independent backstop that fires even if the platform is down; this one you adjust here.</p>
-      <div class="adm-actions-row" style="flex-wrap:wrap;gap:12px;align-items:flex-end;">
-        <label class="adm-field"><span>On</span><input type="checkbox" id="admCostAlertOn" ${a.enabled ? 'checked' : ''}></label>
-        <label class="adm-field"><span>Monthly budget (USD)</span><input class="adm-input" type="number" min="1" step="1" id="admCostAlertAmt" value="${escapeHtml(String(a.amountUsd || ''))}" placeholder="150" style="width:8em;"></label>
-        <label class="adm-field"><span>Alert at (%)</span><input class="adm-input" type="text" id="admCostAlertPcts" value="${escapeHtml(thresholds.join(', '))}" style="width:9em;"></label>
+      <p class="adm-note">The platform's own alert, on top of the Azure budget. It reads this month's Azure spend once a day and emails you when it reaches a share of your budget. The Azure budget alert is the independent backstop that fires even if the platform is down; this one you set here.</p>
+
+      <div class="adm-budget-card${a.enabled ? '' : ' is-off'}">
+        <span class="adm-budget-ico">${ico('payments')}</span>
+        <div class="adm-budget-main">
+          <span class="adm-budget-n">${escapeHtml(budgetShown)}</span>
+          <span class="adm-budget-l">Monthly budget</span>
+        </div>
+        <span class="adm-budget-state">${a.enabled ? 'Alerts on' : 'Alerts off'}</span>
+      </div>
+
+      <div class="adm-ca-grid">
+        <div class="adm-ca-field">
+          <span class="adm-ca-flabel">Budget</span>
+          <span class="adm-ca-amt"><span class="adm-ca-amt-sign">$</span><input class="adm-input adm-ca-amtin" type="number" min="1" step="1" id="admCostAlertAmt" value="${escapeHtml(String(a.amountUsd || ''))}" placeholder="150"></span>
+          <span class="adm-ca-hint">Monthly, in US dollars</span>
+        </div>
+        <label class="adm-ca-toggle">
+          <input type="checkbox" id="admCostAlertOn" ${a.enabled ? 'checked' : ''}>
+          <span>Send me alerts</span>
+        </label>
+      </div>
+
+      <div class="adm-ca-alerts">
+        <span class="adm-ca-flabel">Email me when spend reaches</span>
+        <div id="admCostAlertRows" class="adm-ca-rows">${thresholds.map(costAlertRowHtml).join('')}</div>
+        <button class="btn btn-sm btn-lead adm-ca-add" type="button" data-adm-action="cost-alert-add-row" data-tip="Add another alert level">${ico('plus')}<span>Add an alert</span></button>
+      </div>
+
+      <div class="adm-actions-row">
         <button class="btn btn-sm btn-lead btn-primary" type="button" data-adm-action="cost-alert-save" data-tip="Save the cost alert">${ico('check')}<span>Save</span></button>
-        <button class="btn btn-sm btn-lead" type="button" data-adm-action="cost-alert-run" data-tip="Run the check now against live Azure spend and email a test alert if a band is crossed">${ico('refresh')}<span>Run now</span></button>
+        <button class="btn btn-sm btn-lead" type="button" data-adm-action="cost-alert-run" data-tip="Run the check now against live Azure spend and email a test alert if a level is reached">${ico('refresh')}<span>Run now</span></button>
       </div>
       ${fired.length ? `<p class="adm-note">Already alerted this month at ${escapeHtml(fired.map(p => p + '%').join(', '))}.</p>` : ''}
       <p class="adm-note" id="admCostAlertRun" hidden></p>
@@ -5039,16 +5074,22 @@ function bindOnce() {
         busy(admAct, 'Reading Azure spend…');
         loadAdminCosts(true);
       }
+      if (admAct.dataset.admAction === 'cost-alert-add-row') {
+        const rows = document.getElementById('admCostAlertRows');
+        if (rows) { rows.insertAdjacentHTML('beforeend', costAlertRowHtml('')); const last = rows.querySelector('.adm-ca-row:last-child .adm-ca-pct'); if (last) last.focus(); }
+      }
+      if (admAct.dataset.admAction === 'cost-alert-remove-row') {
+        const row = admAct.closest('.adm-ca-row'); if (row) row.remove();
+      }
       if (admAct.dataset.admAction === 'cost-alert-save' && !admAct.disabled) {
         const on = document.getElementById('admCostAlertOn');
         const amt = document.getElementById('admCostAlertAmt');
-        const pcts = document.getElementById('admCostAlertPcts');
         const err = document.getElementById('admCostAlertErr');
         if (err) err.hidden = true;
         const body = {
           enabled: !!(on && on.checked),
           amountUsd: Number(amt && amt.value),
-          thresholds: String((pcts && pcts.value) || '').split(',').map(s => parseInt(s.trim(), 10)).filter(n => Number.isFinite(n))
+          thresholds: [...document.querySelectorAll('#admCostAlertRows .adm-ca-pct')].map(i => parseInt(i.value, 10)).filter(n => Number.isFinite(n) && n > 0)
         };
         const done = busy(admAct, 'Saving…');
         apiFetch(ADMIN_COST_ALERT_URL, { method: 'POST', body: JSON.stringify(body) })
