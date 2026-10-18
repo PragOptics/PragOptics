@@ -4868,7 +4868,7 @@ async function grantAgentFlag(userId, email, on) {
   return apiFetch(USER_PATCH_URL, { method: 'POST', body: JSON.stringify({ userId, expectEmail: email, isAgent: on === true }) });
 }
 function teamDeps() {
-  return { apiFetch: viewApiFetch, escapeHtml, friendlyError, showError, fmtDate, cachedPing, teamPicked: syncLicensingNav, grantAgent: grantAgentFlag, enterAgentEnv, exitAgentEnv };
+  return { apiFetch: viewApiFetch, escapeHtml, friendlyError, showError, fmtDate, cachedPing, isAdmin, teamPicked: syncLicensingNav, grantAgent: grantAgentFlag, enterAgentEnv, exitAgentEnv };
 }
 
 function showSection(id) {
