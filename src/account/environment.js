@@ -1037,8 +1037,18 @@ function domainsHtml() {
   const rows = ev.domains;
   const limit = ev.domainLimit;
   const full = rows && limit && rows.length >= limit;
-  const regs = ev.registrations || [];
-  const summary = rows == null ? 'loading' : !rows.length && !regs.length ? 'none yet' : `${countWord(rows.length, 'domain', 'domains')}${limit ? ` of ${limit}` : ''}${regs.length ? ` · ${countWord(regs.length, 'registering', 'registering')}` : ''}`;
+  // A registration in flight (2026-10-19, Cameron: the held-card sentence sat under "I need a domain" beside the
+  // two choices, "bogus looking ... hidden in plain sight ... confusing"): it is a row of its own at the top of the
+  // card, tagged registering, and the chooser and the wizard stay out of the way until the registry answers.
+  // The backend lists it once the hold is authorized; until that webhook lands the row comes from this card's own
+  // confirmed hold, so the state never flickers back to the chooser.
+  const paidReg = ev.reg && ev.reg.step === 'paid' && ev.reg.quote ? ev.reg : null;
+  const listed = ev.registrations || [];
+  const ownRow = paidReg && !listed.some(x => x.host === paidReg.quote.host)
+    ? [{ host: paidReg.quote.host, orderId: String(paidReg.order?.orderId || ''), status: 'ORDERED', error: '', contact: null }] : [];
+  const regs = [...ownRow, ...listed];
+  const inFlight = regs.some(r => r.status !== 'FAILED');
+  const summary = rows == null ? 'loading' : !rows.length && !regs.length ? 'none yet' : `${rows.length ? `${countWord(rows.length, 'domain', 'domains')}${limit ? ` of ${limit}` : ''}` : ''}${rows.length && regs.length ? ' · ' : ''}${regs.length ? countWord(regs.length, 'registering', 'registering') : ''}`;
   const list = rows == null ? '<p class="acct-loading">Loading domains…</p>'
     : !rows.length ? (regs.length ? '' : `<p class="acct-empty">No domain yet.</p>`)
     : `<div class="ev-domains">${rows.map(domainHtml).join('')}</div>`;
@@ -1049,7 +1059,7 @@ function domainsHtml() {
   if (manage && !CONNECT_WAYS.has(ev.domTab) && ev.domTab !== 'register') ev.domTab = 'connect';
   const ownOn = manage && CONNECT_WAYS.has(ev.domTab);
   const buyOn = manage && ev.domTab === 'register';
-  const chooser = manage ? `
+  const chooser = manage && !inFlight ? `
     <p class="acct-card-note ev-dom-lead">Set up a domain for your team. Your mail, licenses and website go on a domain you control. Start with one you already own, or get one.</p>
     <div class="ev-dom-choose" role="group" aria-label="How do you want to set up your domain">
       <button class="ev-dom-pick ${ownOn ? 'is-on' : ''}" type="button" data-env-action="dom-tab" data-tab="connect" aria-pressed="${ownOn}">
@@ -1064,7 +1074,9 @@ function domainsHtml() {
       </button>` : ''}
     </div>` : '';
   let door = '';
-  if (manage) {
+  if (manage && inFlight) {
+    door = '';   // the registering row carries the state; the chooser and the wizard return once the registry answers
+  } else if (manage) {
     if (ownOn) {
       // the ways to connect a domain you own (2026-10-10, Cameron: name the buttons for an everyday, non-coding person;
       // the mechanics live in the tooltip and the explainer, not the label): keep it where it is and add records, let a
@@ -1100,7 +1112,7 @@ function domainsHtml() {
       ${door}
       <p class="acct-error" id="evDomainError" hidden></p>
       ${ev.domainNote ? `<p class="acct-card-note">${e(ev.domainNote)}</p>` : ''}
-      ${registrationsHtml()}
+      ${registrationsHtml(regs)}
       ${list}`
   });
 }
@@ -1108,9 +1120,8 @@ function domainsHtml() {
 /* ---------- registration through PragOptics ---------- */
 
 /** Names bought and not on the list yet: the registry is still working, or it failed. */
-function registrationsHtml() {
+function registrationsHtml(rows = ev.registrations || []) {
   const e = D.escapeHtml;
-  const rows = ev.registrations || [];
   if (!rows.length) return '';
   return `
     <div class="ev-domains">
@@ -1122,7 +1133,7 @@ function registrationsHtml() {
           </div>
           <p class="acct-card-note ev-dom-note">${r.status === 'FAILED'
             ? `The registry did not complete it${r.error ? `: ${e(String(r.error).replace(/\.$/, ''))}` : ''}. Nothing was registered. If your card was held, the hold was released and nothing was charged; if it was charged, support refunds order ${e(String(r.orderId).slice(0, 8))} in full.`
-            : `Order ${e(String(r.orderId).slice(0, 8))} is placed. The registry usually finishes within a few minutes and this card updates on its own; your card is charged exactly the registrar's price once the name is yours.`}</p>
+            : `Your card is held for this name, not charged${r.orderId ? ` (order ${e(String(r.orderId).slice(0, 8))})` : ''}. The registry is working; it usually takes a few minutes and this card updates on its own. The charge lands, exactly the registrar’s price, once the name is yours.`}</p>
           ${r.status === 'FAILED' && myRole() === 'owner' ? `
           <div class="ev-dom-actions">
             ${stateLead('domain-reg-retry', 'refresh', 'Try again', { out: ev.regRetrying === r.orderId, busyWord: 'Trying…' }, `data-order="${e(r.orderId)}" data-host="${e(r.host)}"`, 'btn-primary')}
