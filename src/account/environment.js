@@ -251,6 +251,7 @@ async function loadDomains() {
     ev.cnameTarget = d.cnameTarget || null;
     ev.serving = d.serving || null;
     ev.registrations = d.registrations || [];
+    try { const s = await D.apiFetch(url(`${ENV_URL}/publish`)); ev.sites = (s.sites || []).map(x => ({ slug: String(x.slug || ''), address: String(x.address || '') })); } catch { ev.sites = ev.sites || []; }
   } catch (ex) {
     ev.domains = [];
     if (ex?.status === 404) ev.domainNote = 'The domain routes are not on this lane yet.';
@@ -821,6 +822,31 @@ function dnsConnections() {
 }
 function providerLabel(id) { return (ev.connProviders || []).find(p => p.id === id)?.label || (id === 'spaceship' ? 'Spaceship' : id === 'azure' ? 'Azure' : String(id || 'the registrar')); }
 
+/** Serve a published site at a verified domain over HTTPS (2026-10-20, the App Service serving app). */
+function serveControl(d) {
+  const e = D.escapeHtml;
+  const s = d.serve;
+  const host = e(d.host);
+  if (s && s.status === 'SERVING') {
+    return `<a class="btn btn-sm" href="${e(s.url || ('https://' + d.host))}" target="_blank" rel="noopener" data-tip="Open the served site">${ico('globe')}<span>Open site</span></a>`
+      + iconBtn('domain-unserve', 'x', 'Stop serving a site at this domain', `data-host="${host}"`, 'is-risky');
+  }
+  if (s && (s.status === 'SERVE_PENDING' || s.status === 'SERVE_FAILED')) {
+    const recs = (s.records || []).filter(r => r && r.purpose);
+    const showRecs = recs.length && d.dns && d.dns.managed === 'self';
+    const note = s.status === 'SERVE_FAILED'
+      ? `<p class="acct-card-note ev-dom-note">Serving did not finish${s.error ? ': ' + e(s.error) : ''}. Press Try again.</p>`
+      : `<p class="acct-card-note ev-dom-note">Setting up serving for <b>${host}</b>. The certificate takes a few minutes; this updates on its own.${showRecs ? ' Add these records at your DNS host:' : ''}</p>${showRecs ? `<ul class="ev-dom-recs">${recs.map(r => `<li><code>${e(r.type)}</code> <code>${e(r.name)}</code> → <code>${e(r.target || r.value)}</code></li>`).join('')}</ul>` : ''}`;
+    return note
+      + stateLead('domain-serve-check', 'refresh', s.status === 'SERVE_FAILED' ? 'Try again' : 'Check', { out: ev.serveBusy === d.host, busyWord: 'Checking…' }, `data-host="${host}" data-tip="Finish serving now"`, 'btn-primary')
+      + iconBtn('domain-unserve', 'x', 'Stop serving a site at this domain', `data-host="${host}"`, 'is-risky');
+  }
+  const sites = ev.sites || [];
+  if (!sites.length) return `<span class="ev-dom-when">Publish a site in the Studio to serve it here.</span>`;
+  const sel = `<select class="acct-input acct-select ev-serve-site" id="svs-${host}" aria-label="Site to serve">${sites.map(x => `<option value="${e(x.slug)}">${e(x.slug === 'root' ? 'Main site' : x.slug)}</option>`).join('')}</select>`;
+  return sel + stateLead('domain-serve', 'globe', 'Serve my site here', { out: ev.serveBusy === d.host, busyWord: 'Setting up…' }, `data-host="${host}" data-tip="Serve the chosen site at this domain over HTTPS"`, 'btn-primary');
+}
+
 function domainHtml(d) {
   const e = D.escapeHtml;
   const manage = canManageDomains();
@@ -909,6 +935,7 @@ function domainHtml(d) {
         ${verified && hosted ? (bs === 'BOUND'
           ? twoStep('unbind', 'x', 'Unbind: stop serving the software at this domain', 'Stop serving here?')
           : stateLead('domain-bind', 'link', bs === 'BINDING' ? 'Check' : bs === 'BIND_FAILED' ? 'Try again' : 'Bind', { out: !!busy, busyWord: 'Working…' }, `data-host="${e(d.host)}" data-tip="Serve the software at this domain"`, 'btn-primary')) : ''}
+        ${verified ? serveControl(d) : ''}
         ${d.hosted ? (ev.dnsBusy === d.host
           ? stateIcon('domain-dns-cancel', 'undo', 'Hand DNS back', { out: ev.dnsAct === 'cancel', busyWord: 'Handing DNS back…', waiting: ev.dnsAct === 'cancel' ? '' : 'Wait for the DNS change being made' }, `data-host="${e(d.host)}"`)
           : twoStep('dns-cancel', 'undo', 'Hand DNS back to where it was', 'Hand DNS back?')) : ''}
@@ -2037,6 +2064,29 @@ async function opCancelDomain(host, btn = null) {
   finally { done(); }
 }
 
+// Serve a published site at a verified domain over HTTPS (2026-10-20).
+async function serveDomain(host) {
+  const sel = document.getElementById('svs-' + host);
+  const site = sel ? sel.value : '';
+  if (!site) { ev.domainNote = 'Publish a site in the Studio first, then pick it here.'; return paintDomains(); }
+  ev.serveBusy = host; ev.domainNote = ''; paintDomains();
+  try { await post(`${ENV_URL}/domains/serve`, { host, site }); }
+  catch (ex) { ev.domainNote = ex?.data?.error || D.friendlyError(ex, 'Could not start serving.'); }
+  ev.serveBusy = ''; await loadDomains();
+}
+async function checkServeDomain(host) {
+  ev.serveBusy = host; ev.domainNote = ''; paintDomains();
+  try { await post(`${ENV_URL}/domains/serve/check`, { host }); }
+  catch (ex) { ev.domainNote = ex?.data?.error || D.friendlyError(ex, 'Could not finish serving.'); }
+  ev.serveBusy = ''; await loadDomains();
+}
+async function unserveDomain(host) {
+  ev.domainNote = '';
+  try { await D.apiFetch(url(`${ENV_URL}/domains/serve`), { method: 'DELETE', body: body({ host }) }); }
+  catch (ex) { ev.domainNote = ex?.data?.error || D.friendlyError(ex, 'Could not stop serving.'); }
+  await loadDomains();
+}
+
 // The link door: the name is checked in the linked account, the proof record
 // planted there by the platform and read back; the note says how far it got.
 async function linkDomain(btn) {
@@ -2658,6 +2708,9 @@ export function bindEnvironmentActions(deps) {
     if (a === 'domain-remove') return void removeDomain(btn.dataset.host || '', btn);
     if (a === 'domain-opcancel') return void opCancelDomain(btn.dataset.host || '', btn);
     if (a === 'domain-bind') return void bindDomain(btn.dataset.host || '');
+    if (a === 'domain-serve') return void serveDomain(btn.dataset.host || '');
+    if (a === 'domain-serve-check') return void checkServeDomain(btn.dataset.host || '');
+    if (a === 'domain-unserve') return void unserveDomain(btn.dataset.host || '');
     if (a === 'domain-unbind') return void unbindDomain(btn.dataset.host || '', btn);
     if (a === 'domain-copy') return void copyText(btn.dataset.text || '', btn, () => codeBeside(btn));
     if (a === 'data-open' || a === 'data-reload') return void loadRows(btn.dataset.table || '');
