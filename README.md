@@ -125,8 +125,8 @@ Flip the flag and push once the backend is live.
 | `WARRANTY_API_LIVE` | `src/warranty/warranty.js` | on |
 | `TRANSFER_API_LIVE` | `src/warranty/transfer.js` | on |
 | `ORDERS_CLAIM_LIVE` | `src/runtime/config.js` | on (2026-09-06) |
-| `TEAM_LIVE` | `src/runtime/config.js` | off: the Team and Environment sections, the join page and the Tenants desk stay off the live lane until the lanes carry tenant storage (dev shows them regardless) |
-| `BUILDS_API_LIVE` | `src/builds/builds.js` | off |
+| `TEAM_LIVE` | `src/runtime/config.js` | on |
+| `BUILDS_API_LIVE` | `src/builds/builds.js` | on |
 
 ---
 
@@ -218,7 +218,7 @@ record to create, verifies it on demand, and once the software is hosted
 shows the two serving records and binds the name to the software with a
 certificate: Bind, certificate pending with Check, serving with the address,
 a refusal with Azure's sentence and Try again, Unbind; a name registered here
-is bound by the platform on its own. The card also registers a new name
+is bound by the platform on its own. A verified domain also carries a "Serve my site here" control: pick a site published in the Studio and the platform serves it at that name over HTTPS on Azure App Service (setting up with Check, Open site when live, Stop serving to remove it). The card also registers a new name
 through PragOptics: a quote, the
 registrant contact, the registrar agreements, and payment in the card
 through the shop order path), and their API keys. A paused environment
@@ -279,7 +279,7 @@ Industrial.
 
 ## Status
 
-Updated 2026-09-14. Landed since 2026-09-11: the Environment section's
+Updated 2026-10-21. Landed since 2026-09-11: the Environment section's
 Domains card with three doors (connect a domain you manage yourself, link a
 registrar account so the platform writes the records, or register a new
 name through the platform at the registrar's price with no markup); a taken
@@ -288,8 +288,9 @@ the billing profile; the Appearance card with the starfield preference; the
 account panel's icon rail holds still while a section loads; the How it
 works explainer for domains.
 
-Next on this repo: the registrar decision for the register door (the
-platform's Azure path is the recommendation on record), then the customer's
-own Stripe and Twilio accounts through the providers' Connect models, then
-mail. PragOptics is actively evolving; this repository is the current
+Landed since: serving a published site at a customer's own verified domain
+over HTTPS (the "Serve my site here" control on the Domains card), hosted on
+Azure App Service (Front Door fronts the API only). Next on this repo: store
+and checkout on the customer's own Stripe, then shipping on their Shippo.
+PragOptics is actively evolving; this repository is the current
 state of that evolution.
