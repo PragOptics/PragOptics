@@ -253,7 +253,10 @@ async function loadDomains() {
     ev.registrations = d.registrations || [];
     try { const s = await D.apiFetch(url(`${ENV_URL}/publish`)); ev.sites = (s.sites || []).map(x => ({ slug: String(x.slug || ''), address: String(x.address || '') })); } catch { ev.sites = ev.sites || []; }
   } catch (ex) {
-    ev.domains = [];
+    // A transient/slow/failed domains fetch (a registration GET that ran long, a momentary CORS/ERR_FAILED) must NOT
+    // blank the card: keep the last-known domains and in-flight registrations so a just-registered name never flickers
+    // back to the chooser on a refresh. Only start empty on the very first load (nothing known yet).
+    if (ev.domains == null) ev.domains = [];
     if (ex?.status === 404) ev.domainNote = 'The domain routes are not on this lane yet.';
     else ev.domainNote = ex?.sessionInvalidated ? '' : (ex?.data?.error || D.friendlyError(ex, 'Could not list the domains.'));
   }
@@ -1135,12 +1138,12 @@ function domainsHtml() {
   return cardHtml({
     key: 'domains', icon: 'globe', title: 'Domains', summary, explain: explainLink('domains', 'How domains work'),
     body: `
+      ${list}
+      ${registrationsHtml(regs)}
       ${chooser}
       ${door}
       <p class="acct-error" id="evDomainError" hidden></p>
-      ${ev.domainNote ? `<p class="acct-card-note">${e(ev.domainNote)}</p>` : ''}
-      ${registrationsHtml(regs)}
-      ${list}`
+      ${ev.domainNote ? `<p class="acct-card-note">${e(ev.domainNote)}</p>` : ''}`
   });
 }
 
