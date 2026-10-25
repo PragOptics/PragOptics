@@ -439,7 +439,12 @@ function agentModeGroups() {
   // user"). Platform-whole desks (Overview, Users, Tenants, Payments, ...) never appear inside a customer's environment;
   // they live on the operator's own login, one layer up.
   const AGENT_SIDE = [['agentdesk', 'Live Agents'], ['attention', 'Needs attention'], ['reports', 'Anomalies'], ['support', 'Support']];
-  const internal = (isAdmin() || isRoster()) ? AGENT_SIDE.map(([id, label]) => ({ id, label })) : [];
+  // Only what they can ACT on (Cameron 2026-10-25: "if not they should not see them"). An admin acts on all four. A
+  // rostered agent without the admin flag is view-only on the operator desks, so they get the engagement desk alone:
+  // their rate and their clock are theirs to work; another customer's attention, anomaly and support items are not.
+  const internal = isAdmin() ? AGENT_SIDE.map(([id, label]) => ({ id, label }))
+    : isRoster() ? [{ id: 'agentdesk', label: 'Live Agents' }]
+    : [];
   return { theirs, internal };
 }
 function agentModeSections() { const g = agentModeGroups(); return [...g.theirs, ...g.internal]; }
