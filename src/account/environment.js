@@ -943,12 +943,9 @@ function domainHtml(d) {
           ? stateIcon('domain-dns-cancel', 'undo', 'Hand DNS back', { out: ev.dnsAct === 'cancel', busyWord: 'Handing DNS back…', waiting: ev.dnsAct === 'cancel' ? '' : 'Wait for the DNS change being made' }, `data-host="${e(d.host)}"`)
           : twoStep('dns-cancel', 'undo', 'Hand DNS back to where it was', 'Hand DNS back?')) : ''}
         ${linked ? iconBtn('domain-unlink', 'link', 'Unlink: manage its records yourself again', `data-host="${e(d.host)}"`) : ''}
-        ${twoStep('remove', 'trash', 'Remove this domain', 'Remove?')}
-      </div>` : ''}
-      ${D.isAdmin && D.isAdmin() && d.registrar ? `
-      <div class="ev-dom-actions act-row">
-        ${twoStep('opcancel', 'xCircle', 'Operator: cancel this registration and delete it at Azure. It does not refund; refund from the Orders desk if one is due.', 'Cancel the registration?')}
-        <span class="ev-dom-when">operator only</span>
+        ${d.registrar
+          ? twoStep('remove', 'trash', 'Cancel and delete this domain at the registrar. If a refund is due, it is handled by our team.', 'Cancel & delete?')
+          : twoStep('remove', 'trash', 'Remove this domain', 'Remove?')}
       </div>` : ''}
     </div>`;
 }
@@ -2048,25 +2045,6 @@ async function removeDomain(host, btn = null) {
   finally { done(); }
 }
 
-// Operator only (platform admin): cancel a domain the platform registered. The
-// backend (POST admin/domains/cancel) removes the Azure CannotDelete lock,
-// hard-deletes the domain, confirms it is gone, deletes the zone, then refunds
-// within Azure's window; past the window it reports pastWindow and the operator
-// refunds from the Orders desk. Armed like the other risky domain actions.
-async function opCancelDomain(host, btn = null) {
-  if (ev.domArm !== `opcancel:${host}`) return armDomain(`opcancel:${host}`);
-  disarmDomain();
-  if (btn?.disabled) return;
-  D.showError('evDomainError', '');
-  const done = busy(btn, 'Cancelling…');
-  try {
-    const environmentId = ev.view?.tenant?.environmentId || '';
-    await D.apiFetch(`${PRAG_API_BASE}/admin/domains/cancel`, { method: 'POST', body: JSON.stringify({ environmentId, host }) });
-    await loadDomains();
-  } catch (ex) { paintDomains(); D.showError('evDomainError', errText(ex, 'Could not cancel that registration.')); }
-  finally { done(); }
-}
-
 // Serve a published site at a verified domain over HTTPS (2026-10-20).
 async function serveDomain(host) {
   const sel = document.getElementById('svs-' + host);
@@ -2709,7 +2687,6 @@ export function bindEnvironmentActions(deps) {
     if (a === 'domain-add') return void addDomain(btn);
     if (a === 'domain-verify') return void verifyDomain(btn.dataset.host || '');
     if (a === 'domain-remove') return void removeDomain(btn.dataset.host || '', btn);
-    if (a === 'domain-opcancel') return void opCancelDomain(btn.dataset.host || '', btn);
     if (a === 'domain-bind') return void bindDomain(btn.dataset.host || '');
     if (a === 'domain-serve') return void serveDomain(btn.dataset.host || '');
     if (a === 'domain-serve-check') return void checkServeDomain(btn.dataset.host || '');
