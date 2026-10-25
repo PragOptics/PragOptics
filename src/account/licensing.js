@@ -385,6 +385,9 @@ function mailStateHtml(v, p) {
   }
   // off: never turned on, refused (its reason), or cancelled (decision 10: "Your mail order was cancelled: ...")
   const told = m.text ? `<p class="acct-card-note ev-note is-bad">${e(sentence(m.text))}</p>` : '';
+  // 2026-10-25 (Cameron): a Free plan brings its own tenant and may buy licenses, but the INCLUDED mailbox is the platform's
+  // cost and starts on the User plan: say so, instead of offering a Turn on mail the server refuses
+  if (v.includedEligible === false) return `${told}<p class="acct-card-note">The included mailbox comes with the ${e(tierName(v.includedMinimumTier))} plan and above. On your plan you can connect your own Microsoft tenant and buy licenses here; a license with its own mailbox gives that person mail.</p>`;
   // before the account the server has no say yet: the owner sees the button, waiting on step 1
   const may = p.canTurnOnMail || (!v.account && p.isOwner && !v.readOnly);
   if (!may) {
