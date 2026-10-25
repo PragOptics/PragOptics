@@ -431,9 +431,15 @@ function agentMode() { return !!agentEnv(); }
  *  environment), and INTERNAL, the operator's platform desks (platform-wide numbers, fenced off so they never read as the
  *  customer's). Same tabs, same scoping, same edit rights as before; only the fence is new. */
 function agentModeGroups() {
-  const theirs = [{ id: 'agentdesk', label: 'Live Agents' }, { id: 'environment', label: 'Environment' }, { id: 'team', label: 'Team' }, { id: 'licensing', label: 'Licensing' }];
-  const EXCLUDE = new Set(['support', 'reports', 'agentdesk']);   // no Support/Anomaly in agent mode; agentdesk is the home above
-  const internal = (isAdmin() || isRoster()) ? INTERNAL_SECTIONS.filter(s => !EXCLUDE.has(s.id)) : [];
+  // THEIRS: the customer's own surface, exactly what a team admin on their environment sees (Cameron 2026-10-25:
+  // "the left side is supposed to be see what all i would see as an admin on his team").
+  const theirs = [{ id: 'environment', label: 'Environment' }, { id: 'team', label: 'Team' }, { id: 'licensing', label: 'Licensing' }];
+  // THE AGENT SIDE: only what the agent has FOR this customer -- the engagement desk, their items, alerts, support
+  // (Cameron 2026-10-25: "relevant shit that i have as an agent and the agent role, that is internal and relevant to the
+  // user"). Platform-whole desks (Overview, Users, Tenants, Payments, ...) never appear inside a customer's environment;
+  // they live on the operator's own login, one layer up.
+  const AGENT_SIDE = [['agentdesk', 'Live Agents'], ['attention', 'Needs attention'], ['reports', 'Anomalies'], ['support', 'Support']];
+  const internal = (isAdmin() || isRoster()) ? AGENT_SIDE.map(([id, label]) => ({ id, label })) : [];
   return { theirs, internal };
 }
 function agentModeSections() { const g = agentModeGroups(); return [...g.theirs, ...g.internal]; }
@@ -686,7 +692,7 @@ function agentShellHtml() {
           <li class="adm-nav-div" aria-hidden="true">${escapeHtml(label)}</li>
           ${navItemsHtml(groups.theirs)}
           ${groups.internal.length ? `
-          <li class="adm-nav-div" aria-hidden="true">Internal</li>
+          <li class="adm-nav-div" aria-hidden="true">${escapeHtml(who)}</li>
           ${navItemsHtml(groups.internal)}` : ''}
         </ul>
         <div class="adm-side-foot">
