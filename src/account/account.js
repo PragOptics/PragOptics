@@ -409,7 +409,7 @@ function allSections() {
  * what is missing (being set up, or the plan it starts on). */
 const TEAM_PICK_KEY = 'pragoptics_team_id';
 const TEAM_VIEW_URL = `${PRAG_API_BASE}/tenant`;
-const TEAM_RANK = { owner: 5, admin: 4, developer: 3, member: 2, viewer: 1, guest: 0 };
+const TEAM_RANK = { owner: 5, admin: 4, agent: 4, developer: 3, member: 2, viewer: 1, guest: 0 };   // agent ranks with admin, as the server does (tenantPolicy RANK); without it Licensing hid from every agent
 
 // THE AGENT PORTAL (2026-10-11, Cameron). "Open this environment" on the internal Live Agents page is a DOOR into the
 // customer's account AS AN AGENT: a distinct portal, labeled Agent (Owner for the platform owner), that shows the

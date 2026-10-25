@@ -143,11 +143,15 @@ function phaseTag(phase) {
 }
 function myRole() { return String(ev.view?.membership?.role || 'viewer').toLowerCase(); }
 function paused() { return phaseOf(ev.view?.tenant) === 'SUSPENDED'; }
-function canWrite() { return SEAT_ROLES.has(myRole()) && !paused(); }
-function canManageKeys() { return myRole() === 'owner' || myRole() === 'admin'; }
+// THE AGENT BUILDS (Cameron 2026-10-25: "all the connect, not purchase or billing related functions, make sure they are
+// present for agents"). 'agent' is the membership the support-request take writes; it keeps no seat, and the server ranks
+// it with admin (tenantPolicy RANK agent: 4), so every connect/build door below opens to it. What stays closed is money:
+// registering a name, the renewal choice, licensing purchases and the owner-only licensing actions (server-enforced).
+function canWrite() { return (SEAT_ROLES.has(myRole()) || myRole() === 'agent') && !paused(); }
+function canManageKeys() { return ['owner', 'admin', 'agent'].includes(myRole()); }
 function canManageDomains() { return DOMAIN_ROLES.has(myRole()) && !paused(); }
-function canManageConnections() { return (myRole() === 'owner' || myRole() === 'admin') && !paused(); }   // credentials are settings: owner and admin
-const BUILD_ROLES = new Set(['owner', 'admin', 'developer']);   // the sandbox lane is for the people who build and test; members and viewers only use live
+function canManageConnections() { return ['owner', 'admin', 'agent'].includes(myRole()) && !paused(); }   // credentials are settings: owner, admin, the agent; owner-only providers stay owner-only (catalog + server)
+const BUILD_ROLES = new Set(['owner', 'admin', 'developer', 'agent']);   // the sandbox lane is for the people who build and test, the agent among them; members and viewers only use live
 function canUseSandbox() { return BUILD_ROLES.has(myRole()); }
 
 /* ================================================================
@@ -707,7 +711,7 @@ async function setAi(on) {
 
 function aiHtml() {
   const e = D.escapeHtml, a = ev.ai;
-  const manage = ['owner', 'admin'].includes(ev.view?.membership?.role);
+  const manage = ['owner', 'admin', 'agent'].includes(ev.view?.membership?.role);   // the AI switch is admin-ranked on the server; an agent ranks with admin
   let summary, inner;
   if (!a) { summary = ev.aiNote ? 'not on this lane' : 'loading'; inner = ev.aiNote ? `<p class="acct-empty">${e(ev.aiNote)}</p>` : '<p class="acct-loading">Loading…</p>'; }
   else {
