@@ -426,13 +426,17 @@ function agentMode() { return !!agentEnv(); }
 /** The portal's menu: Live Agents (the home and the way out), the customer's build surface, then the operator's internal
  *  tools minus Support and Anomaly. An operator/admin works them; a rostered agent without the admin flag reads them
  *  (2026-10-11, Cameron: "yes to all, and view only, no edit": viewOnly below, auth/opsRead.js on the server). */
-function agentModeSections() {
-  const home = [{ id: 'agentdesk', label: 'Live Agents' }];
-  const build = [{ id: 'environment', label: 'Environment' }, { id: 'team', label: 'Team' }, { id: 'licensing', label: 'Licensing' }];
+/** THE FENCE (2026-10-25, Cameron: "a clean separation", the same two groups his own login shows). The portal's menu is
+ *  two labeled groups, never one run: THEIRS, the customer's surface (Live Agents, then their build tabs, scoped to their
+ *  environment), and INTERNAL, the operator's platform desks (platform-wide numbers, fenced off so they never read as the
+ *  customer's). Same tabs, same scoping, same edit rights as before; only the fence is new. */
+function agentModeGroups() {
+  const theirs = [{ id: 'agentdesk', label: 'Live Agents' }, { id: 'environment', label: 'Environment' }, { id: 'team', label: 'Team' }, { id: 'licensing', label: 'Licensing' }];
   const EXCLUDE = new Set(['support', 'reports', 'agentdesk']);   // no Support/Anomaly in agent mode; agentdesk is the home above
   const internal = (isAdmin() || isRoster()) ? INTERNAL_SECTIONS.filter(s => !EXCLUDE.has(s.id)) : [];
-  return [...home, ...build, ...internal];
+  return { theirs, internal };
 }
+function agentModeSections() { const g = agentModeGroups(); return [...g.theirs, ...g.internal]; }
 // VIEW ONLY: a rostered agent (no admin flag) inside a customer's environment. The operator desks paint with the note
 // below and every write through them is refused before it leaves the browser (apiFetch). The customer's own build
 // surface (Environment, Team, Licensing) is not view-only: that is the work, gated by the agent's membership on the server.
@@ -670,6 +674,7 @@ function shellHtml() {
 function agentShellHtml() {
   const label = agentEnvLabel() || 'this environment';
   const who = isOwner() ? 'Owner' : 'Agent';
+  const groups = agentModeGroups();
   return `
     <div class="adm-shell adm-shell--agent">
       <nav class="adm-side" aria-label="Agent portal">
@@ -678,8 +683,11 @@ function agentShellHtml() {
           <span class="adm-side-title">${escapeHtml(label)}</span>
         </div>
         <ul class="adm-nav">
-          <li class="adm-nav-div" aria-hidden="true">${escapeHtml(who)}</li>
-          ${navItemsHtml(agentModeSections())}
+          <li class="adm-nav-div" aria-hidden="true">${escapeHtml(label)}</li>
+          ${navItemsHtml(groups.theirs)}
+          ${groups.internal.length ? `
+          <li class="adm-nav-div" aria-hidden="true">Internal</li>
+          ${navItemsHtml(groups.internal)}` : ''}
         </ul>
         <div class="adm-side-foot">
           <button class="btn acct-signout adm-exit-agent" type="button" data-acct-action="exit-agent-env"
