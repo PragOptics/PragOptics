@@ -41,7 +41,10 @@ const ENV_URL = `${PRAG_API_BASE}/environment`;
 const ORDERS_CHECKOUT_URL = `${PRAG_API_BASE}/orders/checkout`;
 const TEAM_KEY = 'pragoptics_team_id';   // written by team.js; read here so both sections mean the same team
 const SEAT_ROLES = new Set(['owner', 'admin', 'developer', 'member']);
-const DOMAIN_ROLES = new Set(['owner', 'admin', 'developer']);   // who connects, verifies and removes a domain
+// who connects, verifies and removes a domain. 'agent' is the membership the support-request take writes (auth/agentSupport.js
+// assignAgent); the server ranks it with admin (tenantPolicy RANK agent: 4), and building out the customer's environment is
+// the agent's job (Cameron 2026-10-25: "i see no ability to walk the domain as an agent"). Registering (buying) stays owner-only.
+const DOMAIN_ROLES = new Set(['owner', 'admin', 'developer', 'agent']);
 
 const LANE_KEY = 'pragoptics_env_lane';   // the lane the person was looking at; survives a section re-render
 function cardHtml(o) { return sharedCard({ ...o, key: `environment:${o.key}` }); }
