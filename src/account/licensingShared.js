@@ -179,7 +179,9 @@ export function agreementStands(m) { return m?.agreement ? !!m.agreement.stands 
  */
 export function stepGate(v, upTo) {
   const m = v?.microsoft || {};
-  if (!v?.account) return 'Create your licensing account first, on the Licensing account card above.';
+  // Naming the tenant needs no licensing account (the server asks for none: a tenant the business brings is named and
+  // connected before anything is bought, 2026-10-25). The account gates the steps that ORDER: the agreement and mail.
+  if (upTo >= 2 && !v?.account) return 'Create your licensing account first, on the Licensing account card above.';
   if (upTo >= 2 && !tenantNamed(m)) return 'Name your Microsoft tenant first, on the card above.';
   if (upTo >= 3 && !agreementStands(m)) return 'Accept the Microsoft Customer Agreement first, on the card above.';
   return '';

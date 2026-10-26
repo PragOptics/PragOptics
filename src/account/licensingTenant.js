@@ -144,7 +144,7 @@ export function tenantHtml() {
   const summary = gate ? 'after the licensing account' : !named ? 'not named yet' : m.domainPrefix ? `${m.domainPrefix}.onmicrosoft.com` : 'your own tenant';
   const editing = !gate && p.canNameTenant && (!named || lc.tnEdit);
   let inner;
-  if (gate) inner = p.isOwner && !v.readOnly ? formHtml(v, m, gate)
+  if (gate) inner = p.canNameTenant && !v.readOnly ? formHtml(v, m, gate)
     : '<p class="acct-card-note">The owner names your Microsoft tenant here once the licensing account is created: a new one Microsoft makes for your business, or one your business already has.</p>';
   else if (editing) inner = formHtml(v, m, '');
   else if (!named) inner = p.isOwner

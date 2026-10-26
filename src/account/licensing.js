@@ -33,12 +33,12 @@
 import { tierName, tierBadge } from '../components/tierCopy.js';
 import { explainLink } from '../components/explainer.js';
 import { ico, leadBtn, armed, initCards } from './cards.js';
-import { LIC_URL, lc, st, url, cardHtml, countWord, cap, dayWord, sentence, perms, isOperator, me, call, send, reqLead, reqIcon, errHtml, noteHtml, setNote, kept, forget, keepInput, withLink, cardLink, showsLicensing, stepWord, stepGate } from './licensingShared.js';
+import { LIC_URL, lc, st, url, cardHtml, countWord, cap, dayWord, sentence, perms, isOperator, me, call, send, reqLead, reqIcon, errHtml, noteHtml, setNote, kept, forget, keepInput, withLink, cardLink, showsLicensing, stepWord, stepGate, tenantNamed } from './licensingShared.js';
 import { agreementHtml, licensesHtml, orderAction, orderChange } from './licensingOrders.js';
 import { catalogHtml, catalogAction, catalogInput } from './licensingCatalog.js';
 import { billingHtml, billingAction } from './licensingBilling.js';
 import { pax8Html, pax8Action } from './licensingPax8.js';
-import { tenantHtml, tenantAction, resetTenant, reopenTenant, loadTenantStatus, myMailboxHtml } from './licensingTenant.js';
+import { tenantHtml, tenantAction, resetTenant, reopenTenant, loadTenantStatus, myMailboxHtml, connectHtml } from './licensingTenant.js';
 import { requestsHtml, requestsAction, loadRequests, pendingMailbox, ask } from './licensingRequests.js';
 import { owedHtml, moneyAction } from './licensingMoney.js';
 import { phase1Html, phase2Card, wizardAction, wizardStage, tenantConnected, phaseRail, phase2Lead, phase3Lead } from './licensingWizard.js';
@@ -118,7 +118,10 @@ function paint() {
   // button (licensingWizard.js) up to the first mail order; then the sign-in and connect cards (the one human step);
   // then the management view once the tenant is connected. An ineligible team drops to 'manage', where the account card
   // carries the plan upsell. decision 21: what a failed license payment left owed comes first (licensingMoney.js).
-  const stage = lc.view.eligible ? wizardStage(lc.view) : 'manage';
+  // The one-button wizard walks the OWNER's paid path (account, agreement, mail). Anyone else who can act here, the
+  // agent above all (2026-10-25, Cameron: "i need to be able to do this as an agent"), works the cards: name the tenant,
+  // connect it, add its domains, switch mail. A tenant the business brings needs no account or agreement for that.
+  const stage = lc.view.eligible && perms().isOwner ? wizardStage(lc.view) : 'manage';
   let cards;
   if (stage === 'phase1') cards = `${phaseRail('phase1')}${phase1Html(lc.view)}`;
   else if (stage === 'signin') cards = `${phaseRail('signin')}${phase2Lead()}${phase2Card(lc.view)}`;
@@ -126,7 +129,9 @@ function paint() {
   // six setup cards again (Cameron, 2026-10-03: "the ui is back to the full old style menu... we consolidated to 3").
   else if (tenantConnected()) cards = `${phaseRail('manage')}${phase3Lead(lc.view)}${myMailboxHtml()}${mailboxesHtml()}`;
   // not connected and not eligible: the old account card carries the plan upsell
-  else cards = `${accountHtml()}${tenantHtml()}${agreementHtml()}${mailboxesHtml()}${myMailboxHtml()}${licensesHtml()}${catalogHtml()}`;
+  // the connect card follows the tenant card as soon as the tenant is named and not yet connected: the one human step
+  // (sign in at Microsoft, approve PragOptics) is open to whoever can connect (the owner, the agent, a granted role)
+  else cards = `${accountHtml()}${tenantHtml()}${tenantNamed(lc.view.microsoft || {}) && !tenantConnected() ? connectHtml() : ''}${agreementHtml()}${mailboxesHtml()}${myMailboxHtml()}${licensesHtml()}${catalogHtml()}`;
   // THE DOMAIN GATE ON THE LICENSING PAGE (2026-10-09, Cameron): until a domain the owner proved is verified, the page is
   // visible and readable but its fields and buttons are locked, with a clear reason and a button back to the domain step.
   // Gone the moment a domain verifies. This gates the screen; it does not change the licensing flow.
