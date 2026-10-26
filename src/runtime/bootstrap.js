@@ -910,6 +910,13 @@ window.applyPostLoginResolution = applyPostLoginResolution;
         }
       } catch { /* the card reads the tenant live anyway */ }
       try {
+        // the mail runtime's approval (licensingExchange.js): /#account?section=licensing&exchange=<outcome>&why=...
+        if (q.get("exchange")) {
+          sessionStorage.setItem("pragoptics_exchange_return", JSON.stringify({ outcome: q.get("exchange"), why: q.get("why") || "" }));
+          q.delete("exchange"); q.delete("why"); took = true;
+        }
+      } catch { /* the card reads the runtime's state live anyway */ }
+      try {
         // the desk's two Microsoft pages: Approve at Microsoft (approval=microsoft) and Connect this tenant (approval=tenant)
         const approval = q.get("approval");
         if (approval === "microsoft" || approval === "tenant") {

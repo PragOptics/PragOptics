@@ -40,6 +40,7 @@ import { billingHtml, billingAction } from './licensingBilling.js';
 import { pax8Html, pax8Action } from './licensingPax8.js';
 import { tenantHtml, tenantAction, resetTenant, reopenTenant, loadTenantStatus, myMailboxHtml, connectHtml } from './licensingTenant.js';
 import { requestsHtml, requestsAction, loadRequests, pendingMailbox, ask } from './licensingRequests.js';
+import { exchangeHtml, exchangeAction, loadExchange, resetExchange } from './licensingExchange.js';
 import { owedHtml, moneyAction } from './licensingMoney.js';
 import { phase1Html, phase2Card, wizardAction, wizardStage, tenantConnected, phaseRail, phase2Lead, phase3Lead } from './licensingWizard.js';
 import { markSetupStale } from './setup.js';
@@ -64,6 +65,7 @@ export async function renderLicensing(main, deps) {
   Object.assign(lc, { view: null, reqs: null, canDecide: false, busy: '', busyWord: '', draft: {}, err: {}, links: {}, notes: {}, add: null, needPhone: false, tnMode: '', tnEdit: false, bizEdit: false, acctConfirm: '', declining: '', bill: null, p8: null, loadMsg: '', seatQuote: {}, reqQuote: {} });
   clearTimeout(setup.timer); Object.assign(setup, { since: 0, timer: 0, slow: false, stage: '' });
   resetTenant();
+  resetExchange();
   initCards();
   main.innerHTML = `
     <header class="acct-sec-head has-explain"><h2 class="acct-sec-title">Licensing</h2>${explainLink('licensing', 'How licenses and mailboxes work')}</header>
@@ -81,6 +83,8 @@ async function load() {
     // L4: the requests are read whenever the team has a licensing account, so a paused or ended owner can decline one;
     // Part 2: the tenant's connection and the person's own mailbox, once the tenant is named (licensingTenant.js)
     if (v?.account) await Promise.all([loadRequests(), loadTenantStatus(v)]); else { lc.reqs = null; lc.tn = null; }
+    // the shared mailboxes card reads once the tenant is connected (licensingExchange.js); a lane without the route leaves it out
+    await loadExchange();
     // keep reading while Microsoft is still making the tenant (about ten minutes), so Phase 2 flips from the wait to the
     // sign-in by itself when it lands; the existing SETUP timer does the re-read and says if it takes much longer
     const awaitingTenant = !!(v?.account && v?.microsoft?.domainPrefix && !v.microsoft.tenantId && !lc.tn?.tenant?.connected);
@@ -127,11 +131,11 @@ function paint() {
   else if (stage === 'signin') cards = `${phaseRail('signin')}${phase2Lead()}${phase2Card(lc.view)}`;
   // Phase 3: connected. The rail reaches Ready and the owner sees their own account and their team's mailboxes, not the
   // six setup cards again (Cameron, 2026-10-03: "the ui is back to the full old style menu... we consolidated to 3").
-  else if (tenantConnected()) cards = `${phaseRail('manage')}${phase3Lead(lc.view)}${myMailboxHtml()}${mailboxesHtml()}`;
+  else if (tenantConnected()) cards = `${phaseRail('manage')}${phase3Lead(lc.view)}${myMailboxHtml()}${mailboxesHtml()}${exchangeHtml()}`;
   // not connected and not eligible: the old account card carries the plan upsell
   // the connect card follows the tenant card as soon as the tenant is named and not yet connected: the one human step
   // (sign in at Microsoft, approve PragOptics) is open to whoever can connect (the owner, the agent, a granted role)
-  else cards = `${accountHtml()}${tenantHtml()}${tenantNamed(lc.view.microsoft || {}) && !tenantConnected() ? connectHtml() : ''}${agreementHtml()}${mailboxesHtml()}${myMailboxHtml()}${licensesHtml()}${catalogHtml()}`;
+  else cards = `${accountHtml()}${tenantHtml()}${tenantNamed(lc.view.microsoft || {}) && !tenantConnected() ? connectHtml() : ''}${agreementHtml()}${mailboxesHtml()}${myMailboxHtml()}${exchangeHtml()}${licensesHtml()}${catalogHtml()}`;
   // THE DOMAIN GATE ON THE LICENSING PAGE (2026-10-09, Cameron): until a domain the owner proved is verified, the page is
   // visible and readable but its fields and buttons are locked, with a clear reason and a button back to the domain step.
   // Gone the moment a domain verifies. This gates the screen; it does not change the licensing flow.
@@ -547,6 +551,7 @@ export function bindLicensingActions(deps) {
     if (billingAction(a, btn)) return;
     if (pax8Action(a, btn)) return;
     if (tenantAction(a, btn)) return;
+    if (exchangeAction(a, btn)) return;
     orderAction(a, btn);
   });
   // what is typed in the tab is remembered as it is typed, so a repaint never wipes it
