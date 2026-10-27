@@ -62,7 +62,7 @@ function watchSetup(waiting) {
 
 export async function renderLicensing(main, deps) {
   st.D = deps; st.paint = paint; st.load = load;
-  Object.assign(lc, { view: null, reqs: null, canDecide: false, busy: '', busyWord: '', draft: {}, err: {}, links: {}, notes: {}, add: null, needPhone: false, tnMode: '', tnEdit: false, bizEdit: false, acctConfirm: '', declining: '', bill: null, p8: null, loadMsg: '', seatQuote: {}, reqQuote: {} });
+  Object.assign(lc, { view: null, reqs: null, canDecide: false, busy: '', busyWord: '', draft: {}, err: {}, links: {}, notes: {}, add: null, needPhone: false, tnMode: '', tnEdit: false, bizEdit: false, acctConfirm: '', declining: '', bill: null, p8: null, loadMsg: '', seatQuote: {}, reqQuote: {}, wizMode: '' });
   clearTimeout(setup.timer); Object.assign(setup, { since: 0, timer: 0, slow: false, stage: '' });
   resetTenant();
   resetExchange();

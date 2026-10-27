@@ -170,31 +170,53 @@ export function phase1Html(v) {
       </label>
     </div>`;
   const progress = lc.busy === 'wizard' && lc.wizStep ? `<p class="acct-card-note" role="status" aria-live="polite">${e(lc.wizStep)}</p>` : '';
-  // the other way in: a tenant the business already has, by its ID; nothing above is needed for it (broughtTenant)
-  const tidErr = lc.err['wizard-tid'] ? `<p class="lic-field-err" id="licWizTidErr" role="alert">${e(lc.err['wizard-tid'])}</p>` : '';
-  const bring = done ? '' : `
-    <div class="lic-wiz-bring" role="group" aria-labelledby="licWizBringHead">
-      <p class="lic-wiz-lead-head" id="licWizBringHead">Already have a Microsoft tenant?</p>
-      <p class="acct-card-note">Give its tenant ID and connect it instead. No licensing account, agreement or order is needed for that; licenses you add later join it.</p>
-      <div class="lic-wiz-field">
-        <label class="acct-label" for="licWizTid">Tenant ID</label>
-        <input class="acct-input" id="licWizTid" type="text" data-keep value="${e(kept('licWizTid', ''))}" placeholder="00000000-0000-0000-0000-000000000000" spellcheck="false" autocapitalize="off" autocomplete="off" aria-describedby="licWizTidHint${tidErr ? ' licWizTidErr' : ''}">
-        ${tidErr}
-        <p class="lic-hint" id="licWizTidHint">Microsoft Entra admin center, Overview: the Tenant ID. It looks like 6eda43f3-fbf0-4e2b-9978-b543d9dd31e3.</p>
-      </div>
-      <div class="acct-actions-row">${reqLead('wiz-bring', { lic: 'wiz-bring' }, 'building', 'Use this tenant', 'Saving…')}</div>
+  // THE CHOICE FIRST (2026-10-26, Cameron: "a surface where I am asked which method I desire", the way the Domains card
+  // asks). Two ways: PragOptics sets up a new tenant (the one-button walk, exactly as built), or the business connects a
+  // tenant it already has (its ID). Nothing of the walk shows until it is chosen; once the walk has started (anything
+  // done), it is the only way and the chooser is gone, so a walk in progress is never interrupted.
+  const mode = done ? 'new' : (lc.wizMode === 'new' || lc.wizMode === 'bring' ? lc.wizMode : '');
+  const pick = (m, icon, title, desc) => `
+      <button class="ev-dom-pick ${mode === m ? 'is-on' : ''}" type="button" data-lic-action="wiz-mode" data-mode="${m}" aria-pressed="${mode === m}">
+        <span class="ev-dom-pick-ico">${ico(icon, 20)}</span>
+        <span class="ev-dom-pick-t">${e(title)}</span>
+        <span class="ev-dom-pick-d">${e(desc)}</span>
+      </button>`;
+  const chooser = done ? '' : `
+    <p class="acct-card-note ev-dom-lead">Microsoft 365 for your team: mail, licenses and your own tenant. Start with a tenant PragOptics sets up for you, or connect one your business already has.</p>
+    <div class="ev-dom-choose" role="group" aria-label="How do you want to set up Microsoft 365">
+      ${pick('new', 'rocket', 'Set up a new tenant', 'PragOptics creates your Microsoft account and tenant, records the agreement and orders your first mailbox. One step, about a minute, nothing charged.')}
+      ${pick('bring', 'building', 'Connect a tenant we have', 'Give the ID of your business\'s Microsoft tenant and approve PragOptics in it once. No account, agreement or order is needed for that.')}
     </div>`;
-  return cardHtml({
-    key: 'wizard', icon: 'rocket', title: 'Set up Microsoft 365', summary: e(`${done} of 4 ready`), open: true,
-    body: `
-      ${noteHtml('wizard')}${errHtml('wizard')}
+  // the walk, exactly as built: the checklist, the form, the one button
+  const walk = mode !== 'new' ? '' : `
       <p class="acct-card-note">Microsoft 365 for your team, in one step. We create your Microsoft account and tenant, record the agreement, and order your first mailbox. It takes about a minute, and nothing is charged.</p>
       ${checklist}
       ${form}
       ${progress}
       ${v.lane?.test ? '<p class="acct-card-note ev-note is-bad">Test lane: this environment is not armed for real orders, so the mail order below is a test and no tenant will be made. The operator arms real orders for it on the Tenants desk first (2026-10-05: the final walk\'s first account ordered before it was armed).</p>' : ''}
       <div class="acct-actions-row">${leadBtn({ lic: 'wiz-go' }, 'rocket', done ? 'Finish setup' : 'Set up Microsoft 365', lc.busy === 'wizard' ? 'disabled' : '', 'btn-primary btn-lg')}</div>
-      <p class="lic-hint">After this, Microsoft sends you one administrator sign-in to approve, and then everything else happens on its own.</p>
+      <p class="lic-hint">After this, Microsoft sends you one administrator sign-in to approve, and then everything else happens on its own.</p>`;
+  // the other way: a tenant the business already has, by its ID (broughtTenant); the walk's fields are not shown for it
+  const tidErr = lc.err['wizard-tid'] ? `<p class="lic-field-err" id="licWizTidErr" role="alert">${e(lc.err['wizard-tid'])}</p>` : '';
+  const bring = mode !== 'bring' ? '' : `
+    <div class="lic-wiz-bring" role="group" aria-labelledby="licWizBringHead">
+      <p class="lic-wiz-lead-head" id="licWizBringHead">Connect a tenant you already have</p>
+      <p class="acct-card-note">Give its tenant ID. Then you sign in at Microsoft once as one of its administrators and approve PragOptics; licenses you add later join it.</p>
+      <div class="lic-wiz-field">
+        <label class="acct-label" for="licWizTid">Tenant ID</label>
+        <input class="acct-input" id="licWizTid" type="text" data-keep value="${e(kept('licWizTid', ''))}" placeholder="00000000-0000-0000-0000-000000000000" spellcheck="false" autocapitalize="off" autocomplete="off" aria-describedby="licWizTidHint${tidErr ? ' licWizTidErr' : ''}">
+        ${tidErr}
+        <p class="lic-hint" id="licWizTidHint">Microsoft Entra admin center, Overview: the Tenant ID. It looks like 6eda43f3-fbf0-4e2b-9978-b543d9dd31e3.</p>
+      </div>
+      <div class="acct-actions-row">${reqLead('wiz-bring', { lic: 'wiz-bring' }, 'building', 'Use this tenant', 'Saving…', '', 'btn-primary')}</div>
+    </div>`;
+  const summary = done ? `${done} of 4 ready` : mode === 'bring' ? 'connect a tenant you have' : mode === 'new' ? '0 of 4 ready' : 'choose how';
+  return cardHtml({
+    key: 'wizard', icon: 'rocket', title: 'Set up Microsoft 365', summary: e(summary), open: true,
+    body: `
+      ${noteHtml('wizard')}${errHtml('wizard')}
+      ${chooser}
+      ${walk}
       ${bring}`
   });
 }
@@ -395,6 +417,8 @@ function runSignInApprove() {
 export function wizardAction(a, btn) {
   if (a === 'wiz-go') { runWizard(); return true; }
   if (a === 'wiz-bring') { bringTenant(); return true; }
+  // the choice between the two ways; a press sends nothing
+  if (a === 'wiz-mode') { lc.wizMode = btn.dataset.mode === 'bring' ? 'bring' : 'new'; lc.err.wizard = ''; lc.err['wizard-tid'] = ''; st.paint(); document.getElementById(lc.wizMode === 'bring' ? 'licWizTid' : 'licWizBiz')?.focus(); return true; }
   if (a === 'wiz-connect') { runSignInApprove(); return true; }
   return false;
 }

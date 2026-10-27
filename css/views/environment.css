@@ -546,7 +546,7 @@ a.ev-more { text-decoration: none; white-space: nowrap; }
    On a phone the row wraps and the action drops under the host. */
 .lic-sub--gap { margin-top: 14px; }
 /* the wizard's other way in (licensingWizard.js): a tenant the business already has, under the one-button setup */
-.lic-wiz-bring { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--border); }
+.lic-wiz-bring { margin-top: 14px; }
 .lic-wiz-bring .lic-wiz-field { margin-top: 8px; }
 .lic-facts--tight { margin-top: 8px; }
 .lic-dom-list { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 8px; }
