@@ -785,37 +785,65 @@ function fileFriendly(name) {
   return { base, where };
 }
 
-function filesHtml() {
+// A flat list of stored paths becomes the folder tree they describe, so the Files card reads like a
+// repository and stays navigable when it grows: folders collapse, files nest. The same shape the studio's
+// own code tree uses (notebook.js renderTree): a chevron and a count on a folder, a type icon on a file,
+// one level of indent per depth.
+function buildFileTree(files) {
+  const root = { dirs: new Map(), files: [] };
+  for (const f of files) {
+    const parts = String(f.name || '').split('/').filter(Boolean);
+    let node = root;
+    for (let i = 0; i < parts.length - 1; i++) { const seg = parts[i]; if (!node.dirs.has(seg)) node.dirs.set(seg, { dirs: new Map(), files: [] }); node = node.dirs.get(seg); }
+    node.files.push(f);
+  }
+  return root;
+}
+function fileCountIn(node) { let n = node.files.length; for (const d of node.dirs.values()) n += fileCountIn(d); return n; }
+function renderFileTree(node, prefix, depth) {
   const e = D.escapeHtml;
-  const rows = ev.files;
-  const total = (rows || []).reduce((s, f) => s + Number(f.size || 0), 0);
-  const summary = rows == null ? 'loading' : !rows.length ? 'none yet' : `${countWord(rows.length, 'file', 'files')} · ${e(bytesFmt(total))}`;
-  const fileRow = (f) => {
+  let html = '';
+  for (const name of [...node.dirs.keys()].sort()) {
+    const child = node.dirs.get(name);
+    const path = prefix ? prefix + '/' + name : name;
+    const collapsed = ev.filesCollapsed.has(path);
+    html += `<div class="ev-tnode">
+        <div class="ev-tf" data-env-action="file-folder" data-folder="${e(path)}" style="display:flex;align-items:center;gap:6px;padding:7px 2px;border-top:1px solid var(--border);cursor:pointer;padding-left:${8 + depth * 14}px;">
+          <span style="display:flex;flex:none;color:var(--muted);transform:rotate(${collapsed ? '-90' : '0'}deg);transition:transform .12s;" aria-hidden="true">${ico('chevron', 14)}</span>
+          <span style="display:flex;flex:none;color:var(--muted);" aria-hidden="true">${ico('folder', 16)}</span>
+          <span style="flex:1;min-width:0;font-size:.9rem;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${e(name)}</span>
+          <span style="flex:none;font-size:.78rem;color:var(--muted);">${fileCountIn(child)}</span>
+        </div>
+        ${collapsed ? '' : renderFileTree(child, path, depth + 1)}
+      </div>`;
+  }
+  for (const f of node.files.slice().sort((a, b) => String(a.name).localeCompare(String(b.name)))) {
     const fr = fileFriendly(f.name), cat = fileCat(f.name);
-    return `
-      <div style="display:flex;align-items:center;gap:12px;padding:9px 2px;border-top:1px solid var(--border);">
-        <span style="color:var(--muted);display:flex;flex:none;" aria-hidden="true">${ico(cat.icon, 20)}</span>
+    html += `<div style="display:flex;align-items:center;gap:8px;padding:7px 2px;border-top:1px solid var(--border);padding-left:${8 + depth * 14 + 22}px;">
+        <span style="display:flex;flex:none;color:var(--muted);" aria-hidden="true">${ico(cat.icon, 16)}</span>
         <div style="flex:1;min-width:0;">
           <div style="font-size:.9rem;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${e(f.name)}${f.contentType ? ` · ${e(f.contentType)}` : ''}">${e(fr.base)}${f.committed ? '' : ' <span class="acct-tag is-pending" title="Uploaded but never confirmed. The nightly check settles it; uploading it again also does.">unconfirmed</span>'}</div>
-          <div style="font-size:.8rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${e(fr.where)} · ${e(bytesFmt(f.size))}${f.lastModified ? ` · ${e(D.fmtDate(f.lastModified))}` : ''}</div>
+          <div style="font-size:.78rem;color:var(--muted);">${e(bytesFmt(f.size))}${f.lastModified ? ` · ${e(D.fmtDate(f.lastModified))}` : ''}</div>
         </div>
         <div class="ev-actions-cell" style="display:flex;gap:4px;flex:none;">
           ${viewTypeFor(f.name) ? iconBtn('open', 'external', 'Open in a new tab', `data-name="${e(f.name)}"`) : ''}
           ${iconBtn('download', 'download', 'Download', `data-name="${e(f.name)}"`)}
         </div>
       </div>`;
-  };
+  }
+  return html;
+}
+
+function filesHtml() {
+  const e = D.escapeHtml;
+  const rows = ev.files;
+  const total = (rows || []).reduce((s, f) => s + Number(f.size || 0), 0);
+  const summary = rows == null ? 'loading' : !rows.length ? 'none yet' : `${countWord(rows.length, 'file', 'files')} · ${e(bytesFmt(total))}`;
+  ev.filesCollapsed = ev.filesCollapsed || new Set();
   let list;
   if (rows == null) list = '<p class="acct-loading">Loading files…</p>';
   else if (!rows.length) list = `<p class="acct-empty">No files yet. The Studio puts its builds, images and exports here, and an imported site's pages and pictures land here too.</p>`;
-  else {
-    const groups = new Map();
-    for (const f of rows) { const c = fileCat(f.name); if (!groups.has(c.key)) groups.set(c.key, { cat: c, files: [] }); groups.get(c.key).files.push(f); }
-    list = FILE_ORDER.filter(k => groups.has(k)).map(k => {
-      const g = groups.get(k);
-      return `<div style="margin-top:16px;"><div style="display:flex;align-items:center;gap:8px;font-size:.82rem;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;">${ico(g.cat.icon, 15)} ${e(g.cat.label)} <span style="opacity:.75;font-weight:400;">· ${g.files.length}</span></div>${g.files.map(fileRow).join('')}</div>`;
-    }).join('') + (ev.filesTruncated ? `<p class="acct-card-note" style="margin-top:12px;">Showing the first ${rows.length}. The API lists the rest by prefix.</p>` : '');
-  }
+  else list = `<div style="margin-top:6px;">${renderFileTree(buildFileTree(rows), '', 0)}</div>` + (ev.filesTruncated ? `<p class="acct-card-note" style="margin-top:12px;">Showing the first ${rows.length}. The API lists the rest by prefix.</p>` : '');
   return cardHtml({
     key: 'files', icon: 'folder', title: 'Files', summary,
     body: `
@@ -2711,6 +2739,7 @@ export function bindEnvironmentActions(deps) {
     if (a === 'provision') return void provision(btn);
     if (a === 'open') return void openFile(btn.dataset.name || '', btn, 'open');
     if (a === 'download') return void openFile(btn.dataset.name || '', btn, 'download');
+    if (a === 'file-folder') { const p = btn.dataset.folder || ''; ev.filesCollapsed = ev.filesCollapsed || new Set(); ev.filesCollapsed.has(p) ? ev.filesCollapsed.delete(p) : ev.filesCollapsed.add(p); return void paintFiles(); }
     if (a === 'key-make') return void makeKey(btn);
     if (a === 'key-copy') return void copyKey(btn);
     if (a === 'key-revoke') return void revokeKey(btn.dataset.key || '', btn.dataset.label || 'this key', btn);
