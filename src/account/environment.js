@@ -766,32 +766,55 @@ function aiHtml() {
 
 /* ---------- files ---------- */
 
+// A stored blob path is a key, not a name a person recognises. These read it as a file: its kind (so like
+// things sit together), its real name (the last path segment), and where it sits (its folder, or the site it
+// was imported from). The grouping and the names are the only change; the open and download actions are the same.
+const FILE_CATS = [
+  { key: 'images', label: 'Images', icon: 'file', re: /\.(png|jpe?g|gif|webp|avif|svg|bmp|ico|heic|heif)$/i },
+  { key: 'docs', label: 'Documents', icon: 'file', re: /\.(pdf|docx?|xlsx?|xlsm|xlsb|csv|tsv|txt|md|pptx?|rtf|odt)$/i },
+  { key: 'web', label: 'Web and code', icon: 'code', re: /\.(html?|css|js|mjs|json|xml|webmanifest|map|wasm)$/i },
+];
+const FILE_ORDER = ['images', 'docs', 'web', 'other'];
+function fileCat(name) { for (const c of FILE_CATS) if (c.re.test(String(name || ''))) return c; return { key: 'other', label: 'Other files', icon: 'file' }; }
+function fileFriendly(name) {
+  const n = String(name || '').replace(/\/+$/, '');
+  const slash = n.lastIndexOf('/');
+  const base = slash >= 0 ? n.slice(slash + 1) : n;
+  const im = /^imports\/([^/]+)\/(.+)$/i.exec(n);
+  const where = im ? `imported from ${im[1]}` : (slash >= 0 ? n.slice(0, slash) : 'top level');
+  return { base, where };
+}
+
 function filesHtml() {
   const e = D.escapeHtml;
   const rows = ev.files;
   const total = (rows || []).reduce((s, f) => s + Number(f.size || 0), 0);
   const summary = rows == null ? 'loading' : !rows.length ? 'none yet' : `${countWord(rows.length, 'file', 'files')} · ${e(bytesFmt(total))}`;
-  const list = rows == null ? '<p class="acct-loading">Loading files…</p>'
-    : !rows.length ? `<p class="acct-empty">No files yet. The Studio puts its builds, images and exports here.</p>`
-    : `
-      <div class="adm-table-scroll">
-        <table class="adm-table adm-table--wrap ev-table">
-          <thead><tr><th>Name</th><th class="adm-num">Size</th><th>Modified</th><th></th></tr></thead>
-          <tbody>
-            ${rows.map(f => `
-              <tr>
-                <td class="cell-ellip ev-name-cell" data-th="Name" title="${e(f.name)}${f.contentType ? ` · ${e(f.contentType)}` : ''}">${e(f.name)}${f.committed ? '' : ' <span class="acct-tag is-pending" title="Uploaded but never confirmed. The nightly check settles it; uploading it again also does.">unconfirmed</span>'}</td>
-                <td class="adm-num cell-tight" data-th="Size">${e(bytesFmt(f.size))}</td>
-                <td class="cell-tight adm-muted" data-th="Modified">${e(D.fmtDate(f.lastModified))}</td>
-                <td class="cell-tight ev-actions-cell">
-                  ${viewTypeFor(f.name) ? iconBtn('open', 'external', 'Open in a new tab', `data-name="${e(f.name)}"`) : ''}
-                  ${iconBtn('download', 'download', 'Download', `data-name="${e(f.name)}"`)}
-                </td>
-              </tr>`).join('')}
-          </tbody>
-        </table>
-      </div>
-      ${ev.filesTruncated ? `<p class="acct-card-note">Showing the first ${rows.length}. The API lists the rest by prefix.</p>` : ''}`;
+  const fileRow = (f) => {
+    const fr = fileFriendly(f.name);
+    return `
+      <div class="hm-row">
+        <div class="hm-row-main">
+          <p class="hm-row-t" title="${e(f.name)}${f.contentType ? ` · ${e(f.contentType)}` : ''}">${e(fr.base)}${f.committed ? '' : ' <span class="acct-tag is-pending" title="Uploaded but never confirmed. The nightly check settles it; uploading it again also does.">unconfirmed</span>'}</p>
+          <p class="hm-row-s">${e(fr.where)} · ${e(bytesFmt(f.size))}${f.lastModified ? ` · ${e(D.fmtDate(f.lastModified))}` : ''}</p>
+        </div>
+        <div class="hm-row-act">
+          ${viewTypeFor(f.name) ? iconBtn('open', 'external', 'Open in a new tab', `data-name="${e(f.name)}"`) : ''}
+          ${iconBtn('download', 'download', 'Download', `data-name="${e(f.name)}"`)}
+        </div>
+      </div>`;
+  };
+  let list;
+  if (rows == null) list = '<p class="acct-loading">Loading files…</p>';
+  else if (!rows.length) list = `<p class="acct-empty">No files yet. The Studio puts its builds, images and exports here, and an imported site's pages and pictures land here too.</p>`;
+  else {
+    const groups = new Map();
+    for (const f of rows) { const c = fileCat(f.name); if (!groups.has(c.key)) groups.set(c.key, { cat: c, files: [] }); groups.get(c.key).files.push(f); }
+    list = FILE_ORDER.filter(k => groups.has(k)).map(k => {
+      const g = groups.get(k);
+      return `<div class="ev-file-group"><p class="acct-card-note ev-file-group-h">${ico(g.cat.icon)} ${e(g.cat.label)} <span class="adm-muted">· ${g.files.length}</span></p><div class="hm-list">${g.files.map(fileRow).join('')}</div></div>`;
+    }).join('') + (ev.filesTruncated ? `<p class="acct-card-note">Showing the first ${rows.length}. The API lists the rest by prefix.</p>` : '');
+  }
   return cardHtml({
     key: 'files', icon: 'folder', title: 'Files', summary,
     body: `

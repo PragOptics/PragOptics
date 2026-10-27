@@ -16,7 +16,7 @@ import { PRAG_API_BASE } from '../runtime/config.js';
 import { cardHtml as sharedCard, ico, leadBtn, initCards } from './cards.js';
 
 let D = null;
-const hm = { projects: null, sites: null, domains: null, connections: null, members: null, errs: {} };
+const hm = { projects: null, sites: null, domains: null, connections: null, members: null, data: null, files: null, errs: {} };
 
 const TEAM_KEY = 'pragoptics_team_id';
 function teamId() { try { return sessionStorage.getItem(TEAM_KEY) || ''; } catch { return ''; } }
@@ -57,47 +57,69 @@ async function load() {
       return null;
     }
   };
-  const [p, s, d, c, m] = await Promise.all([
+  const [p, s, d, c, m, dt, fl] = await Promise.all([
     read('projects', '/environment/projects'),
     read('sites', '/environment/publish'),
     read('domains', '/environment/domains'),
     read('connections', '/environment/connections'),
-    read('members', '/tenant/members')
+    read('members', '/tenant/members'),
+    read('data', '/environment/data'),
+    read('files', '/environment/files?limit=200')
   ]);
   hm.projects = p?.projects || null; hm.sites = s?.sites || null; hm.domains = d?.domains || null;
   hm.connections = c?.connections || null; hm.members = m?.members || null;
+  hm.data = dt?.tables || null; hm.files = fl?.items || null;
   paint();
 }
 
 function paint() {
   const body = document.getElementById('hmBody');
   if (!body) return;
-  body.innerHTML = `<div class="ev-cards">${projectsCard()}${sitesCard()}${domainsCard()}${connectionsCard()}${teamCard()}</div>`;
+  body.innerHTML = `<div class="ev-cards">${projectsCard()}${dataCard()}${filesCard()}${sitesCard()}${domainsCard()}${connectionsCard()}${teamCard()}</div>`;
 }
 
 /* ---------- the cards ---------- */
 
 function projectsCard() {
   const e = D.escapeHtml, list = hm.projects || [];
-  const rows = list.map(p => `
+  // JOIN a project to its published site (the site row carries the id of the project it came from,
+  // auth/tenantPublish.js view), so each project reads as one thing: what it is, and whether it is
+  // live and where. This is the organized view: a builder sees a project and its state together,
+  // not a project list and a separate site list they have to match up by eye.
+  const siteOf = {};
+  for (const s of (hm.sites || [])) { if (s && s.project && !siteOf[s.project]) siteOf[s.project] = s; }
+  const liveCount = list.filter(p => siteOf[p.id]).length;
+  const rows = list.map(p => {
+    const site = siteOf[p.id];
+    const live = site
+      ? `<p class="hm-row-s">${ico('globe', 13)} Live${site.address ? ` at <a href="${e(site.address)}" target="_blank" rel="noopener">${e(site.address)}</a>` : ''}</p>`
+      : `<p class="hm-row-s">Not published</p>`;
+    return `
     <div class="hm-row">
       <div class="hm-row-main">
         <p class="hm-row-t">${e(p.name || p.id)}</p>
         <p class="hm-row-s">${e([p.kind, p.version != null ? `v${p.version}` : '', p.size != null ? sizeWord(p.size) : '', p.updatedAt ? `updated ${when(p.updatedAt)}` : ''].filter(Boolean).join(' · '))}</p>
+        ${live}
       </div>
       <div class="hm-row-act">${leadBtn({ home: 'open-project' }, 'external', 'Open in the studio', `data-id="${e(p.id)}"`, 'btn-primary')}</div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
   const body = `
-    <p class="acct-card-note">What the studio can open and work on in this environment. A project has one home; this is it.</p>
+    <p class="acct-card-note">What the studio can open and work on in this environment, and whether each is published. A project has one home; this is it.</p>
     ${errLine('projects')}
     ${hm.projects === null && !hm.errs.projects ? '' : (list.length ? `<div class="hm-list">${rows}</div>` : '<p class="acct-empty">No projects yet. Open the studio and the first one you save lands here.</p>')}
     <div class="acct-actions-row act-row">${leadBtn({ home: 'open-studio' }, 'external', 'Open the studio', '', list.length ? '' : 'btn-primary')}</div>`;
-  return card({ key: 'projects', icon: 'box', title: 'Projects', summary: hm.projects ? count(list.length, 'project', 'projects') : (hm.errs.projects ? 'not read' : ''), body });
+  const summary = hm.projects ? `${count(list.length, 'project', 'projects')}${liveCount ? ` · ${liveCount} live` : ''}` : (hm.errs.projects ? 'not read' : '');
+  return card({ key: 'projects', icon: 'box', title: 'Projects', summary, body });
 }
 
 function sitesCard() {
   const e = D.escapeHtml, list = hm.sites || [];
-  const rows = list.map(s => `
+  const projIds = new Set((hm.projects || []).map(p => p.id));
+  // a site from a current project now shows on that project above; here, only the ones that do NOT
+  // (an imported site, the root site, a project since deleted), so nothing is hidden and nothing doubles
+  const orphans = list.filter(s => !s.project || !projIds.has(s.project));
+  const rows = orphans.map(s => `
     <div class="hm-row">
       <div class="hm-row-main">
         <p class="hm-row-t">${e(s.slug || 'site')}</p>
@@ -105,11 +127,43 @@ function sitesCard() {
       </div>
     </div>`).join('');
   const body = `
-    <p class="acct-card-note">What this environment has published, at its own address.</p>
+    <p class="acct-card-note">What this environment has published, at its own address. A site from one of your projects shows on that project above.</p>
     ${errLine('sites')}
-    ${hm.sites === null && !hm.errs.sites ? '' : (list.length ? `<div class="hm-list">${rows}</div>` : '<p class="acct-empty">Nothing published yet. Publish from the studio and it appears here.</p>')}
+    ${hm.sites === null && !hm.errs.sites
+      ? ''
+      : (orphans.length
+        ? `<div class="hm-list">${rows}</div>`
+        : (list.length
+          ? `<p class="acct-empty">All ${count(list.length, 'published site', 'published sites')} ${list.length === 1 ? 'is' : 'are'} shown on ${list.length === 1 ? 'its project' : 'their projects'} above.</p>`
+          : '<p class="acct-empty">Nothing published yet. Publish from the studio and it appears here.</p>'))}
     <div class="acct-actions-row act-row">${goBtn('environment', 'Open Environment', 'files')}</div>`;
   return card({ key: 'sites', icon: 'globe', title: 'Published sites', summary: hm.sites ? count(list.length, 'site', 'sites') : (hm.errs.sites ? 'not read' : ''), body });
+}
+
+function dataCard() {
+  const e = D.escapeHtml, list = hm.data || [];
+  const nameOf = t => (typeof t === 'string' ? t : (t && (t.name || t.table)) || '');
+  const rows = list.map(t => `
+    <div class="hm-row"><div class="hm-row-main"><p class="hm-row-t">${e(nameOf(t))}</p>${t && t.count != null ? `<p class="hm-row-s">${e(count(t.count, 'row', 'rows'))}</p>` : ''}</div></div>`).join('');
+  const body = `
+    <p class="acct-card-note">The tables of data this environment holds. The Studio, your site and your API keys read and write them.</p>
+    ${errLine('data')}
+    ${hm.data === null && !hm.errs.data ? '' : (list.length ? `<div class="hm-list">${rows}</div>` : '<p class="acct-empty">No tables yet. A table you build in the Studio, or a connected supplier’s products, lands here.</p>')}
+    <div class="acct-actions-row act-row">${goBtn('environment', 'Open Data', 'data')}</div>`;
+  return card({ key: 'data', icon: 'database', title: 'Data', summary: hm.data ? count(list.length, 'table', 'tables') : (hm.errs.data ? 'not read' : ''), body });
+}
+
+function filesCard() {
+  const e = D.escapeHtml, list = hm.files || [];
+  const baseName = n => { const s = String(n || '').replace(/\/+$/, ''); const i = s.lastIndexOf('/'); return i >= 0 ? s.slice(i + 1) : s; };
+  const rows = list.slice(0, 8).map(f => `
+    <div class="hm-row"><div class="hm-row-main"><p class="hm-row-t" title="${e(f.name || '')}">${e(baseName(f.name))}</p><p class="hm-row-s">${f.size != null ? e(sizeWord(f.size)) : ''}${f.lastModified ? ` · ${e(when(f.lastModified))}` : ''}</p></div></div>`).join('');
+  const body = `
+    <p class="acct-card-note">The files this environment holds: what your projects read, and what you have uploaded.</p>
+    ${errLine('files')}
+    ${hm.files === null && !hm.errs.files ? '' : (list.length ? `<div class="hm-list">${rows}${list.length > 8 ? `<p class="acct-card-note">and ${list.length - 8} more</p>` : ''}</div>` : '<p class="acct-empty">No files yet.</p>')}
+    <div class="acct-actions-row act-row">${goBtn('environment', 'Open Files', 'files')}</div>`;
+  return card({ key: 'files', icon: 'folder', title: 'Files', summary: hm.files ? count(list.length, 'file', 'files') : (hm.errs.files ? 'not read' : ''), body });
 }
 
 function domainsCard() {
