@@ -791,14 +791,15 @@ function filesHtml() {
   const total = (rows || []).reduce((s, f) => s + Number(f.size || 0), 0);
   const summary = rows == null ? 'loading' : !rows.length ? 'none yet' : `${countWord(rows.length, 'file', 'files')} · ${e(bytesFmt(total))}`;
   const fileRow = (f) => {
-    const fr = fileFriendly(f.name);
+    const fr = fileFriendly(f.name), cat = fileCat(f.name);
     return `
-      <div class="hm-row">
-        <div class="hm-row-main">
-          <p class="hm-row-t" title="${e(f.name)}${f.contentType ? ` · ${e(f.contentType)}` : ''}">${e(fr.base)}${f.committed ? '' : ' <span class="acct-tag is-pending" title="Uploaded but never confirmed. The nightly check settles it; uploading it again also does.">unconfirmed</span>'}</p>
-          <p class="hm-row-s">${e(fr.where)} · ${e(bytesFmt(f.size))}${f.lastModified ? ` · ${e(D.fmtDate(f.lastModified))}` : ''}</p>
+      <div style="display:flex;align-items:center;gap:12px;padding:9px 2px;border-top:1px solid var(--border);">
+        <span style="color:var(--muted);display:flex;flex:none;" aria-hidden="true">${ico(cat.icon, 20)}</span>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:.9rem;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${e(f.name)}${f.contentType ? ` · ${e(f.contentType)}` : ''}">${e(fr.base)}${f.committed ? '' : ' <span class="acct-tag is-pending" title="Uploaded but never confirmed. The nightly check settles it; uploading it again also does.">unconfirmed</span>'}</div>
+          <div style="font-size:.8rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${e(fr.where)} · ${e(bytesFmt(f.size))}${f.lastModified ? ` · ${e(D.fmtDate(f.lastModified))}` : ''}</div>
         </div>
-        <div class="hm-row-act">
+        <div class="ev-actions-cell" style="display:flex;gap:4px;flex:none;">
           ${viewTypeFor(f.name) ? iconBtn('open', 'external', 'Open in a new tab', `data-name="${e(f.name)}"`) : ''}
           ${iconBtn('download', 'download', 'Download', `data-name="${e(f.name)}"`)}
         </div>
@@ -812,8 +813,8 @@ function filesHtml() {
     for (const f of rows) { const c = fileCat(f.name); if (!groups.has(c.key)) groups.set(c.key, { cat: c, files: [] }); groups.get(c.key).files.push(f); }
     list = FILE_ORDER.filter(k => groups.has(k)).map(k => {
       const g = groups.get(k);
-      return `<div class="ev-file-group"><p class="acct-card-note ev-file-group-h">${ico(g.cat.icon)} ${e(g.cat.label)} <span class="adm-muted">· ${g.files.length}</span></p><div class="hm-list">${g.files.map(fileRow).join('')}</div></div>`;
-    }).join('') + (ev.filesTruncated ? `<p class="acct-card-note">Showing the first ${rows.length}. The API lists the rest by prefix.</p>` : '');
+      return `<div style="margin-top:16px;"><div style="display:flex;align-items:center;gap:8px;font-size:.82rem;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;">${ico(g.cat.icon, 15)} ${e(g.cat.label)} <span style="opacity:.75;font-weight:400;">· ${g.files.length}</span></div>${g.files.map(fileRow).join('')}</div>`;
+    }).join('') + (ev.filesTruncated ? `<p class="acct-card-note" style="margin-top:12px;">Showing the first ${rows.length}. The API lists the rest by prefix.</p>` : '');
   }
   return cardHtml({
     key: 'files', icon: 'folder', title: 'Files', summary,
