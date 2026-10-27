@@ -38,11 +38,11 @@ import { agreementHtml, licensesHtml, orderAction, orderChange } from './licensi
 import { catalogHtml, catalogAction, catalogInput } from './licensingCatalog.js';
 import { billingHtml, billingAction } from './licensingBilling.js';
 import { pax8Html, pax8Action } from './licensingPax8.js';
-import { tenantHtml, tenantAction, resetTenant, reopenTenant, loadTenantStatus, myMailboxHtml, connectHtml } from './licensingTenant.js';
+import { tenantHtml, tenantAction, resetTenant, reopenTenant, loadTenantStatus, myMailboxHtml, connectHtml, tenantConnectedHtml } from './licensingTenant.js';
 import { requestsHtml, requestsAction, loadRequests, pendingMailbox, ask } from './licensingRequests.js';
 import { exchangeHtml, exchangeAction, loadExchange, resetExchange } from './licensingExchange.js';
 import { owedHtml, moneyAction } from './licensingMoney.js';
-import { phase1Html, phase2Card, wizardAction, wizardStage, tenantConnected, phaseRail, phase2Lead, phase3Lead } from './licensingWizard.js';
+import { phase1Html, phase2Card, wizardAction, wizardStage, tenantConnected, phaseRail, phase2Lead, phase3Lead, bringLead } from './licensingWizard.js';
 import { markSetupStale } from './setup.js';
 
 const LIVE_INCLUDED = ['PAID', 'ORDERED', 'ACTIVE'];
@@ -82,7 +82,9 @@ async function load() {
     lc.view = v; lc.err.load = ''; lc.loadMsg = '';
     // L4: the requests are read whenever the team has a licensing account, so a paused or ended owner can decline one;
     // Part 2: the tenant's connection and the person's own mailbox, once the tenant is named (licensingTenant.js)
-    if (v?.account) await Promise.all([loadRequests(), loadTenantStatus(v)]); else { lc.reqs = null; lc.tn = null; }
+    // the tenant read waits only on the tenant being named (a brought tenant has no licensing account, 2026-10-26)
+    if (v?.account) await loadRequests(); else lc.reqs = null;
+    await loadTenantStatus(v);
     // the shared mailboxes card reads once the tenant is connected (licensingExchange.js); a lane without the route leaves it out
     await loadExchange();
     // keep reading while Microsoft is still making the tenant (about ten minutes), so Phase 2 flips from the wait to the
@@ -129,13 +131,16 @@ function paint() {
   let cards;
   if (stage === 'phase1') cards = `${phaseRail('phase1')}${phase1Html(lc.view)}`;
   else if (stage === 'signin') cards = `${phaseRail('signin')}${phase2Lead()}${phase2Card(lc.view)}`;
-  // Phase 3: connected. The rail reaches Ready and the owner sees their own account and their team's mailboxes, not the
-  // six setup cards again (Cameron, 2026-10-03: "the ui is back to the full old style menu... we consolidated to 3").
-  else if (tenantConnected()) cards = `${phaseRail('manage')}${phase3Lead(lc.view)}${myMailboxHtml()}${mailboxesHtml()}${exchangeHtml()}`;
+  // a tenant the business brought, named and not yet connected (2026-10-26): the connect card alone, the one human step
+  else if (stage === 'bring') cards = `${phaseRail('signin')}${bringLead(lc.view)}${connectHtml()}`;
+  // Phase 3: connected. The rail reaches Ready and the owner sees the tenant's own card (its domains, their mail, the
+  // seats), their own account and their team's mailboxes, not the six setup cards again (Cameron, 2026-10-03: "the ui is
+  // back to the full old style menu... we consolidated to 3").
+  else if (tenantConnected()) cards = `${phaseRail('manage')}${phase3Lead(lc.view)}${tenantConnectedHtml()}${myMailboxHtml()}${mailboxesHtml()}${exchangeHtml()}${licensesHtml()}${catalogHtml()}`;
   // not connected and not eligible: the old account card carries the plan upsell
   // the connect card follows the tenant card as soon as the tenant is named and not yet connected: the one human step
   // (sign in at Microsoft, approve PragOptics) is open to whoever can connect (the owner, the agent, a granted role)
-  else cards = `${accountHtml()}${tenantHtml()}${tenantNamed(lc.view.microsoft || {}) && !tenantConnected() ? connectHtml() : ''}${agreementHtml()}${mailboxesHtml()}${myMailboxHtml()}${exchangeHtml()}${licensesHtml()}${catalogHtml()}`;
+  else cards = `${accountHtml()}${tenantHtml()}${tenantNamed(lc.view.microsoft || {}) && !tenantConnected() ? connectHtml() : ''}${tenantConnectedHtml()}${agreementHtml()}${mailboxesHtml()}${myMailboxHtml()}${exchangeHtml()}${licensesHtml()}${catalogHtml()}`;
   // THE DOMAIN GATE ON THE LICENSING PAGE (2026-10-09, Cameron): until a domain the owner proved is verified, the page is
   // visible and readable but its fields and buttons are locked, with a clear reason and a button back to the domain step.
   // Gone the moment a domain verifies. This gates the screen; it does not change the licensing flow.

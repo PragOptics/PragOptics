@@ -119,7 +119,9 @@ export function resetTenant() {
  */
 export async function loadTenantStatus(v) {
   const m = v?.microsoft || {};
-  if (!v?.account || !(m.tenantId || m.domainPrefix)) { lc.tn = null; return; }
+  // a tenant the business brought is named and connected with no licensing account (2026-10-26), so the read waits only
+  // on the tenant being named
+  if (!(m.tenantId || m.domainPrefix)) { lc.tn = null; return; }
   try { lc.tn = await st.D.apiFetch(url(`${LIC_URL}/tenant`)); lc.tnErr = ''; }
   catch (ex) {
     lc.tn = null;
@@ -151,8 +153,28 @@ export function tenantHtml() {
     ? `<p class="acct-card-note">${e(v.readOnlyWhy || 'The tenant cannot be named right now.')}</p>`
     : '<p class="acct-card-note">The owner names your Microsoft tenant here: a new one Microsoft makes for your business, or one your business already has.</p>';
   else inner = factsHtml(m, p);
+  // connected, the tenant's own card (tenantConnectedHtml) carries the note and the error line, so they paint once
+  const connectedNow = !!tn()?.connected;
   return cardHtml({
-    key: 'tenant', icon: 'building', title: 'Your Microsoft tenant', summary: stepWord('tenant', e(summary)), open: !gate,
+    key: 'tenant', icon: 'building', title: 'Your Microsoft tenant', summary: stepWord('tenant', e(summary)), open: !gate && !connectedNow,
+    body: `${connectedNow ? '' : `${noteHtml('tenant')}${errHtml('tenant')}`}${inner}`
+  });
+}
+
+/**
+ * THE CONNECTED TENANT'S CARD (2026-10-26). connectionHtml's connected branch (the organization, its licenses in use,
+ * Bring every seat up to date, and Your domains: add to tenant, Microsoft's TXT, Check again, the mail switch) was reached
+ * only through connectHtml, which returns nothing once the tenant is connected, so after the 2026-10-02 split none of it
+ * could be opened from any view. Painted in the management view and the manage cards, once the tenant is connected.
+ */
+export function tenantConnectedHtml() {
+  if (!showsLicensing()) return '';
+  const v = lc.view, m = v?.microsoft || {}, p = perms(), t = tn();
+  if (!t?.connected) return '';
+  const inner = connectionHtml(m, p);
+  if (!inner) return '';
+  return cardHtml({
+    key: 'tenant-connected', icon: 'building', title: 'Your Microsoft tenant', summary: st.D.escapeHtml(t.orgName || t.tenantId || 'connected'), open: true,
     body: `${noteHtml('tenant')}${errHtml('tenant')}${inner}`
   });
 }

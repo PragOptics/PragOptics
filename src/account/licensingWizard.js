@@ -36,16 +36,35 @@ export function phase1Done(v) {
 }
 /** The tenant is connected (the consent is in): Phase 3, the management view. */
 export function tenantConnected() { return !!lc.tn?.tenant?.connected; }
+/**
+ * A TENANT THE BUSINESS BROUGHT (2026-10-26, Cameron connecting the Bridges Industrial tenant on live): named by its ID,
+ * not made by the platform. It needs no licensing account, no agreement and no mail order before it is connected (the
+ * server asks for none of them to name or connect it), so the one-button wizard, which runs exactly those, is the wrong
+ * page for it; until today the owner had no way off that page and could not bring a tenant at all.
+ */
+export function broughtTenant(v) { const m = v?.microsoft || {}; return !!m.tenantId && !m.domainPrefix && !m.createdByPlatform; }
 
 /**
  * Which phase to paint. 'phase1' until steps 1 to 4 are done; then 'signin' (the sign-in and connect cards) until the
- * tenant is connected; then 'manage' (the full management view). An ineligible or read-only team never sees the wizard.
+ * tenant is connected; then 'manage' (the full management view). A brought tenant goes straight from its name to
+ * 'bring' (connect it) and then 'manage'. An ineligible or read-only team never sees the wizard.
  */
 export function wizardStage(v) {
   if (!v) return 'phase1';
   if (tenantConnected()) return 'manage';
+  if (broughtTenant(v)) return 'bring';
   if (phase1Done(v)) return 'signin';
   return 'phase1';
+}
+
+/** The lead above the connect card for a brought tenant: one sign-in, and the tenant is connected. */
+export function bringLead(v) {
+  const e = st.D.escapeHtml, id = String(v?.microsoft?.tenantId || '');
+  return `
+    <div class="lic-wiz-lead">
+      <p class="lic-wiz-lead-head">Connect your Microsoft tenant</p>
+      <p class="acct-card-note">Your tenant <span class="ev-code">${e(id)}</span> is named. Sign in at Microsoft once as one of its administrators and approve PragOptics; the moment you do, it is connected, and your domains, mail and mailboxes are managed from here.</p>
+    </div>`;
 }
 
 /* ---------- the three-phase spine: Set up, Approve, Ready ---------- */
@@ -77,7 +96,11 @@ export function phase3Lead(v) {
   // administrator account are still being made, by this read on the server or the next; the page keeps reading until ready
   const mine = lc.tn?.mine;
   const making = !!(mine && mine.seat && mine.state !== 'ready' && mine.state !== 'failed');
-  const note = making
+  // a tenant the business brought has no platform-made administrator account and no mailbox order yet: the lead says what
+  // the tenant card below now does for it, instead of promising a first password that was never made
+  const note = broughtTenant(v)
+    ? 'Your tenant is connected. On the tenant card below, add your domain to it and switch its mail when you are ready; shared mailboxes on your domain are made on the Shared mailboxes card; licenses and mailboxes for your people come from the cards after it.'
+    : making
     ? 'Your tenant is connected. Your mailbox and your own administrator account are being made now, a minute or two; this page updates itself when they are ready.'
     : 'Your tenant is connected. Your own administrator account and its first password are on your My mailbox card below, so you run your tenant with that, not the login from the setup email. Add people on the Team tab and give each one a mailbox here.';
   return `
@@ -147,6 +170,20 @@ export function phase1Html(v) {
       </label>
     </div>`;
   const progress = lc.busy === 'wizard' && lc.wizStep ? `<p class="acct-card-note" role="status" aria-live="polite">${e(lc.wizStep)}</p>` : '';
+  // the other way in: a tenant the business already has, by its ID; nothing above is needed for it (broughtTenant)
+  const tidErr = lc.err['wizard-tid'] ? `<p class="lic-field-err" id="licWizTidErr" role="alert">${e(lc.err['wizard-tid'])}</p>` : '';
+  const bring = done ? '' : `
+    <div class="lic-wiz-bring" role="group" aria-labelledby="licWizBringHead">
+      <p class="lic-wiz-lead-head" id="licWizBringHead">Already have a Microsoft tenant?</p>
+      <p class="acct-card-note">Give its tenant ID and connect it instead. No licensing account, agreement or order is needed for that; licenses you add later join it.</p>
+      <div class="lic-wiz-field">
+        <label class="acct-label" for="licWizTid">Tenant ID</label>
+        <input class="acct-input" id="licWizTid" type="text" data-keep value="${e(kept('licWizTid', ''))}" placeholder="00000000-0000-0000-0000-000000000000" spellcheck="false" autocapitalize="off" autocomplete="off" aria-describedby="licWizTidHint${tidErr ? ' licWizTidErr' : ''}">
+        ${tidErr}
+        <p class="lic-hint" id="licWizTidHint">Microsoft Entra admin center, Overview: the Tenant ID. It looks like 6eda43f3-fbf0-4e2b-9978-b543d9dd31e3.</p>
+      </div>
+      <div class="acct-actions-row">${reqLead('wiz-bring', { lic: 'wiz-bring' }, 'building', 'Use this tenant', 'Saving…')}</div>
+    </div>`;
   return cardHtml({
     key: 'wizard', icon: 'rocket', title: 'Set up Microsoft 365', summary: e(`${done} of 4 ready`), open: true,
     body: `
@@ -157,8 +194,27 @@ export function phase1Html(v) {
       ${progress}
       ${v.lane?.test ? '<p class="acct-card-note ev-note is-bad">Test lane: this environment is not armed for real orders, so the mail order below is a test and no tenant will be made. The operator arms real orders for it on the Tenants desk first (2026-10-05: the final walk\'s first account ordered before it was armed).</p>' : ''}
       <div class="acct-actions-row">${leadBtn({ lic: 'wiz-go' }, 'rocket', done ? 'Finish setup' : 'Set up Microsoft 365', lc.busy === 'wizard' ? 'disabled' : '', 'btn-primary btn-lg')}</div>
-      <p class="lic-hint">After this, Microsoft sends you one administrator sign-in to approve, and then everything else happens on its own.</p>`
+      <p class="lic-hint">After this, Microsoft sends you one administrator sign-in to approve, and then everything else happens on its own.</p>
+      ${bring}`
   });
+}
+
+/** A tenant the business already has, named by its ID (POST /microsoft { tenantId }); the page then paints the connect step. */
+async function bringTenant() {
+  const typed = String(kept('licWizTid', document.getElementById('licWizTid')?.value || '')).trim();
+  lc.err.wizard = ''; lc.err['wizard-tid'] = ''; setNote('wizard', '');
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(typed)) { lc.err['wizard-tid'] = 'A Microsoft tenant ID looks like 6eda43f3-fbf0-4e2b-9978-b543d9dd31e3.'; st.paint(); document.getElementById('licWizTid')?.focus(); return; }
+  await send('wiz-bring', 'Saving…', async () => {
+    try { await call(`${LIC_URL}/microsoft`, 'POST', { tenantId: typed }); }
+    catch (ex) { if (ex?.data?.code === 'TENANT_ID_INVALID') { lc.err['wizard-tid'] = ex.data.error; return; } throw ex; }
+    forget('licWizTid');
+    setNote('wizard', 'Saved. Next, connect it: sign in at Microsoft as its administrator and approve PragOptics once.');
+    await st.load();
+  }, {
+    errKey: 'wizard', fallback: 'The tenant could not be saved.',
+    codes: { TENANT_LOCKED: (ex) => ex?.data?.error || 'The tenant is fixed once mail or a license is ordered.', DOMAIN_REQUIRED: 'Connect and verify a domain you own first, on the Environment tab.', LIVE_LANE_ONLY: 'Licensing is managed on your live environment, not the sandbox.' }
+  });
+  if (lc.err['wizard-tid']) { st.paint(); document.getElementById('licWizTid')?.focus(); }
 }
 
 /** Read the form once (trimmed), for the checks and the run. */
@@ -338,6 +394,7 @@ function runSignInApprove() {
 /** Handles a data-lic-action this module owns; false when it is not one of them. */
 export function wizardAction(a, btn) {
   if (a === 'wiz-go') { runWizard(); return true; }
+  if (a === 'wiz-bring') { bringTenant(); return true; }
   if (a === 'wiz-connect') { runSignInApprove(); return true; }
   return false;
 }
