@@ -84,40 +84,62 @@ function paint() {
 
 function projectsCard() {
   const e = D.escapeHtml, list = hm.projects || [];
-  // JOIN a project to its published site (the site row carries the id of the project it came from,
-  // auth/tenantPublish.js view), so each project reads as one thing: what it is, and whether it is
-  // live and where. This is the organized view: a builder sees a project and its state together,
-  // not a project list and a separate site list they have to match up by eye.
+  // Join each project to its published site (site.project === project.id) and to a serving domain,
+  // so a project reads as what is actually done with it: in the Studio, shared at an address, or live
+  // on a domain.
   const siteOf = {};
   for (const s of (hm.sites || [])) { if (s && s.project && !siteOf[s.project]) siteOf[s.project] = s; }
-  // A published site sits at its own share address. If a verified domain is SERVING that site, it is
-  // also live (hosted) at that domain. Map slug -> live host so each project reads as what is actually
-  // done with it: in the Studio, shared at an address, or live on a domain.
   const liveHostOf = {};
   for (const d of (hm.domains || [])) { const sv = d && d.serve; if (sv && sv.status === 'SERVING' && sv.site) liveHostOf[sv.site] = d.host; }
   const sharedCount = list.filter(p => siteOf[p.id]).length;
   const liveCount = list.filter(p => siteOf[p.id] && liveHostOf[siteOf[p.id].slug]).length;
-  const rows = list.map(p => {
-    const site = siteOf[p.id];
-    const liveHost = site ? liveHostOf[site.slug] : '';
-    let state;
-    if (site && liveHost) state = `<p class="hm-row-s">${ico('globe', 13)} Live at <a href="https://${e(liveHost)}" target="_blank" rel="noopener">${e(liveHost)}</a>${site.address ? ` <span class="adm-muted">· also shared at <a href="${e(site.address)}" target="_blank" rel="noopener">${e(hostOnly(site.address))}</a></span>` : ''}</p>`;
-    else if (site) state = `<p class="hm-row-s">${ico('globe', 13)} Shared at <a href="${e(site.address)}" target="_blank" rel="noopener">${e(hostOnly(site.address))}</a> <span class="adm-muted">· not on a domain yet</span></p>`;
-    else state = `<p class="hm-row-s adm-muted">In the Studio, not shared yet</p>`;
+  // Same-named projects pile up from re-imports and saves. Within a name the PRIMARY is the published
+  // one, else the newest by version then date; the rest read as "older copy" so the real one is
+  // obvious and the leftovers can be opened or removed, not puzzled over.
+  const nameKey = p => String(p.name || p.id).trim().toLowerCase();
+  const byName = {};
+  for (const p of list) { (byName[nameKey(p)] = byName[nameKey(p)] || []).push(p); }
+  const primaryId = {};
+  for (const n in byName) {
+    primaryId[n] = byName[n].slice().sort((a, b) => {
+      const pa = siteOf[a.id] ? 1 : 0, pb = siteOf[b.id] ? 1 : 0; if (pa !== pb) return pb - pa;
+      if ((b.version || 0) !== (a.version || 0)) return (b.version || 0) - (a.version || 0);
+      return String(b.updatedAt || '').localeCompare(String(a.updatedAt || ''));
+    })[0].id;
+  }
+  const stateOf = (p) => {
+    const site = siteOf[p.id], host = site ? liveHostOf[site.slug] : '';
+    if (site && host) return `${ico('globe', 13)} Live at <a href="https://${e(host)}" target="_blank" rel="noopener">${e(host)}</a>${site.address ? ` <span class="adm-muted">· also shared at <a href="${e(site.address)}" target="_blank" rel="noopener">${e(hostOnly(site.address))}</a></span>` : ''}`;
+    if (site) return `${ico('globe', 13)} Shared at <a href="${e(site.address)}" target="_blank" rel="noopener">${e(hostOnly(site.address))}</a> <span class="adm-muted">· not on a domain yet</span>`;
+    return `<span class="adm-muted">In the Studio, not shared yet</span>`;
+  };
+  const rowOf = (p) => {
+    const older = primaryId[nameKey(p)] !== p.id;
+    const meta = [kindWord(p.kind), p.version != null ? `v${p.version}` : '', p.size != null ? sizeWord(p.size) : '', p.updatedAt ? `updated ${when(p.updatedAt)}` : ''].filter(Boolean).join(' · ');
     return `
-    <div class="hm-row">
+    <div class="hm-row${older ? ' hm-row-sub' : ''}">
       <div class="hm-row-main">
-        <p class="hm-row-t">${e(p.name || p.id)}</p>
-        <p class="hm-row-s">${e([kindWord(p.kind), p.version != null ? `v${p.version}` : '', p.size != null ? sizeWord(p.size) : '', p.updatedAt ? `updated ${when(p.updatedAt)}` : ''].filter(Boolean).join(' · '))}</p>
-        ${state}
+        <p class="hm-row-t">${e(p.name || p.id)}${older ? ' <span class="acct-tag">older copy</span>' : ''}</p>
+        <p class="hm-row-s">${e(meta)}</p>
+        <p class="hm-row-s">${stateOf(p)}</p>
       </div>
-      <div class="hm-row-act">${leadBtn({ home: 'open-project' }, 'external', 'Open in the studio', `data-id="${e(p.id)}"`, 'btn-primary')}</div>
+      <div class="hm-row-act">${leadBtn({ home: 'open-project' }, 'external', 'Open in the studio', `data-id="${e(p.id)}"`, older ? '' : 'btn-primary')}</div>
     </div>`;
-  }).join('');
+  };
+  // Primary first within a group, older copies after, newest first otherwise.
+  const order = (a, b) => {
+    const oa = primaryId[nameKey(a)] === a.id ? 0 : 1, ob = primaryId[nameKey(b)] === b.id ? 0 : 1;
+    if (oa !== ob) return oa - ob;
+    return String(b.updatedAt || '').localeCompare(String(a.updatedAt || ''));
+  };
+  const isSite = p => String(p.kind || '').toLowerCase() === 'website';
+  const sites = list.filter(isSite).sort(order);
+  const apps = list.filter(p => !isSite(p)).sort(order);
+  const group = (label, arr) => arr.length ? `<p class="hm-group">${e(label)}<span class="adm-muted"> ${arr.length}</span></p><div class="hm-list">${arr.map(rowOf).join('')}</div>` : '';
   const body = `
-    <p class="acct-card-note">What the studio can open and work on in this environment, and how each is shared or hosted. A project has one home; this is it.</p>
+    <p class="acct-card-note">What the studio can open and work on here, grouped by what it is, and how each is shared or hosted. A project has one home; this is it.</p>
     ${errLine('projects')}
-    ${hm.projects === null && !hm.errs.projects ? '' : (list.length ? `<div class="hm-list">${rows}</div>` : '<p class="acct-empty">No projects yet. Open the studio and the first one you save lands here.</p>')}
+    ${hm.projects === null && !hm.errs.projects ? '' : (list.length ? `${group('Websites', sites)}${group('Forms and apps', apps)}` : '<p class="acct-empty">No projects yet. Open the studio and the first one you save lands here.</p>')}
     <p class="acct-card-note hm-start">Start a website: open the Studio to build from scratch, start from a template, or import a site you already have. Publish it, then put it live on your domain from Domains.</p>
     <div class="acct-actions-row act-row">${leadBtn({ home: 'open-studio' }, 'external', 'Open the studio', '', list.length ? '' : 'btn-primary')}</div>`;
   const summary = hm.projects ? `${count(list.length, 'project', 'projects')}${sharedCount ? ` · ${sharedCount} shared` : ''}${liveCount ? ` · ${liveCount} live` : ''}` : (hm.errs.projects ? 'not read' : '');
@@ -131,14 +153,15 @@ function sitesCard() {
   // (an imported site, the root site, a project since deleted), so nothing is hidden and nothing doubles
   const orphans = list.filter(s => !s.project || !projIds.has(s.project));
   const rows = orphans.map(s => `
-    <div class="hm-row">
+    <div class="hm-row hm-row-sub">
       <div class="hm-row-main">
-        <p class="hm-row-t">${e(s.slug || 'site')}</p>
-        <p class="hm-row-s">${s.address ? `<a href="${e(s.address)}" target="_blank" rel="noopener">${e(s.address)}</a>` : ''}${s.publishedAt ? ` · published ${e(when(s.publishedAt))}` : ''}${s.files != null ? ` · ${e(count(s.files, 'file', 'files'))}` : ''}</p>
+        <p class="hm-row-t">${e(s.slug || 'site')} <span class="acct-tag">not from a project</span></p>
+        <p class="hm-row-s">${s.address ? `<a href="${e(s.address)}" target="_blank" rel="noopener">${e(hostOnly(s.address))}</a>` : ''}${s.publishedAt ? ` · published ${e(when(s.publishedAt))}` : ''}${s.files != null ? ` · ${e(count(s.files, 'file', 'files'))}` : ''}</p>
+        <p class="hm-row-s adm-muted">A leftover publish not tied to any project. Remove it from the Studio's Publish dialog.</p>
       </div>
     </div>`).join('');
   const body = `
-    <p class="acct-card-note">What this environment has published, at its own address. A site from one of your projects shows on that project above.</p>
+    <p class="acct-card-note">What this environment has published, at its own address. A site from one of your projects shows on that project above; anything here is published but has no project.</p>
     ${errLine('sites')}
     ${hm.sites === null && !hm.errs.sites
       ? ''

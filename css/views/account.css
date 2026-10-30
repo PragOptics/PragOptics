@@ -703,3 +703,6 @@ select.acct-input, select.adm-select, select.adm-input { background-color: var(-
 .hm-row-s { margin: 2px 0 0; color: var(--muted); font-size: .85rem; overflow-wrap: anywhere; }
 .hm-row-act { flex: 0 0 auto; }
 @media (max-width: 520px) { .hm-row { flex-wrap: wrap; } .hm-row-act { width: 100%; } .hm-row-act .btn { width: 100%; justify-content: center; } }
+/* Home: grouped project sections, and de-emphasised older copies / orphan publishes (2026-10-30). */
+.hm-group { margin: 16px 0 4px; font-weight: 600; font-size: .72rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.hm-row-sub { opacity: .62; }
