@@ -258,7 +258,12 @@ async function loadDomains() {
     ev.cnameTarget = d.cnameTarget || null;
     ev.serving = d.serving || null;
     ev.registrations = d.registrations || [];
-    try { const s = await D.apiFetch(url(`${ENV_URL}/publish`)); ev.sites = (s.sites || []).map(x => ({ slug: String(x.slug || ''), address: String(x.address || '') })); } catch { ev.sites = ev.sites || []; }
+    try { const s = await D.apiFetch(url(`${ENV_URL}/publish`)); ev.sites = (s.sites || []).map(x => ({ slug: String(x.slug || ''), address: String(x.address || ''), project: String(x.project || '') })); } catch { ev.sites = ev.sites || []; }
+    // The human name of a published site is its studio project's name. The site row carries the project
+    // id (auth/tenantPublish.js view) and the project carries the name: the same join the home page uses
+    // (home.js projectsCard). Load the projects once so the serve picker names each site instead of
+    // showing a bare slug, which is unreadable once a user has built several.
+    try { const pr = await D.apiFetch(url(`${ENV_URL}/projects`)); const byId = {}; for (const p of (pr.projects || [])) if (p && p.id) byId[p.id] = p.name || p.id; ev.projectNames = byId; } catch { ev.projectNames = ev.projectNames || {}; }
   } catch (ex) {
     // A transient/slow/failed domains fetch (a registration GET that ran long, a momentary CORS/ERR_FAILED) must NOT
     // blank the card: keep the last-known domains and in-flight registrations so a just-registered name never flickers
@@ -905,7 +910,12 @@ function serveControl(d) {
   }
   const sites = ev.sites || [];
   if (!sites.length) return `<span class="ev-dom-when">Publish a site in the Studio to serve it here.</span>`;
-  const sel = `<select class="acct-input acct-select ev-serve-site" id="svs-${host}" aria-label="Site to serve">${sites.map(x => `<option value="${e(x.slug)}">${e(x.slug === 'root' ? 'Main site' : x.slug)}</option>`).join('')}</select>`;
+  // Name each site by its studio project (the join home.js already uses); the slug stays the <option>
+  // value so the serve POST and the backend's serve-by-slug resolver are untouched. Orphans and the
+  // root site have no project match and fall back to the slug, or 'Main site' for root.
+  const names = ev.projectNames || {};
+  const siteName = x => names[x.project] || (x.slug === 'root' ? 'Main site' : x.slug);
+  const sel = `<select class="acct-input acct-select ev-serve-site" id="svs-${host}" aria-label="Site to serve">${sites.map(x => `<option value="${e(x.slug)}">${e(siteName(x))}</option>`).join('')}</select>`;
   return sel + stateLead('domain-serve', 'globe', 'Serve my site here', { out: ev.serveBusy === d.host, busyWord: 'Setting up…' }, `data-host="${host}" data-tip="Serve the chosen site at this domain over HTTPS"`, 'btn-primary');
 }
 
