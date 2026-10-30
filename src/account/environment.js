@@ -953,7 +953,7 @@ function serveControl(d) {
   } else {
     chooser = `
       <label class="ev-serve-pick"><span class="adm-muted">Which website?</span>
-        <select class="acct-input acct-select ev-serve-site" id="svs-${host}" aria-label="Website to put live">${facts.map(f => `<option value="${e(f.slug)}">${e(f.name)} — ${e(f.kind)}${f.addr ? ` · ${e(hostOnly(f.addr))}` : ''}</option>`).join('')}</select>
+        <select class="acct-input acct-select ev-serve-site" id="svs-${host}" aria-label="Website to put live">${facts.map(f => `<option value="${e(f.slug)}">${e(f.name)} — ${e(f.kind)}</option>`).join('')}</select>
       </label>`;
   }
   return `<div class="ev-serve">${chooser}${serveCostLine()}</div>`

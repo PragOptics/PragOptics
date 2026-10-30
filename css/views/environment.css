@@ -81,6 +81,13 @@
 .ev-dom-host { font-weight: 700; color: var(--card-title); font-family: ui-monospace, "Cascadia Code", Consolas, monospace; font-size: .9rem; overflow-wrap: anywhere; }
 .ev-dom-when { color: var(--muted); font-size: .84rem; }
 .ev-dom-note { margin: 8px 0 0; font-size: .86rem; }
+/* The serve ("put a website live") chooser must stay inside its card at every width: a long
+   option label must never make the select overflow and get clipped (2026-10-30, Cameron). */
+.ev-serve { margin-top: 10px; min-width: 0; }
+.ev-serve-what { margin: 0 0 6px; font-size: .9rem; }
+.ev-serve-pick { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.ev-serve-pick > span { font-size: .8rem; }
+.ev-serve-site.acct-select { width: 100%; max-width: 100%; min-width: 0; box-sizing: border-box; }
 .ev-record { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 6px 10px; align-items: center; margin-top: 8px; font-size: .86rem; }
 .ev-record dt { margin: 0; color: var(--muted); font-size: .68rem; letter-spacing: .14em; text-transform: uppercase; font-weight: 700; }
 .ev-record dd { margin: 0; min-width: 0; }
