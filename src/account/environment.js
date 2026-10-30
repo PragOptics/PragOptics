@@ -593,6 +593,27 @@ function valuePeek(v) {
   return keys.length ? `{ ${keys.slice(0, 4).join(', ')}${keys.length > 4 ? ', …' : ''} }` : '{ }';
 }
 
+/* The tables as a clean library (2026-10-30), not a raw grid: a table icon, the name, its row count
+   when known, and — when the backend records an owner (the form/module that writes it) — grouped under
+   that owner, so a site's data reads like its Files tree. No owner recorded yet -> one flat, readable
+   list; it groups on its own the moment the owner tag ships. */
+function dataLibraryHtml(tables) {
+  const e = D.escapeHtml;
+  const rowOf = (t) => `
+    <div class="ev-tbl">
+      <span class="ev-tbl-n">${ico('database', 16)}<span class="ev-tbl-name">${e(t.table)}</span>${t.count != null ? `<span class="adm-muted">· ${e(countWord(t.count, 'row', 'rows'))}</span>` : ''}</span>
+      <span class="ev-tbl-meta">${t.updatedAt ? e(D.fmtDate(t.updatedAt)) : ''}</span>
+      ${iconBtn('data-open', 'external', 'Open the table', `data-table="${e(t.table)}"`)}
+    </div>`;
+  const owners = {};
+  for (const t of tables) { const k = (t.owner && t.owner.label) ? String(t.owner.label) : ''; (owners[k] = owners[k] || []).push(t); }
+  const keys = Object.keys(owners);
+  const grouped = keys.filter(Boolean).length && keys.length > 1;
+  if (!grouped) return `<div class="ev-tbls">${tables.map(rowOf).join('')}</div>`;
+  keys.sort((a, b) => (a ? 0 : 1) - (b ? 0 : 1) || a.localeCompare(b));
+  return keys.map(k => `<p class="hm-group">${k ? e(k) : 'Other'}<span class="adm-muted"> ${owners[k].length}</span></p><div class="ev-tbls">${owners[k].map(rowOf).join('')}</div>`).join('');
+}
+
 function dataHtml() {
   const e = D.escapeHtml;
   const tables = ev.tables;
@@ -600,20 +621,7 @@ function dataHtml() {
   let body;
   if (tables == null) body = '<p class="acct-loading">Loading tables…</p>';
   else if (!tables.length) body = '<p class="acct-empty">No data yet. The Studio, your site and your API keys write tables here; a connected supplier\'s products land in supplier_products.</p>';
-  else if (!ev.table) body = `
-      <div class="adm-table-scroll">
-        <table class="adm-table adm-table--wrap ev-table">
-          <thead><tr><th>Table</th><th>Updated</th><th></th></tr></thead>
-          <tbody>
-            ${tables.map(t => `
-              <tr>
-                <td class="cell-ellip ev-name-cell" data-th="Table">${e(t.table)}</td>
-                <td class="cell-tight adm-muted" data-th="Updated">${t.updatedAt ? e(D.fmtDate(t.updatedAt)) : ''}</td>
-                <td class="cell-tight ev-actions-cell">${iconBtn('data-open', 'external', 'Open the table', `data-table="${e(t.table)}"`)}</td>
-              </tr>`).join('')}
-          </tbody>
-        </table>
-      </div>`;
+  else if (!ev.table) body = dataLibraryHtml(tables);
   else {
     const rows = ev.rows;
     body = `
