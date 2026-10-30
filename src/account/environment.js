@@ -942,9 +942,18 @@ function serveControl(d) {
   if (s && (s.status === 'SERVE_PENDING' || s.status === 'SERVE_FAILED')) {
     const recs = (s.records || []).filter(r => r && r.purpose);
     const showRecs = recs.length && d.dns && d.dns.managed === 'self';
+    // Each record as a proper copyable row (recordHtml has copy buttons). A record whose value the
+    // platform could not fill yet (e.g. the apex A record when the serving address is not ready) is
+    // called out plainly instead of rendering an arrow pointing at nothing.
+    const recsHtml = showRecs ? recs.map(r => {
+      const val = r.target || r.value || '';
+      return val
+        ? recordHtml(r.purpose === 'ownership' ? 'The ownership record' : 'The serving record', r)
+        : `<p class="acct-card-note ev-dom-note">The <code>${e(r.type)}</code> record for <b>${e(r.name)}</b> is not ready: the platform has no serving address to point ${e(d.host)} at yet, so there is nothing to add for it. The ownership record above can go in now.</p>`;
+    }).join('') : '';
     const note = s.status === 'SERVE_FAILED'
       ? `<p class="acct-card-note ev-dom-note">Going live did not finish${s.error ? ': ' + e(s.error) : ''}. Press Try again.</p>`
-      : `<p class="acct-card-note ev-dom-note">Putting your website live at <b>${host}</b>. The certificate takes a few minutes; this updates on its own.${showRecs ? ' Add these records at your DNS host:' : ''}</p>${showRecs ? `<ul class="ev-dom-recs">${recs.map(r => `<li><code>${e(r.type)}</code> <code>${e(r.name)}</code> → <code>${e(r.target || r.value)}</code></li>`).join('')}</ul>` : ''}`;
+      : `<p class="acct-card-note ev-dom-note">Putting your website live at <b>${host}</b>.${showRecs ? ` Add these records where you manage ${e(d.host)}'s DNS, then press Check.` : ' The certificate takes a few minutes; this updates on its own.'}</p>${recsHtml}`;
     return note
       + stateLead('domain-serve-check', 'refresh', s.status === 'SERVE_FAILED' ? 'Try again' : 'Check', { out: ev.serveBusy === d.host, busyWord: 'Checking…' }, `data-host="${host}" data-tip="Finish going live now"`, 'btn-primary')
       + iconBtn('domain-unserve', 'x', 'Stop putting this website live', `data-host="${host}"`, 'is-risky');
