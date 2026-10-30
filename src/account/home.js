@@ -26,6 +26,8 @@ function card(o) { return sharedCard({ ...o, key: 'home:' + o.key }); }
 function when(s) { try { return s && D.fmtDate ? D.fmtDate(s) : (s ? new Date(s).toLocaleDateString() : ''); } catch { return ''; } }
 function count(n, one, many) { const k = Number(n) || 0; return `${k} ${k === 1 ? one : many}`; }
 function sizeWord(bytes) { const b = Number(bytes) || 0; return b >= 1048576 ? `${(b / 1048576).toFixed(1)} MB` : b >= 1024 ? `${Math.round(b / 1024)} KB` : `${b} B`; }
+function hostOnly(u) { return String(u || '').replace(/^https?:\/\//, '').replace(/\/+$/, ''); }
+function kindWord(k) { return ({ website: 'website', webapp: 'web app', notebook: 'notebook', table: 'table', gallery: 'gallery', board: 'board' }[String(k || '').toLowerCase()]) || (k || 'project'); }
 
 /** The button that opens a section (the panel's nav handler reads data-acct-section anywhere). */
 function goBtn(section, label, cardKey = '') {
@@ -88,28 +90,37 @@ function projectsCard() {
   // not a project list and a separate site list they have to match up by eye.
   const siteOf = {};
   for (const s of (hm.sites || [])) { if (s && s.project && !siteOf[s.project]) siteOf[s.project] = s; }
-  const liveCount = list.filter(p => siteOf[p.id]).length;
+  // A published site sits at its own share address. If a verified domain is SERVING that site, it is
+  // also live (hosted) at that domain. Map slug -> live host so each project reads as what is actually
+  // done with it: in the Studio, shared at an address, or live on a domain.
+  const liveHostOf = {};
+  for (const d of (hm.domains || [])) { const sv = d && d.serve; if (sv && sv.status === 'SERVING' && sv.site) liveHostOf[sv.site] = d.host; }
+  const sharedCount = list.filter(p => siteOf[p.id]).length;
+  const liveCount = list.filter(p => siteOf[p.id] && liveHostOf[siteOf[p.id].slug]).length;
   const rows = list.map(p => {
     const site = siteOf[p.id];
-    const live = site
-      ? `<p class="hm-row-s">${ico('globe', 13)} Live${site.address ? ` at <a href="${e(site.address)}" target="_blank" rel="noopener">${e(site.address)}</a>` : ''}</p>`
-      : `<p class="hm-row-s">Not published</p>`;
+    const liveHost = site ? liveHostOf[site.slug] : '';
+    let state;
+    if (site && liveHost) state = `<p class="hm-row-s">${ico('globe', 13)} Live at <a href="https://${e(liveHost)}" target="_blank" rel="noopener">${e(liveHost)}</a>${site.address ? ` <span class="adm-muted">· also shared at <a href="${e(site.address)}" target="_blank" rel="noopener">${e(hostOnly(site.address))}</a></span>` : ''}</p>`;
+    else if (site) state = `<p class="hm-row-s">${ico('globe', 13)} Shared at <a href="${e(site.address)}" target="_blank" rel="noopener">${e(hostOnly(site.address))}</a> <span class="adm-muted">· not on a domain yet</span></p>`;
+    else state = `<p class="hm-row-s adm-muted">In the Studio, not shared yet</p>`;
     return `
     <div class="hm-row">
       <div class="hm-row-main">
         <p class="hm-row-t">${e(p.name || p.id)}</p>
-        <p class="hm-row-s">${e([p.kind, p.version != null ? `v${p.version}` : '', p.size != null ? sizeWord(p.size) : '', p.updatedAt ? `updated ${when(p.updatedAt)}` : ''].filter(Boolean).join(' · '))}</p>
-        ${live}
+        <p class="hm-row-s">${e([kindWord(p.kind), p.version != null ? `v${p.version}` : '', p.size != null ? sizeWord(p.size) : '', p.updatedAt ? `updated ${when(p.updatedAt)}` : ''].filter(Boolean).join(' · '))}</p>
+        ${state}
       </div>
       <div class="hm-row-act">${leadBtn({ home: 'open-project' }, 'external', 'Open in the studio', `data-id="${e(p.id)}"`, 'btn-primary')}</div>
     </div>`;
   }).join('');
   const body = `
-    <p class="acct-card-note">What the studio can open and work on in this environment, and whether each is published. A project has one home; this is it.</p>
+    <p class="acct-card-note">What the studio can open and work on in this environment, and how each is shared or hosted. A project has one home; this is it.</p>
     ${errLine('projects')}
     ${hm.projects === null && !hm.errs.projects ? '' : (list.length ? `<div class="hm-list">${rows}</div>` : '<p class="acct-empty">No projects yet. Open the studio and the first one you save lands here.</p>')}
+    <p class="acct-card-note hm-start">Start a website: open the Studio to build from scratch, start from a template, or import a site you already have. Publish it, then put it live on your domain from Domains.</p>
     <div class="acct-actions-row act-row">${leadBtn({ home: 'open-studio' }, 'external', 'Open the studio', '', list.length ? '' : 'btn-primary')}</div>`;
-  const summary = hm.projects ? `${count(list.length, 'project', 'projects')}${liveCount ? ` · ${liveCount} live` : ''}` : (hm.errs.projects ? 'not read' : '');
+  const summary = hm.projects ? `${count(list.length, 'project', 'projects')}${sharedCount ? ` · ${sharedCount} shared` : ''}${liveCount ? ` · ${liveCount} live` : ''}` : (hm.errs.projects ? 'not read' : '');
   return card({ key: 'projects', icon: 'box', title: 'Projects', summary, body });
 }
 
