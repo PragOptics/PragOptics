@@ -716,6 +716,7 @@ select.acct-input, select.adm-select, select.adm-input { background-color: var(-
 .hm-ws-toggle svg, .hm-older-toggle svg { transition: transform .12s; transform: rotate(-90deg); }
 .hm-ws.is-open > .hm-ws-head .hm-ws-toggle svg, .hm-older-toggle.is-open svg { transform: rotate(0deg); }
 .hm-ws-head .hm-row-main { flex: 1 1 auto; min-width: 0; }
+.hm-ws-head .hm-row-t { white-space: normal; overflow: visible; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .hm-ws-head .hm-row-act { flex: 0 0 auto; }
 .hm-parts { margin: 8px 0 2px; padding: 8px 0 2px 12px; border-left: 2px solid var(--border); display: flex; flex-direction: column; }
 .hm-parts-h { margin: 0 0 6px; font-size: .72rem; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
