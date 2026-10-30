@@ -707,7 +707,14 @@ select.acct-input, select.adm-select, select.adm-input { background-color: var(-
 .hm-group { margin: 16px 0 4px; font-weight: 600; font-size: .72rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
 .hm-row-sub { opacity: .62; }
 /* Home: the website-as-workspace with its reusable parts nested, and a hidden older-copies drawer. */
-.hm-ws-head { align-items: flex-start; }
+.hm-ws-head { display: flex; align-items: flex-start; gap: 8px; padding: 10px 0; border-top: 1px solid var(--border); }
+.hm-ws:first-child .hm-ws-head { border-top: 0; }
+.hm-ws-toggle { flex: 0 0 auto; background: none; border: 0; color: var(--muted); cursor: pointer; padding: 2px; margin-top: 2px; display: inline-flex; }
+.hm-ws-toggle:hover { color: var(--ink); }
+.hm-ws-toggle svg { transition: transform .12s; }
+.hm-ws.is-open > .hm-ws-head .hm-ws-toggle svg { transform: rotate(90deg); }
+.hm-ws-head .hm-row-main { flex: 1 1 auto; min-width: 0; }
+.hm-ws-head .hm-row-act { flex: 0 0 auto; }
 .hm-parts { margin: 8px 0 2px; padding: 8px 0 2px 12px; border-left: 2px solid var(--border); display: flex; flex-direction: column; }
 .hm-parts-h { margin: 0 0 6px; font-size: .72rem; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
 .hm-part { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 5px 0; min-width: 0; }

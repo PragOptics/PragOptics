@@ -119,25 +119,44 @@ function projectsCard() {
   const older = list.filter(p => !isPrimary(p));
   const newest = (a, b) => String(b.updatedAt || '').localeCompare(String(a.updatedAt || ''));
   primarySites.sort(newest); parts.sort(newest);
-  // Exactly one website: show it as the workspace with its reusable parts nested under it. Zero or
-  // several: fall back to two compact groups so nothing is mis-parented.
-  let tree;
-  if (primarySites.length === 1) {
-    const w = primarySites[0];
-    tree = `
-    <div class="hm-ws">
-      <div class="hm-row hm-ws-head">
+  // Each website is a COLLAPSIBLE workspace: the row leads, its reusable parts tuck under it and open on
+  // click. Default collapsed, so Home stays compact and your sites are what you see first -- and a second
+  // site (a subdomain, say) reads as its own workspace, never mixed into the first.
+  hm.openWs = hm.openWs || new Set();
+  const wsRow = (w, kids) => {
+    const open = hm.openWs.has(w.id);
+    const meta = [kindWord(w.kind), w.version != null ? `v${w.version}` : '', w.updatedAt ? `updated ${when(w.updatedAt)}` : ''].filter(Boolean).join(' · ');
+    return `
+    <div class="hm-ws${open ? ' is-open' : ''}">
+      <div class="hm-ws-head">
+        <button class="hm-ws-toggle" type="button" data-home-action="toggle-ws" data-id="${e(w.id)}" aria-expanded="${open ? 'true' : 'false'}" aria-label="${open ? 'Collapse' : 'Expand'} ${e(w.name || w.id)}">${ico('chevron', 16)}</button>
         <div class="hm-row-main">
           <p class="hm-row-t">${e(w.name || w.id)} <span class="acct-tag is-primary">your website</span></p>
-          <p class="hm-row-s">${e([kindWord(w.kind), w.version != null ? `v${w.version}` : '', w.updatedAt ? `updated ${when(w.updatedAt)}` : ''].filter(Boolean).join(' · '))} · ${stateLine(w)}</p>
+          <p class="hm-row-s">${e(meta)} · ${stateLine(w)}${kids.length ? ` <span class="adm-muted">· ${kids.length} ${kids.length === 1 ? 'part' : 'parts'}</span>` : ''}</p>
         </div>
         <div class="hm-row-act">${leadBtn({ home: 'open-project' }, 'external', 'Open in the studio', `data-id="${e(w.id)}"`, 'btn-primary')}</div>
       </div>
-      ${parts.length ? `<div class="hm-parts"><p class="hm-parts-h">Built from ${parts.length} reusable ${parts.length === 1 ? 'part' : 'parts'}</p>${parts.map(partRow).join('')}</div>` : ''}
+      ${open && kids.length ? `<div class="hm-parts">${kids.map(partRow).join('')}</div>` : ''}
     </div>`;
+  };
+  const partsDrawer = (id, label, sub, arr) => {
+    const open = hm.openWs.has(id);
+    return `
+    <div class="hm-ws${open ? ' is-open' : ''}">
+      <div class="hm-ws-head">
+        <button class="hm-ws-toggle" type="button" data-home-action="toggle-ws" data-id="${e(id)}" aria-expanded="${open ? 'true' : 'false'}" aria-label="${open ? 'Collapse' : 'Expand'} ${e(label)}">${ico('chevron', 16)}</button>
+        <div class="hm-row-main"><p class="hm-row-t">${e(label)} <span class="adm-muted">${arr.length}</span></p><p class="hm-row-s adm-muted">${e(sub)}</p></div>
+      </div>
+      ${open ? `<div class="hm-parts">${arr.map(partRow).join('')}</div>` : ''}
+    </div>`;
+  };
+  let tree;
+  if (primarySites.length === 1) {
+    tree = wsRow(primarySites[0], parts);
+  } else if (primarySites.length > 1) {
+    tree = primarySites.map(w => wsRow(w, [])).join('') + (parts.length ? partsDrawer('__parts__', 'Reusable parts', 'Forms and apps you can use on any of your sites', parts) : '');
   } else {
-    const grp = (label, arr) => arr.length ? `<p class="hm-group">${e(label)}<span class="adm-muted"> ${arr.length}</span></p><div class="hm-parts">${arr.map(partRow).join('')}</div>` : '';
-    tree = `${grp('Websites', primarySites)}${grp('Forms and apps', parts)}`;
+    tree = parts.length ? partsDrawer('__parts__', 'Forms and apps', 'Reusable parts, not on a website yet', parts) : '';
   }
   const olderBlock = older.length ? `
     <button class="hm-older-toggle" type="button" data-home-action="toggle-older" aria-expanded="${hm.showOlder ? 'true' : 'false'}">${ico('chevron', 14)} ${older.length} older ${older.length === 1 ? 'copy' : 'copies'} ${hm.showOlder ? '— hide' : '— show'}</button>
@@ -262,6 +281,7 @@ export function bindHomeActions(deps) {
     // the studio, through the one-time handoff the site already makes (runtime/bootstrap.js goToSoftware); a project id
     // rides along as project=<id> for the studio to open that project (the studio reads it from the same fragment)
     if (a === 'toggle-older') { e.preventDefault(); hm.showOlder = !hm.showOlder; paint(); return; }
+    if (a === 'toggle-ws') { e.preventDefault(); const id = String(btn.dataset.id || ''); hm.openWs = hm.openWs || new Set(); hm.openWs.has(id) ? hm.openWs.delete(id) : hm.openWs.add(id); paint(); return; }
     if (a === 'open-studio') { e.preventDefault(); window.pragOpenStudio?.(''); return; }
     if (a === 'open-project') { e.preventDefault(); const id = String(btn.dataset.id || ''); if (id) window.pragOpenStudio?.(`project=${encodeURIComponent(id)}`); }
   });

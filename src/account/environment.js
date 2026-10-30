@@ -950,7 +950,9 @@ function serveControl(d) {
       + iconBtn('domain-unserve', 'x', 'Stop putting this website live', `data-host="${host}"`, 'is-risky');
   }
   // Not live yet: choose which published website to put live, with its clean facts and the cost.
-  const facts = (ev.sites || []).map(siteFacts);
+  // Only real sites (tied to a project, plus the root site) are offered -- an orphan leftover publish
+  // like "first-site" is not a website you'd put on a domain, so it never clutters the chooser.
+  const facts = (ev.sites || []).filter(x => x.project || x.slug === 'root').map(siteFacts);
   if (!facts.length) return `<p class="acct-card-note ev-dom-note">Publish a website in the Studio, then put it live here. Nothing is live at this domain yet.</p>`;
   let chooser;
   if (facts.length === 1) {
