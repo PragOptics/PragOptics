@@ -711,8 +711,10 @@ select.acct-input, select.adm-select, select.adm-input { background-color: var(-
 .hm-ws:first-child .hm-ws-head { border-top: 0; }
 .hm-ws-toggle { flex: 0 0 auto; background: none; border: 0; color: var(--muted); cursor: pointer; padding: 2px; margin-top: 2px; display: inline-flex; }
 .hm-ws-toggle:hover { color: var(--ink); }
-.hm-ws-toggle svg { transition: transform .12s; }
-.hm-ws.is-open > .hm-ws-head .hm-ws-toggle svg { transform: rotate(90deg); }
+/* Both toggles: chevron points RIGHT (toward the text) when collapsed, DOWN when open. The base
+   chevron points down, so collapsed = rotate(-90deg), open = rotate(0deg). */
+.hm-ws-toggle svg, .hm-older-toggle svg { transition: transform .12s; transform: rotate(-90deg); }
+.hm-ws.is-open > .hm-ws-head .hm-ws-toggle svg, .hm-older-toggle.is-open svg { transform: rotate(0deg); }
 .hm-ws-head .hm-row-main { flex: 1 1 auto; min-width: 0; }
 .hm-ws-head .hm-row-act { flex: 0 0 auto; }
 .hm-parts { margin: 8px 0 2px; padding: 8px 0 2px 12px; border-left: 2px solid var(--border); display: flex; flex-direction: column; }

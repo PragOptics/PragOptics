@@ -159,7 +159,7 @@ function projectsCard() {
     tree = parts.length ? partsDrawer('__parts__', 'Forms and apps', 'Reusable parts, not on a website yet', parts) : '';
   }
   const olderBlock = older.length ? `
-    <button class="hm-older-toggle" type="button" data-home-action="toggle-older" aria-expanded="${hm.showOlder ? 'true' : 'false'}">${ico('chevron', 14)} ${older.length} older ${older.length === 1 ? 'copy' : 'copies'} ${hm.showOlder ? '— hide' : '— show'}</button>
+    <button class="hm-older-toggle${hm.showOlder ? ' is-open' : ''}" type="button" data-home-action="toggle-older" aria-expanded="${hm.showOlder ? 'true' : 'false'}">${ico('chevron', 14)} ${older.length} older ${older.length === 1 ? 'copy' : 'copies'}</button>
     ${hm.showOlder ? `<div class="hm-parts hm-older">${older.map(p => `<div class="hm-part hm-row-sub"><span class="hm-part-n">${e(p.name || p.id)} <span class="adm-muted">${e(kindWord(p.kind))}${p.version != null ? ` · v${p.version}` : ''}${p.updatedAt ? ` · ${when(p.updatedAt)}` : ''}</span></span>${openIcon(p)}</div>`).join('')}</div>` : ''}` : '';
   const body = `
     <p class="acct-card-note">Your website and the reusable parts it is built from. A project has one home; this is it.</p>
