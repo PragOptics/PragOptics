@@ -263,7 +263,7 @@ async function loadDomains() {
     // id (auth/tenantPublish.js view) and the project carries the name: the same join the home page uses
     // (home.js projectsCard). Load the projects once so the serve picker names each site instead of
     // showing a bare slug, which is unreadable once a user has built several.
-    try { const pr = await D.apiFetch(url(`${ENV_URL}/projects`)); const byId = {}; for (const p of (pr.projects || [])) if (p && p.id) byId[p.id] = p.name || p.id; ev.projectNames = byId; } catch { ev.projectNames = ev.projectNames || {}; }
+    try { const pr = await D.apiFetch(url(`${ENV_URL}/projects`)); const byId = {}; for (const p of (pr.projects || [])) if (p && p.id) byId[p.id] = { name: p.name || p.id, kind: String(p.kind || '') }; ev.projectInfo = byId; } catch { ev.projectInfo = ev.projectInfo || {}; }
   } catch (ex) {
     // A transient/slow/failed domains fetch (a registration GET that ran long, a momentary CORS/ERR_FAILED) must NOT
     // blank the card: keep the last-known domains and in-flight registrations so a just-registered name never flickers
@@ -864,10 +864,12 @@ function filesHtml() {
 function domainTag(d) {
   const status = typeof d === 'string' ? d : d.status;
   const bs = typeof d === 'string' ? '' : (d.binding?.status || '');
-  if (status === 'VERIFIED' && bs === 'BOUND') return '<span class="acct-tag is-verified">serving</span>';
-  if (status === 'VERIFIED' && bs === 'BINDING') return '<span class="acct-tag is-verified">verified</span><span class="acct-tag is-pending">certificate pending</span>';
-  if (status === 'VERIFIED' && bs === 'BIND_FAILED') return '<span class="acct-tag is-verified">verified</span><span class="acct-tag is-bad">not serving</span>';
-  if (status === 'VERIFIED') return '<span class="acct-tag is-verified">verified</span>';
+  // A published website served at this domain is its own fact, separate from the software binding below.
+  const live = typeof d !== 'string' && d.serve && d.serve.status === 'SERVING' ? '<span class="acct-tag is-verified">website live</span>' : '';
+  if (status === 'VERIFIED' && bs === 'BOUND') return '<span class="acct-tag is-verified">serving</span>' + live;
+  if (status === 'VERIFIED' && bs === 'BINDING') return '<span class="acct-tag is-verified">verified</span><span class="acct-tag is-pending">certificate pending</span>' + live;
+  if (status === 'VERIFIED' && bs === 'BIND_FAILED') return '<span class="acct-tag is-verified">verified</span><span class="acct-tag is-bad">not serving</span>' + live;
+  if (status === 'VERIFIED') return '<span class="acct-tag is-verified">verified</span>' + live;
   if (status === 'FAILED') return '<span class="acct-tag is-bad">record missing</span>';
   return '<span class="acct-tag is-pending">waiting for the record</span>';
 }
@@ -889,34 +891,73 @@ function dnsConnections() {
 }
 function providerLabel(id) { return (ev.connProviders || []).find(p => p.id === id)?.label || (id === 'spaceship' ? 'Spaceship' : id === 'azure' ? 'Azure' : String(id || 'the registrar')); }
 
-/** Serve a published site at a verified domain over HTTPS (2026-10-20, the App Service serving app). */
+/** A published thing's kind, in plain words. */
+function siteKindWord(k) {
+  const m = { website: 'website', webapp: 'web app', notebook: 'notebook', table: 'table', gallery: 'gallery', board: 'board' };
+  return m[String(k || '').toLowerCase()] || 'site';
+}
+/** One published site's clean data: human name (its studio project), what it is, the address it is shared at. */
+function siteFacts(x) {
+  const info = (ev.projectInfo || {})[x.project] || {};
+  const name = info.name || (x.slug === 'root' ? 'Main site' : x.slug);
+  return { name, kind: siteKindWord(info.kind), addr: String(x.address || '').replace(/\/+$/, ''), slug: x.slug };
+}
+function hostOnly(u) { return String(u || '').replace(/^https?:\/\//, '').replace(/\/+$/, ''); }
+/** What putting a site live costs: $0 to serve, drawn from the plan's monthly bandwidth allowance (COST-MODEL §9). */
+function serveCostLine() {
+  const e = D.escapeHtml;
+  const bw = ev.view?.tenant?.bandwidth;
+  const allow = bw && Number(bw.limitBytes) > 0 ? e(gb(Number(bw.limitBytes)).replace(/\.0 GB$/, ' GB')) : '';
+  return `<p class="acct-card-note ev-dom-note">Going live is free. A live site draws on your plan's monthly visitor bandwidth${allow ? ` (${allow} included)` : ''}; past that it pauses until the first of the month, or bills overage at $0.20/GB if you turn that on.</p>`;
+}
+
+/** Put a published site live at a verified domain over HTTPS (2026-10-20, the App Service serving app). */
 function serveControl(d) {
   const e = D.escapeHtml;
   const s = d.serve;
   const host = e(d.host);
+  // Already live: say plainly WHAT is hosted here and WHERE it is also shared.
   if (s && s.status === 'SERVING') {
-    return `<a class="btn btn-sm" href="${e(s.url || ('https://' + d.host))}" target="_blank" rel="noopener" data-tip="Open the served site">${ico('globe')}<span>Open site</span></a>`
-      + iconBtn('domain-unserve', 'x', 'Stop serving a site at this domain', `data-host="${host}"`, 'is-risky');
+    const live = s.url || ('https://' + d.host);
+    const f = (ev.sites || []).map(siteFacts).find(x => x.slug === s.site);
+    const shared = (f && f.addr) || String(s.origin || '').replace(/\/+$/, '');
+    return `
+      <div class="ev-serve">
+        <p class="ev-serve-what">${f ? `<b>${e(f.name)}</b> <span class="adm-muted">(${e(f.kind)})</span>` : 'Your website'} is <b>live</b> at <a href="${e(live)}" target="_blank" rel="noopener">${e(hostOnly(live))}</a>.</p>
+        ${shared ? `<p class="acct-card-note ev-dom-note">Also shared at <a href="${e(shared)}" target="_blank" rel="noopener">${e(hostOnly(shared))}</a>, its published address.</p>` : ''}
+      </div>
+      <div class="act-row">
+        <a class="btn btn-sm" href="${e(live)}" target="_blank" rel="noopener" data-tip="Open the live site">${ico('globe')}<span>Open site</span></a>
+        ${iconBtn('domain-unserve', 'x', 'Take this website off the domain (it stays published at its share address)', `data-host="${host}"`, 'is-risky')}
+      </div>`;
   }
   if (s && (s.status === 'SERVE_PENDING' || s.status === 'SERVE_FAILED')) {
     const recs = (s.records || []).filter(r => r && r.purpose);
     const showRecs = recs.length && d.dns && d.dns.managed === 'self';
     const note = s.status === 'SERVE_FAILED'
-      ? `<p class="acct-card-note ev-dom-note">Serving did not finish${s.error ? ': ' + e(s.error) : ''}. Press Try again.</p>`
-      : `<p class="acct-card-note ev-dom-note">Setting up serving for <b>${host}</b>. The certificate takes a few minutes; this updates on its own.${showRecs ? ' Add these records at your DNS host:' : ''}</p>${showRecs ? `<ul class="ev-dom-recs">${recs.map(r => `<li><code>${e(r.type)}</code> <code>${e(r.name)}</code> → <code>${e(r.target || r.value)}</code></li>`).join('')}</ul>` : ''}`;
+      ? `<p class="acct-card-note ev-dom-note">Going live did not finish${s.error ? ': ' + e(s.error) : ''}. Press Try again.</p>`
+      : `<p class="acct-card-note ev-dom-note">Putting your website live at <b>${host}</b>. The certificate takes a few minutes; this updates on its own.${showRecs ? ' Add these records at your DNS host:' : ''}</p>${showRecs ? `<ul class="ev-dom-recs">${recs.map(r => `<li><code>${e(r.type)}</code> <code>${e(r.name)}</code> → <code>${e(r.target || r.value)}</code></li>`).join('')}</ul>` : ''}`;
     return note
-      + stateLead('domain-serve-check', 'refresh', s.status === 'SERVE_FAILED' ? 'Try again' : 'Check', { out: ev.serveBusy === d.host, busyWord: 'Checking…' }, `data-host="${host}" data-tip="Finish serving now"`, 'btn-primary')
-      + iconBtn('domain-unserve', 'x', 'Stop serving a site at this domain', `data-host="${host}"`, 'is-risky');
+      + stateLead('domain-serve-check', 'refresh', s.status === 'SERVE_FAILED' ? 'Try again' : 'Check', { out: ev.serveBusy === d.host, busyWord: 'Checking…' }, `data-host="${host}" data-tip="Finish going live now"`, 'btn-primary')
+      + iconBtn('domain-unserve', 'x', 'Stop putting this website live', `data-host="${host}"`, 'is-risky');
   }
-  const sites = ev.sites || [];
-  if (!sites.length) return `<span class="ev-dom-when">Publish a site in the Studio to serve it here.</span>`;
-  // Name each site by its studio project (the join home.js already uses); the slug stays the <option>
-  // value so the serve POST and the backend's serve-by-slug resolver are untouched. Orphans and the
-  // root site have no project match and fall back to the slug, or 'Main site' for root.
-  const names = ev.projectNames || {};
-  const siteName = x => names[x.project] || (x.slug === 'root' ? 'Main site' : x.slug);
-  const sel = `<select class="acct-input acct-select ev-serve-site" id="svs-${host}" aria-label="Site to serve">${sites.map(x => `<option value="${e(x.slug)}">${e(siteName(x))}</option>`).join('')}</select>`;
-  return sel + stateLead('domain-serve', 'globe', 'Serve my site here', { out: ev.serveBusy === d.host, busyWord: 'Setting up…' }, `data-host="${host}" data-tip="Serve the chosen site at this domain over HTTPS"`, 'btn-primary');
+  // Not live yet: choose which published website to put live, with its clean facts and the cost.
+  const facts = (ev.sites || []).map(siteFacts);
+  if (!facts.length) return `<p class="acct-card-note ev-dom-note">Publish a website in the Studio, then put it live here. Nothing is live at this domain yet.</p>`;
+  let chooser;
+  if (facts.length === 1) {
+    const f = facts[0];
+    chooser = `
+      <p class="ev-serve-what">Put <b>${e(f.name)}</b> <span class="adm-muted">(${e(f.kind)}${f.addr ? `, shared at ${e(hostOnly(f.addr))}` : ''})</span> live at this domain.</p>
+      <input type="hidden" id="svs-${host}" value="${e(f.slug)}" />`;
+  } else {
+    chooser = `
+      <label class="ev-serve-pick"><span class="adm-muted">Which website?</span>
+        <select class="acct-input acct-select ev-serve-site" id="svs-${host}" aria-label="Website to put live">${facts.map(f => `<option value="${e(f.slug)}">${e(f.name)} — ${e(f.kind)}${f.addr ? ` · ${e(hostOnly(f.addr))}` : ''}</option>`).join('')}</select>
+      </label>`;
+  }
+  return `<div class="ev-serve">${chooser}${serveCostLine()}</div>`
+    + stateLead('domain-serve', 'globe', 'Put this website live', { out: ev.serveBusy === d.host, busyWord: 'Going live…' }, `data-host="${host}" data-tip="Put the chosen website live at this domain over HTTPS"`, 'btn-primary');
 }
 
 function domainHtml(d) {
@@ -969,7 +1010,10 @@ function domainHtml(d) {
       <p class="acct-card-note ev-dom-note">Proven ${e(D.fmtDate(d.verifiedAt))}. Point the name at the software with this record, and it serves your site.</p>
       ${recordHtml('The serving record', d.cname)}`;
   } else {
-    body = `<p class="acct-card-note ev-dom-note">Proven ${e(D.fmtDate(d.verifiedAt))}. Serving arrives when the software is hosted; there is nothing more to do for now, and the platform re-checks the record daily.</p>`;
+    // Verified, software not hosted here: this domain is a place to put a published WEBSITE live.
+    // The serve control below carries the whole story (live at / put live / publish first) — so the
+    // header must not also claim "nothing to do", which is the contradiction that read as senseless.
+    body = `<p class="acct-card-note ev-dom-note">Proven ${e(D.fmtDate(d.verifiedAt))}.</p>`;
   }
   // A name registered through PragOptics: its term and the renewal choice
   // (the owner's). The row is the truth the yearly renewal reads.
