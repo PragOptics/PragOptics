@@ -84,18 +84,13 @@ function paint() {
 
 function projectsCard() {
   const e = D.escapeHtml, list = hm.projects || [];
-  // Join each project to its published site (site.project === project.id) and to a serving domain,
-  // so a project reads as what is actually done with it: in the Studio, shared at an address, or live
-  // on a domain.
+  // Join each project to its published site (site.project === project.id) and to a serving domain.
   const siteOf = {};
   for (const s of (hm.sites || [])) { if (s && s.project && !siteOf[s.project]) siteOf[s.project] = s; }
   const liveHostOf = {};
   for (const d of (hm.domains || [])) { const sv = d && d.serve; if (sv && sv.status === 'SERVING' && sv.site) liveHostOf[sv.site] = d.host; }
-  const sharedCount = list.filter(p => siteOf[p.id]).length;
-  const liveCount = list.filter(p => siteOf[p.id] && liveHostOf[siteOf[p.id].slug]).length;
-  // Same-named projects pile up from re-imports and saves. Within a name the PRIMARY is the published
-  // one, else the newest by version then date; the rest read as "older copy" so the real one is
-  // obvious and the leftovers can be opened or removed, not puzzled over.
+  // Same-named projects pile up from re-imports/saves. Within a name the PRIMARY is the published one,
+  // else the newest by version then date; the rest are older copies, hidden unless asked for.
   const nameKey = p => String(p.name || p.id).trim().toLowerCase();
   const byName = {};
   for (const p of list) { (byName[nameKey(p)] = byName[nameKey(p)] || []).push(p); }
@@ -107,42 +102,53 @@ function projectsCard() {
       return String(b.updatedAt || '').localeCompare(String(a.updatedAt || ''));
     })[0].id;
   }
-  const stateOf = (p) => {
-    const site = siteOf[p.id], host = site ? liveHostOf[site.slug] : '';
-    if (site && host) return `${ico('globe', 13)} Live at <a href="https://${e(host)}" target="_blank" rel="noopener">${e(host)}</a>${site.address ? ` <span class="adm-muted">· also shared at <a href="${e(site.address)}" target="_blank" rel="noopener">${e(hostOnly(site.address))}</a></span>` : ''}`;
-    if (site) return `${ico('globe', 13)} Shared at <a href="${e(site.address)}" target="_blank" rel="noopener">${e(hostOnly(site.address))}</a> <span class="adm-muted">· not on a domain yet</span>`;
-    return `<span class="adm-muted">In the Studio, not shared yet</span>`;
-  };
-  const rowOf = (p) => {
-    const older = primaryId[nameKey(p)] !== p.id;
-    const meta = [kindWord(p.kind), p.version != null ? `v${p.version}` : '', p.size != null ? sizeWord(p.size) : '', p.updatedAt ? `updated ${when(p.updatedAt)}` : ''].filter(Boolean).join(' · ');
-    return `
-    <div class="hm-row${older ? ' hm-row-sub' : ''}">
-      <div class="hm-row-main">
-        <p class="hm-row-t">${e(p.name || p.id)}${older ? ' <span class="acct-tag">older copy</span>' : ''}</p>
-        <p class="hm-row-s">${e(meta)}</p>
-        <p class="hm-row-s">${stateOf(p)}</p>
-      </div>
-      <div class="hm-row-act">${leadBtn({ home: 'open-project' }, 'external', 'Open in the studio', `data-id="${e(p.id)}"`, older ? '' : 'btn-primary')}</div>
-    </div>`;
-  };
-  // Primary first within a group, older copies after, newest first otherwise.
-  const order = (a, b) => {
-    const oa = primaryId[nameKey(a)] === a.id ? 0 : 1, ob = primaryId[nameKey(b)] === b.id ? 0 : 1;
-    if (oa !== ob) return oa - ob;
-    return String(b.updatedAt || '').localeCompare(String(a.updatedAt || ''));
-  };
+  const isPrimary = p => primaryId[nameKey(p)] === p.id;
   const isSite = p => String(p.kind || '').toLowerCase() === 'website';
-  const sites = list.filter(isSite).sort(order);
-  const apps = list.filter(p => !isSite(p)).sort(order);
-  const group = (label, arr) => arr.length ? `<p class="hm-group">${e(label)}<span class="adm-muted"> ${arr.length}</span></p><div class="hm-list">${arr.map(rowOf).join('')}</div>` : '';
+  const stateLine = (p) => {
+    const site = siteOf[p.id], host = site ? liveHostOf[site.slug] : '';
+    if (site && host) return `${ico('globe', 13)} Live at <a href="https://${e(host)}" target="_blank" rel="noopener">${e(host)}</a>`;
+    if (site) return `${ico('globe', 13)} Shared <span class="adm-muted">· not on a domain yet</span>`;
+    return `<span class="adm-muted">In the Studio</span>`;
+  };
+  const openIcon = (p) => `<button class="btn btn-sm btn-ico" type="button" data-home-action="open-project" data-id="${e(p.id)}" data-tip="Open in the studio" aria-label="Open ${e(p.name || p.id)} in the studio">${ico('external')}</button>`;
+  const partRow = (p) => `<div class="hm-part"><span class="hm-part-n">${ico(isSite(p) ? 'globe' : 'box', 14)} ${e(p.name || p.id)} <span class="adm-muted">${e(kindWord(p.kind))}</span></span>${openIcon(p)}</div>`;
+  // Primary projects split into the website(s) and the reusable parts; older copies hide behind a toggle.
+  const primaries = list.filter(isPrimary);
+  const primarySites = primaries.filter(isSite);
+  const parts = primaries.filter(p => !isSite(p));
+  const older = list.filter(p => !isPrimary(p));
+  const newest = (a, b) => String(b.updatedAt || '').localeCompare(String(a.updatedAt || ''));
+  primarySites.sort(newest); parts.sort(newest);
+  // Exactly one website: show it as the workspace with its reusable parts nested under it. Zero or
+  // several: fall back to two compact groups so nothing is mis-parented.
+  let tree;
+  if (primarySites.length === 1) {
+    const w = primarySites[0];
+    tree = `
+    <div class="hm-ws">
+      <div class="hm-row hm-ws-head">
+        <div class="hm-row-main">
+          <p class="hm-row-t">${e(w.name || w.id)} <span class="acct-tag is-primary">your website</span></p>
+          <p class="hm-row-s">${e([kindWord(w.kind), w.version != null ? `v${w.version}` : '', w.updatedAt ? `updated ${when(w.updatedAt)}` : ''].filter(Boolean).join(' · '))} · ${stateLine(w)}</p>
+        </div>
+        <div class="hm-row-act">${leadBtn({ home: 'open-project' }, 'external', 'Open in the studio', `data-id="${e(w.id)}"`, 'btn-primary')}</div>
+      </div>
+      ${parts.length ? `<div class="hm-parts"><p class="hm-parts-h">Built from ${parts.length} reusable ${parts.length === 1 ? 'part' : 'parts'}</p>${parts.map(partRow).join('')}</div>` : ''}
+    </div>`;
+  } else {
+    const grp = (label, arr) => arr.length ? `<p class="hm-group">${e(label)}<span class="adm-muted"> ${arr.length}</span></p><div class="hm-parts">${arr.map(partRow).join('')}</div>` : '';
+    tree = `${grp('Websites', primarySites)}${grp('Forms and apps', parts)}`;
+  }
+  const olderBlock = older.length ? `
+    <button class="hm-older-toggle" type="button" data-home-action="toggle-older" aria-expanded="${hm.showOlder ? 'true' : 'false'}">${ico('chevron', 14)} ${older.length} older ${older.length === 1 ? 'copy' : 'copies'} ${hm.showOlder ? '— hide' : '— show'}</button>
+    ${hm.showOlder ? `<div class="hm-parts hm-older">${older.map(p => `<div class="hm-part hm-row-sub"><span class="hm-part-n">${e(p.name || p.id)} <span class="adm-muted">${e(kindWord(p.kind))}${p.version != null ? ` · v${p.version}` : ''}${p.updatedAt ? ` · ${when(p.updatedAt)}` : ''}</span></span>${openIcon(p)}</div>`).join('')}</div>` : ''}` : '';
   const body = `
-    <p class="acct-card-note">What the studio can open and work on here, grouped by what it is, and how each is shared or hosted. A project has one home; this is it.</p>
+    <p class="acct-card-note">Your website and the reusable parts it is built from. A project has one home; this is it.</p>
     ${errLine('projects')}
-    ${hm.projects === null && !hm.errs.projects ? '' : (list.length ? `${group('Websites', sites)}${group('Forms and apps', apps)}` : '<p class="acct-empty">No projects yet. Open the studio and the first one you save lands here.</p>')}
-    <p class="acct-card-note hm-start">Start a website: open the Studio to build from scratch, start from a template, or import a site you already have. Publish it, then put it live on your domain from Domains.</p>
+    ${hm.projects === null && !hm.errs.projects ? '' : (list.length ? `${tree}${olderBlock}` : '<p class="acct-empty">No projects yet. Open the studio and the first one you save lands here.</p>')}
+    <p class="acct-card-note hm-start">Start a website: open the Studio to build from scratch, from a template, or import a site you already have.</p>
     <div class="acct-actions-row act-row">${leadBtn({ home: 'open-studio' }, 'external', 'Open the studio', '', list.length ? '' : 'btn-primary')}</div>`;
-  const summary = hm.projects ? `${count(list.length, 'project', 'projects')}${sharedCount ? ` · ${sharedCount} shared` : ''}${liveCount ? ` · ${liveCount} live` : ''}` : (hm.errs.projects ? 'not read' : '');
+  const summary = hm.projects ? `${count(primarySites.length, 'website', 'websites')}${parts.length ? ` · ${count(parts.length, 'part', 'parts')}` : ''}${older.length ? ` · ${older.length} older` : ''}` : (hm.errs.projects ? 'not read' : '');
   return card({ key: 'projects', icon: 'box', title: 'Projects', summary, body });
 }
 
@@ -255,6 +261,7 @@ export function bindHomeActions(deps) {
     const a = btn.dataset.homeAction;
     // the studio, through the one-time handoff the site already makes (runtime/bootstrap.js goToSoftware); a project id
     // rides along as project=<id> for the studio to open that project (the studio reads it from the same fragment)
+    if (a === 'toggle-older') { e.preventDefault(); hm.showOlder = !hm.showOlder; paint(); return; }
     if (a === 'open-studio') { e.preventDefault(); window.pragOpenStudio?.(''); return; }
     if (a === 'open-project') { e.preventDefault(); const id = String(btn.dataset.id || ''); if (id) window.pragOpenStudio?.(`project=${encodeURIComponent(id)}`); }
   });

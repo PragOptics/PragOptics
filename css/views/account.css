@@ -706,3 +706,13 @@ select.acct-input, select.adm-select, select.adm-input { background-color: var(-
 /* Home: grouped project sections, and de-emphasised older copies / orphan publishes (2026-10-30). */
 .hm-group { margin: 16px 0 4px; font-weight: 600; font-size: .72rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
 .hm-row-sub { opacity: .62; }
+/* Home: the website-as-workspace with its reusable parts nested, and a hidden older-copies drawer. */
+.hm-ws-head { align-items: flex-start; }
+.hm-parts { margin: 8px 0 2px; padding: 8px 0 2px 12px; border-left: 2px solid var(--border); display: flex; flex-direction: column; }
+.hm-parts-h { margin: 0 0 6px; font-size: .72rem; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
+.hm-part { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 5px 0; min-width: 0; }
+.hm-part + .hm-part { border-top: 1px solid var(--border); }
+.hm-part-n { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .9rem; color: var(--card-title); display: inline-flex; align-items: center; gap: 6px; }
+.hm-older-toggle { margin-top: 12px; background: none; border: 0; color: var(--muted); font: inherit; font-size: .82rem; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; padding: 4px 0; }
+.hm-older-toggle:hover { color: var(--ink); }
+.hm-older { opacity: .72; }
