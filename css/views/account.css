@@ -706,6 +706,14 @@ select.acct-input, select.adm-select, select.adm-input { background-color: var(-
 /* Home: grouped project sections, and de-emphasised older copies / orphan publishes (2026-10-30). */
 .hm-group { margin: 16px 0 4px; font-weight: 600; font-size: .72rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
 .hm-row-sub { opacity: .62; }
+/* Home "at a glance" tiles: a compact overview row, each tile a way into its section (2026-10-30). */
+.hm-glance-h { margin: 1.25rem 0 8px; font-size: 13px; color: var(--muted); }
+.hm-glance { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+.hm-tile { text-align: left; background: transparent; border: 1px solid var(--border); border-radius: 12px; padding: 14px; cursor: pointer; display: flex; flex-direction: column; gap: 2px; font: inherit; min-width: 0; }
+.hm-tile:hover { border-color: var(--border-strong); }
+.hm-tile-h { font-size: 13px; color: var(--muted); display: inline-flex; align-items: center; gap: 6px; }
+.hm-tile-v { font-size: 18px; font-weight: 600; color: var(--card-title); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hm-tile-s { font-size: 12px; color: var(--muted); min-height: 14px; }
 /* Home: the website-as-workspace with its reusable parts nested, and a hidden older-copies drawer. */
 .hm-ws-head { display: flex; align-items: flex-start; gap: 8px; padding: 10px 0; border-top: 1px solid var(--border); }
 .hm-ws:first-child .hm-ws-head { border-top: 0; }

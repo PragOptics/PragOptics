@@ -77,7 +77,53 @@ async function load() {
 function paint() {
   const body = document.getElementById('hmBody');
   if (!body) return;
-  body.innerHTML = `<div class="ev-cards">${projectsCard()}${dataCard()}${filesCard()}${sitesCard()}${domainsCard()}${connectionsCard()}${teamCard()}</div>`;
+  body.innerHTML = `${projectsCard()}${glanceRow()}${cleanupSection()}`;
+}
+
+// A compact "at a glance" row: the environment's data, files, domain, team and connections as small
+// tiles that lead into their section -- the OVERVIEW, not the detail. The detail lives on the
+// Environment tab, so Home stops repeating it as a stack of equal cards.
+function glanceRow() {
+  const e = D.escapeHtml;
+  const tile = (icon, label, value, sub, section, cardKey) => `<button class="hm-tile" type="button" data-acct-section="${e(section)}"${cardKey ? ` data-acct-card="${e(cardKey)}"` : ''}><span class="hm-tile-h">${ico(icon, 15)} ${e(label)}</span><span class="hm-tile-v">${value}</span><span class="hm-tile-s">${e(sub)}</span></button>`;
+  const dataN = hm.data ? hm.data.length : null;
+  const filesN = hm.files ? hm.files.length : null;
+  const dom = (hm.domains || [])[0];
+  const teamN = hm.members ? hm.members.length : null;
+  const connUp = hm.errs.connections === 'upgrade';
+  const connN = hm.connections ? hm.connections.length : null;
+  const tiles = [
+    tile('database', 'Data', dataN != null ? String(dataN) : '–', dataN != null ? (dataN === 1 ? 'table' : 'tables') : (hm.errs.data ? 'not read' : ''), 'environment', 'data'),
+    tile('folder', 'Files', filesN != null ? String(filesN) : '–', filesN != null ? (filesN === 1 ? 'file' : 'files') : (hm.errs.files ? 'not read' : ''), 'environment', 'files'),
+    tile('globe', 'Domain', dom ? e(dom.host) : (hm.domains ? 'none yet' : '–'), dom ? (String(dom.status || '').toUpperCase() === 'VERIFIED' ? 'verified' : String(dom.status || '').toLowerCase()) : '', 'environment', 'domains'),
+    tile('users', 'Team', teamN != null ? String(teamN) : '–', teamN != null ? (teamN === 1 ? 'person' : 'people') : (hm.errs.members === 'members' ? 'members only' : ''), 'team'),
+    tile('plug', 'Connected', connUp ? 'paid' : (connN != null ? String(connN) : '–'), connUp ? 'plans' : (connN != null ? (connN === 1 ? 'account' : 'accounts') : ''), connUp ? 'subscription' : 'environment', connUp ? '' : 'connections')
+  ].join('');
+  return `<p class="hm-glance-h">At a glance</p><div class="hm-glance">${tiles}</div>`;
+}
+
+// Leftover publishes with no project behind them (an early test, say). A plain Remove on your click --
+// the write guard does not block a button you press -- so it is gone for good, no Studio trip.
+function cleanupSection() {
+  const e = D.escapeHtml;
+  const projIds = new Set((hm.projects || []).map(p => p.id));
+  const orphans = (hm.sites || []).filter(s => !s.project || !projIds.has(s.project));
+  if (!orphans.length) return '';
+  const rows = orphans.map(s => {
+    const armed = hm.removeArm === s.slug;
+    const act = armed
+      ? `<button class="btn btn-sm is-risky" type="button" data-home-action="remove-site" data-slug="${e(s.slug)}">${ico('trash')}<span>Remove for good?</span></button><button class="btn btn-sm" type="button" data-home-action="remove-cancel">${ico('x')}<span>Keep</span></button>`
+      : `<button class="btn btn-sm is-risky" type="button" data-home-action="remove-arm" data-slug="${e(s.slug)}">${ico('trash')}<span>Remove</span></button>`;
+    return `<div class="hm-row hm-row-sub"><div class="hm-row-main"><p class="hm-row-t">${e(s.slug || 'site')} <span class="acct-tag">leftover</span></p><p class="hm-row-s adm-muted">A published file with no project behind it${s.publishedAt ? ` · ${e(when(s.publishedAt))}` : ''}${s.files != null ? ` · ${e(count(s.files, 'file', 'files'))}` : ''}.</p></div><div class="hm-row-act act-row">${act}</div></div>`;
+  }).join('');
+  return `<p class="hm-glance-h">Leftovers to clean up</p><div class="hm-list">${rows}</div>`;
+}
+
+async function removeSite(slug) {
+  if (!slug) return;
+  try { await D.apiFetch(tq(`/environment/publish/${encodeURIComponent(slug)}`), { method: 'DELETE' }); hm.errs.sites = ''; }
+  catch (ex) { hm.errs.sites = D.friendlyError(ex, 'Could not remove it.'); }
+  await load();
 }
 
 /* ---------- the cards ---------- */
@@ -282,6 +328,9 @@ export function bindHomeActions(deps) {
     // rides along as project=<id> for the studio to open that project (the studio reads it from the same fragment)
     if (a === 'toggle-older') { e.preventDefault(); hm.showOlder = !hm.showOlder; paint(); return; }
     if (a === 'toggle-ws') { e.preventDefault(); const id = String(btn.dataset.id || ''); hm.openWs = hm.openWs || new Set(); hm.openWs.has(id) ? hm.openWs.delete(id) : hm.openWs.add(id); paint(); return; }
+    if (a === 'remove-arm') { e.preventDefault(); hm.removeArm = String(btn.dataset.slug || ''); paint(); return; }
+    if (a === 'remove-cancel') { e.preventDefault(); hm.removeArm = ''; paint(); return; }
+    if (a === 'remove-site') { e.preventDefault(); const slug = String(btn.dataset.slug || ''); hm.removeArm = ''; removeSite(slug); return; }
     if (a === 'open-studio') { e.preventDefault(); window.pragOpenStudio?.(''); return; }
     if (a === 'open-project') { e.preventDefault(); const id = String(btn.dataset.id || ''); if (id) window.pragOpenStudio?.(`project=${encodeURIComponent(id)}`); }
   });
