@@ -931,8 +931,8 @@ function serveControl(d) {
     const shared = (f && f.addr) || String(s.origin || '').replace(/\/+$/, '');
     return `
       <div class="ev-serve">
-        <p class="ev-serve-what">${f ? `<b>${e(f.name)}</b> <span class="adm-muted">(${e(f.kind)})</span>` : 'Your website'} is <b>live</b> at <a href="${e(live)}" target="_blank" rel="noopener">${e(hostOnly(live))}</a>.</p>
-        ${shared ? `<p class="acct-card-note ev-dom-note">Also shared at <a href="${e(shared)}" target="_blank" rel="noopener">${e(hostOnly(shared))}</a>, its published address.</p>` : ''}
+        <p class="ev-serve-what">${f ? `<b>${e(f.name)}</b> <span class="adm-muted">(${e(f.kind)})</span>` : 'Your website'} is <b>live</b> at <a href="${e(live)}" target="_blank" rel="noopener">${e(hostOnly(live))}</a>${s.www && s.www.status === 'SERVING' ? ` and <a href="${e(s.www.url || ('https://' + s.www.host))}" target="_blank" rel="noopener">${e(s.www.host)}</a>` : ''}.</p>
+        ${shared ? `<p class="acct-card-note ev-dom-note">Source: <a href="${e(shared)}" target="_blank" rel="noopener">${e(hostOnly(shared))}</a>. This is where the platform publishes and stores the site.</p>` : ''}
       </div>
       <div class="act-row">
         <a class="btn btn-sm" href="${e(live)}" target="_blank" rel="noopener" data-tip="Open the live site">${ico('globe')}<span>Open site</span></a>
@@ -967,7 +967,7 @@ function serveControl(d) {
   if (facts.length === 1) {
     const f = facts[0];
     chooser = `
-      <p class="ev-serve-what">Put <b>${e(f.name)}</b> <span class="adm-muted">(${e(f.kind)}${f.addr ? `, shared at ${e(hostOnly(f.addr))}` : ''})</span> live at this domain.</p>
+      <p class="ev-serve-what">Put <b>${e(f.name)}</b> <span class="adm-muted">(${e(f.kind)}${f.addr ? `, published at ${e(hostOnly(f.addr))}` : ''})</span> live at this domain.</p>
       <input type="hidden" id="svs-${host}" value="${e(f.slug)}" />`;
   } else {
     chooser = `
