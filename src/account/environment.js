@@ -669,10 +669,18 @@ function rowDetailHtml(r, shape) {
   const e = D.escapeHtml;
   const st = statusOf(r), when = whenOf(r);
   const tag = st ? `<span class="acct-tag ${st === 'approved' ? 'is-verified' : st === 'pending' ? 'is-pending' : st === 'rejected' ? 'is-bad' : ''}">${e(st)}</span>` : '';
+  // a submission leads with what the person wrote (its fields); the platform's own record keys (id, install, lane, via,
+  // origin, address) follow under one muted heading, so the read is the message first and the bookkeeping second
+  const inner = innerOf(r);
+  const isSub = inner && inner !== r.value;
+  const rest = isSub ? Object.fromEntries(Object.entries(r.value).filter(([k]) => k !== 'fields')) : null;
+  const value = isSub
+    ? `<div class="ev-value-card">${valueCardHtml(inner)}</div><p class="hm-group ev-row-rest">Record</p><div class="ev-value-card is-rest">${valueCardHtml(rest)}</div>`
+    : `<div class="ev-value-card">${valueCardHtml(r.value)}</div>`;
   return `
     <div class="ev-row-detail">
       <p class="ev-row-meta adm-muted">${when ? `<span>${e(D.fmtDate(when))}</span>` : ''}${tag}<code>${e(r.key)}</code>${r.size != null ? `<span>${e(bytesFmt(r.size))}</span>` : ''}</p>
-      <div class="ev-value-card">${valueCardHtml(r.value)}</div>
+      ${value}
       <div class="act-row">${iconBtn('domain-copy', 'copy', 'Copy as JSON', `data-text="${e(valueText(r.value))}"`)}</div>
     </div>`;
 }
