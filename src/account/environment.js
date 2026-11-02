@@ -620,6 +620,18 @@ function dataLibraryHtml(tables) {
   return keys.map(k => `<p class="hm-group">${k ? e(k) : 'Other'}<span class="adm-muted"> ${owners[k].length}</span></p><div class="ev-tbls">${owners[k].map(rowOf).join('')}</div>`).join('');
 }
 
+/* TABLE OR CARDS (2026-11-02, Cameron, on the open breakins table: "it is not showing me the break in unless i click it.
+ * its not a table view, its a card view. i want both, with table view as the default"). The rows are a real grid by
+ * default at every width (it scrolls sideways on a phone); Cards stacks each row with its labels. The choice is kept on
+ * this browser. */
+const DATA_VIEW_KEY = 'pragoptics_data_view';
+function dataView() { try { return localStorage.getItem(DATA_VIEW_KEY) === 'cards' ? 'cards' : 'table'; } catch { return 'table'; } }
+function setDataView(v) { try { localStorage.setItem(DATA_VIEW_KEY, v === 'cards' ? 'cards' : 'table'); } catch { /* the default then */ } }
+function dataViewToggle() {
+  const v = dataView();
+  const b = (k, label) => `<button class="btn btn-sm ${v === k ? 'is-on' : ''}" type="button" role="tab" aria-selected="${v === k}" data-env-action="data-view" data-view="${k}" data-tip="${k === 'table' ? 'Rows as a table' : 'Each row as a card'}">${label}</button>`;
+  return `<div class="ev-view" role="tablist" aria-label="How the rows show">${b('table', 'Table')}${b('cards', 'Cards')}</div>`;
+}
 /** The rows of a table as a table: the submission's own fields as columns, then Status and When; each row is the click. */
 function rowsTableHtml(rows, shape) {
   const e = D.escapeHtml;
@@ -634,7 +646,7 @@ function rowsTableHtml(rows, shape) {
     const when = shape.when ? `<td class="cell-tight adm-muted" data-th="When">${whenOf(r) ? e(D.fmtDate(whenOf(r))) : ''}</td>` : '';
     return `<tr class="ev-row" data-env-action="data-row" data-key="${e(r.key)}" tabindex="0" role="button" aria-label="Open ${e(headlineOf(r, shape))}">${cells}${plain}${status}${when}</tr>`;
   }).join('');
-  return `<div class="adm-table-scroll"><table class="adm-table adm-table--wrap ev-table ev-rows"><thead><tr>${th}</tr></thead><tbody>${tr}</tbody></table></div>`;
+  return `<div class="adm-table-scroll"><table class="adm-table ev-table ev-rows ${dataView() === 'cards' ? 'adm-table--cards' : 'ev-table-grid'}"><thead><tr>${th}</tr></thead><tbody>${tr}</tbody></table></div>`;
 }
 /** One row opened: when, status and key on one line, then the whole value as the labeled card, and Copy as JSON. */
 function rowDetailHtml(r, shape) {
@@ -678,6 +690,7 @@ function dataHtml() {
         <button class="btn btn-sm ev-btn-ico" type="button" data-env-action="${open ? 'data-row-back' : 'data-close'}">${ico('chevron')}<span>${open ? e(ev.table) : 'All tables'}</span></button>
         <span class="ev-name-cell">${open ? e(headlineOf(open, shape)) : e(ev.table)}</span>
         ${open ? '' : stateIcon('data-reload', 'refresh', 'Reload the rows', { out: !!ev.rowsLoading && rows == null, busyWord: 'Reading the rows…', waiting: ev.rowsLoading && rows != null ? 'Wait for the next rows being read' : '' }, `data-table="${e(ev.table)}"`)}
+        ${open || !rows || !rows.length ? '' : dataViewToggle()}
       </div>`;
     if (open) body = `${head}${rowDetailHtml(open, shape)}`;
     else body = `${head}${rows == null ? '<p class="acct-loading">Reading rows…</p>' : !rows.length ? '<p class="acct-empty">This table is empty.</p>' : rowsTableHtml(rows, shape)}${rows && rows.length && ev.rowsAfter ? `<div class="acct-actions-row ev-note">${stateLead('data-more', 'chevron', 'Next 50 rows', { out: !!ev.rowsLoading, busyWord: 'Reading…' })}</div>` : ''}`;
@@ -2945,6 +2958,7 @@ export function bindEnvironmentActions(deps) {
     if (a === 'dom-tab') { ev.domTab = btn.dataset.tab || 'connect'; paintDomains(); return; }
     if (a === 'dom-add-toggle') { ev.domAdd = !ev.domAdd; paintDomains(); if (ev.domAdd) document.getElementById('evDomainHost')?.focus(); return; }
     if (a === 'data-row-back') { ev.openRow = ''; paintData(); return; }
+    if (a === 'data-view') { setDataView(btn.dataset.view || 'table'); paintData(); return; }
     // the read paints every Refresh as out while it runs (refreshCtl), so a second press finds it disabled
     if (a === 'refresh') { if (btn.disabled || envLoad) return; return void refreshAll(); }
     if (a === 'budget-save') return void saveBudget(btn);

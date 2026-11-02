@@ -597,3 +597,18 @@ a.ev-more { text-decoration: none; white-space: nowrap; }
 .ev-dom-list .ev-dom-state { color: var(--muted); font-size: .84rem; }
 .ev-dom-need { margin-top: 10px; padding: 10px 12px; border: 1px dashed var(--border); border-radius: 8px; }
 .ev-dom-need .ev-dom-need-h { margin: 0 0 6px; font-size: .9rem; }
+
+/* TABLE OR CARDS on the Data rows (2026-11-02, Cameron: "i want both, with table view as the default"). The grid stays a
+   grid at every width and scrolls sideways inside its frame; Cards stacks each row with its labels at every width, the
+   same look the narrow container gives every other table. */
+.ev-view { margin-left: auto; display: inline-flex; gap: 4px; }
+.ev-view .btn.is-on { background: color-mix(in srgb, var(--brand-600) 14%, transparent); border-color: var(--brand-600); color: var(--card-title); }
+.ev-table-grid th { white-space: nowrap; }
+.ev-table-grid td.cell-ellip { max-width: 260px; }
+.account .adm-table--cards thead { display: none; }
+.account .adm-table--cards, .account .adm-table--cards tbody, .account .adm-table--cards tr, .account .adm-table--cards td { display: block; width: 100%; box-sizing: border-box; min-width: 0; max-width: 100%; }
+.account .adm-table--cards tr { border: 1px solid var(--border); border-radius: 10px; padding: 8px 12px; margin: 8px 0; background: var(--surface-3); }
+.account .adm-table--cards td { border: 0; padding: 4px 0; white-space: normal; overflow: visible; text-overflow: clip; text-align: left; max-width: none; overflow-wrap: anywhere; }
+.account .adm-table--cards td[data-th]::before { content: attr(data-th); display: block; font-size: .64rem; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); font-weight: 700; margin-bottom: 2px; }
+.account .adm-table--cards td:empty { display: none; }
+.account .adm-table-scroll:has(> .adm-table--cards) { overflow: visible; border: 0; }
