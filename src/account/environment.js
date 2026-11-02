@@ -30,8 +30,11 @@ import { explainLink } from '../components/explainer.js';
 import { accessToken } from '../runtime/session.js';
 import { stripeAppearance } from '../api/stripeAppearance.js';
 import { ensureStripeJs } from '../runtime/stripeLoader.js';
-import { ico, iconBtn, leadBtn, btnLabel, cardHtml as sharedCard, isOpen, setOpen, initCards, busy, hold, stateLead, stateIcon, copyButton } from './cards.js';
+import { ico, iconBtn, leadBtn, btnLabel, cardHtml as sharedCard, isOpen, setOpen, initCards, openCardOf, busy, hold, stateLead, stateIcon, copyButton } from './cards.js';
 import { cardErrorWords } from '../api/stripeWords.js';
+// 2026-11-02 (Cameron: "im building this for humans"): one container per domain family, and a table's rows as a table
+import { familiesOf, liveHostsOf, familyState, listWords } from './domainFamilies.js';
+import { rowShape, innerOf, whenOf, statusOf, cellText, headlineOf } from './dataColumns.js';
 // the platform's cents formatter, under the name this file has always used for it (the local cents() below is the
 // AI budget's cent-sign variant, so the shared one cannot take that name here)
 import { countWord, cents as money } from '../ui/words.js';
@@ -47,7 +50,10 @@ const SEAT_ROLES = new Set(['owner', 'admin', 'developer', 'member']);
 const DOMAIN_ROLES = new Set(['owner', 'admin', 'developer', 'agent']);
 
 const LANE_KEY = 'pragoptics_env_lane';   // the lane the person was looking at; survives a section re-render
-function cardHtml(o) { return sharedCard({ ...o, key: `environment:${o.key}` }); }
+// THE CARDS START FOLDED HERE (2026-11-02, Cameron: the tab is "massively long"): each card's line already says what is
+// inside (its count), the at-a-glance strip above opens the one the person came for, and a card someone opened stays
+// open for the session (cards.js remembers). A deep link to a card (Home's tiles, card=) opens it as before.
+function cardHtml(o) { return sharedCard({ ...o, key: `environment:${o.key}`, open: o.open === undefined ? false : o.open }); }
 function openState() { return {}; }
 
 function laneChoice() { try { return sessionStorage.getItem(LANE_KEY) === 'sandbox' ? 'sandbox' : 'live'; } catch { return 'live'; } }
@@ -318,8 +324,33 @@ function paint() {
     : `<div id="evFiles">${filesHtml()}</div><div id="evData">${dataHtml()}</div><div id="evAi">${aiHtml()}</div><div id="evConnections">${connectionsHtml()}</div><div id="evDomains">${domainsHtml()}</div><div id="evKeys">${keysHtml()}</div>`;
   host.innerHTML = `
     ${summaryHtml(ev.view)}
+    ${ready ? glanceHtml() : ''}
     ${ready ? `<div class="ev-cards">${cards}</div>` : ''}
   `;
+}
+
+/* AT A GLANCE (2026-11-02, Cameron: "a view that is more organized and hero like"): the counts that matter, in the Home
+ * tiles' look, each opening its card below and scrolling to it. With the cards folded by default the tab is a screen
+ * tall, and a tile or a card line opens exactly the thing the person came for. */
+function glanceHtml() {
+  const e = D.escapeHtml;
+  const tile = (icon, label, value, sub, card) => `<button class="hm-tile ev-tile" type="button" data-env-action="jump" data-card="${e(card)}" data-tip="Open ${e(label)}"><span class="hm-tile-h">${ico(icon, 15)} ${e(label)}</span><span class="hm-tile-v">${value}</span><span class="hm-tile-s">${e(sub)}</span></button>`;
+  const files = ev.files, tables = ev.tables, doms = ev.domains, conns = ev.connections, keys = ev.keys, a = ev.ai;
+  const fams = doms ? familiesOf(doms) : null;
+  const fam = fams && fams[0];
+  const st = fam ? familyState(fam) : null;
+  const domSub = fam ? (st.live ? 'website live' : st.verified ? 'verified' : st.partly ? 'partly verified' : st.failed ? 'record missing' : 'waiting for the record') + (fams.length > 1 ? ` · +${fams.length - 1} more` : '') : '';
+  const aiOn = a ? (a.enabled ? 'on' : 'off') : (ev.aiNote ? 'not here' : '–');
+  const aiSub = a && a.credit ? `${money(Number(a.credit.usedCents || 0))} of ${money(Number(a.credit.limitCents || 0))} this month` : '';
+  const tiles = [
+    tile('folder', 'Files', files ? e(String(files.length)) : '–', files ? (files.length === 1 ? 'file' : 'files') : '', 'files'),
+    tile('database', 'Data', tables ? e(String(tables.length)) : '–', tables ? (tables.length === 1 ? 'table' : 'tables') : '', 'data'),
+    ...(ev.lane === 'sandbox' ? [] : [tile('globe', 'Domain', fam ? e(fam.host) : (doms ? 'none yet' : '–'), domSub, 'domains')]),
+    tile('plug', 'Connected', conns ? e(String(conns.length)) : '–', conns ? (conns.length === 1 ? 'account' : 'accounts') : '', 'connections'),
+    ...(ev.lane === 'sandbox' ? [] : [tile('sparkles', 'AI', e(aiOn), aiSub, 'ai')]),
+    tile('key', 'API keys', keys ? e(String(keys.length)) : '–', keys ? (keys.length === 1 ? 'key' : 'keys') : '', 'keys')
+  ].join('');
+  return `<div class="hm-glance ev-glance">${tiles}</div>`;
 }
 
 /* ---------- lanes ---------- */
@@ -614,6 +645,35 @@ function dataLibraryHtml(tables) {
   return keys.map(k => `<p class="hm-group">${k ? e(k) : 'Other'}<span class="adm-muted"> ${owners[k].length}</span></p><div class="ev-tbls">${owners[k].map(rowOf).join('')}</div>`).join('');
 }
 
+/** The rows of a table as a table: the submission's own fields as columns, then Status and When; each row is the click. */
+function rowsTableHtml(rows, shape) {
+  const e = D.escapeHtml;
+  const cols = shape.columns;
+  const statusTag = (st) => st ? `<span class="acct-tag ${st === 'approved' ? 'is-verified' : st === 'pending' ? 'is-pending' : st === 'rejected' ? 'is-bad' : ''}">${e(st)}</span>` : '';
+  const th = `${cols.map(c => `<th>${e(c.label)}</th>`).join('')}${shape.plain ? '<th>Value</th>' : ''}${shape.status ? '<th>Status</th>' : ''}${shape.when ? '<th>When</th>' : ''}`;
+  const tr = rows.map(r => {
+    const inner = innerOf(r) || {};
+    const cells = cols.map(c => { const txt = cellText(inner[c.key]); return `<td class="cell-ellip" data-th="${e(c.label)}" title="${e(txt)}">${e(txt)}</td>`; }).join('');
+    const plain = shape.plain ? `<td class="cell-ellip" data-th="Value" title="${e(cellText(r.value))}">${e(cellText(r.value))}</td>` : '';
+    const status = shape.status ? `<td class="cell-tight" data-th="Status">${statusTag(statusOf(r))}</td>` : '';
+    const when = shape.when ? `<td class="cell-tight adm-muted" data-th="When">${whenOf(r) ? e(D.fmtDate(whenOf(r))) : ''}</td>` : '';
+    return `<tr class="ev-row" data-env-action="data-row" data-key="${e(r.key)}" tabindex="0" role="button" aria-label="Open ${e(headlineOf(r, shape))}">${cells}${plain}${status}${when}</tr>`;
+  }).join('');
+  return `<div class="adm-table-scroll"><table class="adm-table adm-table--wrap ev-table ev-rows"><thead><tr>${th}</tr></thead><tbody>${tr}</tbody></table></div>`;
+}
+/** One row opened: when, status and key on one line, then the whole value as the labeled card, and Copy as JSON. */
+function rowDetailHtml(r, shape) {
+  const e = D.escapeHtml;
+  const st = statusOf(r), when = whenOf(r);
+  const tag = st ? `<span class="acct-tag ${st === 'approved' ? 'is-verified' : st === 'pending' ? 'is-pending' : st === 'rejected' ? 'is-bad' : ''}">${e(st)}</span>` : '';
+  return `
+    <div class="ev-row-detail">
+      <p class="ev-row-meta adm-muted">${when ? `<span>${e(D.fmtDate(when))}</span>` : ''}${tag}<code>${e(r.key)}</code>${r.size != null ? `<span>${e(bytesFmt(r.size))}</span>` : ''}</p>
+      <div class="ev-value-card">${valueCardHtml(r.value)}</div>
+      <div class="act-row">${iconBtn('domain-copy', 'copy', 'Copy as JSON', `data-text="${e(valueText(r.value))}"`)}</div>
+    </div>`;
+}
+
 function dataHtml() {
   const e = D.escapeHtml;
   const tables = ev.tables;
@@ -623,31 +683,21 @@ function dataHtml() {
   else if (!tables.length) body = '<p class="acct-empty">No data yet. The Studio, your site and your API keys write tables here; a connected supplier\'s products land in supplier_products.</p>';
   else if (!ev.table) body = dataLibraryHtml(tables);
   else {
+    // THE ROWS AS A TABLE (2026-11-02, Cameron: "our data doesnt show up as tables, its all blobs that have to be expanded
+    // ... opening a table should open the rows so i can click in each to view the submissions"). The columns come from the
+    // rows themselves (dataColumns.js rowShape), the whole row is the click, and a row opens to the submission in place
+    // of the list, with a Back to the rows: tables -> rows -> row.
     const rows = ev.rows;
-    body = `
+    const shape = rows ? rowShape(rows) : null;
+    const open = rows && ev.openRow ? rows.find(r => r.key === ev.openRow) : null;
+    const head = `
       <div class="ev-data-head">
-        <button class="btn btn-sm ev-btn-ico" type="button" data-env-action="data-close">${ico('chevron')}<span>All tables</span></button>
-        <span class="ev-name-cell">${e(ev.table)}</span>
-        ${stateIcon('data-reload', 'refresh', 'Reload the rows', { out: !!ev.rowsLoading && rows == null, busyWord: 'Reading the rows…', waiting: ev.rowsLoading && rows != null ? 'Wait for the next rows being read' : '' }, `data-table="${e(ev.table)}"`)}
-      </div>
-      ${rows == null ? '<p class="acct-loading">Reading rows…</p>' : !rows.length ? '<p class="acct-empty">This table is empty.</p>' : `
-      <div class="adm-table-scroll">
-        <table class="adm-table adm-table--wrap ev-table">
-          <thead><tr><th>Key</th><th>Value</th><th class="adm-num">Size</th><th>Updated</th><th></th></tr></thead>
-          <tbody>
-            ${rows.map(r => `
-              <tr>
-                <td class="cell-ellip ev-name-cell" data-th="Key" title="${e(r.key)}">${e(r.key)}</td>
-                <td class="cell-ellip" data-th="Value" title="${e(valuePeek(r.value))}">${e(valuePeek(r.value))}</td>
-                <td class="adm-num cell-tight" data-th="Size">${e(bytesFmt(r.size))}</td>
-                <td class="cell-tight adm-muted" data-th="Updated">${r.updatedAt ? e(D.fmtDate(r.updatedAt)) : ''}</td>
-                <td class="cell-tight ev-actions-cell">${iconBtn('data-row', ev.openRow === r.key ? 'x' : 'external', ev.openRow === r.key ? 'Close the value' : 'Show the value', `data-key="${e(r.key)}"`)}${iconBtn('domain-copy', 'copy', 'Copy the value', `data-text="${e(valueText(r.value))}"`)}</td>
-              </tr>${ev.openRow === r.key ? `
-              <tr class="ev-note-row" data-row="value"><td colspan="5" data-th="Value"><div class="ev-value-card">${valueCardHtml(r.value)}</div></td></tr>` : ''}`).join('')}
-          </tbody>
-        </table>
-      </div>
-      ${ev.rowsAfter ? `<div class="acct-actions-row ev-note">${stateLead('data-more', 'chevron', 'Next 50 rows', { out: !!ev.rowsLoading, busyWord: 'Reading…' })}</div>` : ''}`}`;
+        <button class="btn btn-sm ev-btn-ico" type="button" data-env-action="${open ? 'data-row-back' : 'data-close'}">${ico('chevron')}<span>${open ? e(ev.table) : 'All tables'}</span></button>
+        <span class="ev-name-cell">${open ? e(headlineOf(open, shape)) : e(ev.table)}</span>
+        ${open ? '' : stateIcon('data-reload', 'refresh', 'Reload the rows', { out: !!ev.rowsLoading && rows == null, busyWord: 'Reading the rows…', waiting: ev.rowsLoading && rows != null ? 'Wait for the next rows being read' : '' }, `data-table="${e(ev.table)}"`)}
+      </div>`;
+    if (open) body = `${head}${rowDetailHtml(open, shape)}`;
+    else body = `${head}${rows == null ? '<p class="acct-loading">Reading rows…</p>' : !rows.length ? '<p class="acct-empty">This table is empty.</p>' : rowsTableHtml(rows, shape)}${rows && rows.length && ev.rowsAfter ? `<div class="acct-actions-row ev-note">${stateLead('data-more', 'chevron', 'Next 50 rows', { out: !!ev.rowsLoading, busyWord: 'Reading…' })}</div>` : ''}`;
   }
   return cardHtml({
     key: 'data', icon: 'database', title: 'Data', summary,
@@ -920,7 +970,7 @@ function serveCostLine() {
 }
 
 /** Put a published site live at a verified domain over HTTPS (2026-10-20, the App Service serving app). */
-function serveControl(d) {
+function serveControl(d, { brief = false, live: liveHosts = null } = {}) {
   const e = D.escapeHtml;
   const s = d.serve;
   const host = e(d.host);
@@ -929,11 +979,15 @@ function serveControl(d) {
     const live = s.url || ('https://' + d.host);
     const f = (ev.sites || []).map(siteFacts).find(x => x.slug === s.site);
     const shared = (f && f.addr) || String(s.origin || '').replace(/\/+$/, '');
+    // every name this site is live at, in one sentence: the family's names when the card groups them (domainFamilyHtml),
+    // else this row's and the www companion it serves
+    const names = liveHosts && liveHosts.length ? liveHosts : [hostOnly(live), ...(s.www && s.www.status === 'SERVING' && s.www.host ? [s.www.host] : [])];
+    const at = listWords([...new Set(names)].map(h => `<a href="https://${e(h)}" target="_blank" rel="noopener">${e(h)}</a>`));
     return `
-      <div class="ev-serve">
-        <p class="ev-serve-what">${f ? `<b>${e(f.name)}</b> <span class="adm-muted">(${e(f.kind)})</span>` : 'Your website'} is <b>live</b> at <a href="${e(live)}" target="_blank" rel="noopener">${e(hostOnly(live))}</a>${s.www && s.www.status === 'SERVING' ? ` and <a href="${e(s.www.url || ('https://' + s.www.host))}" target="_blank" rel="noopener">${e(s.www.host)}</a>` : ''}.</p>
+      ${brief ? '' : `<div class="ev-serve">
+        <p class="ev-serve-what">${f ? `<b>${e(f.name)}</b> <span class="adm-muted">(${e(f.kind)})</span>` : 'Your website'} is <b>live</b> at ${at}.</p>
         ${shared ? `<p class="acct-card-note ev-dom-note">Source: <a href="${e(shared)}" target="_blank" rel="noopener">${e(hostOnly(shared))}</a>. This is where the platform publishes and stores the site.</p>` : ''}
-      </div>
+      </div>`}
       <div class="act-row">
         <a class="btn btn-sm" href="${e(live)}" target="_blank" rel="noopener" data-tip="Open the live site">${ico('globe')}<span>Open site</span></a>
         ${iconBtn('domain-unserve', 'x', 'Take this website off the domain (it stays published at its share address)', `data-host="${host}"`, 'is-risky')}
@@ -979,7 +1033,7 @@ function serveControl(d) {
     + stateLead('domain-serve', 'globe', 'Put this website live', { out: ev.serveBusy === d.host, busyWord: 'Going live…' }, `data-host="${host}" data-tip="Put the chosen website live at this domain over HTTPS"`, 'btn-primary');
 }
 
-function domainHtml(d) {
+function domainHtml(d, { sub = false, bare = false, live = null } = {}) {
   const e = D.escapeHtml;
   const manage = canManageDomains();
   const verified = d.status === 'VERIFIED';
@@ -1032,7 +1086,7 @@ function domainHtml(d) {
     // Verified, software not hosted here: this domain is a place to put a published WEBSITE live.
     // The serve control below carries the whole story (live at / put live / publish first) — so the
     // header must not also claim "nothing to do", which is the contradiction that read as senseless.
-    body = `<p class="acct-card-note ev-dom-note">Proven ${e(D.fmtDate(d.verifiedAt))}.</p>`;
+    body = sub || bare ? '' : `<p class="acct-card-note ev-dom-note">Proven ${e(D.fmtDate(d.verifiedAt))}.</p>`;   // in a family the head carries the state
   }
   // A name registered through PragOptics: its term and the renewal choice
   // (the owner's). The row is the truth the yearly renewal reads.
@@ -1056,13 +1110,13 @@ function domainHtml(d) {
     ? `<button class="btn btn-sm btn-ico is-armed" type="button" data-env-action="domain-${k}" data-host="${e(d.host)}" aria-label="${e(sure)} Press again to confirm." data-tip="Press again to confirm">${ico(icon)}<span>${e(sure)}</span></button>${iconBtn('domain-arm-cancel', 'x', 'Keep it', '', 'btn-arm-cancel')}`
     : iconBtn(`domain-${k}`, icon, tip, `data-host="${e(d.host)}"`, 'is-risky');
   return `
-    <div class="ev-dom">
-      <div class="ev-dom-head">
+    <div class="${bare ? 'ev-dom-primary' : sub ? 'ev-dom ev-dom-sub' : 'ev-dom'}">
+      ${bare ? '' : `<div class="ev-dom-head">
         <span class="ev-dom-host">${e(d.host)}</span>
         ${d.hosted ? hostedTag(d.hosted) : domainTag(d)}
         ${linked ? '<span class="acct-tag">linked</span>' : d.registrar ? '<span class="acct-tag">registered here</span>' : ''}
-        ${d.addedBy ? `<span class="ev-dom-when">connected by ${e(d.addedBy)} ${e(D.fmtDate(d.addedAt))}</span>` : ''}
-      </div>
+        ${!sub && d.addedBy ? `<span class="ev-dom-when">connected by ${e(d.addedBy)} ${e(D.fmtDate(d.addedAt))}</span>` : ''}
+      </div>`}
       ${body}
       ${manage ? `
       <div class="ev-dom-actions act-row">
@@ -1070,7 +1124,7 @@ function domainHtml(d) {
         ${verified && hosted ? (bs === 'BOUND'
           ? twoStep('unbind', 'x', 'Unbind: stop serving the software at this domain', 'Stop serving here?')
           : stateLead('domain-bind', 'link', bs === 'BINDING' ? 'Check' : bs === 'BIND_FAILED' ? 'Try again' : 'Bind', { out: !!busy, busyWord: 'Working…' }, `data-host="${e(d.host)}" data-tip="Serve the software at this domain"`, 'btn-primary')) : ''}
-        ${verified ? serveControl(d) : ''}
+        ${verified ? serveControl(d, { brief: sub, live }) : ''}
         ${d.hosted ? (ev.dnsBusy === d.host
           ? stateIcon('domain-dns-cancel', 'undo', 'Hand DNS back', { out: ev.dnsAct === 'cancel', busyWord: 'Handing DNS back…', waiting: ev.dnsAct === 'cancel' ? '' : 'Wait for the DNS change being made' }, `data-host="${e(d.host)}"`)
           : twoStep('dns-cancel', 'undo', 'Hand DNS back to where it was', 'Hand DNS back?')) : ''}
@@ -1082,6 +1136,29 @@ function domainHtml(d) {
     </div>`;
 }
 
+/* ONE CONTAINER PER DOMAIN FAMILY (2026-11-02, Cameron: two cards for one domain "makes it look confusing, like dude ...
+ * im building this for humans"; domainFamilies.js). The apex leads with the family's state and ONE sentence naming every
+ * name the site is live at; its own body and actions follow; the other names (www, a subdomain) nest under it as compact
+ * rows with their own state and actions, so a record still to add or a name to remove stays reachable, and nothing reads
+ * as a second domain. A family of one name is the plain card. */
+function domainFamilyHtml(fam) {
+  const e = D.escapeHtml;
+  const live = liveHostsOf(fam);
+  if (!fam.names.length) return domainHtml(fam.primary, { live });
+  const st = familyState(fam);
+  const tags = `${st.verified ? '<span class="acct-tag is-verified">verified</span>' : st.partly ? '<span class="acct-tag is-pending">partly verified</span>' : st.failed ? '<span class="acct-tag is-bad">record missing</span>' : '<span class="acct-tag is-pending">waiting for the record</span>'}${st.live ? '<span class="acct-tag is-verified">website live</span>' : ''}`;
+  const p = fam.primary;
+  return `
+    <div class="ev-dom ev-dom-family">
+      <div class="ev-dom-head">
+        <span class="ev-dom-host">${e(fam.host)}</span>${tags}
+        <span class="ev-dom-when">${countWord(fam.rows.length, 'name', 'names')}${p.addedBy ? ` · connected by ${e(p.addedBy)} ${e(D.fmtDate(p.addedAt))}` : ''}</span>
+      </div>
+      ${domainHtml(p, { bare: true, live })}
+      <div class="ev-dom-names-list" aria-label="The other names of ${e(fam.host)}">${fam.names.map(n => domainHtml(n, { sub: true, live })).join('')}</div>
+    </div>`;
+}
+
 /** The link door: a name held at a registrar account connected under Connected accounts. */
 function linkDoorHtml(full) {
   const e = D.escapeHtml;
@@ -1090,7 +1167,7 @@ function linkDoorHtml(full) {
   return `
     <div class="ev-dom-row ev-dom-link">
       <select class="acct-input acct-select" id="evLinkConn" aria-label="Registrar account">${conns.map(c => `<option value="${e(c.id)}">${e(c.label)} (${e(providerLabel(c.provider))})</option>`).join('')}</select>
-      <input class="acct-input" type="text" id="evLinkHost" maxlength="253" placeholder="www.example.com" autocomplete="off" spellcheck="false" autocapitalize="off" ${full ? 'disabled' : ''} />
+      <input class="acct-input" type="text" id="evLinkHost" maxlength="253" placeholder="example.com" autocomplete="off" spellcheck="false" autocapitalize="off" ${full ? 'disabled' : ''} />
       ${leadBtn('domain-link', 'link', 'Link', full ? 'disabled' : '', 'btn-primary')}
     </div>
     <p class="acct-card-note ev-dom-door">A name held in that registrar account. The platform writes its records itself; nothing to paste.</p>
@@ -1210,7 +1287,7 @@ function domainsHtml() {
   const summary = rows == null ? 'loading' : !rows.length && !regs.length ? 'none yet' : `${rows.length ? `${countWord(rows.length, 'domain', 'domains')}${limit ? ` of ${limit}` : ''}` : ''}${rows.length && regs.length ? ' · ' : ''}${regs.length ? countWord(regs.length, 'registering', 'registering') : ''}`;
   const list = rows == null ? '<p class="acct-loading">Loading domains…</p>'
     : !rows.length ? (regs.length ? '' : `<p class="acct-empty">No domain yet.</p>`)
-    : `<div class="ev-domains">${rows.map(domainHtml).join('')}</div>`;
+    : `<div class="ev-domains">${familiesOf(rows).map(domainFamilyHtml).join('')}</div>`;
   // THE GUIDED DOMAIN WIZARD (2026-10-09, Cameron: a real interactive walk, both paths spelled out, not terse tabs).
   // Two clear choices up front, then the walk for each, reusing the connect / link / dns / register doors and their ops.
   const owner = myRole() === 'owner';
@@ -1218,7 +1295,11 @@ function domainsHtml() {
   if (manage && !CONNECT_WAYS.has(ev.domTab) && ev.domTab !== 'register') ev.domTab = 'connect';
   const ownOn = manage && CONNECT_WAYS.has(ev.domTab);
   const buyOn = manage && ev.domTab === 'register';
-  const chooser = manage && !inFlight ? `
+  // THE SETUP WAITS BEHIND "ADD A DOMAIN" once a domain exists (2026-11-02): the chooser and its doors are a screen of
+  // their own; a person with a domain in place sees their domain, not the walk to add one, until they ask for it.
+  const showSetup = manage && !inFlight && (!(rows && rows.length) || !!ev.domAdd);
+  const addBtn = manage && !inFlight && rows && rows.length ? `<div class="acct-actions-row ev-dom-add">${ev.domAdd ? iconBtn('dom-add-toggle', 'x', 'Close the domain setup') : leadBtn('dom-add-toggle', 'plus', 'Add a domain')}</div>` : '';
+  const chooser = showSetup ? `
     <p class="acct-card-note ev-dom-lead">Set up a domain for your team. Your mail, licenses and website go on a domain you control. Start with one you already own, or get one.</p>
     <div class="ev-dom-choose" role="group" aria-label="How do you want to set up your domain">
       <button class="ev-dom-pick ${ownOn ? 'is-on' : ''}" type="button" data-env-action="dom-tab" data-tab="connect" aria-pressed="${ownOn}">
@@ -1235,7 +1316,7 @@ function domainsHtml() {
   let door = '';
   if (manage && inFlight) {
     door = '';   // the registering row carries the state; the chooser and the wizard return once the registry answers
-  } else if (manage) {
+  } else if (manage && showSetup) {
     if (ownOn) {
       // the ways to connect a domain you own (2026-10-10, Cameron: name the buttons for an everyday, non-coding person;
       // the mechanics live in the tooltip and the explainer, not the label): keep it where it is and add records, let a
@@ -1251,17 +1332,17 @@ function domainsHtml() {
       let inner = '';
       if (ev.domTab === 'connect') inner = `
         <div class="ev-dom-row">
-          <input class="acct-input" type="text" id="evDomainHost" maxlength="253" placeholder="www.example.com" autocomplete="off" spellcheck="false" autocapitalize="off" ${full ? 'disabled' : ''} />
+          <input class="acct-input" type="text" id="evDomainHost" maxlength="253" placeholder="example.com" autocomplete="off" spellcheck="false" autocapitalize="off" ${full ? 'disabled' : ''} />
           ${leadBtn('domain-add', 'plus', 'Connect', full ? 'disabled' : '', 'btn-primary')}
         </div>
-        <p class="acct-card-note ev-dom-door">Enter the domain you own. We give you one TXT record to add at your registrar; nothing else changes. Then press Verify.${full ? ' This plan is full: remove one to connect another, or move up a plan.' : ''}</p>`;
+        <p class="acct-card-note ev-dom-door">Enter the domain you own, like example.com. We give you one TXT record to add at your registrar; nothing else changes. Then press Verify. When you put a website live on it, www goes live with it.${full ? ' This plan is full: remove one to connect another, or move up a plan.' : ''}</p>`;
       else if (ev.domTab === 'link') inner = linkDoorHtml(full);
       else if (ev.domTab === 'dns') inner = dnsDoorHtml(full);
       door = `${waysBar}${inner}`;
     } else if (buyOn) {
       door = registerHtml();
     }
-  } else {
+  } else if (!manage) {
     door = `<p class="acct-card-note">The owner, an admin or a developer connects domains; everyone on the team sees them here.</p>`;
   }
   return cardHtml({
@@ -1269,6 +1350,7 @@ function domainsHtml() {
     body: `
       ${list}
       ${registrationsHtml(regs)}
+      ${addBtn}
       ${chooser}
       ${door}
       <p class="acct-error" id="evDomainError" hidden></p>
@@ -2104,7 +2186,7 @@ async function copyKey(btn) {
 async function addDomain(btn) {
   D.showError('evDomainError', '');
   const host = (document.getElementById('evDomainHost')?.value || '').trim();
-  if (!host) { D.showError('evDomainError', 'Enter the domain to connect, e.g. www.example.com.'); return; }
+  if (!host) { D.showError('evDomainError', 'Enter the domain to connect, e.g. example.com.'); return; }
   if (btn.disabled) return;
   const done = busy(btn, 'Connecting…');
   try {
@@ -2206,7 +2288,7 @@ async function linkDomain(btn) {
   D.showError('evDomainError', '');
   const host = (document.getElementById('evLinkHost')?.value || '').trim();
   const connectionId = document.getElementById('evLinkConn')?.value || '';
-  if (!host) { D.showError('evDomainError', 'Enter the domain to link, e.g. www.example.com.'); return; }
+  if (!host) { D.showError('evDomainError', 'Enter the domain to link, e.g. example.com.'); return; }
   if (!connectionId) { D.showError('evDomainError', 'Pick the registrar account that holds the name.'); return; }
   if (btn.disabled) return;
   const done = busy(btn, 'Linking…');
@@ -2801,6 +2883,10 @@ export function bindEnvironmentActions(deps) {
     e.preventDefault();
     const a = btn.dataset.envAction;
     if (a === 'dom-tab') { ev.domTab = btn.dataset.tab || 'connect'; paintDomains(); return; }
+    if (a === 'dom-add-toggle') { ev.domAdd = !ev.domAdd; paintDomains(); if (ev.domAdd) document.getElementById('evDomainHost')?.focus(); return; }
+    // a glance tile: open that card and bring it into view
+    if (a === 'jump') { const sec = document.querySelector(`.ev-card[data-card="${CSS.escape('environment:' + (btn.dataset.card || ''))}"]`); if (sec) { openCardOf(sec); sec.scrollIntoView({ behavior: 'smooth', block: 'start' }); } return; }
+    if (a === 'data-row-back') { ev.openRow = ''; paintData(); return; }
     // the read paints every Refresh as out while it runs (refreshCtl), so a second press finds it disabled
     if (a === 'refresh') { if (btn.disabled || envLoad) return; return void refreshAll(); }
     if (a === 'budget-save') return void saveBudget(btn);
@@ -2883,6 +2969,7 @@ export function bindEnvironmentActions(deps) {
   });
 
   document.addEventListener('keydown', (e) => {
+    if ((e.key === 'Enter' || e.key === ' ') && e.target.matches?.('tr.ev-row')) { e.preventDefault(); e.target.click(); return; }
     if (e.key === 'Enter' && e.target.id === 'evKeyLabel') { e.preventDefault(); document.querySelector('[data-env-action="key-make"]')?.click(); }
     if (e.key === 'Enter' && (e.target.id === 'evConnLabel' || e.target.matches?.('[data-conn-field]'))) { e.preventDefault(); document.querySelector('[data-env-action="conn-add"]')?.click(); }
     if (e.key === 'Enter' && e.target.id === 'evDomainHost') { e.preventDefault(); document.querySelector('[data-env-action="domain-add"]')?.click(); }
