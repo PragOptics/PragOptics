@@ -244,6 +244,8 @@ a.ev-more { text-decoration: none; white-space: nowrap; }
   /* the Licensing head has one icon: it stays in the corner instead of a lone row under the title (2026-11-02) */
   .ev-summary.lic-head { position: relative; }
   .ev-summary.lic-head .ev-actions { width: auto; position: absolute; top: 12px; right: 12px; }
+  /* a Licensing card title takes the room left beside its (i) and its chevron, so the chevron never drops to a line of its own (2026-11-02, phone check) */
+  [data-card^="licensing:"] > .ev-card-head .ev-card-title { flex: 1 1 0; min-width: 0; max-width: none; }
   /* tables become stacked rows: each cell labeled by its column */
   .account .adm-table--wrap thead { display: none; }
   .account .adm-table--wrap, .account .adm-table--wrap tbody, .account .adm-table--wrap tr, .account .adm-table--wrap td { display: block; width: 100%; box-sizing: border-box; }
