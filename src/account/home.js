@@ -14,6 +14,7 @@
 
 import { PRAG_API_BASE } from '../runtime/config.js';
 import { cardHtml as sharedCard, ico, leadBtn, initCards } from './cards.js';
+import { groupsOf, countsLine } from './approvalGroups.js';
 
 let D = null;
 const hm = { projects: null, sites: null, domains: null, connections: null, members: null, data: null, files: null, errs: {} };
@@ -59,25 +60,36 @@ async function load() {
       return null;
     }
   };
-  const [p, s, d, c, m, dt, fl] = await Promise.all([
+  const [p, s, d, c, m, dt, fl, ap] = await Promise.all([
     read('projects', '/environment/projects'),
     read('sites', '/environment/publish'),
     read('domains', '/environment/domains'),
     read('connections', '/environment/connections'),
     read('members', '/tenant/members'),
     read('data', '/environment/data'),
-    read('files', '/environment/files?limit=200')
+    read('files', '/environment/files?limit=200'),
+    // what waits for a decision (2026-11-02, approvals): a line on Home only when something does
+    read('approvals', '/environment/approvals')
   ]);
   hm.projects = p?.projects || null; hm.sites = s?.sites || null; hm.domains = d?.domains || null;
   hm.connections = c?.connections || null; hm.members = m?.members || null;
   hm.data = dt?.tables || null; hm.files = fl?.items || null;
+  hm.approvals = ap ? groupsOf(ap) : null;
   paint();
 }
 
 function paint() {
   const body = document.getElementById('hmBody');
   if (!body) return;
-  body.innerHTML = `${projectsCard()}${glanceRow()}${cleanupSection()}`;
+  body.innerHTML = `${approvalsLine()}${projectsCard()}${glanceRow()}${cleanupSection()}`;
+}
+
+/** "2 waiting in Reviews" with the way to the Approvals section; nothing at all when nothing waits (the definition's decision 6). */
+function approvalsLine() {
+  const line = countsLine(hm.approvals || []);
+  if (!line) return '';
+  const e = D.escapeHtml;
+  return `<button class="hm-approvals" type="button" data-acct-section="approvals">${ico('bell')}<span class="hm-approvals-t">Approvals</span><span class="hm-approvals-s">${e(line)}</span><span class="hm-approvals-go">Decide</span></button>`;
 }
 
 // A compact "at a glance" row: the environment's data, files, domain, team and connections as small

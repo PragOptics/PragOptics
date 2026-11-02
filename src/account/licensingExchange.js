@@ -278,7 +278,9 @@ function formsHtml(x, made, e) {
     // a form that keeps its own people or its own switch (set in the studio's Mail block) says so; the rest follow the mailer
     const ownBits = [f.notifyTo && f.notifyTo.length ? `tells ${listWords(f.notifyTo)}` : '', f.confirmVisitor === true ? 'confirms to the sender' : f.confirmVisitor === false ? 'no confirmation' : ''].filter(Boolean);
     const ownNote = ownBits.length ? `<p class="lic-hint">Its own: ${e(ownBits.join('; '))} (set in the studio, on the form's Mail block).</p>` : '';
-    return `<li class="lic-form-row"><div class="lic-dom-row"><span class="lic-form-name">${e(f.name)}${f.enabled ? '' : ' <span class="acct-tag">off</span>'}</span><span class="lic-state is-quiet">table ${cardLink('environment', 'data', f.table)}</span><span class="lic-dom-act">${control}</span></div>${ownNote}</li>`;
+    // the table link opens the table itself on the Data card (the open-table note, read by environment.js loadTables)
+    const tableLink = `<a class="acct-inline-link" href="#account?section=environment&card=data" data-acct-section="environment" data-acct-card="data" data-open-table="${e(f.table)}">${e(f.table)}</a>`;
+    return `<li class="lic-form-row"><div class="lic-dom-row"><span class="lic-form-name">${e(f.name)}${f.enabled ? '' : ' <span class="acct-tag">off</span>'}</span><span class="lic-state is-quiet">table ${tableLink}</span><span class="lic-dom-act">${control}</span></div>${ownNote}</li>`;
   }).join('');
   return `${head}<p class="lic-hint">The mailer each form sends from: the team's copy goes to the people the mailer tells, and the sender's confirmation follows its switch, unless the form sets its own in the studio. Each row of the form's table says what was sent.</p>${errHtml('exchange-forms')}${noteHtml('exchange-forms')}<ul class="lic-dom-list">${rows}</ul>`;
 }

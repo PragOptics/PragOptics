@@ -24,6 +24,7 @@ import { renderEnvironment, renderAi, bindEnvironmentActions } from './environme
 import { renderLicensing, bindLicensingActions } from './licensing.js';
 import { renderLiveAgents, renderAgentDesk, bindLiveAgentsActions, stopLiveAgentsTimers } from './liveAgents.js';
 import { renderHome, bindHomeActions } from './home.js';
+import { renderApprovals, bindApprovalsActions } from './approvals.js';
 import { avatarHtml, fileToAvatar, saveAvatar } from './avatar.js';
 import { renderBuildsQueue, renderMyBuilds } from './buildsDesk.js';
 import { renderNeedsAttention } from './needsAttentionDesk.js';
@@ -343,6 +344,7 @@ const ICONS = {
 
 const ACCOUNT_SECTIONS = [
   { id: 'home',         label: 'Home' },
+  { id: 'approvals',    label: 'Approvals' },    // 2026-11-02, Cameron: "a spot in the ui for an owner or team who would approve"; shown by scope (approvalsHidden)
   { id: 'profile',      label: 'Profile' },
   { id: 'products',     label: 'Registered hardware' },
   { id: 'subscription', label: 'Billing' },
@@ -377,7 +379,7 @@ const INTERNAL_SECTIONS = [
 // only when the lanes carry it and TEAM_LIVE is flipped. Until then the live
 // lane never shows them; dev always does.
 const TEAM_ON = (LANE !== 'live') || TEAM_LIVE;
-const TEAM_IDS = new Set(['team', 'environment', 'ai', 'licensing', 'liveagents', 'agentdesk', 'tenants']);
+const TEAM_IDS = new Set(['team', 'environment', 'ai', 'licensing', 'liveagents', 'agentdesk', 'tenants', 'approvals']);
 // The agent roster (2026-10-10): the platform owner and anyone granted the agent flag. The agent flag is identity, not a
 // team role: it unlocks the internal Agents desk on ANY of their environments (rosterSections, shown even without admin).
 // It does NOT take away the customer Live Agents tab: an agent in their OWN environment still requests support like any
@@ -434,7 +436,8 @@ function agentMode() { return !!agentEnv(); }
 function agentModeGroups() {
   // THEIRS: the customer's own surface, exactly what a team admin on their environment sees (Cameron 2026-10-25:
   // "the left side is supposed to be see what all i would see as an admin on his team").
-  const theirs = [{ id: 'environment', label: 'Environment' }, { id: 'ai', label: 'AI' }, { id: 'team', label: 'Team' }, { id: 'licensing', label: 'Licensing' }];
+  // Approvals only when the owner granted the agent role the decision (2026-11-02): a customer's content is the customer's call
+  const theirs = [{ id: 'environment', label: 'Environment' }, { id: 'ai', label: 'AI' }, { id: 'team', label: 'Team' }, { id: 'licensing', label: 'Licensing' }, ...(scopesInView().includes('approve_content') ? [{ id: 'approvals', label: 'Approvals' }] : [])];
   // THE AGENT SIDE: only what the agent has FOR this customer -- the engagement desk, their items, alerts, support
   // (Cameron 2026-10-25: "relevant shit that i have as an agent and the agent role, that is internal and relevant to the
   // user"). Platform-whole desks (Overview, Users, Tenants, Payments, ...) never appear inside a customer's environment;
@@ -498,13 +501,21 @@ function licensingHidden() { return TEAM_ON && (roleInView() === null || licensi
 /** The customer Live Agents tab: the user side, for whoever OWNS the env in view. NEVER the platform owner (isOwner):
  *  the platform provides agents, it does not request them. The platform owner works this from the internal Agents page. */
 function liveAgentsHidden() { const u = cachedPing()?.user; return u?.isOwner === true || (TEAM_ON && roleInView() !== 'owner'); }
+/** The scopes the person holds on the team in view, as the last team read answered them (the owner holds every one). */
+function scopesInView() {
+  if (roleInView() === 'owner') return ['approve_content'];
+  return teamRole.userId === pingUserId() && teamRole.teamId === pickedTeamId() && Array.isArray(teamRole.scopes) ? teamRole.scopes : [];
+}
+/** Approvals (2026-11-02) shows to the owner and to a role the owner gave "Approve what shows on your site"; nobody else sees the entry. */
+function approvalsHidden() { return TEAM_ON && !scopesInView().includes('approve_content'); }
 /** Every answer from the team view says the role on the team it was asked about (no tenant= is the default team). */
 function noteTeamView(url, options, data) {
   if (String(options?.method || 'GET').toUpperCase() !== 'GET') return;
   let u; try { u = new URL(url); } catch { return; }
   if (`${u.origin}${u.pathname}` !== TEAM_VIEW_URL) return;
   const role = data?.tenant ? String(data?.membership?.role || '').toLowerCase() : 'none';
-  teamRole = { userId: pingUserId(), teamId: u.searchParams.get('tenant') || '', role: role || 'unknown', name: String(data?.tenant?.organizationName || '') };
+  // the caller's own scopes on the team in view (2026-11-02): the Approvals entry shows by one of them
+  teamRole = { userId: pingUserId(), teamId: u.searchParams.get('tenant') || '', role: role || 'unknown', name: String(data?.tenant?.organizationName || ''), scopes: Array.isArray(data?.scopes) ? data.scopes.map(String) : [] };
   // how many environments this person can switch between (the same list the Team tab's switcher shows: agent
   // relationships are not teams of theirs); the environment line shows its switch only past one (2026-10-12, Cameron:
   // "why is there a button to switch the environment, when i only have one")
@@ -596,6 +607,10 @@ function syncLicensingNav() {
   const la = document.querySelector('.adm-nav-item[data-acct-section="liveagents"]')?.closest('li');
   if (la) la.hidden = liveAgentsHidden();
   if (liveAgentsHidden() && mounted && activeSection === 'liveagents') showSection('profile');
+  // Approvals follows the scopes the team read answered (2026-11-02)
+  const apv = document.querySelector('.adm-nav-item[data-acct-section="approvals"]')?.closest('li');
+  if (apv) apv.hidden = approvalsHidden();
+  if (approvalsHidden() && mounted && activeSection === 'approvals') showSection('home');
   paintEnvLine();   // the environment line follows every read of the team view (its name and the role arrive with it)
 }
 /**
@@ -4954,6 +4969,7 @@ function paintSection(id, main) {
   if (id === 'orders')       return void renderOrders(main);
   if (id === 'team')         return void renderTeam(main, teamDeps());
   if (id === 'environment')  return void renderEnvironment(main, teamDeps());
+  if (id === 'approvals')    return void renderApprovals(main, teamDeps());
   if (id === 'ai')           return void renderAi(main, teamDeps());
   if (id === 'licensing')    return void renderLicensing(main, teamDeps());
   if (id === 'liveagents')   return void renderLiveAgents(main, teamDeps());
@@ -4989,6 +5005,7 @@ function bindOnce() {
   bindLicensingActions(teamDeps());
   bindLiveAgentsActions(teamDeps());
   bindHomeActions(teamDeps());
+  bindApprovalsActions(teamDeps());
   initCards();
 
   document.addEventListener('click', (e) => {
@@ -5249,6 +5266,7 @@ function bindOnce() {
 const CARD_IDS = {
   environment: { environment: 'evBody', storage: 'evBody', lanes: 'evBody', publish: 'evBody', files: 'evFiles', data: 'evData', connections: 'evConnections', domains: 'evDomains', keys: 'evKeys' },
   ai: { ai: 'evAi', budget: 'evAi' },
+  approvals: {},
   subscription: { plan: 'acctPricing', card: 'acctPmActions', payment: 'acctPmActions', details: 'card-billing-details', bandwidth: 'card-billing-bandwidth' },
   profile: { name: 'card-profile-name', passkeys: 'acctPasskeyList', password: 'acctPasswordError', phone: 'acctPhoneState', email: 'acctAliasList' },
   team: { members: 'card-team-members', invite: 'card-team-invite' },

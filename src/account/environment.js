@@ -540,6 +540,14 @@ async function loadTables() {
     ev.tablesNote = ex?.sessionInvalidated ? '' : (ex?.data?.error || D.friendlyError(ex, 'Could not list the tables.'));
   }
   paintData();
+  // A DEEP LINK TO A TABLE AND A ROW (2026-11-02): the Approvals section's Open, or the Mail card's table link, leaves a note;
+  // the table opens and the row with it, instead of the library the person then has to walk
+  let want = null;
+  try { want = JSON.parse(sessionStorage.getItem('pragoptics_open_table') || 'null'); sessionStorage.removeItem('pragoptics_open_table'); } catch { want = null; }
+  if (want && want.table && (ev.tables || []).some(t => t.table === want.table)) {
+    await loadRows(want.table);
+    if (want.row && ev.table === want.table) { ev.openRow = String(want.row); paintData(); }
+  }
 }
 /** The rows of one table, fifty at a time; `more` continues from the last key. */
 async function loadRows(table, more = false) {
@@ -647,7 +655,7 @@ function rowsTableHtml(rows, shape) {
     // the row's mail outcome in a few words (2026-11-02, Cameron: "the rows need status for sent or not, and to user and team")
     const mail = shape.mail ? `<td class="cell-tight adm-muted" data-th="Mail">${e(mailShort(r.value))}</td>` : '';
     const when = shape.when ? `<td class="cell-tight adm-muted" data-th="When">${whenOf(r) ? e(D.fmtDate(whenOf(r))) : ''}</td>` : '';
-    return `<tr class="ev-row" data-env-action="data-row" data-key="${e(r.key)}" tabindex="0" role="button" aria-label="Open ${e(headlineOf(r, shape))}">${cells}${plain}${status}${mail}${when}</tr>`;
+    return `<tr class="ev-row" data-env-action="data-row" data-key="${e(r.key)}" data-row="${e(r.key)}" tabindex="0" role="button" aria-label="Open ${e(headlineOf(r, shape))}">${cells}${plain}${status}${mail}${when}</tr>`;
   }).join('');
   return `<div class="adm-table-scroll"><table class="adm-table ev-table ev-rows ${dataView() === 'cards' ? 'adm-table--cards' : 'ev-table-grid'}"><thead><tr>${th}</tr></thead><tbody>${tr}</tbody></table></div>`;
 }
@@ -669,10 +677,19 @@ function rowDetailHtml(r, shape) {
     : `<div class="ev-value-card">${valueCardHtml(r.value)}</div>${mailBlock}`;
   return `
     <div class="ev-row-detail">
-      <p class="ev-row-meta adm-muted">${when ? `<span>${e(D.fmtDate(when))}</span>` : ''}${tag}<code>${e(r.key)}</code>${r.size != null ? `<span>${e(bytesFmt(r.size))}</span>` : ''}</p>
+      <p class="ev-row-meta adm-muted">${when ? `<span>${e(D.fmtDate(when))}</span>` : ''}${tag}${decidedWords(r.value) ? `<span>${e(decidedWords(r.value))}</span>` : ''}<code>${e(r.key)}</code>${r.size != null ? `<span>${e(bytesFmt(r.size))}</span>` : ''}</p>
       ${value}
       <div class="act-row">${iconBtn('domain-copy', 'copy', 'Copy as JSON', `data-text="${e(valueText(r.value))}"`)}${moderateButtons(r)}</div>
     </div>`;
+}
+/** When and through what a row was decided (2026-11-02, auth/approvals.js decidedBy): "decided Nov 2, 2026 through the mail sent to a@b" / "by c@d" / older rows: "decided Nov 2, 2026". */
+function decidedWords(v) {
+  if (!v || typeof v !== 'object') return '';
+  const at = v.decidedAt || v.moderatedAt;
+  if (!at || !['approved', 'rejected'].includes(String(v.status || ''))) return '';
+  const by = v.decidedBy && typeof v.decidedBy === 'object' ? v.decidedBy : null;
+  const who = !by ? '' : by.via === 'mail' ? ` through the mail sent to ${(Array.isArray(by.to) ? by.to : []).join(', ') || 'the team'}` : by.email ? ` by ${by.email}` : '';
+  return `decided ${D.fmtDate(at)}${who}`;
 }
 /* APPROVE OR REJECT A ROW THAT WAITS (2026-11-02, the mailer plan step 3: "a pending review gets Approve and Reject on its
  * row in your Data card; without it the review flow stops at the team's inbox"). Any table whose rows carry a status of
@@ -690,13 +707,25 @@ async function moderateRow(key, status) {
   const row = (ev.rows || []).find(r => r.key === key);
   if (!row || !ev.table || ev.moderating) return;
   const table = ev.table;
-  const value = { ...(row.value && typeof row.value === 'object' && !Array.isArray(row.value) ? row.value : { value: row.value }), status, moderatedAt: new Date().toISOString() };
+  const v = row.value && typeof row.value === 'object' && !Array.isArray(row.value) ? row.value : null;
   ev.moderating = key; ev.moderatingTo = status; ev.rowsNote = ''; paintData();
   try {
-    await D.apiFetch(url(`${ENV_URL}/data/${encodeURIComponent(table)}/${encodeURIComponent(key)}`), { method: 'PUT', body: body({ value }) });
+    // THE ONE DECISION (2026-11-02, backend auth/approvals.js): a row the public door wrote carries its install, so the decision
+    // goes through the approvals route (the scope, the row's version, the index, the audit); an older row with no install
+    // falls back to the raw write, which the server guards with the same scope
+    if (v && v.installId) {
+      await D.apiFetch(url(`${ENV_URL}/approvals/${encodeURIComponent(v.installId)}/${encodeURIComponent(key)}`), { method: 'POST', body: body({ decision: status }) });
+    } else {
+      const value = { ...(v || { value: row.value }), status, decidedAt: new Date().toISOString() };
+      await D.apiFetch(url(`${ENV_URL}/data/${encodeURIComponent(table)}/${encodeURIComponent(key)}`), { method: 'PUT', body: body({ value }) });
+    }
   } catch (ex) {
     ev.moderating = ''; ev.moderatingTo = '';
-    ev.rowsNote = ex?.sessionInvalidated ? '' : (ex?.data?.error || D.friendlyError(ex, `The row could not be marked ${status}.`));
+    const code = ex?.data?.code;
+    ev.rowsNote = ex?.sessionInvalidated ? ''
+      : code === 'SCOPE_REQUIRED' ? 'Your role cannot decide this. The owner can turn on "Approve what shows on your site" for your role on the Team tab.'
+      : code === 'ALREADY_DECIDED' ? `Already ${ex.data.state || 'decided'}${ex.data.decidedAt ? ` on ${D.fmtDate(ex.data.decidedAt)}` : ''}.`
+      : (ex?.data?.error || D.friendlyError(ex, `The row could not be marked ${status}.`));
     paintData();
     return;
   }

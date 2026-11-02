@@ -14,7 +14,8 @@
 
 const PREFERRED = ['name', 'full_name', 'email', 'title', 'subject', 'company', 'business', 'rating', 'topic', 'type', 'sector', 'phone', 'message', 'comment', 'issue', 'offering'];
 // mail and mailHeld (2026-11-02) are the row's mail outcome, read by rowMail.js into its own column and lines
-const HIDDEN = new Set(['id', 'installId', 'module', 'lane', 'via', 'origin', 'at', 'status', 'fields', 'text_ok', 'hp', 'mail', 'mailHeld']);
+// decidedAt / decidedBy (2026-11-02) are the decision's own marks, shown on the row's status line, never as columns
+const HIDDEN = new Set(['id', 'installId', 'module', 'lane', 'via', 'origin', 'at', 'status', 'fields', 'text_ok', 'hp', 'mail', 'mailHeld', 'decidedAt', 'decidedBy', 'moderatedAt']);
 const MAX_COLUMNS = 5;
 
 /** The object whose keys are the row's columns: a submission's fields, else the stored value itself. */
