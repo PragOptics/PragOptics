@@ -30,7 +30,7 @@ import { explainLink } from '../components/explainer.js';
 import { accessToken } from '../runtime/session.js';
 import { stripeAppearance } from '../api/stripeAppearance.js';
 import { ensureStripeJs } from '../runtime/stripeLoader.js';
-import { ico, iconBtn, leadBtn, btnLabel, cardHtml as sharedCard, isOpen, setOpen, initCards, openCardOf, busy, hold, stateLead, stateIcon, copyButton } from './cards.js';
+import { ico, iconBtn, leadBtn, btnLabel, cardHtml as sharedCard, isOpen, setOpen, initCards, busy, hold, stateLead, stateIcon, copyButton } from './cards.js';
 import { cardErrorWords } from '../api/stripeWords.js';
 // 2026-11-02 (Cameron: "im building this for humans"): one container per domain family, and a table's rows as a table
 import { familiesOf, liveHostsOf, familyState, listWords } from './domainFamilies.js';
@@ -51,8 +51,8 @@ const DOMAIN_ROLES = new Set(['owner', 'admin', 'developer', 'agent']);
 
 const LANE_KEY = 'pragoptics_env_lane';   // the lane the person was looking at; survives a section re-render
 // THE CARDS START FOLDED HERE (2026-11-02, Cameron: the tab is "massively long"): each card's line already says what is
-// inside (its count), the at-a-glance strip above opens the one the person came for, and a card someone opened stays
-// open for the session (cards.js remembers). A deep link to a card (Home's tiles, card=) opens it as before.
+// inside (its count), and a card someone opened stays open for the session (cards.js remembers). A deep link to a card
+// (Home's tiles, card=) opens it as before.
 function cardHtml(o) { return sharedCard({ ...o, key: `environment:${o.key}`, open: o.open === undefined ? false : o.open }); }
 function openState() { return {}; }
 
@@ -94,14 +94,14 @@ ev.reg = freshReg();
 
 function teamId() { try { return sessionStorage.getItem(TEAM_KEY) || ''; } catch { return ''; } }
 function forgetTeam() { try { sessionStorage.removeItem(TEAM_KEY); } catch { /* fine */ } }
-function url(path, extra = {}) {
+function url(path, extra = {}, lane = ev.lane) {
   const u = new URL(path);
   if (ev.teamId) u.searchParams.set('tenant', ev.teamId);
-  if (ev.lane === 'sandbox') u.searchParams.set('lane', 'sandbox');
+  if (lane === 'sandbox') u.searchParams.set('lane', 'sandbox');
   for (const [k, v] of Object.entries(extra)) if (v != null && v !== '') u.searchParams.set(k, String(v));
   return u.toString();
 }
-function body(obj) { return JSON.stringify({ ...(ev.teamId ? { tenant: ev.teamId } : {}), ...(ev.lane === 'sandbox' ? { lane: 'sandbox' } : {}), ...obj }); }
+function body(obj, lane = ev.lane) { return JSON.stringify({ ...(ev.teamId ? { tenant: ev.teamId } : {}), ...(lane === 'sandbox' ? { lane: 'sandbox' } : {}), ...obj }); }
 /** Both lanes off the tenant view (older builds carry none: then live is all there is). */
 function lanesOf(t) { return t?.lanes || null; }
 function sandboxState(t) { const l = lanesOf(t); return l ? { phase: String(l.sandbox?.phase || 'NONE').toUpperCase(), available: !!l.sandbox?.available, note: String(l.sandbox?.note || ''), account: String(l.sandbox?.storage?.account || '') } : null; }
@@ -232,7 +232,7 @@ async function loadNow() {
     paint();
     if (['READY', 'SUSPENDED'].includes(phaseOf(ev.view.tenant))) {
       if (ev.lane === 'sandbox' && !laneReady(ev.view.tenant)) return;   // the setup card is all there is
-      await Promise.all([loadFiles(), loadTables(), ...(ev.lane === 'live' ? [loadDomains(), loadAi()] : []), loadKeys(), loadConnections()]);
+      await Promise.all([loadFiles(), loadTables(), ...(ev.lane === 'live' ? [loadDomains()] : []), loadKeys(), loadConnections()]);
     }
   } catch (ex) {
     host.innerHTML = '';
@@ -321,39 +321,12 @@ function paint() {
   // until then the section explains and (for the owner) offers to set it up.
   const cards = ev.lane === 'sandbox'
     ? (laneReady(ev.view.tenant) ? `<div id="evFiles">${filesHtml()}</div><div id="evData">${dataHtml()}</div><div id="evConnections">${connectionsHtml()}</div><div id="evKeys">${keysHtml()}</div>` : sandboxSetupHtml(ev.view))
-    : `<div id="evFiles">${filesHtml()}</div><div id="evData">${dataHtml()}</div><div id="evAi">${aiHtml()}</div><div id="evConnections">${connectionsHtml()}</div><div id="evDomains">${domainsHtml()}</div><div id="evKeys">${keysHtml()}</div>`;
+    : `<div id="evFiles">${filesHtml()}</div><div id="evData">${dataHtml()}</div><div id="evConnections">${connectionsHtml()}</div><div id="evDomains">${domainsHtml()}</div><div id="evKeys">${keysHtml()}</div>`;
   host.innerHTML = `
     ${summaryHtml(ev.view)}
-    ${ready ? `<div id="evGlance">${glanceHtml()}</div>` : ''}
     ${ready ? `<div class="ev-cards">${cards}</div>` : ''}
   `;
 }
-
-/* AT A GLANCE (2026-11-02, Cameron: "a view that is more organized and hero like"): the counts that matter, in the Home
- * tiles' look, each opening its card below and scrolling to it. With the cards folded by default the tab is a screen
- * tall, and a tile or a card line opens exactly the thing the person came for. */
-function glanceHtml() {
-  const e = D.escapeHtml;
-  const tile = (icon, label, value, sub, card) => `<button class="hm-tile ev-tile" type="button" data-env-action="jump" data-card="${e(card)}" data-tip="Open ${e(label)}"><span class="hm-tile-h">${ico(icon, 15)} ${e(label)}</span><span class="hm-tile-v">${value}</span><span class="hm-tile-s">${e(sub)}</span></button>`;
-  const files = ev.files, tables = ev.tables, doms = ev.domains, conns = ev.connections, keys = ev.keys, a = ev.ai;
-  const fams = doms ? familiesOf(doms) : null;
-  const fam = fams && fams[0];
-  const st = fam ? familyState(fam) : null;
-  const domSub = fam ? (st.live ? 'website live' : st.verified ? 'verified' : st.partly ? 'partly verified' : st.failed ? 'record missing' : 'waiting for the record') + (fams.length > 1 ? ` · +${fams.length - 1} more` : '') : '';
-  const aiOn = a ? (a.enabled ? 'on' : 'off') : (ev.aiNote ? 'not here' : '–');
-  const aiSub = a && a.credit ? `${money(Number(a.credit.usedCents || 0))} of ${money(Number(a.credit.limitCents || 0))} this month` : '';
-  const tiles = [
-    tile('folder', 'Files', files ? e(String(files.length)) : '–', files ? (files.length === 1 ? 'file' : 'files') : '', 'files'),
-    tile('database', 'Data', tables ? e(String(tables.length)) : '–', tables ? (tables.length === 1 ? 'table' : 'tables') : '', 'data'),
-    ...(ev.lane === 'sandbox' ? [] : [tile('globe', 'Domain', fam ? e(fam.host) : (doms ? 'none yet' : '–'), domSub, 'domains')]),
-    tile('plug', 'Connected', conns ? e(String(conns.length)) : '–', conns ? (conns.length === 1 ? 'account' : 'accounts') : '', 'connections'),
-    ...(ev.lane === 'sandbox' ? [] : [tile('sparkles', 'AI', e(aiOn), aiSub, 'ai')]),
-    tile('key', 'API keys', keys ? e(String(keys.length)) : '–', keys ? (keys.length === 1 ? 'key' : 'keys') : '', 'keys')
-  ].join('');
-  return `<div class="hm-glance ev-glance">${tiles}</div>`;
-}
-/** The strip follows the cards: each card's painter calls this once its data is in, so the tiles never sit at a dash. */
-function paintGlance() { const h = document.getElementById('evGlance'); if (h) h.innerHTML = glanceHtml(); }
 
 /* ---------- lanes ---------- */
 
@@ -432,12 +405,11 @@ async function setupSandbox(btn) {
     D.showError('evSandboxError', errText(ex, 'Could not set up the sandbox.'));
   }
 }
-function paintFiles() { const h = document.getElementById('evFiles'); if (h) h.innerHTML = filesHtml(); paintGlance(); }
+function paintFiles() { const h = document.getElementById('evFiles'); if (h) h.innerHTML = filesHtml(); }
 function paintDomains() {
   const h = document.getElementById('evDomains');
   if (!h) return;
   h.innerHTML = domainsHtml();
-  paintGlance();
   // At the paying step the Stripe payment box lives in this card; a repaint
   // replaces its container, so the one payment element is mounted again
   // (Stripe allows a single payment element per group, never a second create).
@@ -449,8 +421,8 @@ function paintDomains() {
     } catch { /* the box comes back on the next repaint */ }
   }
 }
-function paintKeys() { const h = document.getElementById('evKeys'); if (h) h.innerHTML = keysHtml(); paintGlance(); }
-function paintConnections() { const h = document.getElementById('evConnections'); if (h) h.innerHTML = connectionsHtml(); paintGlance(); }
+function paintKeys() { const h = document.getElementById('evKeys'); if (h) h.innerHTML = keysHtml(); }
+function paintConnections() { const h = document.getElementById('evConnections'); if (h) h.innerHTML = connectionsHtml(); }
 
 function emptyHtml(view) {
   // Every owner gets an environment (2026-09-16): pooled storage on Free, the
@@ -556,7 +528,7 @@ function summaryHtml(v) {
 
 /* ---------- data (2026-09-19: everything the environment holds is readable from its page) ---------- */
 
-function paintData() { const h = document.getElementById('evData'); if (h) h.innerHTML = dataHtml(); paintGlance(); }
+function paintData() { const h = document.getElementById('evData'); if (h) h.innerHTML = dataHtml(); }
 async function loadTables() {
   try {
     const d = await D.apiFetch(url(`${ENV_URL}/data`));
@@ -719,15 +691,34 @@ function dataHtml() {
 
 /* ---------- AI (2026-09-19): the switch, the credit, the lanes ---------- */
 
-function paintAi() { const h = document.getElementById('evAi'); if (h) h.innerHTML = aiHtml(); paintGlance(); }
+/* THE AI TAB (2026-11-02, Cameron: "AI should be its own tab. i have had enough of it being on the environment tab").
+ * The same card, its switch, credit and budget desk, on a section of its own; it reads the environment in view the way
+ * the Environment tab does and always speaks of the live lane, where AI runs. */
+const AI_LANE = 'live';
+export async function renderAi(main, deps) {
+  D = deps;
+  ev.ai = null; ev.aiNote = ''; ev.aiBusy = false; ev.aiBudget = null; ev.budgetBusy = false;
+  initCards();
+  main.innerHTML = `
+    <header class="acct-sec-head has-explain"><h2 class="acct-sec-title">AI</h2>${explainLink('ai', 'How the AI credit works')}</header>
+    <p class="acct-error" id="evError" hidden></p>
+    <div id="evAi"><p class="acct-loading">Loading…</p></div>
+  `;
+  try { ev.view = await fetchView(); }
+  catch (ex) { D.showError('evError', D.friendlyError(ex, 'Could not load your environment.')); return; }
+  const h = document.getElementById('evAi');
+  if (!ev.view.tenant || !['READY', 'SUSPENDED'].includes(phaseOf(ev.view.tenant))) { if (h) h.innerHTML = '<p class="acct-empty">AI runs in your environment. Set the environment up first, on the Environment tab.</p>'; return; }
+  await loadAi();
+}
+function paintAi() { const h = document.getElementById('evAi'); if (h) h.innerHTML = aiHtml(); }
 async function loadAi() {
-  try { ev.ai = await D.apiFetch(url(`${ENV_URL}/ai`)); ev.aiNote = ''; }
+  try { ev.ai = await D.apiFetch(url(`${ENV_URL}/ai`, {}, AI_LANE)); ev.aiNote = ''; }
   catch (ex) {
     ev.ai = null;
     ev.aiNote = ex?.status === 404 ? 'AI is not on this lane yet.' : (ex?.sessionInvalidated ? '' : (ex?.data?.error || D.friendlyError(ex, 'Could not read the AI state.')));
   }
   // the AI budget desk (2026-09-21): where this lane's AI spend goes, one row per install that asks; older lanes carry no route
-  if (ev.ai) { try { ev.aiBudget = await D.apiFetch(url(`${ENV_URL}/ai/budget`)); } catch (ex) { ev.aiBudget = null; } } else ev.aiBudget = null;
+  if (ev.ai) { try { ev.aiBudget = await D.apiFetch(url(`${ENV_URL}/ai/budget`, {}, AI_LANE)); } catch (ex) { ev.aiBudget = null; } } else ev.aiBudget = null;
   paintAi();
 }
 /* THE AI BUDGET DESK (2026-09-21, Cameron's ruling): one row per install that asks on this lane, with its model,
@@ -770,7 +761,7 @@ async function saveBudget(btn) {
     return out;
   });
   ev.budgetBusy = true; paintAi(); D.showError('evAiError', '');
-  try { ev.aiBudget = await D.apiFetch(url(`${ENV_URL}/ai/budget`), { method: 'PUT', body: body({ installs }) }); ev.budgetBusy = false; paintAi(); const s = document.getElementById('evBudgetStatus'); if (s) s.textContent = 'Saved.'; }
+  try { ev.aiBudget = await D.apiFetch(url(`${ENV_URL}/ai/budget`, {}, AI_LANE), { method: 'PUT', body: body({ installs }, AI_LANE) }); ev.budgetBusy = false; paintAi(); const s = document.getElementById('evBudgetStatus'); if (s) s.textContent = 'Saved.'; }
   catch (ex) { ev.budgetBusy = false; paintAi(); D.showError('evAiError', errText(ex, 'Could not save the rows.')); }
 }
 function cents(n) { const v = Number(n || 0); return v >= 100 ? `$${(v / 100).toFixed(2)}` : `${v % 1 ? v.toFixed(2) : v}¢`; }
@@ -779,7 +770,7 @@ async function setAi(on) {
   if (ev.aiBusy) return;
   ev.aiBusy = true; paintAi();
   D.showError('evAiError', '');
-  try { await post(`${ENV_URL}/ai/${on ? 'enable' : 'disable'}`, {}); ev.aiBusy = false; await loadAi(); }
+  try { await post(`${ENV_URL}/ai/${on ? 'enable' : 'disable'}`, {}, AI_LANE); ev.aiBusy = false; await loadAi(); }
   catch (ex) { ev.aiBusy = false; paintAi(); D.showError('evAiError', errText(ex, on ? 'Could not turn AI on.' : 'Could not turn AI off.')); }
 }
 
@@ -832,7 +823,7 @@ function aiHtml() {
       ${budgetHtml(manage)}`}`;
   }
   return cardHtml({
-    key: 'ai', icon: 'activity', title: 'AI', summary,
+    key: 'ai', icon: 'activity', title: 'AI', summary, open: true,
     explain: explainLink('ai', 'How the AI credit works'),
     body: `<p class="acct-error" id="evAiError" hidden></p>${inner}`
   });
@@ -981,7 +972,7 @@ function serveCostLine() {
 }
 
 /** Put a published site live at a verified domain over HTTPS (2026-10-20, the App Service serving app). */
-function serveControl(d, { brief = false, live: liveHosts = null } = {}) {
+function serveControl(d, { live: liveHosts = null } = {}) {
   const e = D.escapeHtml;
   const s = d.serve;
   const host = e(d.host);
@@ -995,10 +986,10 @@ function serveControl(d, { brief = false, live: liveHosts = null } = {}) {
     const names = liveHosts && liveHosts.length ? liveHosts : [hostOnly(live), ...(s.www && s.www.status === 'SERVING' && s.www.host ? [s.www.host] : [])];
     const at = listWords([...new Set(names)].map(h => `<a href="https://${e(h)}" target="_blank" rel="noopener">${e(h)}</a>`));
     return `
-      ${brief ? '' : `<div class="ev-serve">
+      <div class="ev-serve">
         <p class="ev-serve-what">${f ? `<b>${e(f.name)}</b> <span class="adm-muted">(${e(f.kind)})</span>` : 'Your website'} is <b>live</b> at ${at}.</p>
         ${shared ? `<p class="acct-card-note ev-dom-note">Source: <a href="${e(shared)}" target="_blank" rel="noopener">${e(hostOnly(shared))}</a>. This is where the platform publishes and stores the site.</p>` : ''}
-      </div>`}
+      </div>
       <div class="act-row">
         <a class="btn btn-sm" href="${e(live)}" target="_blank" rel="noopener" data-tip="Open the live site">${ico('globe')}<span>Open site</span></a>
         ${iconBtn('domain-unserve', 'x', 'Take this website off the domain (it stays published at its share address)', `data-host="${host}"`, 'is-risky')}
@@ -1044,7 +1035,7 @@ function serveControl(d, { brief = false, live: liveHosts = null } = {}) {
     + stateLead('domain-serve', 'globe', 'Put this website live', { out: ev.serveBusy === d.host, busyWord: 'Going live…' }, `data-host="${host}" data-tip="Put the chosen website live at this domain over HTTPS"`, 'btn-primary');
 }
 
-function domainHtml(d, { sub = false, bare = false, live = null } = {}) {
+function domainHtml(d, { live = null } = {}) {
   const e = D.escapeHtml;
   const manage = canManageDomains();
   const verified = d.status === 'VERIFIED';
@@ -1097,7 +1088,7 @@ function domainHtml(d, { sub = false, bare = false, live = null } = {}) {
     // Verified, software not hosted here: this domain is a place to put a published WEBSITE live.
     // The serve control below carries the whole story (live at / put live / publish first) — so the
     // header must not also claim "nothing to do", which is the contradiction that read as senseless.
-    body = sub || bare ? '' : `<p class="acct-card-note ev-dom-note">Proven ${e(D.fmtDate(d.verifiedAt))}.</p>`;   // in a family the head carries the state
+    body = `<p class="acct-card-note ev-dom-note">Proven ${e(D.fmtDate(d.verifiedAt))}.</p>`;
   }
   // A name registered through PragOptics: its term and the renewal choice
   // (the owner's). The row is the truth the yearly renewal reads.
@@ -1121,13 +1112,13 @@ function domainHtml(d, { sub = false, bare = false, live = null } = {}) {
     ? `<button class="btn btn-sm btn-ico is-armed" type="button" data-env-action="domain-${k}" data-host="${e(d.host)}" aria-label="${e(sure)} Press again to confirm." data-tip="Press again to confirm">${ico(icon)}<span>${e(sure)}</span></button>${iconBtn('domain-arm-cancel', 'x', 'Keep it', '', 'btn-arm-cancel')}`
     : iconBtn(`domain-${k}`, icon, tip, `data-host="${e(d.host)}"`, 'is-risky');
   return `
-    <div class="${bare ? 'ev-dom-primary' : sub ? 'ev-dom ev-dom-sub' : 'ev-dom'}">
-      ${bare ? '' : `<div class="ev-dom-head">
+    <div class="ev-dom">
+      <div class="ev-dom-head">
         <span class="ev-dom-host">${e(d.host)}</span>
         ${d.hosted ? hostedTag(d.hosted) : domainTag(d)}
         ${linked ? '<span class="acct-tag">linked</span>' : d.registrar ? '<span class="acct-tag">registered here</span>' : ''}
-        ${!sub && d.addedBy ? `<span class="ev-dom-when">connected by ${e(d.addedBy)} ${e(D.fmtDate(d.addedAt))}</span>` : ''}
-      </div>`}
+        ${d.addedBy ? `<span class="ev-dom-when">connected by ${e(d.addedBy)} ${e(D.fmtDate(d.addedAt))}</span>` : ''}
+      </div>
       ${body}
       ${manage ? `
       <div class="ev-dom-actions act-row">
@@ -1135,7 +1126,7 @@ function domainHtml(d, { sub = false, bare = false, live = null } = {}) {
         ${verified && hosted ? (bs === 'BOUND'
           ? twoStep('unbind', 'x', 'Unbind: stop serving the software at this domain', 'Stop serving here?')
           : stateLead('domain-bind', 'link', bs === 'BINDING' ? 'Check' : bs === 'BIND_FAILED' ? 'Try again' : 'Bind', { out: !!busy, busyWord: 'Working…' }, `data-host="${e(d.host)}" data-tip="Serve the software at this domain"`, 'btn-primary')) : ''}
-        ${verified ? serveControl(d, { brief: sub, live }) : ''}
+        ${verified ? serveControl(d, { live }) : ''}
         ${d.hosted ? (ev.dnsBusy === d.host
           ? stateIcon('domain-dns-cancel', 'undo', 'Hand DNS back', { out: ev.dnsAct === 'cancel', busyWord: 'Handing DNS back…', waiting: ev.dnsAct === 'cancel' ? '' : 'Wait for the DNS change being made' }, `data-host="${e(d.host)}"`)
           : twoStep('dns-cancel', 'undo', 'Hand DNS back to where it was', 'Hand DNS back?')) : ''}
@@ -1148,26 +1139,84 @@ function domainHtml(d, { sub = false, bare = false, live = null } = {}) {
 }
 
 /* ONE CONTAINER PER DOMAIN FAMILY (2026-11-02, Cameron: two cards for one domain "makes it look confusing, like dude ...
- * im building this for humans"; domainFamilies.js). The apex leads with the family's state and ONE sentence naming every
- * name the site is live at; its own body and actions follow; the other names (www, a subdomain) nest under it as compact
- * rows with their own state and actions, so a record still to add or a name to remove stays reachable, and nothing reads
- * as a second domain. A family of one name is the plain card. */
+ * im building this for humans"; then on the first cut, "you have the second site as a card in the card, its better, but
+ * its not what i want"; domainFamilies.js). ONE domain: its name and state lead, one sentence names every name the site
+ * is live at, the names are LINES with their state (never a second card), what a name still needs (its record and
+ * Verify, or Put live) shows only for that name, and the actions sit once on the family: Open site, take the website off
+ * every name that serves it, remove the domain with every name under it. A family of one name is the plain card. */
+const normHost = h => String(h || '').trim().toLowerCase().replace(/\.$/, '');
 function domainFamilyHtml(fam) {
   const e = D.escapeHtml;
   const live = liveHostsOf(fam);
   if (!fam.names.length) return domainHtml(fam.primary, { live });
+  const manage = canManageDomains();
   const st = familyState(fam);
-  const tags = `${st.verified ? '<span class="acct-tag is-verified">verified</span>' : st.partly ? '<span class="acct-tag is-pending">partly verified</span>' : st.failed ? '<span class="acct-tag is-bad">record missing</span>' : '<span class="acct-tag is-pending">waiting for the record</span>'}${st.live ? '<span class="acct-tag is-verified">website live</span>' : ''}`;
   const p = fam.primary;
+  const tags = `${st.verified ? '<span class="acct-tag is-verified">verified</span>' : st.partly ? '<span class="acct-tag is-pending">partly verified</span>' : st.failed ? '<span class="acct-tag is-bad">record missing</span>' : '<span class="acct-tag is-pending">waiting for the record</span>'}${st.live ? '<span class="acct-tag is-verified">website live</span>' : ''}`;
+  // the site, from whichever name serves it
+  const serving = fam.rows.find(r => r.serve && r.serve.status === 'SERVING');
+  const s = serving ? serving.serve : null;
+  const f = s ? (ev.sites || []).map(siteFacts).find(x => x.slug === s.site) : null;
+  const shared = s ? ((f && f.addr) || String(s.origin || '').replace(/\/+$/, '')) : '';
+  const liveUrl = s ? (s.url || ('https://' + serving.host)) : '';
+  const at = listWords(live.map(h => `<a href="https://${e(h)}" target="_blank" rel="noopener">${e(h)}</a>`));
+  const sentence = live.length ? `<p class="ev-serve-what">${f ? `<b>${e(f.name)}</b> <span class="adm-muted">(${e(f.kind)})</span>` : 'Your website'} is <b>live</b> at ${at}.</p>` : '';
+  const isLive = r => live.includes(normHost(r.host));
+  const stateWord = r => { const v = String(r.status || '').toUpperCase(); return v === 'VERIFIED' ? (isLive(r) ? 'verified · live' : 'verified') : v === 'FAILED' ? 'record missing' : 'waiting for the record'; };
+  const list = `<ul class="ev-dom-list" aria-label="The names of ${e(fam.host)}">${fam.rows.map(r => `<li><code>${e(r.host)}</code><span class="ev-dom-state">${e(stateWord(r))}</span></li>`).join('')}</ul>`;
+  // the two-step a risky press takes (the same look as a single name's): the icon, then its question
+  const two = (host, k, icon, tip, sure) => ev.domArm === `${k}:${host}`
+    ? `<button class="btn btn-sm btn-ico is-armed" type="button" data-env-action="domain-${k}" data-host="${e(host)}" aria-label="${e(sure)} Press again to confirm." data-tip="Press again to confirm">${ico(icon)}<span>${e(sure)}</span></button>${iconBtn('domain-arm-cancel', 'x', 'Keep it', '', 'btn-ico')}`
+    : iconBtn(`domain-${k}`, icon, tip, `data-host="${e(host)}"`, 'is-risky');
+  // what a name still needs, shown for that name only
+  const needs = manage ? fam.rows.map(r => {
+    const verified = String(r.status || '').toUpperCase() === 'VERIFIED';
+    if (!verified) return `<div class="ev-dom-need"><p class="ev-dom-need-h"><b>${e(r.host)}</b> needs its record where you manage the domain's DNS${String(r.status || '').toUpperCase() === 'FAILED' ? '; it was found before and is missing now' : ''}.</p>${r.verifyRecord ? recordHtml('The verification record', r.verifyRecord) : ''}<div class="act-row">${stateLead('domain-verify', 'checkCircle', 'Verify', { out: ev.checking === r.host, busyWord: 'Checking…' }, `data-host="${e(r.host)}" data-tip="Look for the TXT record now"`, 'btn-primary')}${r !== p ? two(r.host, 'remove', `Remove ${r.host} from this domain`, 'Remove this name?') : ''}</div></div>`;
+    if (live.length && !isLive(r) && !r.hosted && !r.cname) return `<div class="ev-dom-need"><p class="ev-dom-need-h"><b>${e(r.host)}</b> is verified and not live yet.</p>${serveControl(r, { live })}</div>`;
+    return '';
+  }).join('') : '';
+  const source = shared ? `<p class="acct-card-note ev-dom-note">Source: <a href="${e(shared)}" target="_blank" rel="noopener">${e(hostOnly(shared))}</a>. This is where the platform publishes and stores the site.</p>` : '';
+  const openBtn = liveUrl ? `<a class="btn btn-sm" href="${e(liveUrl)}" target="_blank" rel="noopener" data-tip="Open the live site">${ico('globe')}<span>Open site</span></a>` : '';
+  const actions = manage
+    ? `<div class="ev-dom-actions act-row">${openBtn}${live.length ? two(fam.host, 'family-unserve', 'Take the website off this domain, every name of it (it stays published at its share address)', 'Take it off?') : ''}${two(fam.host, 'family-remove', 'Remove this domain and every name under it', 'Remove the domain?')}</div>`
+    : (openBtn ? `<div class="ev-dom-actions act-row">${openBtn}</div>` : '');
   return `
     <div class="ev-dom ev-dom-family">
       <div class="ev-dom-head">
         <span class="ev-dom-host">${e(fam.host)}</span>${tags}
-        <span class="ev-dom-when">${countWord(fam.rows.length, 'name', 'names')}${p.addedBy ? ` · connected by ${e(p.addedBy)} ${e(D.fmtDate(p.addedAt))}` : ''}</span>
+        ${p.addedBy ? `<span class="ev-dom-when">connected by ${e(p.addedBy)} ${e(D.fmtDate(p.addedAt))}</span>` : ''}
       </div>
-      ${domainHtml(p, { bare: true, live })}
-      <div class="ev-dom-names-list" aria-label="The other names of ${e(fam.host)}">${fam.names.map(n => domainHtml(n, { sub: true, live })).join('')}</div>
+      ${sentence}${list}${needs}${source}${actions}
     </div>`;
+}
+/* The family's rows now, for its actions. */
+function familyRows(apex) { const want = normHost(apex); const fam = familiesOf(ev.domains || []).find(x => x.host === want); return fam ? fam.rows : []; }
+/* Take the website off every name of the family that serves it (two-step, as one name's is). */
+async function unserveFamily(apex) {
+  if (ev.domArm !== `family-unserve:${apex}`) return armDomain(`family-unserve:${apex}`);
+  disarmDomain(); ev.domainNote = ''; paintDomains();
+  for (const r of familyRows(apex)) {
+    if (!(r.serve && r.serve.status === 'SERVING')) continue;
+    try { await D.apiFetch(url(`${ENV_URL}/domains/serve`), { method: 'DELETE', body: body({ host: r.host }) }); }
+    catch (ex) { ev.domainNote = ex?.data?.error || D.friendlyError(ex, `Could not stop serving at ${r.host}.`); break; }
+  }
+  await loadDomains();
+}
+/* Remove the domain: every name under it, the website taken off each serving name first so nothing is left serving a
+ * name the environment no longer holds (two-step). */
+async function removeFamily(apex, btn = null) {
+  if (ev.domArm !== `family-remove:${apex}`) return armDomain(`family-remove:${apex}`);
+  disarmDomain();
+  if (btn?.disabled) return;
+  D.showError('evDomainError', '');
+  const done = busy(btn, 'Removing…');
+  try {
+    const rows = familyRows(apex);
+    for (const r of rows) { if (r.serve && r.serve.status === 'SERVING') { try { await D.apiFetch(url(`${ENV_URL}/domains/serve`), { method: 'DELETE', body: body({ host: r.host }) }); } catch { /* the remove below says what failed */ } } }
+    for (const r of rows.slice().reverse()) await post(`${ENV_URL}/domains/remove`, { host: r.host });
+    await loadDomains();
+  } catch (ex) { await loadDomains(); D.showError('evDomainError', errText(ex, 'Could not remove that domain.')); }
+  finally { done(); }
 }
 
 /** The link door: a name held at a registrar account connected under Connected accounts. */
@@ -2090,7 +2139,7 @@ function madeKeyHtml(k) {
    actions
    ================================================================ */
 
-async function post(path, payload) { return D.apiFetch(url(path), { method: 'POST', body: body(payload) }); }
+async function post(path, payload, lane = ev.lane) { return D.apiFetch(url(path, {}, lane), { method: 'POST', body: body(payload, lane) }); }
 function errText(ex, fallback) { return ex?.sessionInvalidated ? '' : (ex?.data?.error || D.friendlyError(ex, fallback)); }
 
 async function refreshAll() { await load(); }
@@ -2895,8 +2944,6 @@ export function bindEnvironmentActions(deps) {
     const a = btn.dataset.envAction;
     if (a === 'dom-tab') { ev.domTab = btn.dataset.tab || 'connect'; paintDomains(); return; }
     if (a === 'dom-add-toggle') { ev.domAdd = !ev.domAdd; paintDomains(); if (ev.domAdd) document.getElementById('evDomainHost')?.focus(); return; }
-    // a glance tile: open that card and bring it into view
-    if (a === 'jump') { const sec = document.querySelector(`.ev-card[data-card="${CSS.escape('environment:' + (btn.dataset.card || ''))}"]`); if (sec) { openCardOf(sec); sec.scrollIntoView({ behavior: 'smooth', block: 'start' }); } return; }
     if (a === 'data-row-back') { ev.openRow = ''; paintData(); return; }
     // the read paints every Refresh as out while it runs (refreshCtl), so a second press finds it disabled
     if (a === 'refresh') { if (btn.disabled || envLoad) return; return void refreshAll(); }
@@ -2917,6 +2964,8 @@ export function bindEnvironmentActions(deps) {
     if (a === 'domain-add') return void addDomain(btn);
     if (a === 'domain-verify') return void verifyDomain(btn.dataset.host || '');
     if (a === 'domain-remove') return void removeDomain(btn.dataset.host || '', btn);
+    if (a === 'domain-family-unserve') return void unserveFamily(btn.dataset.host || '');
+    if (a === 'domain-family-remove') return void removeFamily(btn.dataset.host || '', btn);
     if (a === 'domain-bind') return void bindDomain(btn.dataset.host || '');
     if (a === 'domain-serve') return void serveDomain(btn.dataset.host || '');
     if (a === 'domain-serve-check') return void checkServeDomain(btn.dataset.host || '');

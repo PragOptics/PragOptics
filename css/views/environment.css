@@ -577,16 +577,9 @@ a.ev-more { text-decoration: none; white-space: nowrap; }
   .lic-dom-act { margin-left: 0; flex: 1 1 100%; }
 }
 
-/* 2026-11-02, the Environment tab for humans: an at-a-glance strip over folded cards; one container per domain family
-   with its other names nested; a table's rows as a table whose rows open. */
-.ev-glance { margin: 12px 0 14px; }
-.ev-tile .hm-tile-v { font-size: 16px; }
+/* 2026-11-02, the Environment tab for humans: folded cards; one container per domain family whose names are lines, not
+   cards; a table's rows as a table whose rows open. */
 .ev-dom-family { padding-bottom: 8px; }
-.ev-dom-primary { margin-top: 2px; min-width: 0; }
-.ev-dom-names-list { margin-top: 10px; border-top: 1px dashed var(--border); padding-top: 8px; display: flex; flex-direction: column; gap: 6px; }
-.ev-dom-sub { padding: 8px 10px; background: color-mix(in srgb, var(--ink) 3%, transparent); }
-.ev-dom-sub .ev-dom-host { font-weight: 600; font-size: .84rem; }
-.ev-dom-sub .ev-dom-actions { margin-top: 6px; }
 .ev-dom-add { margin-top: 10px; }
 .ev-rows tbody tr.ev-row { cursor: pointer; }
 .ev-rows tbody tr.ev-row:hover td, .ev-rows tbody tr.ev-row:focus-visible td { background: color-mix(in srgb, var(--brand-600) 6%, transparent); }
@@ -596,3 +589,11 @@ a.ev-more { text-decoration: none; white-space: nowrap; }
 .ev-row-meta code { font-size: .78rem; }
 .ev-row-rest { margin: 12px 0 2px; }
 .ev-value-card.is-rest { opacity: .8; font-size: .92em; }
+
+.ev-dom-family .ev-serve-what { margin: 10px 0 0; }
+.ev-dom-list { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 4px; }
+.ev-dom-list li { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; font-size: .9rem; min-width: 0; }
+.ev-dom-list code { font-family: ui-monospace, "Cascadia Code", Consolas, monospace; font-size: .84rem; overflow-wrap: anywhere; }
+.ev-dom-list .ev-dom-state { color: var(--muted); font-size: .84rem; }
+.ev-dom-need { margin-top: 10px; padding: 10px 12px; border: 1px dashed var(--border); border-radius: 8px; }
+.ev-dom-need .ev-dom-need-h { margin: 0 0 6px; font-size: .9rem; }

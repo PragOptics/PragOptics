@@ -20,7 +20,7 @@ import { tierName, ADDON_NAME, tierBadge } from '../components/tierCopy.js';
 import { mountPricingSelect } from '../components/pricingCards.js';
 import { openReportAnomaly, openSupportRequest, installErrorCapture } from './report.js';
 import { renderTeam, renderTenants, bindTeamActions } from './team.js';
-import { renderEnvironment, bindEnvironmentActions } from './environment.js';
+import { renderEnvironment, renderAi, bindEnvironmentActions } from './environment.js';
 import { renderLicensing, bindLicensingActions } from './licensing.js';
 import { renderLiveAgents, renderAgentDesk, bindLiveAgentsActions, stopLiveAgentsTimers } from './liveAgents.js';
 import { renderHome, bindHomeActions } from './home.js';
@@ -348,6 +348,7 @@ const ACCOUNT_SECTIONS = [
   { id: 'subscription', label: 'Billing' },
   { id: 'team',         label: 'Team' },
   { id: 'environment',  label: 'Environment' },
+  { id: 'ai',           label: 'AI' },           // 2026-11-02, Cameron: "AI should be its own tab"
   { id: 'licensing',    label: 'Licensing' },
   { id: 'liveagents',   label: 'Live Agents' },
   { id: 'orders',       label: 'Orders' },
@@ -376,7 +377,7 @@ const INTERNAL_SECTIONS = [
 // only when the lanes carry it and TEAM_LIVE is flipped. Until then the live
 // lane never shows them; dev always does.
 const TEAM_ON = (LANE !== 'live') || TEAM_LIVE;
-const TEAM_IDS = new Set(['team', 'environment', 'licensing', 'liveagents', 'agentdesk', 'tenants']);
+const TEAM_IDS = new Set(['team', 'environment', 'ai', 'licensing', 'liveagents', 'agentdesk', 'tenants']);
 // The agent roster (2026-10-10): the platform owner and anyone granted the agent flag. The agent flag is identity, not a
 // team role: it unlocks the internal Agents desk on ANY of their environments (rosterSections, shown even without admin).
 // It does NOT take away the customer Live Agents tab: an agent in their OWN environment still requests support like any
@@ -433,7 +434,7 @@ function agentMode() { return !!agentEnv(); }
 function agentModeGroups() {
   // THEIRS: the customer's own surface, exactly what a team admin on their environment sees (Cameron 2026-10-25:
   // "the left side is supposed to be see what all i would see as an admin on his team").
-  const theirs = [{ id: 'environment', label: 'Environment' }, { id: 'team', label: 'Team' }, { id: 'licensing', label: 'Licensing' }];
+  const theirs = [{ id: 'environment', label: 'Environment' }, { id: 'ai', label: 'AI' }, { id: 'team', label: 'Team' }, { id: 'licensing', label: 'Licensing' }];
   // THE AGENT SIDE: only what the agent has FOR this customer -- the engagement desk, their items, alerts, support
   // (Cameron 2026-10-25: "relevant shit that i have as an agent and the agent role, that is internal and relevant to the
   // user"). Platform-whole desks (Overview, Users, Tenants, Payments, ...) never appear inside a customer's environment;
@@ -4929,7 +4930,7 @@ function showSection(id) {
   // the role on the team in view is not known yet: nothing of Licensing is read until it is
   if (id === 'licensing' && TEAM_ON && roleInView() === null) return void waitForLicensingRole(main);
   // a role read that failed (or a team picked since) is asked again on the next section; Team and Environment read the view themselves
-  if (TEAM_ON && id !== 'team' && id !== 'environment' && roleInView() === null) ensureTeamRole();
+  if (TEAM_ON && id !== 'team' && id !== 'environment' && id !== 'ai' && roleInView() === null) ensureTeamRole();
   consumeOpenCard(id);
   paintSection(id, main);
   paintEnvLine();
@@ -4953,6 +4954,7 @@ function paintSection(id, main) {
   if (id === 'orders')       return void renderOrders(main);
   if (id === 'team')         return void renderTeam(main, teamDeps());
   if (id === 'environment')  return void renderEnvironment(main, teamDeps());
+  if (id === 'ai')           return void renderAi(main, teamDeps());
   if (id === 'licensing')    return void renderLicensing(main, teamDeps());
   if (id === 'liveagents')   return void renderLiveAgents(main, teamDeps());
   if (id === 'agentdesk')    return void renderAgentDesk(main, teamDeps());
@@ -5245,7 +5247,8 @@ function bindOnce() {
 // The setup checklist's names (setup.js; the server's link.card) are here too (2026-09-28): a card made by cardHtml is
 // found by its body's id, card-<key with : as ->; a name with no card of its own opens the section's first card.
 const CARD_IDS = {
-  environment: { environment: 'evBody', storage: 'evBody', lanes: 'evBody', publish: 'evBody', files: 'evFiles', data: 'evData', ai: 'evAi', connections: 'evConnections', domains: 'evDomains', keys: 'evKeys' },
+  environment: { environment: 'evBody', storage: 'evBody', lanes: 'evBody', publish: 'evBody', files: 'evFiles', data: 'evData', connections: 'evConnections', domains: 'evDomains', keys: 'evKeys' },
+  ai: { ai: 'evAi', budget: 'evAi' },
   subscription: { plan: 'acctPricing', card: 'acctPmActions', payment: 'acctPmActions', details: 'card-billing-details', bandwidth: 'card-billing-bandwidth' },
   profile: { name: 'card-profile-name', passkeys: 'acctPasskeyList', password: 'acctPasswordError', phone: 'acctPhoneState', email: 'acctAliasList' },
   team: { members: 'card-team-members', invite: 'card-team-invite' },
