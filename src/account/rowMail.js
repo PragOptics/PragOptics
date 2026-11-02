@@ -12,7 +12,15 @@
 export const HELD_WORDS = Object.freeze({
   'no-mailer': 'no mailer in the environment yet',
   'environment-day': "the environment's mails for the day were used up",
-  'platform-day': "the platform's mails for the day were used up"
+  'platform-day': "the platform's mails for the day were used up",
+  'not-allowed': 'Microsoft has not let PragOptics send from the mailer yet',
+  'mailbox-gone': 'the mailer is no longer in your Microsoft tenant',
+  'not-connected': "your Microsoft tenant's approval of PragOptics is gone",
+  'send-failed': 'Microsoft did not take the message'
+});
+/** A note the door leaves beside the outcome, in words. */
+export const NOTE_WORDS = Object.freeze({
+  'mailer-fallback': "sent from the environment's default mailer: the one the form named is gone"
 });
 /** Why there was nothing to send, in words. */
 export const NONE_WORDS = Object.freeze({
@@ -36,9 +44,9 @@ function partOf(p) {
 export function mailOf(record) {
   const r = record && typeof record === 'object' ? record : {};
   const m = r.mail;
-  if (m && typeof m === 'object') return { known: true, from: String(m.from || ''), team: partOf(m.team), visitor: partOf(m.visitor) };
-  if (r.mailHeld) { const held = { state: 'held', to: [], at: '', why: String(r.mailHeld) }; return { known: true, from: '', team: held, visitor: { ...held } }; }
-  return { known: false, from: '', team: partOf(null), visitor: partOf(null) };
+  if (m && typeof m === 'object') return { known: true, from: String(m.from || ''), note: String(m.note || ''), team: partOf(m.team), visitor: partOf(m.visitor) };
+  if (r.mailHeld) { const held = { state: 'held', to: [], at: '', why: String(r.mailHeld) }; return { known: true, from: '', note: '', team: held, visitor: { ...held } }; }
+  return { known: false, from: '', note: '', team: partOf(null), visitor: partOf(null) };
 }
 
 /** A few words for a table cell: "team sent · submitter sent", "held: no mailer in the environment yet", '' when unknown. */
@@ -62,5 +70,6 @@ export function mailLines(record) {
     if (p.state === 'none') return { label, text: `Not sent: ${noneWords(p.why)}`, at: '' };
     return null;
   };
-  return [m.from ? { label: 'From', text: m.from, at: '' } : null, line('Team', m.team), line('Submitter', m.visitor)].filter(Boolean);
+  const note = m.note ? { label: 'Note', text: NOTE_WORDS[m.note] || m.note, at: '' } : null;
+  return [m.from ? { label: 'From', text: m.from, at: '' } : null, line('Team', m.team), line('Submitter', m.visitor), note].filter(Boolean);
 }

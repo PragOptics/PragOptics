@@ -28,6 +28,8 @@ test('held and not-sent parts say why, in the door\'s own reasons', () => {
   assert.equal(mailShort(r2), 'team sent');
   assert.equal(mailLines(r2)[2].text, 'Not sent: confirmations are off for this form');
   assert.equal(heldWords('something-new'), 'held (something-new)', 'a reason the words do not know yet is still shown');
+  assert.equal(mailShort({ mail: { from: 'x@y.z', team: { held: 'not-allowed' }, visitor: { held: 'not-allowed' } } }), 'held: Microsoft has not let PragOptics send from the mailer yet');
+  assert.equal(mailLines({ mail: { from: 'x@y.z', team: { held: 'send-failed' }, visitor: { none: 'no-recipient' } } })[1].text, 'Held: Microsoft did not take the message');
 });
 
 test('the older row: mailHeld alone means nothing was mailed and why; no mark at all means the row says nothing', () => {

@@ -63,7 +63,7 @@ const CODES = {
 /** Back from Microsoft's page (bootstrap.js keeps the answer): the card says once what came of it. The reads are dropped with the visit. */
 export function resetExchange() {
   lc.ex = null; lc.exErr = ''; lc.exLive = null; lc.exTest = null;
-  lc.exNew = false; lc.exMailers = null; lc.exForms = null; lc.exFormsErr = '';
+  lc.exNew = false; lc.exMailers = null; lc.exForms = null; lc.exFormsErr = ''; lc.exEdit = '';
   let r = null;
   try { r = JSON.parse(sessionStorage.getItem(RETURN_KEY) || 'null'); sessionStorage.removeItem(RETURN_KEY); } catch { r = null; }
   if (r && r.outcome) {
@@ -189,12 +189,68 @@ function listHtml(x, made, e) {
   };
   const rows = made.map(m => {
     const a = String(m.address || '').toLowerCase();
-    return `<li class="lic-mailer"><div class="lic-dom-row"><span class="ev-code lic-dom-host" id="licEx-${e(m.address)}">${e(m.address)}</span>${a === dflt ? '<span class="acct-tag is-verified">default</span>' : ''}<span class="lic-state is-quiet">${e(m.displayName || m.name || '')}</span><span class="lic-dom-act">${iconBtn({ lic: 'ex-copy' }, 'copy', `Copy ${m.address}`, `data-address="${e(m.address)}"`)}${canManage() ? reqLead(`ex-test:${m.address}`, { lic: 'ex-test' }, 'send', 'Send a test', 'Sending…', `data-address="${e(m.address)}" data-tip="Send one test message from this mailer to you"`) : ''}</span></div>${sendsFor(a)}<p class="lic-hint">Made ${e(dayWord(m.createdAt))}. Your team reads it in Outlook once given access in the Exchange admin center.</p>${testNote(m)}</li>`;
+    return `<li class="lic-mailer"><div class="lic-dom-row"><span class="ev-code lic-dom-host" id="licEx-${e(m.address)}">${e(m.address)}</span>${a === dflt ? '<span class="acct-tag is-verified">default</span>' : ''}<span class="lic-state is-quiet">${e(m.displayName || m.name || '')}</span><span class="lic-dom-act">${iconBtn({ lic: 'ex-copy' }, 'copy', `Copy ${m.address}`, `data-address="${e(m.address)}"`)}${canManage() ? reqLead(`ex-test:${m.address}`, { lic: 'ex-test' }, 'send', 'Send a test', 'Sending…', `data-address="${e(m.address)}" data-tip="Send one test message from this mailer to you"`) : ''}</span></div>${tellsHtml(a, mailers, e)}${sendsFor(a)}<p class="lic-hint">Made ${e(dayWord(m.createdAt))}. Your team reads it in Outlook once given access in the Exchange admin center.</p>${testNote(m)}</li>`;
   }).join('');
   const others = live ? live.filter(m => !made.some(x2 => x2.address === m.address)) : [];
   const liveRows = others.map(m => `<li class="lic-mailer"><div class="lic-dom-row"><span class="ev-code lic-dom-host">${e(m.address)}</span><span class="lic-state is-quiet">${e(m.displayName || m.name || '')}</span></div><p class="lic-hint">In your tenant already, not made here${m.fullAccess?.length ? `; ${countWord(m.fullAccess.length, 'person has', 'people have')} access` : ''}.</p></li>`).join('');
   if (!rows && !liveRows) return live ? '<p class="lic-hint">Your tenant holds no shared mailbox, so you have no mailer yet.</p>' : '';
   return `<h4 class="lic-sub lic-sub--gap">Your mailers</h4><ul class="lic-dom-list">${rows}${liveRows}</ul>${errHtml('exchange-test')}`;
+}
+
+/* ---------- who a mailer tells (2026-11-02, Cameron: "who it mails, as in a specific team in the owners environment") ---------- */
+
+/** The environment's people a mailer may tell: the team seats the licensing read lists (owner first), ACTIVE only. */
+function teamSeats() {
+  const seats = (lc.view?.seats || []).filter(s => s && s.email && String(s.status || 'ACTIVE').toUpperCase() === 'ACTIVE');
+  return seats.sort((x, y) => (y.role === 'owner') - (x.role === 'owner') || String(x.email).localeCompare(String(y.email)));
+}
+/** The mailer's record as the mailers route answers it (its people and switch), by address. */
+function mailerOf(address, mailers) { return (Array.isArray(mailers) ? mailers : []).find(m => String(m.address || '').toLowerCase() === address) || null; }
+
+/** The line "Tells a, b · confirms to the sender", and the editor behind its pencil: the team as checkboxes, the switch, Save. */
+function tellsHtml(address, mailers, e) {
+  const m = mailerOf(address, mailers);
+  if (!m) return '';
+  const notify = Array.isArray(m.notify) ? m.notify : [];
+  const confirms = m.confirmVisitor !== false;
+  const seats = teamSeats();
+  const nameOf = (addr) => { const s = seats.find(x => String(x.email).toLowerCase() === addr); return s && s.role === 'owner' ? `${addr} (owner)` : addr; };
+  const who = notify.length ? listWords(notify.map(nameOf)) : 'the owner';
+  const line = `<p class="lic-mailer-for">Tells ${e(who)} · ${confirms ? 'confirms to the sender' : 'does not confirm to the sender'}.${canAssign() && lc.exEdit !== address ? ` ${iconBtn({ lic: 'ex-tells-edit' }, 'edit', `Change who ${address} tells`, `data-address="${e(address)}"`)}` : ''}</p>`;
+  if (lc.exEdit !== address || !canAssign()) return line;
+  const boxes = seats.length ? seats.map(s => {
+    const addr = String(s.email).toLowerCase();
+    return `<label class="lic-tell"><input type="checkbox" data-lic-tell="${e(address)}" value="${e(addr)}" ${notify.includes(addr) ? 'checked' : ''}><span>${e(s.email)}</span><span class="lic-state is-quiet">${e(s.role || 'member')}</span></label>`;
+  }).join('') : '<p class="lic-hint">No team yet. Invite people on the Team tab; until then the owner hears.</p>';
+  const saving = lc.busy === `ex-tells:${address}`;
+  return `${line}
+    <div class="lic-tells" role="group" aria-label="Who ${e(address)} tells">
+      <p class="lic-hint">Who hears about every message a form sends through this mailer. Nobody checked: the owner. A form with its own list keeps it.</p>
+      <div class="lic-tells-grid">${boxes}</div>
+      <label class="lic-tell lic-tell--switch"><input type="checkbox" id="licExConfirm-${e(address)}" ${confirms ? 'checked' : ''}><span>Confirm to the sender</span><span class="lic-state is-quiet">a copy of what they sent, when the form took their email</span></label>
+      ${errHtml(`exchange-tells:${address}`)}
+      <div class="acct-actions-row">${reqLead(`ex-tells:${address}`, { lic: 'ex-tells-save' }, 'check', 'Save', 'Saving…', `data-address="${e(address)}"`, 'btn-primary')}${saving ? '' : iconBtn({ lic: 'ex-tells-cancel' }, 'x', 'Keep it as it is')}</div>
+    </div>`;
+}
+
+/** Save who a mailer tells and whether it confirms: PUT on the mailer; the answer replaces it in the list the card reads. */
+async function saveTells(address) {
+  const a = String(address || '').toLowerCase();
+  if (!a || lc.busy) return;
+  const notify = [...document.querySelectorAll(`input[data-lic-tell="${CSS.escape(a)}"]:checked`)].map(x => String(x.value || '').toLowerCase()).filter(Boolean);
+  const confirmVisitor = !!document.getElementById(`licExConfirm-${a}`)?.checked;
+  const key = `exchange-tells:${a}`;
+  lc.err[key] = '';
+  await send(`ex-tells:${a}`, 'Saving…', async () => {
+    const d = await call(`${MAILERS_URL}/${encodeURIComponent(a)}`, 'PUT', { notify, confirmVisitor });
+    const got = d && d.mailer;
+    if (got && lc.exMailers && Array.isArray(lc.exMailers.mailers)) lc.exMailers.mailers = lc.exMailers.mailers.map(m => String(m.address || '').toLowerCase() === a ? { ...m, ...got } : m);
+    lc.exEdit = '';
+    setNote('exchange', `${a} tells ${notify.length ? listWords(notify) : 'the owner'} now${confirmVisitor ? ', and confirms to the sender' : ', and does not confirm to the sender'}.`);
+  }, {
+    errKey: key, fallback: 'That could not be saved right now.',
+    codes: { ...CODES, OWNER_ONLY: (ex2) => ex2?.data?.error || 'Only the owner and active members of your team can be told.', NO_MAILER: 'That mailer is gone. Reload the tab.', NOTIFY_INVALID: (ex2) => ex2?.data?.error || 'Pick people from the list.', CONFIRM_INVALID: 'The confirmation switch is on or off.' }
+  });
 }
 
 /**
@@ -219,9 +275,12 @@ function formsHtml(x, made, e) {
     const control = can
       ? `<label class="lic-from-wrap"><span class="lic-k">Send from</span><select class="acct-input lic-from" data-lic-from="${e(f.installId)}" aria-label="Send ${e(f.name)} from" ${lc.busy ? 'disabled' : ''}>${opts}</select></label>${saving ? '<span class="lic-hint" role="status">Saving…</span>' : ''}`
       : `<span class="lic-state is-quiet">${e(now ? `sends from ${now}` : 'no mailer')}</span>`;
-    return `<li class="lic-form-row"><div class="lic-dom-row"><span class="lic-form-name">${e(f.name)}${f.enabled ? '' : ' <span class="acct-tag">off</span>'}</span><span class="lic-state is-quiet">table ${cardLink('environment', 'data', f.table)}</span><span class="lic-dom-act">${control}</span></div></li>`;
+    // a form that keeps its own people or its own switch (set in the studio's Mail block) says so; the rest follow the mailer
+    const ownBits = [f.notifyTo && f.notifyTo.length ? `tells ${listWords(f.notifyTo)}` : '', f.confirmVisitor === true ? 'confirms to the sender' : f.confirmVisitor === false ? 'no confirmation' : ''].filter(Boolean);
+    const ownNote = ownBits.length ? `<p class="lic-hint">Its own: ${e(ownBits.join('; '))} (set in the studio, on the form's Mail block).</p>` : '';
+    return `<li class="lic-form-row"><div class="lic-dom-row"><span class="lic-form-name">${e(f.name)}${f.enabled ? '' : ' <span class="acct-tag">off</span>'}</span><span class="lic-state is-quiet">table ${cardLink('environment', 'data', f.table)}</span><span class="lic-dom-act">${control}</span></div>${ownNote}</li>`;
   }).join('');
-  return `${head}<p class="lic-hint">The mailer each form sends from: the team's copy and the submitter's confirmation both go from it. Each row of the form's table says what was sent.</p>${errHtml('exchange-forms')}${noteHtml('exchange-forms')}<ul class="lic-dom-list">${rows}</ul>`;
+  return `${head}<p class="lic-hint">The mailer each form sends from: the team's copy goes to the people the mailer tells, and the sender's confirmation follows its switch, unless the form sets its own in the studio. Each row of the form's table says what was sent.</p>${errHtml('exchange-forms')}${noteHtml('exchange-forms')}<ul class="lic-dom-list">${rows}</ul>`;
 }
 
 /** New mailer: under the hero for the first one, behind the button after; disabled with the reason when it cannot run. */
@@ -366,6 +425,9 @@ export function exchangeAction(a, btn) {
   if (a === 'ex-create') { createMailbox(); return true; }
   if (a === 'ex-new') { lc.exNew = true; st.paint(); document.getElementById('licExName')?.focus(); return true; }
   if (a === 'ex-new-close') { lc.exNew = false; st.paint(); return true; }
+  if (a === 'ex-tells-edit') { lc.exEdit = String(btn.dataset.address || '').toLowerCase(); st.paint(); document.querySelector(`input[data-lic-tell="${CSS.escape(lc.exEdit)}"]`)?.focus(); return true; }
+  if (a === 'ex-tells-cancel') { lc.exEdit = ''; st.paint(); return true; }
+  if (a === 'ex-tells-save') { saveTells(btn.dataset.address || ''); return true; }
   if (a === 'ex-copy') { const address = String(btn.dataset.address || ''); copyButton(btn, address, { select: () => document.getElementById(`licEx-${address}`) }); return true; }
   return false;
 }

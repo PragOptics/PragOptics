@@ -28,13 +28,21 @@ export function tableOf(install) {
 /** The forms out of the modules answer: the installs that take mail, each with what the mailer needs to know. */
 export function formsOf(modules) {
   const list = Array.isArray(modules) ? modules : (modules && Array.isArray(modules.modules) ? modules.modules : []);
-  return list.filter(m => m && takesMail(m.manifest)).map(m => ({
-    installId: String(m.installId || ''),
-    name: String(m.name || m.buildName || 'A form'),
-    table: tableOf(m),
-    mailer: String((m.settings && m.settings.mailer) || '').trim().toLowerCase(),
-    enabled: m.enabled !== false
-  }));
+  return list.filter(m => m && takesMail(m.manifest)).map(m => {
+    const s = (m.settings && typeof m.settings === 'object') ? m.settings : {};
+    const cv = s.confirm_visitor;
+    return {
+      installId: String(m.installId || ''),
+      name: String(m.name || m.buildName || 'A form'),
+      table: tableOf(m),
+      mailer: String(s.mailer || '').trim().toLowerCase(),
+      // the form's own people and switch (2026-11-02): set, they win over the mailer's; empty or unset, the mailer's apply.
+      // The older `recipient` setting (one address) counts as the form's own list too, as the door counts it.
+      notifyTo: [...new Set([s.recipient, ...(Array.isArray(s.notify_to) ? s.notify_to : [])].map(x => String(x || '').trim().toLowerCase()).filter(x => x.includes('@')))],
+      confirmVisitor: cv === true || cv === 'true' ? true : cv === false || cv === 'false' ? false : null,
+      enabled: m.enabled !== false
+    };
+  });
 }
 
 /** The address a form sends from, as the server would resolve it: its own pick when the environment holds it, else the default. */

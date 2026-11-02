@@ -656,4 +656,12 @@ a.ev-more { text-decoration: none; white-space: nowrap; }
 .lic-dom-lines li + li { margin-top: 6px; }
 .lic-dom-lines .lic-txt, .lic-dom-lines .lic-plan { margin-top: 8px; }
 .lic-hero-tags .ev-dom-when { font-weight: 400; }
+/* WHO A MAILER TELLS (2026-11-02): the team as checkboxes with their roles, the confirmation switch, Save */
+.lic-tells { margin-top: 8px; padding: 10px 12px; border: 1px dashed var(--border); border-radius: 8px; }
+.lic-tells-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 6px 14px; margin-top: 8px; }
+.lic-tell { display: flex; align-items: center; gap: 8px; font-size: .9rem; min-width: 0; cursor: pointer; }
+.lic-tell input { flex: none; width: 16px; height: 16px; accent-color: var(--brand-600); margin: 0; }
+.lic-tell > span:first-of-type { min-width: 0; overflow-wrap: anywhere; }
+.lic-tell--switch { margin-top: 10px; flex-wrap: wrap; }
+.lic-mailer-for .ev-icon-btn, .lic-mailer-for button { vertical-align: middle; margin-left: 4px; }
 

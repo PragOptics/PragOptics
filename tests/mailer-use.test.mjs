@@ -26,6 +26,9 @@ test('formsOf keeps the mailing installs with their name, table, pick and switch
   assert.deepEqual(out.map(f => [f.installId, f.name, f.table, f.mailer, f.enabled]), [['f1', 'Contact', 'contacts', 'forms@bridgesindust.com', true], ['f2', 'Reviews', 'reviews', '', true], ['f3', 'Partners', 'partners', '', false]]);
   assert.deepEqual(formsOf(modules).length, 3);
   assert.deepEqual(formsOf(null), []);
+  // the form's own people and switch (2026-11-02): read as set, so the card can say when a form differs from its mailer
+  const own = formsOf([form('f1', 'Contact', { notify_to: ['Ops@site.test', ''], confirm_visitor: 'false' }), form('f2', 'Reviews', { confirm_visitor: true }), form('f3', 'Partners', {})]);
+  assert.deepEqual(own.map(f => [f.notifyTo, f.confirmVisitor]), [[['ops@site.test'], false], [[], true], [[], null]]);
 });
 
 test('a form\'s mailer resolves as the server does: its own pick when held, else the default', () => {
