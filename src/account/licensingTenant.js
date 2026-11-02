@@ -49,7 +49,7 @@
 
 import { iconBtn, leadBtn, ico, copyButton, armed } from './cards.js';
 import { LIC_URL, lc, st, url, cardHtml, perms, call, send, reqLead, reqIcon, errHtml, noteHtml, setNote, kept, forget, sentence, showsLicensing, dayWord, countWord, stepWord, stepNo, STEPS, stepGate, tenantNamed, heroHtml } from './licensingShared.js';
-import { listWords } from './domainFamilies.js';
+import { listWords, familiesOf } from './domainFamilies.js';
 
 const SIGNIN_RULE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
 const SIGNIN_WORDS = 'Use 1 to 64 letters, digits, dots, dashes or underscores, starting with a letter or digit.';
@@ -182,7 +182,10 @@ export function tenantConnectedHtml() {
   // callback answers connected for the same organization. The seats and domains keep their own words under it.
   const hosts = v.mailDomains || [], inT = Array.isArray(t.domains) ? t.domains : [];
   const of = (h) => inT.find(x => x.host === h) || null;
-  const parts = hosts.map(h => { const d = of(h); return !d ? `${h} is not in your tenant yet` : d.state !== 'verified' ? `${h} waits for Microsoft to see its record` : d.mailAt ? `${h} carries its mail at Microsoft since ${dayWord(d.mailAt)}` : `${h} is in your tenant; its mail switch is not recorded here yet`; });
+  // the sentence speaks of each domain family's head (bridgesindust.com, not its www: the Environment tab's family rule,
+  // domainFamilies.js); every verified name still has its own row and controls in the domains list under it
+  const heads = familiesOf(hosts.map(host => ({ host }))).map(f => f.host).filter(h => hosts.includes(h));
+  const parts = (heads.length ? heads : hosts).map(h => { const d = of(h); return !d ? `${h} is not in your tenant yet` : d.state !== 'verified' ? `${h} waits for Microsoft to see its record` : d.mailAt ? `${h} carries its mail at Microsoft since ${dayWord(d.mailAt)}` : `${h} is in your tenant; its mail switch is not recorded here yet`; });
   const line = `${t.consentAt ? `Connected ${dayWord(t.consentAt)}. ` : ''}${parts.length ? sentence(listWords(parts)) : 'No verified domain yet: connect one on the Environment tab and it can join your tenant here.'}`;
   const again = canDomains() && !p.readOnly && t.writes !== false
     ? reqLead('tn-connect', { lic: 'tn-connect' }, 'external', 'Approve again', 'Opening Microsoft…', 'data-tip="Microsoft shows any permission PragOptics has gained since you approved it, such as sending as your mailers; you accept once and come back here"')

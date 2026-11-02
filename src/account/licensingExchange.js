@@ -228,7 +228,7 @@ function newHtml(x, made, count, limit, e) {
   // the remembered pick only while it is still offered (a domain that left the tenant's verified list falls back to the first)
   const remembered = kept('licExHost', '');
   const chosen = domains.some(d => d.host === remembered) ? remembered : (domains[0]?.host || '');
-  const opts = domains.map(d => `<option value="${e(d.host)}" ${d.host === chosen ? 'selected' : ''}>${e(d.host)}${d.mailAt ? '' : ' (mail switch not recorded)'}</option>`).join('');
+  const opts = domains.map(d => `<option value="${e(d.host)}" ${d.host === chosen ? 'selected' : ''}>${e(d.host)}${d.mailAt ? '' : ' (mail not switched)'}</option>`).join('');
   const unswitched = domains.some(d => !d.mailAt);
   const nameErr = lc.err['exchange-name'] ? `<p class="lic-field-err" id="licExNameErr" role="alert">${e(lc.err['exchange-name'])}</p>` : '';
   return `
@@ -238,7 +238,7 @@ function newHtml(x, made, count, limit, e) {
         <label class="acct-label" for="licExName">Address</label>
         <div class="lic-suffix ${nameErr ? 'is-bad' : ''}"><input class="acct-input" id="licExName" type="text" data-keep value="${e(kept('licExName', ''))}" maxlength="60" placeholder="notify" spellcheck="false" autocapitalize="off" autocomplete="off" aria-describedby="licExNameHint${nameErr ? ' licExNameErr' : ''}"><span>@</span><select class="acct-input" id="licExHost" data-keep aria-label="Domain">${opts}</select></div>
         ${nameErr}
-        <p class="lic-hint" id="licExNameHint">Letters, digits, dots, dashes or underscores.${unswitched ? ' A domain marked "mail switch not recorded" sends all the same; replies reach the mailbox once its mail is at Microsoft (the tenant card switches it).' : ''}</p>
+        <p class="lic-hint" id="licExNameHint">Letters, digits, dots, dashes or underscores.${unswitched ? ' A domain marked "mail not switched" sends all the same; replies reach the mailbox once its mail is at Microsoft, which the tenant card switches and records.' : ''}</p>
       </div>
       <div class="lic-span">
         <label class="acct-label" for="licExDisplay">Shown as</label>
