@@ -612,3 +612,6 @@ a.ev-more { text-decoration: none; white-space: nowrap; }
 .account .adm-table--cards td[data-th]::before { content: attr(data-th); display: block; font-size: .64rem; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); font-weight: 700; margin-bottom: 2px; }
 .account .adm-table--cards td:empty { display: none; }
 .account .adm-table-scroll:has(> .adm-table--cards) { overflow: visible; border: 0; }
+
+/* a refusal under a mailer's row on the Licensing card (2026-11-02, Send a test) */
+.lic-hint.is-bad { color: var(--danger-text, var(--danger)); }

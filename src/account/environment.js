@@ -168,7 +168,7 @@ export async function renderEnvironment(main, deps) {
   D = deps;
   ev.madeKey = null; ev.filesNote = ''; ev.files = null; ev.keys = null; ev.domains = null; ev.domainNote = ''; ev.linkNote = ''; ev.domArm = ''; ev.keyArm = ''; ev.checking = ''; ev.registrations = []; ev.reg = freshReg();
   ev.connections = null; ev.connProviders = []; ev.connNote = ''; ev.connPick = ''; ev.connBusy = false; ev.connResult = ''; ev.connTesting = ''; ev.connDraft = {}; ev.connArm = ''; ev.rowNote = null; ev.shopifyShop = ''; ev.shopifyLink = ''; ev.shopifyLinkId = ''; ev.connSyncing = ''; ev.rowNote = null;
-  ev.tables = null; ev.tablesNote = ''; ev.table = ''; ev.rows = null; ev.rowsAfter = ''; ev.rowsNote = ''; ev.openRow = ''; ev.rowsLoading = false;
+  ev.tables = null; ev.tablesNote = ''; ev.table = ''; ev.rows = null; ev.rowsAfter = ''; ev.rowsNote = ''; ev.openRow = ''; ev.rowsLoading = false; ev.moderating = ''; ev.moderatingTo = '';
   ev.ai = null; ev.aiNote = ''; ev.aiBusy = false; ev.aiBudget = null; ev.budgetBusy = false;
   ev.domTab = ev.domTab || 'connect'; initCards();
   // A link that names a card (/#account?section=environment&card=connections) opens that card; account.js scrolls to it.
@@ -665,8 +665,38 @@ function rowDetailHtml(r, shape) {
     <div class="ev-row-detail">
       <p class="ev-row-meta adm-muted">${when ? `<span>${e(D.fmtDate(when))}</span>` : ''}${tag}<code>${e(r.key)}</code>${r.size != null ? `<span>${e(bytesFmt(r.size))}</span>` : ''}</p>
       ${value}
-      <div class="act-row">${iconBtn('domain-copy', 'copy', 'Copy as JSON', `data-text="${e(valueText(r.value))}"`)}</div>
+      <div class="act-row">${iconBtn('domain-copy', 'copy', 'Copy as JSON', `data-text="${e(valueText(r.value))}"`)}${moderateButtons(r)}</div>
     </div>`;
+}
+/* APPROVE OR REJECT A ROW THAT WAITS (2026-11-02, the mailer plan step 3: "a pending review gets Approve and Reject on its
+ * row in your Data card; without it the review flow stops at the team's inbox"). Any table whose rows carry a status of
+ * pending gets the two: the row's value is written back with its status and the moment it was decided, which is what a
+ * reader-door module shows or hides by (auth/publicDoors.js items). Members who can write see them; nobody else. */
+function moderateButtons(r) {
+  const e = D.escapeHtml;
+  if (statusOf(r) !== 'pending' || !canWrite()) return '';
+  const out = ev.moderating === r.key;
+  return stateLead('data-approve', 'check', 'Approve', { out: out && ev.moderatingTo === 'approved', busyWord: 'Approving…', waiting: out && ev.moderatingTo !== 'approved' ? 'Waiting for the other decision' : '' }, `data-key="${e(r.key)}" data-tip="Show it: the row's status becomes approved"`, 'btn-primary')
+    + stateLead('data-reject', 'x', 'Reject', { out: out && ev.moderatingTo === 'rejected', busyWord: 'Rejecting…', waiting: out && ev.moderatingTo !== 'rejected' ? 'Waiting for the other decision' : '' }, `data-key="${e(r.key)}" data-tip="Keep it out of sight: the row's status becomes rejected"`, 'is-risky');
+}
+/** Write the decision onto the row (the whole value back, its status and moderatedAt set), then read the rows again with the same row open. */
+async function moderateRow(key, status) {
+  const row = (ev.rows || []).find(r => r.key === key);
+  if (!row || !ev.table || ev.moderating) return;
+  const table = ev.table;
+  const value = { ...(row.value && typeof row.value === 'object' && !Array.isArray(row.value) ? row.value : { value: row.value }), status, moderatedAt: new Date().toISOString() };
+  ev.moderating = key; ev.moderatingTo = status; ev.rowsNote = ''; paintData();
+  try {
+    await D.apiFetch(url(`${ENV_URL}/data/${encodeURIComponent(table)}/${encodeURIComponent(key)}`), { method: 'PUT', body: body({ value }) });
+  } catch (ex) {
+    ev.moderating = ''; ev.moderatingTo = '';
+    ev.rowsNote = ex?.sessionInvalidated ? '' : (ex?.data?.error || D.friendlyError(ex, `The row could not be marked ${status}.`));
+    paintData();
+    return;
+  }
+  ev.moderating = ''; ev.moderatingTo = '';
+  await loadRows(table);
+  if (ev.table === table) { ev.openRow = key; paintData(); }
 }
 
 function dataHtml() {
@@ -2959,6 +2989,8 @@ export function bindEnvironmentActions(deps) {
     if (a === 'dom-add-toggle') { ev.domAdd = !ev.domAdd; paintDomains(); if (ev.domAdd) document.getElementById('evDomainHost')?.focus(); return; }
     if (a === 'data-row-back') { ev.openRow = ''; paintData(); return; }
     if (a === 'data-view') { setDataView(btn.dataset.view || 'table'); paintData(); return; }
+    if (a === 'data-approve') return void moderateRow(btn.dataset.key || '', 'approved');
+    if (a === 'data-reject') return void moderateRow(btn.dataset.key || '', 'rejected');
     // the read paints every Refresh as out while it runs (refreshCtl), so a second press finds it disabled
     if (a === 'refresh') { if (btn.disabled || envLoad) return; return void refreshAll(); }
     if (a === 'budget-save') return void saveBudget(btn);
