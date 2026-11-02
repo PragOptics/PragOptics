@@ -219,8 +219,10 @@ export function catalogHtml() {
       </div>
       <div id="licCatList">${listHtml()}</div>
       <p class="acct-card-note ev-note">${e(catalogNote(v))}</p>`;
+  // folded by default (2026-11-02, Cameron: the tab "is one of those very large UI tabs"): the line says how many there
+  // are; the search, the kinds and the list open on a press and stay open for the session
   return cardHtml({
-    key: 'catalog', icon: 'layers', title: 'Licenses', summary,
+    key: 'catalog', icon: 'layers', title: 'Licenses', summary, open: false,
     explain: explainLink('licensing', 'Which license does what'),
     body: `${noteHtml('catalog')}${errHtml('catalog')}${bodyHtml}`
   });

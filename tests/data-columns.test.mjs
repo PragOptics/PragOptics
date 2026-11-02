@@ -49,5 +49,9 @@ assert.equal(cellText(true), "yes");
 assert.equal(cellText(["a", "b"]), "2 items");
 assert.equal(cellText({ a: 1 }), "1 field");
 assert.equal(cellText(null), "");
-assert.deepEqual(rowShape([]), { plain: true, columns: [], when: false, status: false });
+assert.deepEqual(rowShape([]), { plain: true, columns: [], when: false, status: false, mail: false });
+// the Mail column (2026-11-02, rowMail.js): on when any row says what became of its mail, in either generation of record
+assert.equal(rowShape([{ key: "sub-1", value: { fields: { name: "Ana" }, mailHeld: "no-mailer" } }]).mail, true);
+assert.equal(rowShape([{ key: "sub-2", value: { fields: { name: "Ana" }, mail: { team: { at: "2026-11-02T00:00:00Z" } } } }]).mail, true);
+assert.equal(rowShape([{ key: "sub-3", value: { fields: { name: "Ana" } } }]).mail, false);
 console.log("data-columns: ok");

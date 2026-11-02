@@ -48,7 +48,8 @@
 // licensing.js paints the card and routes its clicks here.
 
 import { iconBtn, leadBtn, ico, copyButton, armed } from './cards.js';
-import { LIC_URL, lc, st, url, cardHtml, perms, call, send, reqLead, reqIcon, errHtml, noteHtml, setNote, kept, forget, sentence, showsLicensing, dayWord, countWord, stepWord, stepNo, STEPS, stepGate, tenantNamed } from './licensingShared.js';
+import { LIC_URL, lc, st, url, cardHtml, perms, call, send, reqLead, reqIcon, errHtml, noteHtml, setNote, kept, forget, sentence, showsLicensing, dayWord, countWord, stepWord, stepNo, STEPS, stepGate, tenantNamed, heroHtml } from './licensingShared.js';
+import { listWords } from './domainFamilies.js';
 
 const SIGNIN_RULE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
 const SIGNIN_WORDS = 'Use 1 to 64 letters, digits, dots, dashes or underscores, starting with a letter or digit.';
@@ -171,11 +172,27 @@ export function tenantConnectedHtml() {
   if (!showsLicensing()) return '';
   const v = lc.view, m = v?.microsoft || {}, p = perms(), t = tn();
   if (!t?.connected) return '';
-  const inner = connectionHtml(m, p);
+  const inner = connectionHtml(m, p, { hero: true });
   if (!inner) return '';
+  const e = st.D.escapeHtml;
+  // THE HERO (2026-11-02, Cameron: the cards after the workflow card "should adopt more of a hero style view"): the
+  // organization, its state, ONE sentence on the domains and their mail, and the press that is the tenant's own: Approve
+  // again. Microsoft shows any permission PragOptics gained since the approval (sending as the mailers, Mail.Send, added
+  // 2026-11-02); the connect route takes a connected tenant (auth/tenantAccess.js connect has no connected guard) and the
+  // callback answers connected for the same organization. The seats and domains keep their own words under it.
+  const hosts = v.mailDomains || [], inT = Array.isArray(t.domains) ? t.domains : [];
+  const of = (h) => inT.find(x => x.host === h) || null;
+  const parts = hosts.map(h => { const d = of(h); return !d ? `${h} is not in your tenant yet` : d.state !== 'verified' ? `${h} waits for Microsoft to see its record` : d.mailAt ? `${h} carries its mail at Microsoft since ${dayWord(d.mailAt)}` : `${h} is in your tenant; its mail switch is not recorded here yet`; });
+  const line = `${t.consentAt ? `Connected ${dayWord(t.consentAt)}. ` : ''}${parts.length ? sentence(listWords(parts)) : 'No verified domain yet: connect one on the Environment tab and it can join your tenant here.'}`;
+  const again = canDomains() && !p.readOnly && t.writes !== false
+    ? reqLead('tn-connect', { lic: 'tn-connect' }, 'external', 'Approve again', 'Opening Microsoft…', 'data-tip="Microsoft shows any permission PragOptics has gained since you approved it, such as sending as your mailers; you accept once and come back here"')
+    : '';
+  // open while a domain still has a step on this card (join the tenant, its record, its mail); folded once every domain is through
+  const todo = hosts.some(h => { const d = of(h); return !d || d.state !== 'verified' || !d.mailAt; });
+  const hero = heroHtml({ title: e(t.orgName || t.tenantId), tags: '<span class="acct-tag is-verified">connected</span>', line: e(line), actions: again });
   return cardHtml({
-    key: 'tenant-connected', icon: 'building', title: 'Your Microsoft tenant', summary: st.D.escapeHtml(t.orgName || t.tenantId || 'connected'), open: true,
-    body: `${noteHtml('tenant')}${errHtml('tenant')}${inner}`
+    key: 'tenant-connected', icon: 'building', title: 'Your Microsoft tenant', summary: `${e(t.orgName || t.tenantId || '')} · connected`, open: todo,
+    body: `${noteHtml('tenant')}${errHtml('tenant')}${hero}${inner}`
   });
 }
 
@@ -208,7 +225,7 @@ function ordered(v, m) {
   return !!m?.locked || ORDERED_MAIL.has(String(v?.mail?.state || '')) || (v?.licenses || []).some(l => ORDERED_LICENSE.has(String(l?.status || '')));
 }
 
-function connectionHtml(m, p) {
+function connectionHtml(m, p, { hero = false } = {}) {
   const e = st.D.escapeHtml;
   const head = '';   // the card's own title says it now (connectHtml)
   const t = tn();
@@ -269,13 +286,15 @@ function connectionHtml(m, p) {
       <div class="acct-actions-row">${reqLead('tn-connect', { lic: 'tn-connect' }, 'external', t.lost ? 'Connect it again' : 'Connect your tenant', 'Opening Microsoft…', '', 'btn-primary')}</div>
     </div>`;
   }
-  const facts = [
-    `<div class="lic-fact"><span class="lic-k">Organization</span><span class="lic-v">${e(t.orgName || t.tenantId)}</span></div>`,
+  // under a hero (tenantConnectedHtml, 2026-11-02) the organization and the date are said there; the ID alone stays here
+  const facts = (hero ? [] : [
+    `<div class="lic-fact"><span class="lic-k">Organization</span><span class="lic-v">${e(t.orgName || t.tenantId)}</span></div>`
+  ]).concat([
     `<div class="lic-fact"><span class="lic-k">Tenant ID</span><span class="lic-v"><span class="ev-code">${e(t.tenantId)}</span></span></div>`,
-    t.consentAt ? `<div class="lic-fact"><span class="lic-k">Connected</span><span class="lic-v">${e(dayWord(t.consentAt))}</span></div>` : ''
-  ].join('');
+    !hero && t.consentAt ? `<div class="lic-fact"><span class="lic-k">Connected</span><span class="lic-v">${e(dayWord(t.consentAt))}</span></div>` : ''
+  ]).join('');
   const err = t.error ? `<p class="acct-card-note ev-note is-bad">${e(sentence(t.error))}</p>` : '';
-  return `<div class="lic-admin">${head}${ro}<div class="lic-facts">${facts}</div>${err}${licensesInUseHtml(t)}${seatsHtml(t, p)}${domainsHtml(t)}</div>`;
+  return `<div class="lic-admin">${head}${ro}<div class="lic-facts${hero ? ' lic-facts--tight' : ''}">${facts}</div>${err}${licensesInUseHtml(t)}${seatsHtml(t, p)}${domainsHtml(t)}</div>`;
 }
 
 /** The licenses the tenant holds at Microsoft, and how many are in use: read live. */

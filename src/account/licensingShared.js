@@ -186,6 +186,15 @@ export function stepGate(v, upTo) {
   if (upTo >= 3 && !agreementStands(m)) return 'Accept the Microsoft Customer Agreement first, on the card above.';
   return '';
 }
+/* ---------- the hero strip (2026-11-02) ----------
+ *
+ * Cameron: the tab "is one of those very large UI tabs"; "the cards below ... should adopt more of a hero style view, in
+ * the preceding cards after the licensing main workflow card". One shape for every card after the workflow: a lead (a
+ * ring, or nothing), a strong line with its tags, ONE sentence, and the primary actions; the card's details come under
+ * it. Every string is HTML the caller already escaped. */
+export function heroHtml({ lead = '', title = '', tags = '', line = '', actions = '', cls = '' }) {
+  return `<div class="lic-hero ${cls}">${lead ? `<div class="lic-hero-lead">${lead}</div>` : ''}<div class="lic-hero-main"><p class="lic-hero-t">${title}${tags ? ` <span class="lic-hero-tags">${tags}</span>` : ''}</p>${line ? `<p class="lic-hero-d">${line}</p>` : ''}</div>${actions ? `<div class="lic-hero-acts">${actions}</div>` : ''}</div>`;
+}
 /** A card's note (what the last action did), painted inside the card; `bad` marks one that did not go as asked. */
 export function noteHtml(key) { const n = lc.notes[key]; return n?.text ? `<p class="acct-card-note ev-note ${n.bad ? 'is-bad' : ''}" role="status">${esc(n.text)}</p>` : ''; }
 export function setNote(key, text, bad = false) { lc.notes[key] = text ? { text, bad } : null; }

@@ -13,7 +13,8 @@
 // Pure: rows in, a shape out. environment.js renders it.
 
 const PREFERRED = ['name', 'full_name', 'email', 'title', 'subject', 'company', 'business', 'rating', 'topic', 'type', 'sector', 'phone', 'message', 'comment', 'issue', 'offering'];
-const HIDDEN = new Set(['id', 'installId', 'module', 'lane', 'via', 'origin', 'at', 'status', 'fields', 'text_ok', 'hp']);
+// mail and mailHeld (2026-11-02) are the row's mail outcome, read by rowMail.js into its own column and lines
+const HIDDEN = new Set(['id', 'installId', 'module', 'lane', 'via', 'origin', 'at', 'status', 'fields', 'text_ok', 'hp', 'mail', 'mailHeld']);
 const MAX_COLUMNS = 5;
 
 /** The object whose keys are the row's columns: a submission's fields, else the stored value itself. */
@@ -83,7 +84,9 @@ export function rowShape(rows) {
     plain: objects === 0,
     columns: keys.slice(0, MAX_COLUMNS).map(key => ({ key, label: labelOf(key) })),
     when: list.some(r => !!whenOf(r)),
-    status: list.some(r => !!statusOf(r))
+    status: list.some(r => !!statusOf(r)),
+    // a Mail column when any row says what became of its mail (rowMail.js: record.mail, or the older mailHeld)
+    mail: list.some(r => { const v = r && r.value; return !!(v && typeof v === 'object' && (v.mail || v.mailHeld)); })
   };
 }
 

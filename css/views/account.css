@@ -635,6 +635,24 @@ select.acct-input, select.adm-select, select.adm-input { background-color: var(-
 .lic-wiz-lead { margin: 0 0 14px; }
 .lic-wiz-lead-head { margin: 0 0 6px; font-weight: 700; font-size: 1rem; line-height: 1.35; color: var(--card-title); display: flex; align-items: center; gap: 8px; }
 .lic-wiz-lead.is-done .lic-wiz-lead-head svg { color: var(--brand-600); }
+
+/* THE HERO STRIP (2026-11-02, Cameron: the cards after the workflow card "should adopt more of a hero style view"): one
+   shape for every card after the workflow (licensingShared.heroHtml): a lead (the plan's ring), a strong line with its tags,
+   ONE sentence, the primary actions on the right; the card's details come under it. */
+.lic-hero { display: flex; gap: 14px; align-items: flex-start; flex-wrap: wrap; margin: 12px 0 4px; padding: 14px 16px; border-radius: var(--radius-card, 10px); border: 1px solid var(--border); background: color-mix(in srgb, var(--brand-600) 5%, var(--surface-3)); }
+.lic-hero-lead { flex: none; display: flex; align-items: center; padding-top: 2px; }
+.lic-hero-lead .su-ring { width: 40px; height: 40px; }
+.lic-hero-lead .su-ring > svg:first-child { width: 40px; height: 40px; }
+.lic-hero-main { flex: 1 1 260px; min-width: 0; }
+.lic-hero-t { margin: 0; font-weight: 700; font-size: 1.05rem; line-height: 1.35; color: var(--card-title); overflow-wrap: anywhere; }
+.lic-hero-tags { display: inline-flex; gap: 6px; flex-wrap: wrap; vertical-align: middle; margin-left: 6px; }
+.lic-hero-d { margin: 6px 0 0; font-size: .9rem; line-height: 1.5; color: var(--ink); }
+.lic-hero-acts { flex: none; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.lic-hero + .lic-admin, .lic-hero + .lic-facts, .lic-hero + .lic-enroll, .lic-hero + .lic-sub { margin-top: 12px; }
+@media (max-width: 560px) { .lic-hero { padding: 12px 13px; gap: 10px; } .lic-hero-acts { width: 100%; } }
+/* the rail complete (2026-11-02): every step a check, none current */
+.lic-rail.is-complete .lic-rail-step { color: var(--ink); }
+
 /* Reset my password stands in its own row, with air above it, under Show my first password (2026-10-05) */
 .lic-reset-row { margin-top: 14px; }
 /* My mailbox: the address with its Copy beside it, and the Outlook button in its own row (2026-10-05) */

@@ -33,16 +33,16 @@
 import { tierName, tierBadge } from '../components/tierCopy.js';
 import { explainLink } from '../components/explainer.js';
 import { ico, leadBtn, armed, initCards } from './cards.js';
-import { LIC_URL, lc, st, url, cardHtml, countWord, cap, dayWord, sentence, perms, isOperator, me, call, send, reqLead, reqIcon, errHtml, noteHtml, setNote, kept, forget, keepInput, withLink, cardLink, showsLicensing, stepWord, stepGate, tenantNamed } from './licensingShared.js';
+import { LIC_URL, lc, st, url, cardHtml, countWord, cap, dayWord, sentence, perms, isOperator, me, call, send, reqLead, reqIcon, errHtml, noteHtml, setNote, kept, forget, keepInput, withLink, cardLink, showsLicensing, stepWord, stepGate, tenantNamed, heroHtml } from './licensingShared.js';
 import { agreementHtml, licensesHtml, orderAction, orderChange } from './licensingOrders.js';
 import { catalogHtml, catalogAction, catalogInput } from './licensingCatalog.js';
 import { billingHtml, billingAction } from './licensingBilling.js';
 import { pax8Html, pax8Action } from './licensingPax8.js';
 import { tenantHtml, tenantAction, resetTenant, reopenTenant, loadTenantStatus, myMailboxHtml, connectHtml, tenantConnectedHtml } from './licensingTenant.js';
 import { requestsHtml, requestsAction, loadRequests, pendingMailbox, ask } from './licensingRequests.js';
-import { exchangeHtml, exchangeAction, loadExchange, resetExchange } from './licensingExchange.js';
+import { exchangeHtml, exchangeAction, exchangeChange, loadExchange, resetExchange, mailersWord } from './licensingExchange.js';
 import { owedHtml, moneyAction } from './licensingMoney.js';
-import { phase1Html, phase2Card, wizardAction, wizardStage, tenantConnected, phaseRail, phase2Lead, phase3Lead, bringLead } from './licensingWizard.js';
+import { phase1Html, phase2Card, wizardAction, wizardStage, tenantConnected, setupDone, phaseRail, phase2Lead, phase3Lead, bringLead } from './licensingWizard.js';
 import { markSetupStale } from './setup.js';
 
 const LIVE_INCLUDED = ['PAID', 'ORDERED', 'ACTIVE'];
@@ -136,7 +136,8 @@ function paint() {
   // Phase 3: connected. The rail reaches Ready and the owner sees the tenant's own card (its domains, their mail, the
   // seats), their own account and their team's mailboxes, not the six setup cards again (Cameron, 2026-10-03: "the ui is
   // back to the full old style menu... we consolidated to 3").
-  else if (tenantConnected()) cards = `${phaseRail('manage')}${phase3Lead(lc.view)}${tenantConnectedHtml()}${myMailboxHtml()}${mailboxesHtml()}${exchangeHtml()}${licensesHtml()}${catalogHtml()}`;
+  // the rail reads three checks once the setup is complete (2026-11-02, Cameron: "the step 3 on this should be a check")
+  else if (tenantConnected()) cards = `${phaseRail(setupDone() ? 'done' : 'manage')}${phase3Lead(lc.view)}${tenantConnectedHtml()}${myMailboxHtml()}${mailboxesHtml()}${exchangeHtml()}${licensesHtml()}${catalogHtml()}`;
   // not connected and not eligible: the old account card carries the plan upsell
   // the connect card follows the tenant card as soon as the tenant is named and not yet connected: the one human step
   // (sign in at Microsoft, approve PragOptics) is open to whoever can connect (the owner, the agent, a granted role)
@@ -178,8 +179,12 @@ function roleLine(v, p) {
 
 function headHtml() {
   const e = st.D.escapeHtml, v = lc.view, p = perms(), a = v.account;
+  // the tags say the truth of the moment (2026-11-02): a connected tenant leads; the account's state only when there is
+  // one, or when nothing is connected yet and the account is the next thing. The line under the name is the counts alone.
+  const acct = a ? (a.active ? '<span class="acct-tag is-verified">account active</span>' : '<span class="acct-tag is-pending">account not active yet</span>') : '';
   const state = !v.eligible ? `<span class="acct-tag">${e(tierName(v.minimumTier))} plan and above</span>`
-    : a ? (a.active ? '<span class="acct-tag is-verified">account active</span>' : '<span class="acct-tag is-pending">account not active yet</span>')
+    : tenantConnected() ? `<span class="acct-tag is-verified">tenant connected</span>${acct}`
+    : a ? acct
     : v.distributor?.configured ? '<span class="acct-tag is-pending">no account yet</span>'
     : '<span class="acct-tag is-pending">being set up</span>';
   const lane = v.lane?.test ? `<p class="lic-banner is-test" role="note">${ico('tool')}<span>${e(sentence(v.lane.note || 'Test lane: nothing is ordered at Microsoft'))}</span></p>` : '';
@@ -193,7 +198,7 @@ function headHtml() {
         <div class="ev-id">
           <div class="ev-tags">${tierBadge(v.tier)}${state}</div>
           <h3 class="acct-card-h ev-name">Microsoft 365 for your team</h3>
-          <p class="ev-owner adm-muted">${e(mailSummary(v))} · a mailbox for each team seat is included; other licenses at Microsoft's list price</p>
+          <p class="ev-owner adm-muted">${e(mailSummary(v))}${e(mailersWord())}</p>
           ${role ? `<p class="ev-owner adm-muted lic-role">${e(role)}</p>` : ''}
         </div>
         <div class="ev-actions">${reqIcon('refresh', { lic: 'refresh' }, 'refresh', 'Read it again', 'Reading…')}</div>
@@ -471,18 +476,27 @@ function mailboxesHtml() {
         </table>
       </div>`;
   const state = MAIL_WORDS[v.mail?.state] || 'mail off';
-  const summary = v.account ? `${state} · ${seats.filter(s => s.included).length} of ${countWord(seats.length, 'team seat', 'team seats')} with a mailbox` : 'after the licensing account';
+  const withBox = seats.filter(s => s.included).length;
+  const counts = `${withBox} of ${countWord(seats.length, 'team seat', 'team seats')} with a mailbox`;
+  const summary = v.account ? `${state} · ${counts}` : `${counts} · needs the licensing account`;
   // no step number: the six-step numbering is gone with the three-phase wizard (2026-10-05, Cameron: "step 4 of 6" under My
   // mailbox); and once the tenant is connected a team of one sees this card folded under their own, one step, not two cards
   const folded = tenantConnected() && seats.length <= 1;
+  // the hero (2026-11-02): the count, the mail state as a tag, one sentence; the state's own controls and the seats under it
+  const stateTag = `<span class="acct-tag ${v.mail?.state === 'on' ? 'is-verified' : v.mail?.state === 'ordering' || v.mail?.state === 'ending' ? 'is-pending' : v.mail?.state === 'delayed' ? 'is-bad' : ''}">${e(state)}</span>`;
+  const hero = heroHtml({
+    title: e(counts), tags: stateTag,
+    line: v.account ? 'Each team seat can have one mailbox, included with your plan: Exchange Online Kiosk, 2 GB, for Outlook on the web and the Outlook phone apps.' : 'Each team seat can have one mailbox, included with your plan, once your licensing account exists.'
+  });
   return cardHtml({
     key: 'mailboxes', icon: 'mail', title: 'Mailboxes', summary: e(summary), open: !!v.account && !folded,
     explain: explainLink('licensing', 'A mailbox for every seat'),
     body: `
-      <p class="acct-card-note">Each team seat can have one mailbox, included with your plan: Exchange Online Kiosk, 2 GB, for Outlook on the web and the Outlook phone apps (not the desktop Outlook app). A mailbox ends when it is taken back, when its seat ends, or when the person becomes a viewer. Once a mailbox ends, Microsoft keeps its mail for 30 days, then deletes it.</p>
+      ${hero}
       ${mailStateHtml(v, p)}
       ${noteHtml('mailboxes')}${errHtml('mailboxes')}
-      ${table}`
+      ${table}
+      <p class="lic-hint">A mailbox ends when it is taken back, when its seat ends, or when the person becomes a viewer; Microsoft keeps its mail for 30 days after that, then deletes it. The desktop Outlook app needs a license with it.</p>`
   });
 }
 
@@ -561,6 +575,6 @@ export function bindLicensingActions(deps) {
   });
   // what is typed in the tab is remembered as it is typed, so a repaint never wipes it
   const remember = (e) => { if (e.target?.closest?.('#licBody')) keepInput(e); };
-  document.addEventListener('change', (e) => { remember(e); orderChange(e); catalogInput(e); });
+  document.addEventListener('change', (e) => { remember(e); orderChange(e); catalogInput(e); exchangeChange(e); });
   document.addEventListener('input', (e) => { remember(e); if (e.target && e.target.id === 'licCatQ') catalogInput(e); if (e.target && e.target.id === 'licAddQty') orderChange(e); });
 }

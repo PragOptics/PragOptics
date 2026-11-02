@@ -99,6 +99,16 @@ export function ico(name, size = 16) {
 }
 
 /** An icon-only action with a styled tooltip. `action` is the data-* attribute the section listens on: 'download' (env), { acct: 'add-alias' }, { team: 'remove' }. */
+/**
+ * A ring of done over total (the setup checklist's, 2026-10; shared from here 2026-11-02 so the Licensing tab's Mailers
+ * card counts its plan the same way: "a ring or some consumption of the whole"). Complete draws the check inside it.
+ * The look is .su-ring (css/views/account.css).
+ */
+export function ringHtml(done, total, complete = false) {
+  const pct = total ? Math.max(0, Math.min(100, Math.round((done / total) * 100))) : 0;
+  return `<span class="su-ring ${complete ? 'is-done' : ''}" aria-hidden="true"><svg viewBox="0 0 36 36" focusable="false"><circle class="su-ring-track" cx="18" cy="18" r="15"/><circle class="su-ring-fill" cx="18" cy="18" r="15" pathLength="100" style="stroke-dashoffset:${100 - pct}"/></svg>${complete ? ico('check', 11) : ''}</span>`;
+}
+
 export function iconBtn(action, name, label, attrs = '', cls = '') {
   const [attr, value] = typeof action === 'string' ? ['data-env-action', action] : Object.entries(action).map(([k, v]) => [`data-${k}-action`, v])[0];
   return `<button class="btn btn-sm btn-ico ${cls}" type="button" ${attr}="${esc(value)}" aria-label="${esc(label)}" data-tip="${esc(label)}" ${attrs}>${ico(name)}</button>`;

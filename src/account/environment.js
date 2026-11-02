@@ -35,6 +35,7 @@ import { cardErrorWords } from '../api/stripeWords.js';
 // 2026-11-02 (Cameron: "im building this for humans"): one container per domain family, and a table's rows as a table
 import { familiesOf, liveHostsOf, familyState, listWords } from './domainFamilies.js';
 import { rowShape, innerOf, whenOf, statusOf, cellText, headlineOf } from './dataColumns.js';
+import { mailShort, mailLines } from './rowMail.js';
 // the platform's cents formatter, under the name this file has always used for it (the local cents() below is the
 // AI budget's cent-sign variant, so the shared one cannot take that name here)
 import { countWord, cents as money } from '../ui/words.js';
@@ -637,14 +638,16 @@ function rowsTableHtml(rows, shape) {
   const e = D.escapeHtml;
   const cols = shape.columns;
   const statusTag = (st) => st ? `<span class="acct-tag ${st === 'approved' ? 'is-verified' : st === 'pending' ? 'is-pending' : st === 'rejected' ? 'is-bad' : ''}">${e(st)}</span>` : '';
-  const th = `${cols.map(c => `<th>${e(c.label)}</th>`).join('')}${shape.plain ? '<th>Value</th>' : ''}${shape.status ? '<th>Status</th>' : ''}${shape.when ? '<th>When</th>' : ''}`;
+  const th = `${cols.map(c => `<th>${e(c.label)}</th>`).join('')}${shape.plain ? '<th>Value</th>' : ''}${shape.status ? '<th>Status</th>' : ''}${shape.mail ? '<th>Mail</th>' : ''}${shape.when ? '<th>When</th>' : ''}`;
   const tr = rows.map(r => {
     const inner = innerOf(r) || {};
     const cells = cols.map(c => { const txt = cellText(inner[c.key]); return `<td class="cell-ellip" data-th="${e(c.label)}" title="${e(txt)}">${e(txt)}</td>`; }).join('');
     const plain = shape.plain ? `<td class="cell-ellip" data-th="Value" title="${e(cellText(r.value))}">${e(cellText(r.value))}</td>` : '';
     const status = shape.status ? `<td class="cell-tight" data-th="Status">${statusTag(statusOf(r))}</td>` : '';
+    // the row's mail outcome in a few words (2026-11-02, Cameron: "the rows need status for sent or not, and to user and team")
+    const mail = shape.mail ? `<td class="cell-tight adm-muted" data-th="Mail">${e(mailShort(r.value))}</td>` : '';
     const when = shape.when ? `<td class="cell-tight adm-muted" data-th="When">${whenOf(r) ? e(D.fmtDate(whenOf(r))) : ''}</td>` : '';
-    return `<tr class="ev-row" data-env-action="data-row" data-key="${e(r.key)}" tabindex="0" role="button" aria-label="Open ${e(headlineOf(r, shape))}">${cells}${plain}${status}${when}</tr>`;
+    return `<tr class="ev-row" data-env-action="data-row" data-key="${e(r.key)}" tabindex="0" role="button" aria-label="Open ${e(headlineOf(r, shape))}">${cells}${plain}${status}${mail}${when}</tr>`;
   }).join('');
   return `<div class="adm-table-scroll"><table class="adm-table ev-table ev-rows ${dataView() === 'cards' ? 'adm-table--cards' : 'ev-table-grid'}"><thead><tr>${th}</tr></thead><tbody>${tr}</tbody></table></div>`;
 }
@@ -657,10 +660,13 @@ function rowDetailHtml(r, shape) {
   // origin, address) follow under one muted heading, so the read is the message first and the bookkeeping second
   const inner = innerOf(r);
   const isSub = inner && inner !== r.value;
-  const rest = isSub ? Object.fromEntries(Object.entries(r.value).filter(([k]) => k !== 'fields')) : null;
+  const rest = isSub ? Object.fromEntries(Object.entries(r.value).filter(([k]) => k !== 'fields' && k !== 'mail' && k !== 'mailHeld')) : null;
+  // what became of the row's mail (rowMail.js): the team's, the submitter's, from which mailer; nothing when the row says nothing
+  const mail = mailLines(r.value);
+  const mailBlock = mail.length ? `<p class="hm-group ev-row-rest">Mail</p><dl class="ev-row-mail">${mail.map(l => `<div><dt>${e(l.label)}</dt><dd>${e(l.text)}${l.at ? ` <span class="adm-muted">${e(D.fmtDate(l.at))}</span>` : ''}</dd></div>`).join('')}</dl>` : '';
   const value = isSub
-    ? `<div class="ev-value-card">${valueCardHtml(inner)}</div><p class="hm-group ev-row-rest">Record</p><div class="ev-value-card is-rest">${valueCardHtml(rest)}</div>`
-    : `<div class="ev-value-card">${valueCardHtml(r.value)}</div>`;
+    ? `<div class="ev-value-card">${valueCardHtml(inner)}</div>${mailBlock}<p class="hm-group ev-row-rest">Record</p><div class="ev-value-card is-rest">${valueCardHtml(rest)}</div>`
+    : `<div class="ev-value-card">${valueCardHtml(r.value)}</div>${mailBlock}`;
   return `
     <div class="ev-row-detail">
       <p class="ev-row-meta adm-muted">${when ? `<span>${e(D.fmtDate(when))}</span>` : ''}${tag}<code>${e(r.key)}</code>${r.size != null ? `<span>${e(bytesFmt(r.size))}</span>` : ''}</p>

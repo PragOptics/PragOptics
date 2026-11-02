@@ -71,9 +71,11 @@ export function bringLead(v) {
 
 /** The rail across the top of the licensing tab, so the customer always sees where they are in the three phases. */
 export function phaseRail(stage) {
-  const idx = stage === 'phase1' ? 0 : stage === 'signin' ? 1 : 2;
+  // 'done' (2026-11-02, Cameron: "the step 3 on this should be a check, not a 3 that says ready, because the step is
+  // complete"): the tenant is connected and nothing is still being made, so every step is a check and none is current
+  const idx = stage === 'phase1' ? 0 : stage === 'signin' ? 1 : stage === 'done' ? 3 : 2;
   const steps = ['Set up', 'Approve', 'Ready'];
-  return `<ol class="lic-rail" aria-label="Setting up Microsoft 365">${steps.map((label, i) => {
+  return `<ol class="lic-rail ${idx >= steps.length ? 'is-complete' : ''}" aria-label="Setting up Microsoft 365">${steps.map((label, i) => {
     const cls = i < idx ? 'is-done' : i === idx ? 'is-on' : 'is-next';
     const mark = i < idx ? ico('check', 13) : String(i + 1);
     return `<li class="lic-rail-step ${cls}" ${i === idx ? 'aria-current="step"' : ''}><span class="lic-rail-dot">${mark}</span><span class="lic-rail-label">${st.D.escapeHtml(label)}</span></li>`;
@@ -89,17 +91,21 @@ export function phase2Lead() {
     </div>`;
 }
 
+/** Right after the approval the owner's mailbox (and administrator account) can still be being made, by this read on the server or the next. */
+function stillMaking() { const mine = lc.tn?.mine; return !!(mine && mine.seat && mine.state !== 'ready' && mine.state !== 'failed'); }
+/** The setup is complete: the tenant is connected and nothing is still being made. The rail shows three checks then. */
+export function setupDone() { return tenantConnected() && !stillMaking(); }
+
 /** Phase 3, done: the tenant is connected; the owner's own admin account and the mailboxes are made. */
 export function phase3Lead(v) {
   if (!perms().isOwner) return '';
   // the lead tells the truth of the moment (2026-10-05, the final walk): right after the approval the owner's mailbox and
   // administrator account are still being made, by this read on the server or the next; the page keeps reading until ready
-  const mine = lc.tn?.mine;
-  const making = !!(mine && mine.seat && mine.state !== 'ready' && mine.state !== 'failed');
+  const making = stillMaking();
   // a tenant the business brought has no platform-made administrator account and no mailbox order yet: the lead says what
   // the tenant card below now does for it, instead of promising a first password that was never made
   const note = broughtTenant(v)
-    ? 'Your tenant is connected. On the tenant card below, add your domain to it and switch its mail when you are ready; shared mailboxes on your domain are made on the Shared mailboxes card; licenses and mailboxes for your people come from the cards after it.'
+    ? 'Your tenant is connected. Add your domain to it and switch its mail on the tenant card; make your mailers on the Mailers card; licenses and mailboxes for your people come from the cards after it.'
     : making
     ? 'Your tenant is connected. Your mailbox and your own administrator account are being made now, a minute or two; this page updates itself when they are ready.'
     : 'Your tenant is connected. Your own administrator account and its first password are on your My mailbox card below, so you run your tenant with that, not the login from the setup email. Add people on the Team tab and give each one a mailbox here.';

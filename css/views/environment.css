@@ -615,3 +615,26 @@ a.ev-more { text-decoration: none; white-space: nowrap; }
 
 /* a refusal under a mailer's row on the Licensing card (2026-11-02, Send a test) */
 .lic-hint.is-bad { color: var(--danger-text, var(--danger)); }
+
+/* THE MAILERS CARD (2026-11-02): each mailer a container with the forms it sends for; the forms with their Send from pick;
+   the Licenses card's tools on one row at width (the search beside For and Sort, the kinds under them). */
+.lic-mailer, .lic-form-row { border: 1px solid var(--border); border-radius: var(--radius-ctl); padding: 10px 12px; background: var(--surface-3); }
+.lic-mailer + .lic-mailer, .lic-form-row + .lic-form-row { margin-top: 8px; }
+.lic-mailer .lic-dom-row, .lic-form-row .lic-dom-row { margin-top: 0; }
+.lic-mailer-for { margin: 6px 0 0; font-size: .9rem; }
+.lic-form-name { font-weight: 600; font-size: .92rem; overflow-wrap: anywhere; }
+.lic-from.acct-input { width: auto; max-width: 100%; min-width: 0; padding-top: 6px; padding-bottom: 6px; }
+.lic-runtime { margin-top: 14px; }
+@media (min-width: 720px) {
+  .lic-cat-tools { grid-template-columns: minmax(0, 1fr) auto; align-items: end; }
+  .lic-cat-kinds { grid-column: 1 / -1; }
+  .lic-cat-selects { grid-template-columns: auto auto; }
+  .lic-cat-selects .acct-input { width: auto; min-width: 9rem; }
+}
+/* a row's mail outcome on its detail (rowMail.js) */
+.ev-row-mail { margin: 0; display: grid; gap: 4px; }
+.ev-row-mail > div { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 10px; font-size: .9rem; align-items: start; }
+.ev-row-mail dt { color: var(--muted); font-size: .74rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding-top: 3px; }
+.ev-row-mail dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+@media (max-width: 480px) { .ev-row-mail > div { grid-template-columns: minmax(0, 1fr); gap: 2px; } }
+

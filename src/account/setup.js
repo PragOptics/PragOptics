@@ -21,7 +21,7 @@
 // one click handler (account.js) opens the section and then the card.
 
 import { PRAG_API_BASE } from '../runtime/config.js';
-import { ico } from './cards.js';
+import { ico, ringHtml } from './cards.js';
 
 const SETUP_URL = `${PRAG_API_BASE}/environment/setup`;
 const FRESH_MS = 30000;
@@ -111,10 +111,7 @@ function linkHtml(step) {
   return `<button class="su-link su-step-title" type="button" data-acct-section="${e(section)}" ${card ? `data-acct-card="${e(card)}"` : ''}>${title}</button>`;
 }
 
-function ringHtml(done, total, complete) {
-  const pct = total ? Math.round((done / total) * 100) : 0;
-  return `<span class="su-ring ${complete ? 'is-done' : ''}" aria-hidden="true"><svg viewBox="0 0 36 36" focusable="false"><circle class="su-ring-track" cx="18" cy="18" r="15"/><circle class="su-ring-fill" cx="18" cy="18" r="15" pathLength="100" style="stroke-dashoffset:${100 - pct}"/></svg>${complete ? ico('check', 11) : ''}</span>`;
-}
+// the ring is cards.js ringHtml since 2026-11-02 (the Licensing tab's Mailers card draws the same one)
 
 /**
  * Required and optional counted APART (2026-10-02, Cameron: "we should not put the optional in the count, however we
