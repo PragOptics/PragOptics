@@ -324,7 +324,7 @@ function paint() {
     : `<div id="evFiles">${filesHtml()}</div><div id="evData">${dataHtml()}</div><div id="evAi">${aiHtml()}</div><div id="evConnections">${connectionsHtml()}</div><div id="evDomains">${domainsHtml()}</div><div id="evKeys">${keysHtml()}</div>`;
   host.innerHTML = `
     ${summaryHtml(ev.view)}
-    ${ready ? glanceHtml() : ''}
+    ${ready ? `<div id="evGlance">${glanceHtml()}</div>` : ''}
     ${ready ? `<div class="ev-cards">${cards}</div>` : ''}
   `;
 }
@@ -352,6 +352,8 @@ function glanceHtml() {
   ].join('');
   return `<div class="hm-glance ev-glance">${tiles}</div>`;
 }
+/** The strip follows the cards: each card's painter calls this once its data is in, so the tiles never sit at a dash. */
+function paintGlance() { const h = document.getElementById('evGlance'); if (h) h.innerHTML = glanceHtml(); }
 
 /* ---------- lanes ---------- */
 
@@ -430,11 +432,12 @@ async function setupSandbox(btn) {
     D.showError('evSandboxError', errText(ex, 'Could not set up the sandbox.'));
   }
 }
-function paintFiles() { const h = document.getElementById('evFiles'); if (h) h.innerHTML = filesHtml(); }
+function paintFiles() { const h = document.getElementById('evFiles'); if (h) h.innerHTML = filesHtml(); paintGlance(); }
 function paintDomains() {
   const h = document.getElementById('evDomains');
   if (!h) return;
   h.innerHTML = domainsHtml();
+  paintGlance();
   // At the paying step the Stripe payment box lives in this card; a repaint
   // replaces its container, so the one payment element is mounted again
   // (Stripe allows a single payment element per group, never a second create).
@@ -446,8 +449,8 @@ function paintDomains() {
     } catch { /* the box comes back on the next repaint */ }
   }
 }
-function paintKeys() { const h = document.getElementById('evKeys'); if (h) h.innerHTML = keysHtml(); }
-function paintConnections() { const h = document.getElementById('evConnections'); if (h) h.innerHTML = connectionsHtml(); }
+function paintKeys() { const h = document.getElementById('evKeys'); if (h) h.innerHTML = keysHtml(); paintGlance(); }
+function paintConnections() { const h = document.getElementById('evConnections'); if (h) h.innerHTML = connectionsHtml(); paintGlance(); }
 
 function emptyHtml(view) {
   // Every owner gets an environment (2026-09-16): pooled storage on Free, the
@@ -553,7 +556,7 @@ function summaryHtml(v) {
 
 /* ---------- data (2026-09-19: everything the environment holds is readable from its page) ---------- */
 
-function paintData() { const h = document.getElementById('evData'); if (h) h.innerHTML = dataHtml(); }
+function paintData() { const h = document.getElementById('evData'); if (h) h.innerHTML = dataHtml(); paintGlance(); }
 async function loadTables() {
   try {
     const d = await D.apiFetch(url(`${ENV_URL}/data`));
@@ -708,7 +711,7 @@ function dataHtml() {
 
 /* ---------- AI (2026-09-19): the switch, the credit, the lanes ---------- */
 
-function paintAi() { const h = document.getElementById('evAi'); if (h) h.innerHTML = aiHtml(); }
+function paintAi() { const h = document.getElementById('evAi'); if (h) h.innerHTML = aiHtml(); paintGlance(); }
 async function loadAi() {
   try { ev.ai = await D.apiFetch(url(`${ENV_URL}/ai`)); ev.aiNote = ''; }
   catch (ex) {
@@ -1284,7 +1287,7 @@ function domainsHtml() {
     ? [{ host: paidReg.quote.host, orderId: String(paidReg.order?.orderId || ''), status: 'ORDERED', error: '', contact: null }] : [];
   const regs = [...ownRow, ...listed];
   const inFlight = regs.some(r => r.status !== 'FAILED');
-  const summary = rows == null ? 'loading' : !rows.length && !regs.length ? 'none yet' : `${rows.length ? `${countWord(rows.length, 'domain', 'domains')}${limit ? ` of ${limit}` : ''}` : ''}${rows.length && regs.length ? ' · ' : ''}${regs.length ? countWord(regs.length, 'registering', 'registering') : ''}`;
+  const summary = rows == null ? 'loading' : !rows.length && !regs.length ? 'none yet' : `${rows.length ? `${countWord(familiesOf(rows).length, 'domain', 'domains')}${rows.length !== familiesOf(rows).length ? ` · ${countWord(rows.length, 'name', 'names')}` : ''}${limit ? ` of ${limit}` : ''}` : ''}${rows.length && regs.length ? ' · ' : ''}${regs.length ? countWord(regs.length, 'registering', 'registering') : ''}`;
   const list = rows == null ? '<p class="acct-loading">Loading domains…</p>'
     : !rows.length ? (regs.length ? '' : `<p class="acct-empty">No domain yet.</p>`)
     : `<div class="ev-domains">${familiesOf(rows).map(domainFamilyHtml).join('')}</div>`;
