@@ -370,7 +370,7 @@ const INTERNAL_SECTIONS = [
   { id: 'warranty',   label: 'Warranty' },
   { id: 'inventory',  label: 'Inventory' },
   { id: 'catalog',    label: 'Catalog' },
-  { id: 'ai',         label: 'AI' }
+  { id: 'aidesk',     label: 'AI desk' }   // the operator's platform-wide AI desk; 'ai' is the customer's own AI tab (2026-11-02)
 ];
 
 // Team, Environment and Tenants ride the tenant spine, which reaches live
@@ -4972,7 +4972,7 @@ function paintSection(id, main) {
   if (id === 'warranty')     return void renderWarranty(main);
   if (id === 'inventory')    return renderSoon(main, 'Inventory', 'Physical stock levels for hardware, cases, and screwdrivers will live here.');
   if (id === 'catalog')      return void renderCatalog(main);
-  if (id === 'ai')           return void renderAdminAi(main);
+  if (id === 'aidesk')       return void renderAdminAi(main);
 }
 
 function showError(id, message) {
