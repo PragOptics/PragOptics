@@ -698,7 +698,7 @@ const AI_LANE = 'live';
 export async function renderAi(main, deps) {
   D = deps;
   ev.ai = null; ev.aiNote = ''; ev.aiBusy = false; ev.aiBudget = null; ev.budgetBusy = false;
-  initCards();
+  initCards(); setOpen('environment:ai', true);   // the tab's one card is the page: always open here, whatever the Environment tab remembered
   main.innerHTML = `
     <header class="acct-sec-head has-explain"><h2 class="acct-sec-title">AI</h2>${explainLink('ai', 'How the AI credit works')}</header>
     <p class="acct-error" id="evError" hidden></p>
