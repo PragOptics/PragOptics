@@ -40,7 +40,7 @@ import { billingHtml, billingAction } from './licensingBilling.js';
 import { pax8Html, pax8Action } from './licensingPax8.js';
 import { tenantHtml, tenantAction, resetTenant, reopenTenant, loadTenantStatus, myMailboxHtml, connectHtml, tenantConnectedHtml } from './licensingTenant.js';
 import { requestsHtml, requestsAction, loadRequests, pendingMailbox, ask } from './licensingRequests.js';
-import { exchangeHtml, exchangeAction, exchangeChange, loadExchange, resetExchange, mailersWord } from './licensingExchange.js';
+import { exchangeHtml, exchangeAction, exchangeChange, loadExchange, resetExchange } from './licensingExchange.js';
 import { owedHtml, moneyAction } from './licensingMoney.js';
 import { phase1Html, phase2Card, wizardAction, wizardStage, tenantConnected, setupDone, phaseRail, phase2Lead, phase3Lead, bringLead } from './licensingWizard.js';
 import { markSetupStale } from './setup.js';
@@ -137,7 +137,10 @@ function paint() {
   // seats), their own account and their team's mailboxes, not the six setup cards again (Cameron, 2026-10-03: "the ui is
   // back to the full old style menu... we consolidated to 3").
   // the rail reads three checks once the setup is complete (2026-11-02, Cameron: "the step 3 on this should be a check")
-  else if (tenantConnected()) cards = `${phaseRail(setupDone() ? 'done' : 'manage')}${phase3Lead(lc.view)}${tenantConnectedHtml()}${myMailboxHtml()}${mailboxesHtml()}${exchangeHtml()}${licensesHtml()}${catalogHtml()}`;
+  // a tenant the business brought skipped the wizard, so without this the owner met a disabled Turn on mail and an Add
+  // that both pointed at a licensing-account card that was not on the page (2026-11-02): the account card stands here,
+  // folded, without a step number, until the account exists
+  else if (tenantConnected()) cards = `${phaseRail(setupDone() ? 'done' : 'manage')}${phase3Lead(lc.view)}${tenantConnectedHtml()}${!lc.view.account && perms().isOwner ? accountHtml({ step: false }) : ''}${myMailboxHtml()}${mailboxesHtml()}${exchangeHtml()}${licensesHtml()}${catalogHtml()}`;
   // not connected and not eligible: the old account card carries the plan upsell
   // the connect card follows the tenant card as soon as the tenant is named and not yet connected: the one human step
   // (sign in at Microsoft, approve PragOptics) is open to whoever can connect (the owner, the agent, a granted role)
@@ -179,11 +182,12 @@ function roleLine(v, p) {
 
 function headHtml() {
   const e = st.D.escapeHtml, v = lc.view, p = perms(), a = v.account;
-  // the tags say the truth of the moment (2026-11-02): a connected tenant leads; the account's state only when there is
-  // one, or when nothing is connected yet and the account is the next thing. The line under the name is the counts alone.
+  // the tags say the truth of the moment (2026-11-02): a connected tenant leads until the rail's three checks say it; the
+  // account's state only when there is one, or when nothing is connected yet and the account is the next thing. No line of
+  // counts under the name: each card carries its own count once (the critics' read, 2026-11-02: "the same line four times").
   const acct = a ? (a.active ? '<span class="acct-tag is-verified">account active</span>' : '<span class="acct-tag is-pending">account not active yet</span>') : '';
   const state = !v.eligible ? `<span class="acct-tag">${e(tierName(v.minimumTier))} plan and above</span>`
-    : tenantConnected() ? `<span class="acct-tag is-verified">tenant connected</span>${acct}`
+    : tenantConnected() ? (setupDone() ? acct : `<span class="acct-tag is-verified">tenant connected</span>${acct}`)
     : a ? acct
     : v.distributor?.configured ? '<span class="acct-tag is-pending">no account yet</span>'
     : '<span class="acct-tag is-pending">being set up</span>';
@@ -193,12 +197,11 @@ function headHtml() {
   const ro = showsLicensing() && v.readOnly && why ? `<p class="lic-banner is-paused" role="note">${ico('lock')}<span>${e(sentence(why))}</span></p>` : '';
   const role = roleLine(v, p);
   return `
-    <section class="acct-card ev-summary">
+    <section class="acct-card ev-summary lic-head">
       <div class="ev-head">
         <div class="ev-id">
           <div class="ev-tags">${tierBadge(v.tier)}${state}</div>
           <h3 class="acct-card-h ev-name">Microsoft 365 for your team</h3>
-          <p class="ev-owner adm-muted">${e(mailSummary(v))}${e(mailersWord())}</p>
           ${role ? `<p class="ev-owner adm-muted lic-role">${e(role)}</p>` : ''}
         </div>
         <div class="ev-actions">${reqIcon('refresh', { lic: 'refresh' }, 'refresh', 'Read it again', 'Reading…')}</div>
@@ -214,7 +217,7 @@ function tenantWords(m) {
   return m?.domainPrefix ? `${m.domainPrefix}.onmicrosoft.com` : 'Not named yet.';
 }
 
-function accountHtml() {
+function accountHtml({ step = true } = {}) {
   const e = st.D.escapeHtml, v = lc.view, a = v.account, p = perms();
   let summary, inner;
   const tierNote = `
@@ -265,8 +268,8 @@ function accountHtml() {
           <label class="acct-label" for="licBizName">Your business's name</label>
           <input class="acct-input" id="licBizName" type="text" maxlength="160" data-keep value="${e(kept('licBizName', v.accountDraft?.businessName || ''))}" autocomplete="organization" placeholder="Your business's legal name" aria-describedby="licBizHint">
           <p class="lic-hint" id="licBizHint">${v.accountDraft?.from === 'billing'
-            ? "Filled in from the business name in your billing details. Check it is your business's legal name and change it here if it is not. It is not your own name. You confirm it before the account is created."
-            : "Type your business's legal name. It is not your own name. You confirm it before the account is created. A business name added to your billing details on Billing is filled in here."}</p>
+            ? "From your billing details. Change it here if it is not your business's legal name. You confirm it before anything is created."
+            : "Your business's legal name, not your own. You confirm it before anything is created."}</p>
         </div>
         <div class="lic-span">
           <label class="acct-label" for="licWebsite">Your business's website</label>
@@ -284,7 +287,7 @@ function accountHtml() {
   }
   return cardHtml({
     // step 1 of the owner's six (licensingShared.LICENSING_STEPS), wherever the team's licensing shows
-    key: 'account', icon: 'shield', title: 'Licensing account', summary: showsLicensing() ? stepWord('account', summary) : summary,
+    key: 'account', icon: 'shield', title: 'Licensing account', summary: showsLicensing() && step ? stepWord('account', summary) : summary, open: step,
     explain: explainLink('licensing', 'What the licensing account is'),
     body: `${noteHtml('account')}${errHtml('account')}${inner}`
   });
@@ -384,12 +387,6 @@ async function renameBusiness() {
 
 function includedLive() { return (lc.view.licenses || []).find(l => l.included && LIVE_INCLUDED.includes(l.status)) || null; }
 
-/** Team seats, and how many hold their included mailbox. */
-function mailSummary(v) {
-  const seats = v.seats || [];
-  return `${countWord(seats.length, 'team seat', 'team seats')} · ${seats.filter(s => s.included).length} with a mailbox`;
-}
-
 /** Mail's state in a few words, for the card's line. */
 const MAIL_WORDS = { ordering: 'mail turning on', delayed: 'mail delayed', on: 'mail on', ending: 'mail ending', cancelled: 'mail off', off: 'mail off' };
 
@@ -478,7 +475,8 @@ function mailboxesHtml() {
   const state = MAIL_WORDS[v.mail?.state] || 'mail off';
   const withBox = seats.filter(s => s.included).length;
   const counts = `${withBox} of ${countWord(seats.length, 'team seat', 'team seats')} with a mailbox`;
-  const summary = v.account ? `${state} · ${counts}` : `${counts} · needs the licensing account`;
+  // one count and a noun on the line; the hero's sentence carries the reason (the licensing account) when there is one
+  const summary = v.account ? `${state} · ${counts}` : counts;
   // no step number: the six-step numbering is gone with the three-phase wizard (2026-10-05, Cameron: "step 4 of 6" under My
   // mailbox); and once the tenant is connected a team of one sees this card folded under their own, one step, not two cards
   const folded = tenantConnected() && seats.length <= 1;

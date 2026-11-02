@@ -644,7 +644,7 @@ select.acct-input, select.adm-select, select.adm-input { background-color: var(-
 .lic-hero-lead .su-ring { width: 40px; height: 40px; }
 .lic-hero-lead .su-ring > svg:first-child { width: 40px; height: 40px; }
 .lic-hero-main { flex: 1 1 260px; min-width: 0; }
-.lic-hero-t { margin: 0; font-weight: 700; font-size: 1.05rem; line-height: 1.35; color: var(--card-title); overflow-wrap: anywhere; }
+.lic-hero-t { margin: 0; font-weight: 700; font-size: 1rem; line-height: 1.35; color: var(--card-title); overflow-wrap: anywhere; }
 .lic-hero-tags { display: inline-flex; gap: 6px; flex-wrap: wrap; vertical-align: middle; margin-left: 6px; }
 .lic-hero-d { margin: 6px 0 0; font-size: .9rem; line-height: 1.5; color: var(--ink); }
 .lic-hero-acts { flex: none; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
@@ -652,6 +652,9 @@ select.acct-input, select.adm-select, select.adm-input { background-color: var(-
 @media (max-width: 560px) { .lic-hero { padding: 12px 13px; gap: 10px; } .lic-hero-acts { width: 100%; } }
 /* the rail complete (2026-11-02): every step a check, none current */
 .lic-rail.is-complete .lic-rail-step { color: var(--ink); }
+/* the count inside a consumption ring (cards.js ringHtml label) */
+.su-ring-n { position: relative; z-index: 1; font-size: .6rem; font-weight: 700; line-height: 1; color: var(--card-title); letter-spacing: 0; font-variant-numeric: tabular-nums; }
+.lic-hero-lead .su-ring-n { font-size: .74rem; }
 
 /* Reset my password stands in its own row, with air above it, under Show my first password (2026-10-05) */
 .lic-reset-row { margin-top: 14px; }
@@ -661,7 +664,7 @@ select.acct-input, select.adm-select, select.adm-input { background-color: var(-
 .lic-addr .ev-icon-btn, .lic-addr button { flex: none; }
 .lic-outlook-row { margin-top: 14px; }
 /* on a phone the rail keeps the word of the step the person is on (2026-10-05: circles alone read as nothing); the done steps keep their checks */
-@media (max-width: 480px) { .lic-rail-label { display: none; } .lic-rail-step.is-on .lic-rail-label { display: inline; } .lic-rail-step:not(:last-child)::after { margin-left: 6px; } }
+@media (max-width: 480px) { .lic-rail-label { display: none; } .lic-rail-step.is-on .lic-rail-label { display: inline; } .lic-rail.is-complete .lic-rail-label { display: inline; font-size: .74rem; } .lic-rail-step:not(:last-child)::after { margin-left: 6px; } }
 
 /* The Phase 2 wait, made loud: a tenant takes about ten minutes to build and the email is what the owner waits for. */
 .lic-wait { margin-top: 12px; padding: 16px 18px; border-radius: var(--radius-card, 10px); border: 1px solid color-mix(in srgb, var(--brand-600) 32%, transparent); background: color-mix(in srgb, var(--brand-600) 8%, transparent); }

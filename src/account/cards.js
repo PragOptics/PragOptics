@@ -104,9 +104,11 @@ export function ico(name, size = 16) {
  * card counts its plan the same way: "a ring or some consumption of the whole"). Complete draws the check inside it.
  * The look is .su-ring (css/views/account.css).
  */
-export function ringHtml(done, total, complete = false) {
+export function ringHtml(done, total, complete = false, { label = '' } = {}) {
   const pct = total ? Math.max(0, Math.min(100, Math.round((done / total) * 100))) : 0;
-  return `<span class="su-ring ${complete ? 'is-done' : ''}" aria-hidden="true"><svg viewBox="0 0 36 36" focusable="false"><circle class="su-ring-track" cx="18" cy="18" r="15"/><circle class="su-ring-fill" cx="18" cy="18" r="15" pathLength="100" style="stroke-dashoffset:${100 - pct}"/></svg>${complete ? ico('check', 11) : ''}</span>`;
+  // a label ("0/2") sits inside the ring in place of the check, so a consumption ring says its count
+  const inner = label ? `<b class="su-ring-n">${esc(label)}</b>` : complete ? ico('check', 11) : '';
+  return `<span class="su-ring ${complete ? 'is-done' : ''}" aria-hidden="true"><svg viewBox="0 0 36 36" focusable="false"><circle class="su-ring-track" cx="18" cy="18" r="15"/><circle class="su-ring-fill" cx="18" cy="18" r="15" pathLength="100" style="stroke-dashoffset:${100 - pct}"/></svg>${inner}</span>`;
 }
 
 export function iconBtn(action, name, label, attrs = '', cls = '') {

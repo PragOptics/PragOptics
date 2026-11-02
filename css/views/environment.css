@@ -241,6 +241,9 @@ a.ev-more { text-decoration: none; white-space: nowrap; }
   .ev-card-sum { flex-basis: 100%; order: 5; padding-left: 40px; margin-top: -4px; }
   .ev-card-toggle { margin-left: auto; }
   .ev-summary .ev-actions { width: 100%; }
+  /* the Licensing head has one icon: it stays in the corner instead of a lone row under the title (2026-11-02) */
+  .ev-summary.lic-head { position: relative; }
+  .ev-summary.lic-head .ev-actions { width: auto; position: absolute; top: 12px; right: 12px; }
   /* tables become stacked rows: each cell labeled by its column */
   .account .adm-table--wrap thead { display: none; }
   .account .adm-table--wrap, .account .adm-table--wrap tbody, .account .adm-table--wrap tr, .account .adm-table--wrap td { display: block; width: 100%; box-sizing: border-box; }
@@ -465,7 +468,8 @@ a.ev-more { text-decoration: none; white-space: nowrap; }
    requests, who holds a bought license. Tokens only, so both themes hold; phone width first. ---- */
 
 /* a Licensing card's title gives way on a phone, so its (i) and its fold stay on the title's line */
-[data-card^="licensing:"] > .ev-card-head .ev-card-title { flex: 0 1 auto; min-width: 0; max-width: calc(100% - 120px); }
+/* only where the summary still sits beside the title: under 640px it drops to its own row and the cap only made titles wrap (2026-11-02) */
+@container (min-width: 641px) { [data-card^="licensing:"] > .ev-card-head .ev-card-title { flex: 0 1 auto; min-width: 0; max-width: calc(100% - 120px); } }
 /* a form's button row stands clear of the hint above it */
 [data-card^="licensing:"] .ev-reg-form + .acct-actions-row, [data-card^="licensing:"] .lic-tn-form + .acct-actions-row { margin-top: 14px; }
 [data-card^="licensing:"] .lic-hint + .acct-actions-row, [data-card^="licensing:"] .lic-facts + .acct-actions-row { margin-top: 10px; }
@@ -637,4 +641,17 @@ a.ev-more { text-decoration: none; white-space: nowrap; }
 .ev-row-mail dt { color: var(--muted); font-size: .74rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding-top: 3px; }
 .ev-row-mail dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
 @media (max-width: 480px) { .ev-row-mail > div { grid-template-columns: minmax(0, 1fr); gap: 2px; } }
+/* NEW MAILER on one row (2026-11-02): the address with its domain as a plain suffix, Shown as, the button; stacked on a phone */
+.lic-new-mailer { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) auto; gap: 10px 12px; align-items: end; margin-top: 8px; }
+.lic-new-field { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.lic-new-act { display: flex; gap: 6px; align-items: center; padding-bottom: 1px; }
+.lic-suffix .lic-suffix-at { border-left: 0; padding: 0 12px 0 0; color: var(--ink); font-size: .9rem; }
+@media (max-width: 720px) { .lic-new-mailer { grid-template-columns: 1fr; } .lic-new-act { flex-wrap: wrap; } }
+/* the tenant card's domains as plain lines, the Environment family's look (2026-11-02): host, its state in words, its icons on the right */
+.lic-dom-lines li { display: block; }
+.lic-dom-line { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; font-size: .9rem; min-width: 0; }
+.lic-dom-line .lic-dom-act { margin-left: auto; }
+.lic-dom-lines li + li { margin-top: 6px; }
+.lic-dom-lines .lic-txt, .lic-dom-lines .lic-plan { margin-top: 8px; }
+.lic-hero-tags .ev-dom-when { font-weight: 400; }
 

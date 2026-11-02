@@ -99,6 +99,9 @@ export function setupDone() { return tenantConnected() && !stillMaking(); }
 /** Phase 3, done: the tenant is connected; the owner's own admin account and the mailboxes are made. */
 export function phase3Lead(v) {
   if (!perms().isOwner) return '';
+  // complete (2026-11-02, the cleanup): the rail's three checks say it; a standing paragraph under them was one more
+  // thing to read on a tab that is "one of those very large UI tabs". The lead speaks only while something is being made.
+  if (setupDone()) return '';
   // the lead tells the truth of the moment (2026-10-05, the final walk): right after the approval the owner's mailbox and
   // administrator account are still being made, by this read on the server or the next; the page keeps reading until ready
   const making = stillMaking();

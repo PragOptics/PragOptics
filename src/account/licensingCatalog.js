@@ -204,7 +204,8 @@ function catalogNote(v) {
 export function catalogHtml() {
   const e = st.D.escapeHtml, v = lc.view, items = v.catalog, c = cs();
   if (!v.eligible) return '';
-  const summary = items == null ? e(v.catalogCode === 'TIER' ? `from the ${tierName(v.minimumTier)} plan` : 'not open yet') : `${countWord(items.filter(p => !isKiosk(p)).length, 'license', 'licenses')} available`;
+  // "151 licenses available" read as licenses the team owns (2026-11-02): the line says what the card is, a list to choose from
+  const summary = items == null ? e(v.catalogCode === 'TIER' ? `from the ${tierName(v.minimumTier)} plan` : 'not open yet') : `${items.filter(p => !isKiosk(p)).length} to choose from`;
   const opt = (list, val) => list.map(([k, l]) => `<option value="${k}" ${val === k ? 'selected' : ''}>${e(l)}</option>`).join('');
   const bodyHtml = items == null ? `<p class="acct-empty">${e(v.catalogNote || 'Nothing to show yet.')}</p>`
     : !items.length ? '<p class="acct-empty">No Microsoft licenses are listed right now. Try again in a moment.</p>'

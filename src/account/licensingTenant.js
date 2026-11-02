@@ -50,6 +50,7 @@
 import { iconBtn, leadBtn, ico, copyButton, armed } from './cards.js';
 import { LIC_URL, lc, st, url, cardHtml, perms, call, send, reqLead, reqIcon, errHtml, noteHtml, setNote, kept, forget, sentence, showsLicensing, dayWord, countWord, stepWord, stepNo, STEPS, stepGate, tenantNamed, heroHtml } from './licensingShared.js';
 import { listWords, familiesOf } from './domainFamilies.js';
+import { explainLink } from '../components/explainer.js';
 
 const SIGNIN_RULE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
 const SIGNIN_WORDS = 'Use 1 to 64 letters, digits, dots, dashes or underscores, starting with a letter or digit.';
@@ -172,31 +173,35 @@ export function tenantConnectedHtml() {
   if (!showsLicensing()) return '';
   const v = lc.view, m = v?.microsoft || {}, p = perms(), t = tn();
   if (!t?.connected) return '';
-  const inner = connectionHtml(m, p, { hero: true });
-  if (!inner) return '';
   const e = st.D.escapeHtml;
   // THE HERO (2026-11-02, Cameron: the cards after the workflow card "should adopt more of a hero style view"): the
-  // organization, its state, ONE sentence on the domains and their mail, and the press that is the tenant's own: Approve
-  // again. Microsoft shows any permission PragOptics gained since the approval (sending as the mailers, Mail.Send, added
-  // 2026-11-02); the connect route takes a connected tenant (auth/tenantAccess.js connect has no connected guard) and the
-  // callback answers connected for the same organization. The seats and domains keep their own words under it.
+  // organization, when it was connected, and ONE sentence on the domains and their mail. Approve again (Microsoft shows
+  // any permission PragOptics gained since the approval, Mail.Send among them; the connect route takes a connected tenant,
+  // auth/tenantAccess.js connect has no connected guard, and the callback answers connected for the same organization)
+  // stands under the facts with its reason in plain sight, not in the hero (the critics' read, 2026-11-02: a prominent
+  // "Approve again" with its why in a tooltip reads as "something is wrong").
   const hosts = v.mailDomains || [], inT = Array.isArray(t.domains) ? t.domains : [];
   const of = (h) => inT.find(x => x.host === h) || null;
-  // the sentence speaks of each domain family's head (bridgesindust.com, not its www: the Environment tab's family rule,
-  // domainFamilies.js); every verified name still has its own row and controls in the domains list under it
-  const heads = familiesOf(hosts.map(host => ({ host }))).map(f => f.host).filter(h => hosts.includes(h));
-  const parts = (heads.length ? heads : hosts).map(h => { const d = of(h); return !d ? `${h} is not in your tenant yet` : d.state !== 'verified' ? `${h} waits for Microsoft to see its record` : d.mailAt ? `${h} carries its mail at Microsoft since ${dayWord(d.mailAt)}` : `${h} is in your tenant; its mail switch is not recorded here yet`; });
-  const line = `${t.consentAt ? `Connected ${dayWord(t.consentAt)}. ` : ''}${parts.length ? sentence(listWords(parts)) : 'No verified domain yet: connect one on the Environment tab and it can join your tenant here.'}`;
-  const again = canDomains() && !p.readOnly && t.writes !== false
-    ? reqLead('tn-connect', { lic: 'tn-connect' }, 'external', 'Approve again', 'Opening Microsoft…', 'data-tip="Microsoft shows any permission PragOptics has gained since you approved it, such as sending as your mailers; you accept once and come back here"')
-    : '';
+  // the sentence speaks of each domain family's head (bridgesindust.com, not its www: the Environment tab's family rule, domainFamilies.js)
+  const heads = familyHeads(hosts);
+  const parts = heads.map(h => { const d = of(h); return !d ? `${h} is not in your tenant yet` : d.state !== 'verified' ? `${h} waits for Microsoft to see its record` : d.mailAt ? `${h} carries its mail at Microsoft since ${dayWord(d.mailAt)}` : `${h} is in your tenant; PragOptics has not switched its mail yet`; });
+  const line = parts.length ? sentence(listWords(parts)) : 'No verified domain yet: connect one on the Environment tab and it can join your tenant here.';
+  const again = canDomains() && !p.readOnly && t.writes !== false ? reqLead('tn-connect', { lic: 'tn-connect' }, 'external', 'Approve again', 'Opening Microsoft…') : '';
+  const inner = connectionHtml(m, p, { hero: true, again });
+  if (!inner) return '';
   // open while a domain still has a step on this card (join the tenant, its record, its mail); folded once every domain is through
-  const todo = hosts.some(h => { const d = of(h); return !d || d.state !== 'verified' || !d.mailAt; });
-  const hero = heroHtml({ title: e(t.orgName || t.tenantId), tags: '<span class="acct-tag is-verified">connected</span>', line: e(line), actions: again });
+  const todo = heads.some(h => { const d = of(h); return !d || d.state !== 'verified' || !d.mailAt; });
+  const hero = heroHtml({ title: e(t.orgName || t.tenantId), tags: t.consentAt ? `<span class="ev-dom-when">connected ${e(dayWord(t.consentAt))}</span>` : '', line: e(line) });
   return cardHtml({
     key: 'tenant-connected', icon: 'building', title: 'Your Microsoft tenant', summary: `${e(t.orgName || t.tenantId || '')} · connected`, open: todo,
+    explain: explainLink('licensing', 'What your tenant card does'),
     body: `${noteHtml('tenant')}${errHtml('tenant')}${hero}${inner}`
   });
+}
+/** The domain family heads among the verified names (bridgesindust.com for www.bridgesindust.com), in the names' order; every name when none nests. */
+function familyHeads(hosts) {
+  const heads = familiesOf((hosts || []).map(host => ({ host }))).map(f => f.host).filter(h => hosts.includes(h));
+  return heads.length ? heads : [...(hosts || [])];
 }
 
 /** The tenant as it stands: its name (locked once ordered), its ID once Microsoft has it, and the server's words. */
@@ -228,7 +233,7 @@ function ordered(v, m) {
   return !!m?.locked || ORDERED_MAIL.has(String(v?.mail?.state || '')) || (v?.licenses || []).some(l => ORDERED_LICENSE.has(String(l?.status || '')));
 }
 
-function connectionHtml(m, p, { hero = false } = {}) {
+function connectionHtml(m, p, { hero = false, again = '' } = {}) {
   const e = st.D.escapeHtml;
   const head = '';   // the card's own title says it now (connectHtml)
   const t = tn();
@@ -297,7 +302,9 @@ function connectionHtml(m, p, { hero = false } = {}) {
     !hero && t.consentAt ? `<div class="lic-fact"><span class="lic-k">Connected</span><span class="lic-v">${e(dayWord(t.consentAt))}</span></div>` : ''
   ]).join('');
   const err = t.error ? `<p class="acct-card-note ev-note is-bad">${e(sentence(t.error))}</p>` : '';
-  return `<div class="lic-admin">${head}${ro}<div class="lic-facts${hero ? ' lic-facts--tight' : ''}">${facts}</div>${err}${licensesInUseHtml(t)}${seatsHtml(t, p)}${domainsHtml(t)}</div>`;
+  // Approve again with its reason beside it (2026-11-02): the one press that takes a permission PragOptics gained since the approval
+  const againRow = hero && again ? `<div class="acct-actions-row">${again}</div><p class="lic-hint">Press once when a mailer's test says Microsoft needs a new permission: Microsoft shows what PragOptics gained since you approved it, you accept, and you come back here.</p>` : '';
+  return `<div class="lic-admin">${head}${ro}<div class="lic-facts${hero ? ' lic-facts--tight' : ''}">${facts}</div>${err}${againRow}${licensesInUseHtml(t)}${seatsHtml(t, p)}${domainsHtml(t)}</div>`;
 }
 
 /** The licenses the tenant holds at Microsoft, and how many are in use: read live. */
@@ -306,17 +313,26 @@ function licensesInUseHtml(t) {
   const list = Array.isArray(t.licenses) ? t.licenses : null;
   if (!list) return '';
   if (!list.length) return '<p class="lic-hint">Microsoft shows no licenses in this tenant yet.</p>';
-  return `<div class="lic-facts lic-facts--tight">${list.map(l => `<div class="lic-fact"><span class="lic-k">${e(l.name)}</span><span class="lic-v">${e(`${l.consumed} of ${l.enabled} in use`)}${l.available > 0 ? ` <span class="lic-state is-quiet">${e(countWord(l.available, 'free', 'free'))}</span>` : ''}</span></div>`).join('')}</div>`;
+  // Microsoft names these by its own codes (POWER_BI_PRO, FLOW_FREE), some with a pool of 10000: said as words, a free pool
+  // as "in use" alone, the list folded behind its count (2026-11-02, the critics' read: "the least human thing on the tab")
+  const rows = `<div class="lic-facts lic-facts--tight">${list.map(l => `<div class="lic-fact"><span class="lic-k">${e(l.displayName || skuWords(l.name))}</span><span class="lic-v">${e(Number(l.enabled) >= 10000 ? `${l.consumed} in use` : `${l.consumed} of ${l.enabled} in use`)}</span></div>`).join('')}</div>`;
+  return `<details class="lic-past"><summary>${e(`Licenses at Microsoft (${list.length})`)}</summary>${rows}</details>`;
+}
+/** Microsoft's code for a license (POWER_BI_PRO, O365_BUSINESS_PREMIUM) said as words (Power BI Pro, Office 365 Business Premium). */
+function skuWords(name) {
+  return String(name || '').toLowerCase().replace(/_/g, ' ').replace(/\b[a-z]/g, c => c.toUpperCase())
+    .replace(/\bBi\b/g, 'BI').replace(/\bO365\b/gi, 'Office 365').replace(/\bM365\b/gi, 'Microsoft 365').replace(/\bRpa\b/g, 'RPA').replace(/\bCom\b/g, '.com').replace(/\bVtrial\b/g, 'Trial')
+    .replace(/\bPowerautomate\b/g, 'Power Automate').replace(/\bPowerapps\b/g, 'Power Apps');
 }
 
 /** Each seat's person and license, brought up to date now ("Give out mailboxes and licenses"); the hourly pass does it too. */
 function seatsHtml(t, p) {
-  const e = st.D.escapeHtml;
+  // nothing to bring up to date until a seat holds a mailbox (2026-11-02): the sentence and the button come with the first one
+  if (!(lc.view?.seats || []).some(s => s.included)) return '';
   const can = p.canAssign;
-  const note = t.writes === false ? 'shows what it would make' : 'makes each seat\'s person and gives the license';
   return `
-    <p class="acct-card-note">Every seat with a mailbox gets its person in the tenant and its license, checked every hour. ${can ? `Bring every seat up to date ${note} now.` : 'The owner, or a role with Give out mailboxes and licenses, can bring them up to date now.'}</p>
-    ${can ? `<div class="acct-actions-row">${reqLead('tn-sync', { lic: 'tn-sync' }, 'refresh', 'Bring every seat up to date', 'Checking every seat…')}</div>` : ''}`;
+    <p class="acct-card-note">Each seat with a mailbox gets its Microsoft account and license, checked every hour.${can ? '' : ' The owner, or a role with Give out mailboxes and licenses, can bring them up to date now.'}</p>
+    ${can ? `<div class="acct-actions-row">${reqLead('tn-sync', { lic: 'tn-sync' }, 'refresh', 'Bring every seat up to date', 'Checking every seat…', t.writes === false ? 'data-tip="This lane only shows what it would make"' : '')}</div>` : ''}`;
 }
 
 /** The team's verified domains against the tenant: each added, verified, then its mail switched, one deliberate step at a time. */
@@ -325,22 +341,24 @@ function domainsHtml(t) {
   const hosts = v.mailDomains || [];
   const inTenant = Array.isArray(t.domains) ? t.domains : [];
   const head = '<h4 class="lic-sub lic-sub--gap">Your domains</h4>';
-  if (!hosts.length) return `${head}<p class="acct-card-note">No verified domain yet. Add and verify one on the Domains tab; then it can join your tenant here and carry your mail.</p>`;
+  if (!hosts.length) return `${head}<p class="acct-card-note">No verified domain yet. Connect one on the Environment tab; then it can join your tenant here and carry your mail.</p>`;
   const can = canDomains();
-  const rows = hosts.map(host => {
+  // the family heads only (bridgesindust.com, not its www): a name that carries no mail gets no row and no chore; each
+  // head a plain line, as the Environment tab's family draws its names (2026-11-02)
+  const rows = familyHeads(hosts).map(host => {
     const d = inTenant.find(x => x.host === host) || null;
     const plan = lc.tnPlan[host] || null;
     let state, actions = '';
     if (!d) {
-      state = '<span class="lic-state is-quiet">Not in your tenant</span>';
+      state = 'not in your tenant';
       if (can) actions = reqIcon(`tn-dom:${host}`, { lic: 'tn-dom-add' }, 'userPlus', `Add ${host} to your tenant`, 'Adding…', `data-host="${e(host)}"`, 'btn-primary');
     } else if (d.state !== 'verified') {
-      state = `<span class="lic-state is-pending">${e(d.planned ? sentence(d.planned) : 'Waiting for Microsoft to see the record')}</span>`;
+      state = d.planned ? sentence(d.planned) : 'waiting for Microsoft to see its record';
       if (can) actions = reqIcon(`tn-dom:${host}`, { lic: 'tn-dom-verify' }, 'refresh', `Check ${host} again at Microsoft`, 'Checking…', `data-host="${e(host)}"`);
     } else if (d.mailAt) {
-      state = `<span class="lic-state is-verified">${ico('check', 12)}${e(`Mail goes to Microsoft since ${dayWord(d.mailAt)}`)}</span>`;
+      state = `in your tenant · mail at Microsoft since ${dayWord(d.mailAt)}`;
     } else {
-      state = `<span class="lic-state is-verified">${ico('check', 12)}In your tenant</span>`;
+      state = 'in your tenant · mail not switched yet';
       if (can && !plan) actions = reqIcon(`tn-dom:${host}`, { lic: 'tn-mail-plan' }, 'mail', `Switch ${host}'s mail to Microsoft: see what changes first`, 'Reading the plan…', `data-host="${e(host)}"`, 'btn-primary');
     }
     const txt = d && d.state !== 'verified' && d.txt && !d.written ? `
@@ -349,9 +367,9 @@ function domainsHtml(t) {
         <div class="lic-pw-row"><input class="acct-input ev-code" id="licTxt-${e(host)}" type="text" readonly value="${e(d.txt.value)}" autocomplete="off" spellcheck="false">${iconBtn({ lic: 'tn-dom-copy' }, 'copy', 'Copy the record', `data-host="${e(host)}"`)}</div>
       </div>` : '';
     const why = d && d.why && d.state !== 'verified' ? `<p class="lic-hint">${e(sentence(d.why))}</p>` : '';
-    return `<li class="lic-dom"><div class="lic-dom-row"><span class="ev-code lic-dom-host">${e(host)}</span>${state}${actions ? `<span class="lic-dom-act">${actions}</span>` : ''}</div>${why}${txt}${plan ? planHtml(host, plan, t) : ''}</li>`;
+    return `<li><div class="lic-dom-line"><code>${e(host)}</code><span class="ev-dom-state">${e(state)}</span>${actions ? `<span class="lic-dom-act">${actions}</span>` : ''}</div>${why}${txt}${plan ? planHtml(host, plan, t) : ''}</li>`;
   }).join('');
-  return `${head}<p class="acct-card-note">A verified domain joins your tenant first; then its mail can be switched to Microsoft, which is shown in full and confirmed before anything is written.</p>${errHtml('tenant-domains')}<ul class="lic-dom-list">${rows}</ul>`;
+  return `${head}${errHtml('tenant-domains')}<ul class="ev-dom-list lic-dom-lines">${rows}</ul>`;
 }
 
 /** Exactly what switching the domain's mail writes, against what the domain has now, before the person confirms it. */
