@@ -1171,14 +1171,14 @@ function domainFamilyHtml(fam) {
   // what a name still needs, shown for that name only
   const needs = manage ? fam.rows.map(r => {
     const verified = String(r.status || '').toUpperCase() === 'VERIFIED';
-    if (!verified) return `<div class="ev-dom-need"><p class="ev-dom-need-h"><b>${e(r.host)}</b> needs its record where you manage the domain's DNS${String(r.status || '').toUpperCase() === 'FAILED' ? '; it was found before and is missing now' : ''}.</p>${r.verifyRecord ? recordHtml('The verification record', r.verifyRecord) : ''}<div class="act-row">${stateLead('domain-verify', 'checkCircle', 'Verify', { out: ev.checking === r.host, busyWord: 'Checking…' }, `data-host="${e(r.host)}" data-tip="Look for the TXT record now"`, 'btn-primary')}${r !== p ? two(r.host, 'remove', `Remove ${r.host} from this domain`, 'Remove this name?') : ''}</div></div>`;
+    if (!verified) return `<div class="ev-dom-need"><p class="ev-dom-need-h"><b>${e(r.host)}</b> needs its record where you manage the domain's DNS${String(r.status || '').toUpperCase() === 'FAILED' ? '; it was found before and is missing now' : ''}.</p>${r.verifyRecord ? recordHtml('The verification record', r.verifyRecord) : ''}<div class="act-row">${stateLead('domain-verify', 'checkCircle', 'Verify', { out: ev.checking === r.host, busyWord: 'Checking…' }, `data-host="${e(r.host)}" data-tip="Look for the TXT record now"`, 'btn-primary')}${r !== p ? two(r.host, 'remove', 'trash', `Remove ${r.host} from this domain`, 'Remove this name?') : ''}</div></div>`;
     if (live.length && !isLive(r) && !r.hosted && !r.cname) return `<div class="ev-dom-need"><p class="ev-dom-need-h"><b>${e(r.host)}</b> is verified and not live yet.</p>${serveControl(r, { live })}</div>`;
     return '';
   }).join('') : '';
   const source = shared ? `<p class="acct-card-note ev-dom-note">Source: <a href="${e(shared)}" target="_blank" rel="noopener">${e(hostOnly(shared))}</a>. This is where the platform publishes and stores the site.</p>` : '';
   const openBtn = liveUrl ? `<a class="btn btn-sm" href="${e(liveUrl)}" target="_blank" rel="noopener" data-tip="Open the live site">${ico('globe')}<span>Open site</span></a>` : '';
   const actions = manage
-    ? `<div class="ev-dom-actions act-row">${openBtn}${live.length ? two(fam.host, 'family-unserve', 'Take the website off this domain, every name of it (it stays published at its share address)', 'Take it off?') : ''}${two(fam.host, 'family-remove', 'Remove this domain and every name under it', 'Remove the domain?')}</div>`
+    ? `<div class="ev-dom-actions act-row">${openBtn}${live.length ? two(fam.host, 'family-unserve', 'x', 'Take the website off this domain, every name of it (it stays published at its share address)', 'Take it off?') : ''}${two(fam.host, 'family-remove', 'trash', 'Remove this domain and every name under it', 'Remove the domain?')}</div>`
     : (openBtn ? `<div class="ev-dom-actions act-row">${openBtn}</div>` : '');
   return `
     <div class="ev-dom ev-dom-family">
