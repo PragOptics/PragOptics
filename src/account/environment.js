@@ -529,8 +529,45 @@ function summaryHtml(v) {
 
 /* ---------- data (2026-09-19: everything the environment holds is readable from its page) ---------- */
 
-function paintData() { const h = document.getElementById('evData'); if (h) h.innerHTML = dataHtml(); }
+// THE DATA CARD'S OWN HELPERS (2026-11-03, the build plan F-B): the Visuals view's counts (dataVisuals.js) and the words
+// for who sees a table and who changes its rows (dataPolicy.js). Imported here, beside the card, so this region stays
+// one hunk (a parallel build edits the Mail card and the import block at the top).
+import { visualsOf, visualsHtml, UNITS, LOAD_ALL_CAP } from './dataVisuals.js';
+import { policyOf, formOf, tableCanRead, tableCanWrite, readSentence, writeSentence, tableLine, levelOptions, filledBy, formFedSentence, lockWords, refusalWords, policySaveWords } from './dataPolicy.js';
+
+/** The listing's entry for the open table (its count, its policy, its canRead/canWrite); null before the listing answers. */
+function currentTable() { return (ev.tables || []).find(t => t.table === ev.table) || null; }
+/** The Visuals view's choices: the period and the field to count by; the field clears when another table opens (loadRows). */
+function visState() { return ev.vis || (ev.vis = { unit: 'day', field: '' }); }
+/** A read or write the server refused by the table's policy, in words; else the server's own sentence, else the fallback. */
+function dataRefusal(ex, fallback) { return refusalWords(ex?.data?.code, ex?.data, formOf(currentTable())) || ex?.data?.error || D.friendlyError(ex, fallback); }
+
+function paintData() { bindDataActions(); const h = document.getElementById('evData'); if (h) h.innerHTML = dataHtml(); }
+/* THE CARD'S OWN LISTENERS (2026-11-03): the Visuals period and field, Load all, and the owner's access choices. Bound once,
+ * beside the card, so the section's dispatcher (bindEnvironmentActions) stays one hunk for the parallel Mail card build; the
+ * dispatcher lets an action it does not know fall through, so these names never collide with it. */
+function bindDataActions() {
+  if (bindDataActions._bound) return;
+  bindDataActions._bound = true;
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest?.('[data-env-action]');
+    if (!btn) return;
+    const a = btn.dataset.envAction;
+    if (a === 'data-unit') { visState().unit = UNITS.includes(btn.dataset.unit) ? btn.dataset.unit : 'day'; paintData(); }
+    else if (a === 'data-load-all') void loadAllRows();
+  });
+  document.addEventListener('change', (e) => {
+    const t = e.target;
+    if (!t || typeof t.matches !== 'function') return;
+    if (t.matches('[data-vis-field]')) { visState().field = String(t.value || ''); paintData(); return; }
+    if (t.matches('[data-policy-level]')) return void setTablePolicy({ [t.dataset.policyLevel]: String(t.value || '') });
+    if (t.matches('[data-policy-switch]')) return void setTablePolicy({ studioWrite: !!t.checked });
+  });
+}
+/* The listing: each table with its count when known, and (once the backend answers them, 2026-11-03 D10) its policy
+ * { read, write, formFed, studioWrite }, its owner { installId, label } and this caller's canRead / canWrite. */
 async function loadTables() {
+  bindDataActions();
   try {
     const d = await D.apiFetch(url(`${ENV_URL}/data`));
     ev.tables = d.tables || [];
@@ -552,7 +589,7 @@ async function loadTables() {
 /** The rows of one table, fifty at a time; `more` continues from the last key. */
 async function loadRows(table, more = false) {
   if (!table) return;
-  if (!more) { ev.table = table; ev.rows = null; ev.rowsAfter = ''; ev.openRow = ''; }
+  if (!more) { ev.table = table; ev.rows = null; ev.rowsAfter = ''; ev.openRow = ''; ev.policyNote = ''; if (ev.vis) ev.vis.field = ''; }
   ev.rowsLoading = true; ev.rowsNote = ''; paintData();
   try {
     const d = await D.apiFetch(url(`${ENV_URL}/data/${encodeURIComponent(table)}`, { values: 1, limit: 50, after: more ? ev.rowsAfter : '' }));
@@ -561,10 +598,32 @@ async function loadRows(table, more = false) {
     ev.rowsAfter = d.nextAfter || '';
   } catch (ex) {
     if (!more) ev.rows = [];
-    ev.rowsNote = ex?.sessionInvalidated ? '' : (ex?.data?.error || D.friendlyError(ex, 'Could not read that table.'));
+    // a table the policy keeps from this role (2026-11-03 D10, TABLE_READ_DENIED) says who may see it, in words
+    ev.rowsNote = ex?.sessionInvalidated ? '' : dataRefusal(ex, 'Could not read that table.');
   }
   ev.rowsLoading = false;
   paintData();
+}
+/* LOAD ALL (2026-11-03, D9): the Visuals count the rows loaded; this reads the rest in pages of up to 500 (the server's cap)
+ * until the table ends or LOAD_ALL_CAP rows are here. One request per page, never beside another read of the rows. */
+async function loadAllRows() {
+  const table = ev.table;
+  if (!table || ev.rowsLoading || !ev.rowsAfter || !ev.rows) return;
+  ev.rowsLoading = true; ev.loadingAll = true; ev.rowsNote = ''; paintData();
+  try {
+    while (ev.table === table && ev.rowsAfter && ev.rows.length < LOAD_ALL_CAP) {
+      const d = await D.apiFetch(url(`${ENV_URL}/data/${encodeURIComponent(table)}`, { values: 1, limit: Math.min(500, LOAD_ALL_CAP - ev.rows.length), after: ev.rowsAfter }));
+      if (ev.table !== table) return;
+      ev.rows = [...ev.rows, ...(d.items || [])];
+      ev.rowsAfter = d.nextAfter || '';
+    }
+  } catch (ex) {
+    if (ev.table === table) ev.rowsNote = ex?.sessionInvalidated ? '' : dataRefusal(ex, 'Could not read the rest of the rows.');
+  } finally {
+    ev.loadingAll = false;
+    if (ev.table === table) ev.rowsLoading = false;   // another table opened meanwhile keeps its own read's state
+    paintData();
+  }
 }
 function closeTable() { ev.table = ''; ev.rows = null; ev.rowsAfter = ''; ev.openRow = ''; ev.rowsNote = ''; paintData(); }
 function valueText(v) { try { return typeof v === 'string' ? v : JSON.stringify(v, null, 2); } catch { return String(v); } }
@@ -614,12 +673,19 @@ function valuePeek(v) {
    list; it groups on its own the moment the owner tag ships. */
 function dataLibraryHtml(tables) {
   const e = D.escapeHtml;
-  const rowOf = (t) => `
-    <div class="ev-tbl">
-      <span class="ev-tbl-n">${ico('database', 16)}<span class="ev-tbl-name">${e(t.table)}</span>${t.count != null ? `<span class="adm-muted">· ${e(countWord(t.count, 'row', 'rows'))}</span>` : ''}</span>
+  // WHO CAN SEE THIS (2026-11-03, D10): under each table, who sees it, what fills it and whether it is locked (dataPolicy.js
+  // tableLine); '' until the backend answers a policy, so today's list reads as before. A table this role may not read
+  // is named and not opened: name-only, as the listing gives it.
+  const rowOf = (t) => {
+    const line = tableLine(t), open = tableCanRead(t);
+    return `
+    <div class="ev-tbl ${open ? '' : 'is-closed'}">
+      <span class="ev-tbl-n">${ico(open ? 'database' : 'lock', 16)}<span class="ev-tbl-name">${e(t.table)}</span>${t.count != null ? `<span class="adm-muted">· ${e(countWord(t.count, 'row', 'rows'))}</span>` : ''}</span>
       <span class="ev-tbl-meta">${t.updatedAt ? e(D.fmtDate(t.updatedAt)) : ''}</span>
-      ${iconBtn('data-open', 'external', 'Open the table', `data-table="${e(t.table)}"`)}
+      ${open ? iconBtn('data-open', 'external', 'Open the table', `data-table="${e(t.table)}"`) : ''}
+      ${line ? `<span class="ev-tbl-who">${e(line)}</span>` : ''}
     </div>`;
+  };
   const owners = {};
   for (const t of tables) { const k = (t.owner && t.owner.label) ? String(t.owner.label) : ''; (owners[k] = owners[k] || []).push(t); }
   const keys = Object.keys(owners);
@@ -629,17 +695,20 @@ function dataLibraryHtml(tables) {
   return keys.map(k => `<p class="hm-group">${k ? e(k) : 'Other'}<span class="adm-muted"> ${owners[k].length}</span></p><div class="ev-tbls">${owners[k].map(rowOf).join('')}</div>`).join('');
 }
 
-/* TABLE OR CARDS (2026-11-02, Cameron, on the open breakins table: "it is not showing me the break in unless i click it.
- * its not a table view, its a card view. i want both, with table view as the default"). The rows are a real grid by
- * default at every width (it scrolls sideways on a phone); Cards stacks each row with its labels. The choice is kept on
- * this browser. */
+/* TABLE, CARDS OR VISUALS (2026-11-02, Cameron, on the open breakins table: "it is not showing me the break in unless i
+ * click it. its not a table view, its a card view. i want both, with table view as the default"; 2026-11-03 D9: "table +
+ * cards + visuals/analytics atop any data, first-class"). The rows are a real grid by default at every width (it scrolls
+ * sideways on a phone); Cards stacks each row with its labels; Visuals counts the rows loaded (dataVisuals.js). The choice
+ * is kept on this browser. Table and Cards are one renderer (rowsTableHtml); Visuals is its own. */
 const DATA_VIEW_KEY = 'pragoptics_data_view';
-function dataView() { try { return localStorage.getItem(DATA_VIEW_KEY) === 'cards' ? 'cards' : 'table'; } catch { return 'table'; } }
-function setDataView(v) { try { localStorage.setItem(DATA_VIEW_KEY, v === 'cards' ? 'cards' : 'table'); } catch { /* the default then */ } }
+const DATA_VIEWS = ['table', 'cards', 'visuals'];
+function dataView() { try { const v = localStorage.getItem(DATA_VIEW_KEY); return DATA_VIEWS.includes(v) ? v : 'table'; } catch { return 'table'; } }
+function setDataView(v) { try { localStorage.setItem(DATA_VIEW_KEY, DATA_VIEWS.includes(v) ? v : 'table'); } catch { /* the default then */ } }
 function dataViewToggle() {
   const v = dataView();
-  const b = (k, label) => `<button class="btn btn-sm ${v === k ? 'is-on' : ''}" type="button" role="tab" aria-selected="${v === k}" data-env-action="data-view" data-view="${k}" data-tip="${k === 'table' ? 'Rows as a table' : 'Each row as a card'}">${label}</button>`;
-  return `<div class="ev-view" role="tablist" aria-label="How the rows show">${b('table', 'Table')}${b('cards', 'Cards')}</div>`;
+  const tips = { table: 'Rows as a table', cards: 'Each row as a card', visuals: 'Counts of the rows: by status, by mail, over time, by a field' };
+  const b = (k, label) => `<button class="btn btn-sm ${v === k ? 'is-on' : ''}" type="button" role="tab" aria-selected="${v === k}" data-env-action="data-view" data-view="${k}" data-tip="${tips[k]}">${label}</button>`;
+  return `<div class="ev-view" role="tablist" aria-label="How the rows show">${b('table', 'Table')}${b('cards', 'Cards')}${b('visuals', 'Visuals')}</div>`;
 }
 /** The rows of a table as a table: the submission's own fields as columns, then Status and When; each row is the click. */
 function rowsTableHtml(rows, shape) {
@@ -695,10 +764,12 @@ function decidedWords(v) {
 /* APPROVE OR REJECT A ROW THAT WAITS (2026-11-02, the mailer plan step 3: "a pending review gets Approve and Reject on its
  * row in your Data card; without it the review flow stops at the team's inbox"). Any table whose rows carry a status of
  * pending gets the two: the row's value is written back with its status and the moment it was decided, which is what a
- * reader-door module shows or hides by (auth/publicDoors.js items). Members who can write see them; nobody else. */
+ * reader-door module shows or hides by (auth/publicDoors.js items). Members who can write see them; nobody else. Who can
+ * write is the table's own answer once the listing carries it (2026-11-03 D10, canWrite against the table's write level);
+ * before that, the role-level canWrite() as always. */
 function moderateButtons(r) {
   const e = D.escapeHtml;
-  if (statusOf(r) !== 'pending' || !canWrite()) return '';
+  if (statusOf(r) !== 'pending' || !tableCanWrite(currentTable(), canWrite())) return '';
   const out = ev.moderating === r.key;
   return stateLead('data-approve', 'check', 'Approve', { out: out && ev.moderatingTo === 'approved', busyWord: 'Approving…', waiting: out && ev.moderatingTo !== 'approved' ? 'Waiting for the other decision' : '' }, `data-key="${e(r.key)}" data-tip="Show it: the row's status becomes approved"`, 'btn-primary')
     + stateLead('data-reject', 'x', 'Reject', { out: out && ev.moderatingTo === 'rejected', busyWord: 'Rejecting…', waiting: out && ev.moderatingTo !== 'rejected' ? 'Waiting for the other decision' : '' }, `data-key="${e(r.key)}" data-tip="Keep it out of sight: the row's status becomes rejected"`, 'is-risky');
@@ -723,16 +794,73 @@ async function moderateRow(key, status) {
   } catch (ex) {
     ev.moderating = ''; ev.moderatingTo = '';
     const code = ex?.data?.code;
+    // TABLE_WRITE_DENIED / TABLE_FORM_FED / TABLE_READ_DENIED (2026-11-03 D10, D11) get the policy's words (dataRefusal)
     ev.rowsNote = ex?.sessionInvalidated ? ''
       : code === 'SCOPE_REQUIRED' ? 'Your role cannot decide this. The owner can turn on "Approve what shows on your site" for your role on the Team tab.'
       : code === 'ALREADY_DECIDED' ? `Already ${ex.data.state || 'decided'}${ex.data.decidedAt ? ` on ${D.fmtDate(ex.data.decidedAt)}` : ''}.`
-      : (ex?.data?.error || D.friendlyError(ex, `The row could not be marked ${status}.`));
+      : dataRefusal(ex, `The row could not be marked ${status}.`);
     paintData();
     return;
   }
   ev.moderating = ''; ev.moderatingTo = '';
   await loadRows(table);
   if (ev.table === table) { ev.openRow = key; paintData(); }
+}
+
+/* WHO SEES IT, WHO CHANGES ROWS, AND THE OVERRIDE (2026-11-03, D10 and D11; Cameron: "you sure you want to do this, it
+ * affects something that your website generates"). Under the open table's head: everyone reads the words; the owner gets
+ * the two picks and, on a table a form fills, the one switch with its sentence. Nothing paints until the backend answers a
+ * policy; a paused environment shows the owner the words only (nothing in it can be written). */
+function accessHtml(t, pol) {
+  const e = D.escapeHtml;
+  const form = formOf(t);
+  const filled = pol.formFed ? ` ${filledBy(form)}. ${lockWords(pol)}` : '';
+  if (myRole() !== 'owner' || paused()) return `<p class="ev-tbl-who is-head adm-muted">${e(`${readSentence(pol.read)} ${writeSentence(pol.write)}${filled}`)}</p>`;
+  const busy = ev.policyBusy || '';
+  const pick = (kind, value, label) => `<label class="ev-access-pick"><span>${label}</span><select class="acct-input acct-select ev-access-sel" data-policy-level="${kind}" aria-label="${label}" ${busy ? 'disabled' : ''}>${levelOptions(kind).map(o => `<option value="${o.value}" ${o.value === value ? 'selected' : ''}>${e(o.label)}</option>`).join('')}</select></label>`;
+  const lock = pol.formFed ? `
+      <label class="ev-switch" data-tip="${pol.studioWrite ? 'Lock the rows again: decided from Approvals, not rewritten' : 'Allow rows to be rewritten by hand or by the studio'}">
+        <input type="checkbox" role="switch" data-policy-switch="studioWrite" ${pol.studioWrite ? 'checked' : ''} ${busy ? 'disabled' : ''} aria-label="Let rows be rewritten by hand or by the studio">
+        <span class="ev-switch-track" aria-hidden="true"><span class="ev-switch-thumb"></span></span>
+        <span class="ev-switch-text">${busy === 'studioWrite' ? 'Saving…' : 'Let rows be rewritten by hand or by the studio'}</span>
+      </label>
+      <p class="acct-card-note ev-note">${e(formFedSentence(form))}</p>` : '';
+  return `
+    <div class="ev-tbl-access">
+      <div class="ev-access-row">${pick('read', pol.read, 'Who sees it')}${pick('write', pol.write, 'Who changes rows')}${busy && busy !== 'studioWrite' ? '<span class="adm-muted">Saving…</span>' : ''}</div>
+      ${lock}
+      ${ev.policyNote ? `<p class="acct-error">${e(ev.policyNote)}</p>` : ''}
+    </div>`;
+}
+/** The owner's choice to the server: PUT v1/environment/data/{table} { read | write | studioWrite }; the listing's entry takes the answer. */
+async function setTablePolicy(patch) {
+  const table = ev.table, t = currentTable();
+  if (!table || !t || ev.policyBusy || myRole() !== 'owner' || paused()) return;
+  ev.policyBusy = Object.keys(patch)[0] || 'policy'; ev.policyNote = ''; paintData();
+  try {
+    const r = await D.apiFetch(url(`${ENV_URL}/data/${encodeURIComponent(table)}`), { method: 'PUT', body: body(patch) });
+    const row = (ev.tables || []).find(x => x.table === table);
+    if (row) row.policy = r && r.policy && typeof r.policy === 'object' ? r.policy : { ...(row.policy || {}), ...patch };
+  } catch (ex) {
+    // the live backend answers 404 until the policy route lands: the card says so (the plan's degrade)
+    ev.policyNote = ex?.sessionInvalidated ? '' : policySaveWords(ex?.status, ex?.data?.code, ex?.data?.error || D.friendlyError(ex, 'Could not save who sees this table.'));
+  }
+  ev.policyBusy = '';
+  paintData();
+}
+/* VISUALS (2026-11-03, D9): the counts are of the rows loaded and say so in one line; Load all reads the rest, up to LOAD_ALL_CAP. */
+function visualsBlock(rows, t) {
+  const e = D.escapeHtml, vs = visState();
+  const v = visualsOf(rows, { unit: vs.unit, field: vs.field });
+  vs.field = v.field;   // the pick that holds (the default when nobody picked, or the picked field left the rows)
+  const n = rows.length, total = t && t.count != null ? Number(t.count) : null;
+  const line = !ev.rowsAfter ? `Counts of all ${countWord(n, 'row', 'rows')}.`
+    : n >= LOAD_ALL_CAP ? `Counts of the first ${n} rows. The rest are not counted here.`
+    : `Counts of the ${n} rows loaded${total != null && total > n ? ` of ${total}` : ''}.`;
+  const loadAll = ev.rowsAfter && n < LOAD_ALL_CAP
+    ? stateLead('data-load-all', 'download', 'Load all', { out: !!ev.loadingAll, busyWord: 'Loading…', waiting: ev.rowsLoading && !ev.loadingAll ? 'Wait for the rows being read' : '' }, `data-tip="Read the rest of the rows, up to ${LOAD_ALL_CAP}, and count them too"`)
+    : '';
+  return `<div class="ev-vis-of"><span class="adm-muted">${e(line)}</span>${loadAll}</div>${visualsHtml(v, { esc: e })}`;
 }
 
 function dataHtml() {
@@ -751,6 +879,9 @@ function dataHtml() {
     const rows = ev.rows;
     const shape = rows ? rowShape(rows) : null;
     const open = rows && ev.openRow ? rows.find(r => r.key === ev.openRow) : null;
+    // who sees it and who changes rows, under the head (accessHtml), once the listing carries the table's policy
+    const t = currentTable(), pol = policyOf(t);
+    const access = open || !pol ? '' : accessHtml(t, pol);
     const head = `
       <div class="ev-data-head">
         <button class="btn btn-sm ev-btn-ico" type="button" data-env-action="${open ? 'data-row-back' : 'data-close'}">${ico('chevron')}<span>${open ? e(ev.table) : 'All tables'}</span></button>
@@ -759,7 +890,8 @@ function dataHtml() {
         ${open || !rows || !rows.length ? '' : dataViewToggle()}
       </div>`;
     if (open) body = `${head}${rowDetailHtml(open, shape)}`;
-    else body = `${head}${rows == null ? '<p class="acct-loading">Reading rows…</p>' : !rows.length ? '<p class="acct-empty">This table is empty.</p>' : rowsTableHtml(rows, shape)}${rows && rows.length && ev.rowsAfter ? `<div class="acct-actions-row ev-note">${stateLead('data-more', 'chevron', 'Next 50 rows', { out: !!ev.rowsLoading, busyWord: 'Reading…' })}</div>` : ''}`;
+    else if (rows && rows.length && dataView() === 'visuals') body = `${head}${access}${visualsBlock(rows, t)}`;
+    else body = `${head}${access}${rows == null ? '<p class="acct-loading">Reading rows…</p>' : !rows.length ? '<p class="acct-empty">This table is empty.</p>' : rowsTableHtml(rows, shape)}${rows && rows.length && ev.rowsAfter ? `<div class="acct-actions-row ev-note">${stateLead('data-more', 'chevron', 'Next 50 rows', { out: !!ev.rowsLoading, busyWord: 'Reading…' })}</div>` : ''}`;
   }
   return cardHtml({
     key: 'data', icon: 'database', title: 'Data', summary,

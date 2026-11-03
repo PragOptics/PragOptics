@@ -380,11 +380,29 @@ a.ev-more { text-decoration: none; white-space: nowrap; }
 .ev-data-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
 /* Data as a library (2026-10-30): a row per table, grouped under its owner when the backend records one. */
 .ev-tbls { display: flex; flex-direction: column; margin-top: 6px; }
-.ev-tbl { display: flex; align-items: center; gap: 10px; padding: 8px 2px; border-top: 1px solid var(--border); min-width: 0; }
+.ev-tbl { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 8px 2px; border-top: 1px solid var(--border); min-width: 0; }
 .ev-tbl:first-child { border-top: 0; }
 .ev-tbl-n { flex: 1 1 auto; min-width: 0; display: inline-flex; align-items: center; gap: 8px; overflow: hidden; }
 .ev-tbl-name { font-weight: 600; color: var(--card-title); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ev-tbl-meta { flex: 0 0 auto; font-size: .78rem; color: var(--muted); }
+/* WHO CAN SEE THIS (2026-11-03, D10): a line under the table's name ("Seen by members and above · filled by Reviews on your
+   website · not rewritten by hand"); a table this role may not read is named with a lock and nothing to press. */
+.ev-tbl-who { flex: 1 0 100%; margin: -4px 0 0 24px; font-size: .78rem; line-height: 1.4; color: var(--muted); overflow-wrap: anywhere; }
+.ev-tbl.is-closed .ev-tbl-name { color: var(--muted); }
+.ev-tbl-who.is-head { margin: 0 0 10px; }
+/* the owner's access block under the open table's head (D10, D11): the two picks on one row, the override switch with its
+   sentence under them; on a phone the picks stack */
+.ev-tbl-access { display: grid; gap: 10px; margin: 0 0 12px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface-3); }
+.ev-access-row { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; }
+.ev-access-pick { display: inline-flex; align-items: center; gap: 8px; font-size: .86rem; min-width: 0; max-width: 100%; }
+.ev-access-sel { min-width: 0; max-width: 100%; font-size: .84rem; }
+.ev-tbl-access .ev-switch-text { font-size: .86rem; }
+.ev-tbl-access .acct-card-note { margin: 0; }
+.ev-tbl-access .acct-error { margin: 0; }
+@container (max-width: 640px) {
+  .ev-access-row { flex-direction: column; align-items: stretch; }
+  .ev-access-pick { justify-content: space-between; }
+}
 .ev-data-head .ev-btn-ico svg { transform: rotate(90deg); }
 .ev-value { margin: 8px 0 10px; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface-3); font: .78rem/1.5 ui-monospace, "Cascadia Code", Consolas, monospace; white-space: pre-wrap; overflow-wrap: anywhere; max-height: 420px; overflow: auto; color: var(--ink); }
 
@@ -620,6 +638,33 @@ a.ev-more { text-decoration: none; white-space: nowrap; }
 .account .adm-table--cards td[data-th]::before { content: attr(data-th); display: block; font-size: .64rem; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); font-weight: 700; margin-bottom: 2px; }
 .account .adm-table--cards td:empty { display: none; }
 .account .adm-table-scroll:has(> .adm-table--cards) { overflow: visible; border: 0; }
+
+/* VISUALS on the Data rows (2026-11-03, D9): counts of the rows loaded as thin bars, the count beside each, the longest at
+   the track's width; By status and By mail side by side at width, Over time and By field across; one column on a phone.
+   One hue for the bars (the data's identity is the label beside each, a status in its own tag), text in the page's ink. */
+.ev-vis-of { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 0 0 10px; font-size: .86rem; }
+.ev-vis { display: grid; gap: 12px; margin-top: 4px; }
+.ev-vis-block { min-width: 0; padding: 10px 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface-3); }
+.ev-vis-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; min-height: var(--ctl-h, 32px); }
+.ev-vis-h { margin: 0; font-size: .72rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.ev-vis-head .ev-view, .ev-vis-head .ev-vis-pick { margin-left: auto; }
+.ev-vis-pick { max-width: 100%; width: auto; font-size: .84rem; }
+.ev-vis-bars { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.ev-vis-row { display: grid; grid-template-columns: minmax(0, 10rem) minmax(0, 1fr) auto; align-items: center; gap: 10px; font-size: .86rem; min-width: 0; }
+.ev-vis-l { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink); }
+.ev-vis-bar { display: block; height: 10px; border-radius: 5px; background: color-mix(in srgb, var(--ink) 7%, transparent); overflow: hidden; }
+.ev-vis-fill { display: block; height: 100%; border-radius: 5px; background: var(--brand-600); min-width: 3px; transition: width 160ms ease; }
+.ev-vis-fill.is-zero { min-width: 0; }
+.ev-vis-n { font-variant-numeric: tabular-nums; color: var(--muted); min-width: 2.5ch; text-align: right; }
+.ev-vis-note { margin: 8px 0 0; font-size: .78rem; }
+@container (min-width: 760px) {
+  .ev-vis { grid-template-columns: 1fr 1fr; }
+  .ev-vis-block.is-wide { grid-column: 1 / -1; }
+}
+@container (max-width: 640px) {
+  .ev-vis-row { grid-template-columns: minmax(0, 7.5rem) minmax(0, 1fr) auto; gap: 8px; }
+}
+@media (prefers-reduced-motion: reduce) { .ev-vis-fill { transition: none; } }
 
 /* a refusal under a mailer's row on the Licensing card (2026-11-02, Send a test) */
 .lic-hint.is-bad { color: var(--danger-text, var(--danger)); }
