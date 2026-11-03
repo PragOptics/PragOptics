@@ -149,7 +149,10 @@ export function bindApprovalsActions(deps) {
   document.addEventListener('click', (ev) => {
     const a = ev.target.closest('[data-open-table]');
     if (!a) return;
-    try { sessionStorage.setItem(OPEN_TABLE_KEY, JSON.stringify({ table: String(a.dataset.openTable || ''), row: String(a.dataset.openRow || '') })); } catch { /* the card still opens */ }
+    const detail = { table: String(a.dataset.openTable || ''), row: String(a.dataset.openRow || '') };
+    try { sessionStorage.setItem(OPEN_TABLE_KEY, JSON.stringify(detail)); } catch { /* the card still opens */ }
+    // the Data card already on the page opens the table now (environment.js listens); a card not yet painted reads the note when it loads (2026-11-03)
+    try { document.dispatchEvent(new CustomEvent('pragoptics:open-table', { detail })); } catch { /* the note stands */ }
   }, true);
   document.addEventListener('click', (ev) => {
     const btn = ev.target.closest('[data-ap-action]');

@@ -3163,6 +3163,20 @@ export function bindEnvironmentActions(deps) {
   D = D || deps;
   setMailContext(D, mailContext());
 
+  // A TABLE LINK FROM ANOTHER CARD OR SECTION (2026-11-03): the Mail card's "Its rows land in <table>" or Approvals' Open, pressed
+  // while the Data card is already on the page, opens the table at once (approvals.js dispatches the event beside the note; a page
+  // without the card reads the note when the card loads, loadTables)
+  document.addEventListener('pragoptics:open-table', (e) => {
+    const want = e.detail || {};
+    if (!document.getElementById('evData') || !want.table || !(ev.tables || []).some(t => t.table === want.table)) return;
+    try { sessionStorage.removeItem('pragoptics_open_table'); } catch { /* the note was the fallback */ }
+    setOpen('environment:data', true);
+    loadRows(want.table).then(() => {
+      if (want.row && ev.table === want.table) { ev.openRow = String(want.row); paintData(); }
+      try { document.getElementById('evData')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch { /* fine */ }
+    });
+  });
+
   document.addEventListener('change', (e) => {
     const sw = e.target.closest?.('[data-env-switch="ai"]');
     if (sw) setAi(!!sw.checked);

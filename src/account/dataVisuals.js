@@ -124,10 +124,11 @@ export function fieldKeys(rows) {
   }
   return [...seen.values()].map(f => ({ key: f.key, label: f.label, count: f.count, distinct: f.values.size })).sort((a, b) => b.count - a.count || a.key.localeCompare(b.key));
 }
-/** The field to count by when nobody picked one: the first that repeats without being free text (2 to 12 distinct values, fewer than its rows), else the first. */
+/** The field to count by when nobody picked one: the first that repeats without being free text (2 to 12 distinct values, fewer than its rows); else the field with the fewest distinct values (a rating every row answered the same beats a comment every row wrote differently, 2026-11-03). */
 export function defaultField(fields) {
   const list = fields || [];
-  const f = list.find(x => x.distinct >= 2 && x.distinct <= MAX_FIELD_BUCKETS && x.distinct < x.count) || list[0];
+  const f = list.find(x => x.distinct >= 2 && x.distinct <= MAX_FIELD_BUCKETS && x.distinct < x.count)
+    || [...list].sort((a, b) => a.distinct - b.distinct || b.count - a.count || a.key.localeCompare(b.key))[0];
   return f ? f.key : '';
 }
 /** By one field: its values as buckets, the most common first, the rest folded into one "other" row: { key, buckets, distinct, without }. A bookkeeping key (HIDDEN) counts nothing. */
