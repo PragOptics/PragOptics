@@ -4,18 +4,55 @@
 // answers the waiting rows grouped per moderating module (GET v1/environment/approvals); this module shapes them for
 // the Approvals section and the Home line and says each item in words, from its own fields. No DOM, no fetch.
 
-/** The groups out of the server's answer: [{ installId, name, table, pending, more, items }], never anything else. */
+/**
+ * The groups out of the server's answer: [{ installId, name, table, pending, more, intent, canDecide, deciders, items }],
+ * never anything else. 2026-11-03 (the plan D4, D5): a group carries the module's intent word, whether the person
+ * looking may decide ITS rows (its own approvers, else the environment's rule) and who may; a lane whose backend says
+ * none of that yet answers the old shape, so canDecide falls back to the answer's one flag and the rest stay empty.
+ */
 export function groupsOf(answer) {
   const list = answer && Array.isArray(answer.groups) ? answer.groups : [];
+  const all = !!(answer && answer.canDecide);
   return list.filter(g => g && typeof g === 'object').map(g => ({
     installId: String(g.installId || ''), name: String(g.name || 'A module'), table: String(g.table || ''),
     pending: Number(g.pending) || (Array.isArray(g.items) ? g.items.length : 0), more: !!g.more,
+    intent: String(g.intent || '').trim().toLowerCase(),
+    canDecide: typeof g.canDecide === 'boolean' ? g.canDecide : all,
+    deciders: [...new Set((Array.isArray(g.deciders) ? g.deciders : []).map(x => String(x || '').trim().toLowerCase()).filter(x => x.includes('@')))],
     items: (Array.isArray(g.items) ? g.items : []).filter(i => i && i.key).map(i => ({
       key: String(i.key), at: i.at || '', headline: String(i.headline || ''), host: String(i.host || ''), lane: String(i.lane || ''), via: String(i.via || ''),
+      intent: String(i.intent || g.intent || '').trim().toLowerCase(),
       fields: i.fields && typeof i.fields === 'object' && !Array.isArray(i.fields) ? i.fields : {},
       labels: i.labels && typeof i.labels === 'object' ? i.labels : {}
     }))
   }));
+}
+
+/** "a and b", "a, b and c". */
+function listWords(items) {
+  const a = (items || []).filter(Boolean);
+  if (a.length <= 1) return a.join('');
+  return a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1];
+}
+
+/** Who may decide a group's rows, in words: "decided by the owner and ops@site"; '' when the server named nobody. */
+export function decidersWords(g) {
+  const list = g && Array.isArray(g.deciders) ? g.deciders : [];
+  return list.length ? `decided by ${listWords(list)}` : '';
+}
+
+/**
+ * The line under a group's head: "review · decided by the owner and ops@site". The intent word first when the module
+ * has one, then who decides when the server named them; '' when neither is known.
+ */
+export function groupWords(g) {
+  return [g && g.intent ? g.intent : '', decidersWords(g)].filter(Boolean).join(' · ');
+}
+
+/** What a person who cannot decide a group reads under it: who can, so they know whom to ask. */
+export function cannotDecideWords(g) {
+  const who = decidersWords(g);
+  return who ? `You can see what waits here. It is ${who}.` : 'You can see what waits here. The owner can give your role "Approve what shows on your site" on the Team tab.';
 }
 
 /** How many wait in all, and how many groups have any. */

@@ -5264,7 +5264,7 @@ function bindOnce() {
 // The setup checklist's names (setup.js; the server's link.card) are here too (2026-09-28): a card made by cardHtml is
 // found by its body's id, card-<key with : as ->; a name with no card of its own opens the section's first card.
 const CARD_IDS = {
-  environment: { environment: 'evBody', storage: 'evBody', lanes: 'evBody', publish: 'evBody', files: 'evFiles', data: 'evData', connections: 'evConnections', domains: 'evDomains', keys: 'evKeys' },
+  environment: { environment: 'evBody', storage: 'evBody', lanes: 'evBody', publish: 'evBody', files: 'evFiles', data: 'evData', mail: 'evMail', connections: 'evConnections', domains: 'evDomains', keys: 'evKeys' },
   ai: { ai: 'evAi', budget: 'evAi' },
   approvals: {},
   subscription: { plan: 'acctPricing', card: 'acctPmActions', payment: 'acctPmActions', details: 'card-billing-details', bandwidth: 'card-billing-bandwidth' },

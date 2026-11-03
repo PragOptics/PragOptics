@@ -18,7 +18,7 @@
 import { PRAG_API_BASE } from '../runtime/config.js';
 import { explainLink } from '../components/explainer.js';
 import { ico, leadBtn, iconBtn, cardHtml as sharedCard, initCards, stateLead } from './cards.js';
-import { groupsOf, totals, itemLines, groupSummary } from './approvalGroups.js';
+import { groupsOf, totals, itemLines, groupSummary, groupWords, cannotDecideWords } from './approvalGroups.js';
 import { countWord } from '../ui/words.js';
 
 const URL_BASE = `${PRAG_API_BASE}/environment/approvals`;
@@ -48,7 +48,8 @@ async function load() {
   ap.loading = true; ap.err = '';
   try {
     const d = await D.apiFetch(url(URL_BASE));
-    ap.groups = groupsOf(d); ap.requests = Number(d && d.requests) || 0; ap.canDecide = !!(d && d.canDecide);
+    // the head's flag: the environment's rule, or any group this person may decide (a form's own approvers, 2026-11-03)
+    ap.groups = groupsOf(d); ap.requests = Number(d && d.requests) || 0; ap.canDecide = !!(d && d.canDecide) || ap.groups.some(g => g.canDecide);
   } catch (ex) {
     if (!ap.groups) ap.groups = [];
     ap.err = ex?.sessionInvalidated ? '' : (ex?.data?.error || D.friendlyError(ex, 'The approvals could not be read.'));
@@ -69,7 +70,7 @@ function paint() {
         <div class="ev-id">
           <div class="ev-tags">${t.waiting ? `<span class="acct-tag is-pending">${e(`${t.waiting}${t.more ? '+' : ''} waiting`)}</span>` : '<span class="acct-tag is-verified">nothing waiting</span>'}${ap.canDecide ? '' : '<span class="acct-tag">read only</span>'}</div>
           <h3 class="acct-card-h ev-name">What waits for your decision</h3>
-          <p class="ev-owner adm-muted">${ap.canDecide ? 'A review or another submission that must be approved before it shows on your site. Approve shows it; Reject keeps it off.' : 'You can see what waits. The owner can give your role "Approve what shows on your site" on the Team tab.'}</p>
+          <p class="ev-owner adm-muted">${ap.canDecide ? 'A review or another submission that must be approved before it shows on your site. Approve shows it; Reject keeps it off. Each module says who decides it.' : 'You can see what waits. Each module says who decides it; the owner can name you there, or give your role "Approve what shows on your site" on the Team tab.'}</p>
         </div>
         <div class="ev-actions">${stateLead({ ap: 'refresh' }, 'refresh', 'Refresh', { out: ap.loading, busyWord: 'Reading…' })}</div>
       </div>
@@ -83,18 +84,23 @@ function paint() {
   host.innerHTML = `${head}${err}${note}${requests}<div class="ev-cards">${cards}</div>`;
 }
 
+/* EACH GROUP SAYS WHAT IT IS AND WHO DECIDES IT (2026-11-03, the plan D4, D5): the module's intent word and the people
+ * the server names as its deciders (the form's own approvers, else the owner and the roles that may approve). Approve
+ * and Reject show only to a person who may decide THIS group; everyone else reads who may. */
 function groupCard(g) {
   const e = D.escapeHtml;
+  const who = groupWords(g);
+  const lead = `${who ? `<p class="ap-group-words adm-muted">${e(who)}</p>` : ''}${g.canDecide ? '' : `<p class="lic-hint">${e(cannotDecideWords(g))}</p>`}`;
   const items = g.items.length ? `<ul class="ap-list">${g.items.map(i => itemHtml(g, i)).join('')}</ul>` : '<p class="acct-empty">Nothing waiting here.</p>';
   const more = g.more ? '<p class="lic-hint">The newest 50 are shown; decide these and the next ones follow.</p>' : '';
-  return card({ key: g.installId, icon: 'bell', title: g.name, summary: e(groupSummary(g)), open: g.pending > 0, body: `${items}${more}` });
+  return card({ key: g.installId, icon: 'bell', title: g.name, summary: e(groupSummary(g)), open: g.pending > 0, body: `${lead}${items}${more}` });
 }
 
 function itemHtml(g, item) {
   const e = D.escapeHtml;
   const { lines, hidden } = itemLines(item, { max: 4 });
   const busy = ap.busy === `${g.installId}|${item.key}`;
-  const decide = ap.canDecide ? `
+  const decide = g.canDecide ? `
       ${stateLead({ ap: 'approve' }, 'check', 'Approve', { out: busy && ap.busyTo === 'approved', busyWord: 'Approving…', waiting: ap.busy && !busy ? 'Waiting for the other decision' : (busy ? 'Waiting for this one' : '') }, `data-install="${e(g.installId)}" data-key="${e(item.key)}" data-tip="Show it on your site"`, 'btn-primary')}
       ${stateLead({ ap: 'reject' }, 'x', 'Reject', { out: busy && ap.busyTo === 'rejected', busyWord: 'Rejecting…', waiting: ap.busy && !busy ? 'Waiting for the other decision' : (busy ? 'Waiting for this one' : '') }, `data-install="${e(g.installId)}" data-key="${e(item.key)}" data-tip="Keep it off your site"`, 'is-risky')}` : '';
   const open = iconBtn({ ap: 'open' }, 'external', 'Open the row on the Data card', `data-table="${e(g.table)}" data-key="${e(item.key)}"`);
