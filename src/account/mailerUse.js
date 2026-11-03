@@ -16,7 +16,10 @@
 //     the manifest's) are read when the lane's backend keeps them and empty when it does not (the plan D1, D4, D5);
 //   - who decides is the setting when it names anyone, else the manifest's default role words (backend auth/approvals.js
 //     approversOf, the same reading), so an owner who unchecks every box falls to the module's own default, as the
-//     server does.
+//     server does;
+//   - the older `recipient` is a setting the manifest declares, and the server reads '' as not sent (backend
+//     auth/buildsStore.js validSettings, the schema loop), so a Save empties it only when the manifest lets '' empty it
+//     (recipientHold), 2026-11-03.
 
 import { roleList, emailList } from './mailRouting.js';
 
@@ -61,6 +64,27 @@ export function approversOf(install) {
   return { approvers: dflt, approversFrom: dflt.length ? 'manifest' : '' };
 }
 
+/** The manifest's own `recipient` setting as the server declared it ({ key, label, type, required, default }); null when it declares none. */
+export function recipientSetting(manifest) {
+  const list = manifest && Array.isArray(manifest.settings) ? manifest.settings : [];
+  return list.find(s => s && s.key === 'recipient') || null;
+}
+
+/**
+ * Whether a Save may empty an install's older `recipient` (the review of 0.3, 2026-11-03). A stored recipient is a setting
+ * the manifest declares (the server keeps no platform `recipient`), and the server reads '' as not sent: it takes the
+ * declared default, or refuses the whole save (400 "<label> is needed.") when the setting is required. Answers '' when ''
+ * empties it (the manifest declares none, so any save drops it, or one optional with an empty default), 'default' when an
+ * emptied one comes back as the declared default, 'required' when the form needs one.
+ */
+export function recipientHold(manifest) {
+  const decl = recipientSetting(manifest);
+  if (!decl) return '';
+  const d = decl.default;
+  if (!(d == null || d === '' || (Array.isArray(d) && !d.length))) return 'default';
+  return decl.required === true ? 'required' : '';
+}
+
 /** The table an install's submissions land in (the public door's rule). */
 export function tableOf(install) {
   const m = install && install.manifest;
@@ -75,6 +99,8 @@ export function formsOf(modules) {
   return list.filter(m => m && takesMail(m.manifest)).map(m => {
     const s = (m.settings && typeof m.settings === 'object') ? m.settings : {};
     const cv = s.confirm_visitor;
+    const older = String(s.recipient || '').trim().toLowerCase();
+    const recipient = older.includes('@') ? older : '';
     return {
       installId: String(m.installId || ''),
       name: String(m.name || m.buildName || 'A form'),
@@ -83,6 +109,11 @@ export function formsOf(modules) {
       // the form's own people and switch (2026-11-02): set, they win over the mailer's; empty or unset, the mailer's apply.
       // The older `recipient` setting (one address) counts as the form's own list too, as the door counts it.
       notifyTo: [...new Set([s.recipient, ...(Array.isArray(s.notify_to) ? s.notify_to : [])].map(x => String(x || '').trim().toLowerCase()).filter(x => x.includes('@')))],
+      // that older address on its own, so a Save that unticks it clears it too (mailRouting.js settingsFor), 2026-11-03
+      recipient,
+      // whether a Save may empty it ('' yes; 'required' or 'default' no, recipientHold) and the manifest's word for it, 2026-11-03
+      recipientHold: recipient ? recipientHold(m.manifest) : '',
+      recipientLabel: recipient ? String((recipientSetting(m.manifest) || {}).label || '') : '',
       confirmVisitor: cv === true || cv === 'true' ? true : cv === false || cv === 'false' ? false : null,
       // 2026-11-03: the roles told, who decides, the intent word, whether rows wait
       notifyRoles: roleList(s.notify_roles),

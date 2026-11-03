@@ -18,6 +18,9 @@ export const FONTS = Object.freeze(['system', 'serif', 'mono', 'sans']);
 export const FONT_WORDS = Object.freeze({ system: 'The reader\'s own', serif: 'Serif', mono: 'Monospace', sans: 'Sans serif' });
 export const DEFAULT_THEME = Object.freeze({ brandName: '', logoUrl: '', primaryColor: '#6e3cc6', background: '#ffffff', textColor: '#1d1b26', fontFamily: 'system', footerWords: '', derived: false });
 export const MIN_CONTRAST = 4.5;
+// the server's logo rule (auth/siteMailFrame.js LOGO_RE, MAX_LOGO): https, at most 500 characters, no space, quote, angle bracket or backslash
+export const MAX_LOGO = 500;
+const LOGO_RE = /^https:\/\/[^\s"'<>\\]+$/i;
 const FIELDS = ['brandName', 'logoUrl', 'primaryColor', 'background', 'textColor', 'fontFamily', 'footerWords'];
 const WORDS = { brandName: 'The name', logoUrl: 'The logo', primaryColor: 'The colour', background: 'The background', textColor: 'The text colour', fontFamily: 'The font', footerWords: 'The footer' };
 
@@ -70,8 +73,9 @@ export function sourceOf(answer) {
 
 /**
  * The same checks the server makes (validTheme) so the card refuses before the request: colours as #rrggbb, the font
- * from the list, the logo https or empty, the name under 80 and the footer under 300 plain characters, and the text
- * readable on the background (contrast 4.5 or more). Answers { ok, theme, errors: { field: words } }.
+ * from the list, the logo https (at most 500 characters, no space, quote, angle bracket or backslash) or empty, the name
+ * under 80 and the footer under 300 plain characters, and the text readable on the background (contrast 4.5 or more).
+ * Answers { ok, theme, errors: { field: words } }.
  */
 export function validTheme(input) {
   const t = input && typeof input === 'object' ? input : {};
@@ -80,7 +84,7 @@ export function validTheme(input) {
   theme.brandName = String(t.brandName == null ? '' : t.brandName).trim().replace(/\s+/g, ' ');
   if (theme.brandName.length > 80) errors.brandName = `${WORDS.brandName} is at most 80 characters.`;
   theme.logoUrl = String(t.logoUrl == null ? '' : t.logoUrl).trim();
-  if (theme.logoUrl && !/^https:\/\/\S+$/i.test(theme.logoUrl)) errors.logoUrl = `${WORDS.logoUrl} is a web address that starts with https://, or empty.`;
+  if (theme.logoUrl && (theme.logoUrl.length > MAX_LOGO || !LOGO_RE.test(theme.logoUrl))) errors.logoUrl = `${WORDS.logoUrl} is a web address that starts with https://, at most ${MAX_LOGO} characters, with no spaces, quotes, angle brackets or backslashes. Or leave it empty.`;
   for (const k of ['primaryColor', 'background', 'textColor']) {
     const h = hexOf(t[k]);
     if (!h) errors[k] = `${WORDS[k]} is a colour such as #6e3cc6.`;
@@ -98,12 +102,72 @@ export function validTheme(input) {
   return { ok: !Object.keys(errors).length, theme, errors };
 }
 
-/** The body of a PUT: the seven fields and nothing else (the server sets derived: false and the stamps). */
+/** The seven fields of a look and nothing else (the server sets derived: false and the stamps). */
 export function themeBody(theme) {
   const t = themeOf(theme);
   const out = {};
   for (const k of FIELDS) out[k] = t[k];
   return out;
+}
+
+/**
+ * The body of the owner's Save: ONLY the fields the owner changed (the contract cross-check 0.1). The GET answers the look
+ * made whole (a blank name reads the organization's, blank footer words the default ones), while the PUT merges what it is
+ * sent over the look as STORED. Sending the filled-in words back would store them for good: the footer would lose the
+ * site's host and a later rename of the organization would never reach the mail. `loaded` is the look as the GET
+ * answered it, `theme` the draft as checked (validTheme). Nothing changed answers {}: the Save still makes the look the
+ * owner's own (derived: false) as it stands.
+ */
+export function themeChanges(loaded, theme) {
+  const a = themeBody(loaded), b = themeBody(theme);
+  const out = {};
+  for (const k of FIELDS) if (a[k] !== b[k]) out[k] = b[k];
+  return out;
+}
+
+/** The default footer words as the server builds them (auth/siteMailFrame.js footerWordsFor): the name and the host, the name alone, the host alone, or nothing. */
+function footerWordsFor(brandName, host) {
+  const b = String(brandName || '').trim(), h = String(host || '').trim();
+  if (b && h) return `Sent by ${b} from ${h}`;
+  if (b) return `Sent by ${b}`;
+  if (h) return `Sent from ${h}`;
+  return '';
+}
+/** The host that default footer words built from `brandName` name ('' when they name none); null when the words are not those. */
+function footerHostOf(words, brandName) {
+  const w = String(words || ''), b = String(brandName || '').trim();
+  if (b && w === `Sent by ${b}`) return '';
+  if (b && w.startsWith(`Sent by ${b} from `)) return w.slice(`Sent by ${b} from `.length);
+  if (!b && w.startsWith('Sent from ')) return w.slice('Sent from '.length);
+  return null;
+}
+
+/**
+ * The look the card holds after a Save: the server's answer (the look as STORED), with a blank name or blank footer words
+ * the owner did not send kept as the card showed them before (the filled-in words the mail still reads), so the next
+ * Save compares against the same words and leaves them unsent. A field the owner cleared stays cleared.
+ * When the same Save changed the name (the review, 2026-11-03), the filled-in footer named the OLD name, so blank footer
+ * words are built again from the new name and the same host, as the server builds them for the mail. A name cleared (the
+ * mail then reads the organization's, which the card does not know) leaves the footer blank, and its placeholder speaks.
+ */
+export function themeAfterSave(prev, sent, answered) {
+  const got = themeOf(answered);
+  const before = themeOf(prev);
+  const s = sent && typeof sent === 'object' ? sent : {};
+  if (!('brandName' in s) && !got.brandName && before.brandName) got.brandName = before.brandName;
+  if (!('footerWords' in s) && !got.footerWords && before.footerWords) {
+    if (!('brandName' in s)) got.footerWords = before.footerWords;
+    else {
+      const host = footerHostOf(before.footerWords, before.brandName);
+      got.footerWords = host != null && got.brandName ? footerWordsFor(got.brandName, host) : '';
+    }
+  }
+  return got;
+}
+
+/** A site the theme routes no longer know (404 SITE_NOT_FOUND: removed from the studio while the card was open), in words. */
+export function siteGoneWords(name) {
+  return `${name || 'This site'} is no longer published. Reload the tab to see your sites as they are now.`;
 }
 
 /** The words under a site's name on the card, from where its look comes. */

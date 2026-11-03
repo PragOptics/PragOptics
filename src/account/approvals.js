@@ -18,7 +18,7 @@
 import { PRAG_API_BASE } from '../runtime/config.js';
 import { explainLink } from '../components/explainer.js';
 import { ico, leadBtn, iconBtn, cardHtml as sharedCard, initCards, stateLead } from './cards.js';
-import { groupsOf, totals, itemLines, groupSummary, groupWords, cannotDecideWords } from './approvalGroups.js';
+import { groupsOf, totals, itemLines, groupSummary, groupWords, cannotDecideWords, scopeWords } from './approvalGroups.js';
 import { countWord } from '../ui/words.js';
 
 const URL_BASE = `${PRAG_API_BASE}/environment/approvals`;
@@ -127,7 +127,8 @@ async function decide(installId, key, decision) {
     const code = ex?.data?.code;
     ap.err = ex?.sessionInvalidated ? ''
       : code === 'ALREADY_DECIDED' ? `Already ${ex.data.state || 'decided'}${ex.data.decidedAt ? ` on ${D.fmtDate(ex.data.decidedAt)}` : ''}; the list reads again.`
-      : code === 'SCOPE_REQUIRED' ? 'Your role cannot decide this. The owner can turn on "Approve what shows on your site" for your role on the Team tab.'
+      // the server's own words first: a form that names who decides says so, and the Team tab would not change that
+      : code === 'SCOPE_REQUIRED' ? scopeWords(ex.data)
       : (ex?.data?.error || D.friendlyError(ex, `The row could not be ${decision}.`));
   }
   ap.busy = ''; ap.busyTo = '';

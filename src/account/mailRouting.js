@@ -134,6 +134,18 @@ export function decidersWords(d) {
 }
 
 /**
+ * Who decides, from the server's own list (GET v1/environment/approvals, a group's `deciders`: the owner and the people
+ * the install's approvers reach today, ACTIVE members only, never the agent): "the owner, ops@site and dev@site". The
+ * owner's address is said as "the owner", first; without the owner's address the addresses are said as they are.
+ */
+export function namedDecidersWords(emails, ownerEmail = '') {
+  const owner = low(ownerEmail);
+  const list = emailList(emails);
+  if (!owner) return list.length ? listWords(list) : 'the owner';
+  return listWords(['the owner', ...list.filter(x => x !== owner)]);
+}
+
+/**
  * The tags on a form's head: where it sends from, whether it confirms, whether its rows wait, its intent word, off.
  * [{ word, cls }], cls one of the card's tag states ('' | is-verified | is-pending | is-primary | is-bad).
  * `from` is the address as the server resolves it; it reads "(the default)" whenever that is the default and the form's
@@ -160,16 +172,48 @@ export function formTags(form, { from = '', confirms = true, dflt = '', unknown 
  * `people: null` means the team could not be read, so no people were shown: notify_to is left out of the body and the
  * server keeps what is stored (it merges the settings sent over the ones it holds). The approvers are one list, so
  * `approverPeople` then carries the addresses already stored, sent back unchanged beside the roles picked.
+ * `recipient` is the form's older one-address setting, shown ticked among its people (mailerUse.js formsOf): the merge
+ * would keep it and the door would go on mailing it, so a person unticked who is that address sends recipient '' too.
+ * `recipientHold` (mailerUse.js recipientHold) says when '' cannot empty it: the server reads '' as not sent and takes the
+ * manifest's default ('default') or refuses the whole save ('required'). Then no recipient is sent and the card keeps that
+ * person ticked and fixed (recipientHoldWords says where it is changed).
  */
-export function settingsFor({ mailer = '', people = [], roles = [], confirm = '', approverRoles = [], approverPeople = [] } = {}) {
+export function settingsFor({ mailer = '', people = [], roles = [], confirm = '', approverRoles = [], approverPeople = [], recipient = '', recipientHold = '' } = {}) {
   const c = String(confirm == null ? '' : confirm).toLowerCase();
+  const older = low(recipient);
+  const told = people === null ? null : emailList(people);
   return {
     mailer: low(mailer),
-    ...(people === null ? {} : { notify_to: emailList(people) }),
+    ...(told === null ? {} : { notify_to: told }),
+    ...(told !== null && !recipientHold && older.includes('@') && !told.includes(older) ? { recipient: '' } : {}),
     notify_roles: roleList(roles),
     confirm_visitor: c === 'true' || c === 'false' ? c : '',
     approvers: uniq([...roleList(approverRoles), ...emailList(approverPeople)])
   };
+}
+
+/**
+ * Whether a Save changes who decides (then the Mail card reads GET approvals again, the review of 2026-11-03): the
+ * approvers sent against the ones the install's own setting held. A manifest's default is no setting, so a form that
+ * followed it and now names anyone has changed; sending none again has not.
+ */
+export function approversChanged(form, settings) {
+  const had = new Set(form && form.approversFrom === 'setting' && Array.isArray(form.approvers) ? form.approvers.map(low) : []);
+  const now = new Set((settings && Array.isArray(settings.approvers) ? settings.approvers : []).map(low));
+  return had.size !== now.size || [...now].some(x => !had.has(x));
+}
+
+/**
+ * Why the form's own older recipient stays ticked on the card when a Save cannot empty it (mailerUse.js recipientHold),
+ * and where it is changed: the studio, the form's block, Settings (PragOpticsUI inspector.js, openModuleSettings). '' when
+ * it can be unticked. `label` is the manifest's word for the setting ("Send to").
+ */
+export function recipientHoldWords(address, hold, label = '') {
+  const a = low(address);
+  if (!a || (hold !== 'required' && hold !== 'default')) return '';
+  const name = String(label || '').trim() || 'recipient';
+  const why = hold === 'required' ? 'which the form needs' : 'which goes back to the form\'s own default when emptied';
+  return `${a} is this form's own "${name}", ${why}, so it is not changed here. Change it in the studio: select the form on its page, then Settings.`;
 }
 
 /** The mailer's body for one Save: PUT v1/environment/mailers/{address} { notify, notifyRoles, confirmVisitor }; `people: null` (the team unread) leaves notify out so the stored people stay. */

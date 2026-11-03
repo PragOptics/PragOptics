@@ -38,7 +38,7 @@ import { rowShape, innerOf, whenOf, statusOf, cellText, headlineOf } from './dat
 import { mailShort, mailLines } from './rowMail.js';
 // THE MAIL CARD (2026-11-03): who sends, from which mailer, who is told, who decides, the look of the mail; its own module,
 // painted into #evMail here between Data and Connected accounts and handed this tab's helpers (setMailContext)
-import { setMailContext, resetMail, loadMail, mailHtml, paintMail, mailAction, mailChange } from './mailCard.js';
+import { setMailContext, resetMail, loadMail, mailHtml, paintMail, mailAction, mailChange, decisionsArrived } from './mailCard.js';
 // the platform's cents formatter, under the name this file has always used for it (the local cents() below is the
 // AI budget's cent-sign variant, so the shared one cannot take that name here)
 import { countWord, cents as money } from '../ui/words.js';
@@ -172,7 +172,8 @@ export async function renderEnvironment(main, deps) {
   D = deps;
   ev.madeKey = null; ev.filesNote = ''; ev.files = null; ev.keys = null; ev.domains = null; ev.domainNote = ''; ev.linkNote = ''; ev.domArm = ''; ev.keyArm = ''; ev.checking = ''; ev.registrations = []; ev.reg = freshReg();
   ev.connections = null; ev.connProviders = []; ev.connNote = ''; ev.connPick = ''; ev.connBusy = false; ev.connResult = ''; ev.connTesting = ''; ev.connDraft = {}; ev.connArm = ''; ev.rowNote = null; ev.shopifyShop = ''; ev.shopifyLink = ''; ev.shopifyLinkId = ''; ev.connSyncing = ''; ev.rowNote = null;
-  ev.tables = null; ev.tablesNote = ''; ev.table = ''; ev.rows = null; ev.rowsAfter = ''; ev.rowsNote = ''; ev.openRow = ''; ev.rowsLoading = false; ev.moderating = ''; ev.moderatingTo = '';
+  ev.tables = null; ev.tablesNote = ''; ev.table = ''; ev.rows = null; ev.rowsAfter = ''; ev.rowsNote = ''; ev.openRow = ''; ev.rowsLoading = false; ev.rowsFailed = false; ev.moderating = ''; ev.moderatingTo = '';
+  ev.decisions = null;
   ev.ai = null; ev.aiNote = ''; ev.aiBusy = false; ev.aiBudget = null; ev.budgetBusy = false;
   resetMail(); setMailContext(D, mailContext());
   ev.domTab = ev.domTab || 'connect'; initCards();
@@ -237,7 +238,7 @@ async function loadNow() {
     paint();
     if (['READY', 'SUSPENDED'].includes(phaseOf(ev.view.tenant))) {
       if (ev.lane === 'sandbox' && !laneReady(ev.view.tenant)) return;   // the setup card is all there is
-      await Promise.all([loadFiles(), loadTables(), loadMail(), ...(ev.lane === 'live' ? [loadDomains()] : []), loadKeys(), loadConnections()]);
+      await Promise.all([loadFiles(), loadTables(), loadMail(), loadDecisions(), ...(ev.lane === 'live' ? [loadDomains()] : []), loadKeys(), loadConnections()]);
     }
   } catch (ex) {
     host.innerHTML = '';
@@ -388,12 +389,12 @@ async function setLane(lane) {
   ev.lane = lane === 'sandbox' ? 'sandbox' : 'live';
   try { sessionStorage.setItem(LANE_KEY, ev.lane); } catch { /* fine */ }
   ev.files = null; ev.keys = null; ev.domains = null; ev.connections = null; ev.connPick = ''; ev.connResult = ''; ev.madeKey = null; ev.filesNote = '';
-  ev.sites = null; resetMail();
+  ev.sites = null; ev.decisions = null; resetMail();
   paint();
   if (ev.lane === 'live' || laneReady(ev.view?.tenant)) {
     // the lane switch and the refresh wait while this lane's cards are read, saying why
     const release = hold(document.querySelectorAll('[data-env-action="lane-live"], [data-env-action="lane-sandbox"], [data-env-action="refresh"]'), `Loading the ${ev.lane} lane…`);
-    try { await Promise.all([loadFiles(), loadMail(), ...(ev.lane === 'live' ? [loadDomains()] : []), loadKeys(), loadConnections()]); }
+    try { await Promise.all([loadFiles(), loadMail(), loadDecisions(), ...(ev.lane === 'live' ? [loadDomains()] : []), loadKeys(), loadConnections()]); }
     finally { release(); }
   }
 }
@@ -541,7 +542,9 @@ function summaryHtml(v) {
 // for who sees a table and who changes its rows (dataPolicy.js). Imported here, beside the card, so this region stays
 // one hunk (a parallel build edits the Mail card and the import block at the top).
 import { visualsOf, visualsHtml, UNITS, LOAD_ALL_CAP } from './dataVisuals.js';
-import { policyOf, formOf, tableCanRead, tableCanWrite, readSentence, writeSentence, tableLine, levelOptions, filledBy, formFedSentence, lockWords, refusalWords, policySaveWords } from './dataPolicy.js';
+import { policyOf, formOf, tableCanRead, tableCanWrite, readSentence, writeSentence, tableLine, levelOptions, filledBy, formFedSentence, lockWords, refusalWords, policySaveWords, writeLevelOf, writeRaised, raisedWords, closedTableWords, sharedLanesWords } from './dataPolicy.js';
+// who decides each install, as the server says it (the one read below, shared with the Mail card), and the refusal's own words
+import { decisionsOf, mayDecideRow, scopeWords } from './approvalGroups.js';
 
 /** The listing's entry for the open table (its count, its policy, its canRead/canWrite); null before the listing answers. */
 function currentTable() { return (ev.tables || []).find(t => t.table === ev.table) || null; }
@@ -549,6 +552,25 @@ function currentTable() { return (ev.tables || []).find(t => t.table === ev.tabl
 function visState() { return ev.vis || (ev.vis = { unit: 'day', field: '' }); }
 /** A read or write the server refused by the table's policy, in words; else the server's own sentence, else the fallback. */
 function dataRefusal(ex, fallback) { return refusalWords(ex?.data?.code, ex?.data, formOf(currentTable())) || ex?.data?.error || D.friendlyError(ex, fallback); }
+
+/* WHO DECIDES, AS THE SERVER SAYS IT (2026-11-03, the contract cross-check 0.9, 0.10, 1.4): GET v1/environment/approvals, ONE read
+ * per load, shared by the Mail card (who decides a form's waiting rows: the group's deciders, the ACTIVE team only) and this card
+ * (Approve and Reject on a row that names its install: the group's canDecide, the install's own approvers or the scope, never the
+ * table's write level). A lane whose groups carry neither, or a refusal (the older route opens at member), leaves the map empty
+ * and both cards read as before (approvalGroups.js decisionsOf, mayDecideRow). A read for a lane left meanwhile is dropped.
+ * The Mail card reads it again after a Save that changes who decides (mailContext reloadDecisions); an older read that
+ * lands after a newer one is dropped too, so the answer from before that Save never lands last. */
+let decisionsSeq = 0;
+async function loadDecisions() {
+  const lane = ev.lane;
+  const seq = ++decisionsSeq;
+  let d = null;
+  try { d = await D.apiFetch(url(`${ENV_URL}/approvals`)); } catch { d = null; }
+  if (ev.lane !== lane || seq !== decisionsSeq) return;
+  ev.decisions = decisionsOf(d);
+  decisionsArrived();
+  if (document.getElementById('evData')) paintData();
+}
 
 function paintData() { bindDataActions(); const h = document.getElementById('evData'); if (h) h.innerHTML = dataHtml(); }
 /* THE CARD'S OWN LISTENERS (2026-11-03): the Visuals period and field, Load all, and the owner's access choices. Bound once,
@@ -589,7 +611,10 @@ async function loadTables() {
   // the table opens and the row with it, instead of the library the person then has to walk
   let want = null;
   try { want = JSON.parse(sessionStorage.getItem('pragoptics_open_table') || 'null'); sessionStorage.removeItem('pragoptics_open_table'); } catch { want = null; }
-  if (want && want.table && (ev.tables || []).some(t => t.table === want.table)) {
+  const wanted = want && want.table ? (ev.tables || []).find(t => t.table === want.table) : null;
+  // a table this role cannot read is not opened (it would read as empty): the card says who sees it (2026-11-03, 1.3)
+  if (wanted && !tableCanRead(wanted)) { ev.rowsNote = closedTableWords(wanted); paintData(); }
+  else if (wanted) {
     await loadRows(want.table);
     if (want.row && ev.table === want.table) { ev.openRow = String(want.row); paintData(); }
   }
@@ -597,7 +622,7 @@ async function loadTables() {
 /** The rows of one table, fifty at a time; `more` continues from the last key. */
 async function loadRows(table, more = false) {
   if (!table) return;
-  if (!more) { ev.table = table; ev.rows = null; ev.rowsAfter = ''; ev.openRow = ''; ev.policyNote = ''; if (ev.vis) ev.vis.field = ''; }
+  if (!more) { ev.table = table; ev.rows = null; ev.rowsAfter = ''; ev.openRow = ''; ev.policyNote = ''; ev.rowsFailed = false; if (ev.vis) ev.vis.field = ''; }
   ev.rowsLoading = true; ev.rowsNote = ''; paintData();
   try {
     const d = await D.apiFetch(url(`${ENV_URL}/data/${encodeURIComponent(table)}`, { values: 1, limit: 50, after: more ? ev.rowsAfter : '' }));
@@ -605,7 +630,8 @@ async function loadRows(table, more = false) {
     ev.rows = more ? [...(ev.rows || []), ...items] : items;
     ev.rowsAfter = d.nextAfter || '';
   } catch (ex) {
-    if (!more) ev.rows = [];
+    // a read that failed is not an empty table: the card shows the refusal and never "This table is empty" (rowsFailed)
+    if (!more) { ev.rows = []; ev.rowsFailed = true; }
     // a table the policy keeps from this role (2026-11-03 D10, TABLE_READ_DENIED) says who may see it, in words
     ev.rowsNote = ex?.sessionInvalidated ? '' : dataRefusal(ex, 'Could not read that table.');
   }
@@ -633,7 +659,7 @@ async function loadAllRows() {
     paintData();
   }
 }
-function closeTable() { ev.table = ''; ev.rows = null; ev.rowsAfter = ''; ev.openRow = ''; ev.rowsNote = ''; paintData(); }
+function closeTable() { ev.table = ''; ev.rows = null; ev.rowsAfter = ''; ev.openRow = ''; ev.rowsNote = ''; ev.rowsFailed = false; paintData(); }
 function valueText(v) { try { return typeof v === 'string' ? v : JSON.stringify(v, null, 2); } catch { return String(v); } }
 /** A field's name as a label: productId -> Product id, image_alt -> Image alt. */
 function labelOf(k) { const s = String(k).replace(/[_-]+/g, ' ').replace(/([a-z0-9])([A-Z])/g, '$1 $2').toLowerCase(); return s.charAt(0).toUpperCase() + s.slice(1); }
@@ -774,11 +800,13 @@ function decidedWords(v) {
  * pending gets the two: the row's value is written back with its status and the moment it was decided, which is what a
  * reader-door module shows or hides by (auth/publicDoors.js items). Members who can write see them; nobody else. Who can
  * write is the table's own answer once the listing carries it (2026-11-03 D10, canWrite against the table's write level);
- * before that, the role-level canWrite() as always. A paused environment (SUSPENDED) hides them whatever the listing says:
- * the server answers the listing's canWrite from the role alone and refuses every write with 409 while paused. */
+ * before that, the role-level canWrite() as always. A row that names its install is decided through the approvals route,
+ * so the server's canDecide for that install answers instead when the lane gives it (2026-11-03, 1.4: the install's own
+ * approvers or the scope, never the write level; mayDecideRow). A paused environment (SUSPENDED) hides them whatever the
+ * listing says: the server answers the listing's canWrite from the role alone and refuses every write with 409 while paused. */
 function moderateButtons(r) {
   const e = D.escapeHtml;
-  if (statusOf(r) !== 'pending' || paused() || !tableCanWrite(currentTable(), canWrite())) return '';
+  if (statusOf(r) !== 'pending' || paused() || !mayDecideRow(r.value, ev.decisions, tableCanWrite(currentTable(), canWrite()))) return '';
   const out = ev.moderating === r.key;
   return stateLead('data-approve', 'check', 'Approve', { out: out && ev.moderatingTo === 'approved', busyWord: 'Approving…', waiting: out && ev.moderatingTo !== 'approved' ? 'Waiting for the other decision' : '' }, `data-key="${e(r.key)}" data-tip="Show it: the row's status becomes approved"`, 'btn-primary')
     + stateLead('data-reject', 'x', 'Reject', { out: out && ev.moderatingTo === 'rejected', busyWord: 'Rejecting…', waiting: out && ev.moderatingTo !== 'rejected' ? 'Waiting for the other decision' : '' }, `data-key="${e(r.key)}" data-tip="Keep it out of sight: the row's status becomes rejected"`, 'is-risky');
@@ -805,7 +833,7 @@ async function moderateRow(key, status) {
     const code = ex?.data?.code;
     // TABLE_WRITE_DENIED / TABLE_FORM_FED / TABLE_READ_DENIED (2026-11-03 D10, D11) get the policy's words (dataRefusal)
     ev.rowsNote = ex?.sessionInvalidated ? ''
-      : code === 'SCOPE_REQUIRED' ? 'Your role cannot decide this. The owner can turn on "Approve what shows on your site" for your role on the Team tab.'
+      : code === 'SCOPE_REQUIRED' ? scopeWords(ex.data)
       : code === 'ALREADY_DECIDED' ? `Already ${ex.data.state || 'decided'}${ex.data.decidedAt ? ` on ${D.fmtDate(ex.data.decidedAt)}` : ''}.`
       : dataRefusal(ex, `The row could not be marked ${status}.`);
     paintData();
@@ -824,9 +852,11 @@ function accessHtml(t, pol) {
   const e = D.escapeHtml;
   const form = formOf(t);
   const filled = pol.formFed ? ` ${filledBy(form)}. ${lockWords(pol)}` : '';
-  if (myRole() !== 'owner' || paused()) return `<p class="ev-tbl-who is-head adm-muted">${e(`${readSentence(pol.read)} ${writeSentence(pol.write)}${filled}`)}</p>`;
+  // the write level as the server enforces it: raised to the read level when that is higher (2026-11-03, 1.2)
+  const writeNow = writeLevelOf(pol);
+  if (myRole() !== 'owner' || paused()) return `<p class="ev-tbl-who is-head adm-muted">${e(`${readSentence(pol.read)} ${writeSentence(writeNow)}${filled}`)}</p>`;
   const busy = ev.policyBusy || '';
-  const pick = (kind, value, label) => `<label class="ev-access-pick"><span>${label}</span><select class="acct-input acct-select ev-access-sel" data-policy-level="${kind}" aria-label="${label}" ${busy ? 'disabled' : ''}>${levelOptions(kind).map(o => `<option value="${o.value}" ${o.value === value ? 'selected' : ''}>${e(o.label)}</option>`).join('')}</select></label>`;
+  const pick = (kind, value, label, opts = {}) => `<label class="ev-access-pick"><span>${label}</span><select class="acct-input acct-select ev-access-sel" data-policy-level="${kind}" aria-label="${label}" ${busy ? 'disabled' : ''}>${levelOptions(kind, opts).map(o => `<option value="${o.value}" ${o.value === value ? 'selected' : ''} ${o.disabled ? 'disabled' : ''}>${e(o.label)}</option>`).join('')}</select></label>`;
   const lock = pol.formFed ? `
       <label class="ev-switch" data-tip="${pol.studioWrite ? 'Lock the rows again: decided from Approvals, not rewritten' : 'Allow rows to be rewritten by hand or by the studio'}">
         <input type="checkbox" role="switch" data-policy-switch="studioWrite" ${pol.studioWrite ? 'checked' : ''} ${busy ? 'disabled' : ''} aria-label="Let rows be rewritten by hand or by the studio">
@@ -836,7 +866,9 @@ function accessHtml(t, pol) {
       <p class="acct-card-note ev-note">${e(formFedSentence(form))}</p>` : '';
   return `
     <div class="ev-tbl-access">
-      <div class="ev-access-row">${pick('read', pol.read, 'Who sees it')}${pick('write', pol.write, 'Who changes rows')}${busy && busy !== 'studioWrite' ? '<span class="adm-muted">Saving…</span>' : ''}</div>
+      <div class="ev-access-row">${pick('read', pol.read, 'Who sees it')}${pick('write', writeNow, 'Who changes rows', { below: pol.read })}${busy && busy !== 'studioWrite' ? '<span class="adm-muted">Saving…</span>' : ''}</div>
+      ${writeRaised(pol) ? `<p class="lic-hint">${e(raisedWords())}</p>` : ''}
+      ${ev.lane === 'sandbox' ? `<p class="lic-hint">${e(sharedLanesWords())}</p>` : ''}
       ${lock}
       ${ev.policyNote ? `<p class="acct-error">${e(ev.policyNote)}</p>` : ''}
     </div>`;
@@ -875,7 +907,7 @@ function visualsBlock(rows, t) {
 function dataHtml() {
   const e = D.escapeHtml;
   const tables = ev.tables;
-  const summary = tables == null ? 'loading' : !tables.length ? 'no tables yet' : ev.table ? `${e(ev.table)}${ev.rows ? ` · ${countWord(ev.rows.length, 'row', 'rows')}${ev.rowsAfter ? '+' : ''}` : ''}` : countWord(tables.length, 'table', 'tables');
+  const summary = tables == null ? 'loading' : !tables.length ? 'no tables yet' : ev.table ? `${e(ev.table)}${ev.rows && !ev.rowsFailed ? ` · ${countWord(ev.rows.length, 'row', 'rows')}${ev.rowsAfter ? '+' : ''}` : ''}` : countWord(tables.length, 'table', 'tables');
   let body;
   if (tables == null) body = '<p class="acct-loading">Loading tables…</p>';
   else if (!tables.length) body = '<p class="acct-empty">No data yet. The Studio, your site and your API keys write tables here; a connected supplier\'s products land in supplier_products.</p>';
@@ -900,7 +932,7 @@ function dataHtml() {
       </div>`;
     if (open) body = `${head}${rowDetailHtml(open, shape)}`;
     else if (rows && rows.length && dataView() === 'visuals') body = `${head}${access}${visualsBlock(rows, t)}`;
-    else body = `${head}${access}${rows == null ? '<p class="acct-loading">Reading rows…</p>' : !rows.length ? '<p class="acct-empty">This table is empty.</p>' : rowsTableHtml(rows, shape)}${rows && rows.length && ev.rowsAfter ? `<div class="acct-actions-row ev-note">${stateLead('data-more', 'chevron', 'Next 50 rows', { out: !!ev.rowsLoading, busyWord: 'Reading…' })}</div>` : ''}`;
+    else body = `${head}${access}${rows == null ? '<p class="acct-loading">Reading rows…</p>' : !rows.length ? (ev.rowsFailed ? '' : '<p class="acct-empty">This table is empty.</p>') : rowsTableHtml(rows, shape)}${rows && rows.length && ev.rowsAfter ? `<div class="acct-actions-row ev-note">${stateLead('data-more', 'chevron', 'Next 50 rows', { out: !!ev.rowsLoading, busyWord: 'Reading…' })}</div>` : ''}`;
   }
   return cardHtml({
     key: 'data', icon: 'database', title: 'Data', summary,
@@ -3153,7 +3185,11 @@ function mailContext() {
   return {
     url, body, cardHtml,
     canWrite, myRole, lane: () => ev.lane, view: () => ev.view, sites: () => ev.sites,
-    siteName: (s) => siteFacts(s).name
+    siteName: (s) => siteFacts(s).name,
+    // who decides an install, as GET v1/environment/approvals said it (loadDecisions); null before the read or when the lane says nothing
+    decisions: (installId) => (ev.decisions && ev.decisions.get(String(installId || ''))) || null,
+    // the same read again, after a Save on the Mail card changed who decides an install (one read; the Data card repaints too)
+    reloadDecisions: () => loadDecisions()
   };
 }
 
@@ -3168,9 +3204,16 @@ export function bindEnvironmentActions(deps) {
   // without the card reads the note when the card loads, loadTables)
   document.addEventListener('pragoptics:open-table', (e) => {
     const want = e.detail || {};
-    if (!document.getElementById('evData') || !want.table || !(ev.tables || []).some(t => t.table === want.table)) return;
+    const wanted = want.table ? (ev.tables || []).find(t => t.table === want.table) : null;
+    if (!document.getElementById('evData') || !wanted) return;
     try { sessionStorage.removeItem('pragoptics_open_table'); } catch { /* the note was the fallback */ }
     setOpen('environment:data', true);
+    // a table this role cannot read is not opened (it would read as empty): the card says who sees it (2026-11-03, 1.3)
+    if (!tableCanRead(wanted)) {
+      closeTable(); ev.rowsNote = closedTableWords(wanted); paintData();
+      try { document.getElementById('evData')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch { /* fine */ }
+      return;
+    }
     loadRows(want.table).then(() => {
       if (want.row && ev.table === want.table) { ev.openRow = String(want.row); paintData(); }
       try { document.getElementById('evData')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch { /* fine */ }

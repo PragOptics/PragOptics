@@ -55,6 +55,42 @@ export function cannotDecideWords(g) {
   return who ? `You can see what waits here. It is ${who}.` : 'You can see what waits here. The owner can give your role "Approve what shows on your site" on the Team tab.';
 }
 
+/**
+ * WHO DECIDES EACH INSTALL, AS THE SERVER SAYS IT (2026-11-03, the contract cross-check 0.9, 0.10, 1.4). The Environment tab
+ * reads GET v1/environment/approvals once per load; this keys its groups by install: { deciders, canDecide }, each null when
+ * the lane's backend does not answer it (an older lane's groups carry neither), so the Mail card and the Data card can tell
+ * "the server said" from "the server did not say" and fall back to their own reading only for the second.
+ */
+export function decisionsOf(answer) {
+  const out = new Map();
+  const list = answer && Array.isArray(answer.groups) ? answer.groups : [];
+  for (const g of list) {
+    if (!g || typeof g !== 'object' || !g.installId) continue;
+    out.set(String(g.installId), {
+      deciders: Array.isArray(g.deciders) ? [...new Set(g.deciders.map(x => String(x || '').trim().toLowerCase()).filter(x => x.includes('@')))] : null,
+      canDecide: typeof g.canDecide === 'boolean' ? g.canDecide : null
+    });
+  }
+  return out;
+}
+
+/**
+ * Whether Approve and Reject show on a waiting row of the Data card: a row that names its install is decided through the
+ * approvals route, so the group's canDecide answers (the install's own approvers, else the scope; never the table's
+ * write level); a row without one, or a lane that does not answer canDecide, keeps the card's own `fallback`.
+ */
+export function mayDecideRow(value, decisions, fallback) {
+  const id = value && typeof value === 'object' && !Array.isArray(value) ? String(value.installId || '') : '';
+  const g = id && decisions && typeof decisions.get === 'function' ? decisions.get(id) : null;
+  return g && typeof g.canDecide === 'boolean' ? g.canDecide : !!fallback;
+}
+
+/** A decision refused for the right (403 SCOPE_REQUIRED): the server's own words when it gave any (a form's named approvers say who decides it), else where the owner turns the scope on. */
+export function scopeWords(data) {
+  const own = data && typeof data === 'object' ? String(data.error || '').trim() : '';
+  return own || 'Your role cannot decide this. The owner can turn on "Approve what shows on your site" for your role on the Team tab.';
+}
+
 /** How many wait in all, and how many groups have any. */
 export function totals(groups) {
   const list = Array.isArray(groups) ? groups : [];

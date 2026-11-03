@@ -1,7 +1,7 @@
 // tests/mail-routing.test.mjs: who a form tells and who decides (src/account/mailRouting.js). Run: node --test tests/
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { ROLE_WORDS, roleList, emailList, parseApprovers, teamOf, expandRoles, roleCounts, mailerRecord, toldBy, confirmsOf, roleWord, whoWords, decidersOf, decidersWords, formTags, settingsFor, mailerBodyFor, lostWords } from '../src/account/mailRouting.js';
+import { ROLE_WORDS, roleList, emailList, parseApprovers, teamOf, expandRoles, roleCounts, mailerRecord, toldBy, confirmsOf, roleWord, whoWords, decidersOf, decidersWords, namedDecidersWords, formTags, settingsFor, mailerBodyFor, lostWords, recipientHoldWords, approversChanged } from '../src/account/mailRouting.js';
 
 const members = [
   { userId: 'u1', email: 'Owner@Site.test', role: 'owner', status: 'ACTIVE' },
@@ -80,6 +80,16 @@ test('who decides (D5): the form\'s own approvers with the owner always among th
   assert.equal(decidersWords({ roles: ['owner', 'admin'] }), 'the owner and every admin', 'the owner is said once');
 });
 
+test('who decides from the server\'s own list: the owner first as "the owner", then the people its approvers reach today', () => {
+  assert.equal(namedDecidersWords(['owner@site.test', 'ops@site.test', 'dev@site.test'], 'Owner@Site.test'), 'the owner, ops@site.test and dev@site.test');
+  assert.equal(namedDecidersWords(['ops@site.test', 'owner@site.test'], 'owner@site.test'), 'the owner and ops@site.test', 'the owner leads wherever the server put it');
+  assert.equal(namedDecidersWords(['owner@site.test'], 'owner@site.test'), 'the owner');
+  assert.equal(namedDecidersWords([], 'owner@site.test'), 'the owner', 'an empty list: the owner, who always decides');
+  assert.equal(namedDecidersWords(['Ops@site.test', 'ops@site.test', 'admin'], 'owner@site.test'), 'the owner and ops@site.test', 'addresses only, once each');
+  assert.equal(namedDecidersWords(['a@x.co', 'b@x.co'], ''), 'a@x.co and b@x.co', 'without the owner\'s address the addresses are said as they are');
+  assert.equal(namedDecidersWords(null, ''), 'the owner');
+});
+
 test('a form\'s tags say where it sends from, whether it confirms, whether rows wait, its intent, off', () => {
   const t = formTags({ mailer: '', waits: true, intent: 'review', enabled: false }, { from: 'forms@site.test', confirms: false, dflt: 'forms@site.test' });
   assert.deepEqual(t.map(x => x.word), ['from forms@site.test (the default)', 'no confirmation', 'waits for a decision', 'review', 'off']);
@@ -110,8 +120,47 @@ test('the team unread (people: null): notify_to and notify stay out of the body 
   assert.ok(!('notify_to' in s), 'no notify_to key at all: an empty list would wipe the stored people');
   assert.deepEqual(settingsFor({ people: [] }).notify_to, [], 'an empty pick with the team shown does clear the list');
   const m = mailerBodyFor({ people: null, roles: ['member'], confirm: true });
+  assert.ok(!('recipient' in s), 'the team unread: the older recipient is never touched');
   assert.deepEqual(m, { notifyRoles: ['member'], confirmVisitor: true });
   assert.ok(!('notify' in m));
+});
+
+test('the form\'s older recipient: unticked, it is cleared with recipient \'\'; ticked, or the team unread, it is left alone', () => {
+  const off = settingsFor({ people: ['ops@site.test'], recipient: 'Sales@Site.test' });
+  assert.equal(off.recipient, '', 'unticked: cleared, or the merge would keep mailing it');
+  assert.deepEqual(off.notify_to, ['ops@site.test']);
+  const on = settingsFor({ people: ['sales@site.test', 'ops@site.test'], recipient: 'sales@site.test' });
+  assert.ok(!('recipient' in on), 'still ticked: left as it is');
+  assert.ok(!('recipient' in settingsFor({ people: null, recipient: 'sales@site.test' })), 'no people shown: nothing about them is sent');
+  assert.ok(!('recipient' in settingsFor({ people: [], recipient: '' })), 'no older recipient: no key');
+  assert.equal(settingsFor({ people: [], recipient: 'sales@site.test' }).recipient, '', 'every box unticked clears it too');
+});
+
+test('a recipient the manifest needs or defaults is never sent as \'\' (the server would refuse the save or bring the default back), and the card says where it is changed', () => {
+  for (const hold of ['required', 'default']) {
+    const s = settingsFor({ people: ['ops@site.test'], roles: ['admin'], recipient: 'sales@site.test', recipientHold: hold });
+    assert.ok(!('recipient' in s), `${hold}: no recipient key, so the other changes save`);
+    assert.deepEqual(s.notify_to, ['ops@site.test']);
+    assert.ok(!('recipient' in settingsFor({ people: [], roles: ['admin'], recipient: 'sales@site.test', recipientHold: hold })), `${hold}: roles only, still no recipient key`);
+  }
+  assert.equal(settingsFor({ people: ['ops@site.test'], recipient: 'sales@site.test', recipientHold: '' }).recipient, '', 'nothing holds it: cleared as before');
+  assert.equal(recipientHoldWords('Sales@Site.test', 'required', 'Send to'), 'sales@site.test is this form\'s own "Send to", which the form needs, so it is not changed here. Change it in the studio: select the form on its page, then Settings.');
+  assert.equal(recipientHoldWords('sales@site.test', 'default', ''), 'sales@site.test is this form\'s own "recipient", which goes back to the form\'s own default when emptied, so it is not changed here. Change it in the studio: select the form on its page, then Settings.');
+  assert.equal(recipientHoldWords('sales@site.test', ''), '', 'nothing holds it: nothing said');
+  assert.equal(recipientHoldWords('', 'required'), '');
+  assert.ok(!/—|PragOptics/.test(recipientHoldWords('a@b.test', 'required', 'Send to')));
+});
+
+test('a Save changes who decides when the approvers sent differ from the ones the setting held (then the card reads who decides again)', () => {
+  const own = { approvers: ['admin', 'ops@site.test'], approversFrom: 'setting' };
+  assert.equal(approversChanged(own, { approvers: ['ops@site.test', 'admin'] }), false, 'the same, in another order');
+  assert.equal(approversChanged(own, { approvers: ['admin'] }), true, 'a person unticked');
+  assert.equal(approversChanged(own, { approvers: ['admin', 'ops@site.test', 'developer'] }), true, 'a role ticked');
+  const dflt = { approvers: ['admin'], approversFrom: 'manifest' };
+  assert.equal(approversChanged(dflt, { approvers: [] }), false, 'following the module\'s default, nothing picked: unchanged');
+  assert.equal(approversChanged(dflt, { approvers: ['admin'] }), true, 'the default\'s roles picked become the form\'s own setting');
+  assert.equal(approversChanged({ approvers: [], approversFrom: '' }, settingsFor({ approverRoles: ['member'] })), true);
+  assert.equal(approversChanged(null, null), false);
 });
 
 test('a lane whose backend dropped the roles says so once; nothing lost says nothing', () => {

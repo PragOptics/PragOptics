@@ -1,7 +1,7 @@
 // tests/approval-groups.test.mjs: the Approvals section's pure part (src/account/approvalGroups.js). Run: node --test tests/
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { groupsOf, totals, countsLine, labelOf, textOf, itemLines, groupSummary, groupWords, decidersWords, cannotDecideWords } from '../src/account/approvalGroups.js';
+import { groupsOf, totals, countsLine, labelOf, textOf, itemLines, groupSummary, groupWords, decidersWords, cannotDecideWords, decisionsOf, mayDecideRow, scopeWords } from '../src/account/approvalGroups.js';
 
 const answer = { ok: true, groups: [
   { installId: 'rv', name: 'Reviews', table: 'reviews', pending: 2, more: false, items: [
@@ -59,4 +59,36 @@ test('a group carries its intent, whether this person decides it and who may; an
   assert.equal(decidersWords(answer.groups[0]), '');
   assert.match(cannotDecideWords(g[0]), /^You can see what waits here\. It is decided by owner@site.test and ops@site.test\.$/);
   assert.match(cannotDecideWords(g[1]), /Approve what shows on your site/);
+});
+
+test('who decides each install, keyed for the Mail card and the Data card: null where the lane said nothing', () => {
+  const d = decisionsOf({ canDecide: true, groups: [
+    { installId: 'rv', deciders: ['Owner@site.test', 'ops@site.test', 'ops@site.test', 'x'], canDecide: false },
+    { installId: 'ct', name: 'Contact' },
+    { installId: 'qt', deciders: [], canDecide: true },
+    null, { name: 'no id' }
+  ] });
+  assert.deepEqual([...d.keys()], ['rv', 'ct', 'qt']);
+  assert.deepEqual(d.get('rv'), { deciders: ['owner@site.test', 'ops@site.test'], canDecide: false });
+  assert.deepEqual(d.get('ct'), { deciders: null, canDecide: null }, 'an older lane\'s group: neither said, not "nobody"');
+  assert.deepEqual(d.get('qt'), { deciders: [], canDecide: true });
+  assert.equal(decisionsOf(null).size, 0); assert.equal(decisionsOf({ groups: 'x' }).size, 0);
+});
+
+test('Approve and Reject on a Data row: the install\'s canDecide when the lane says it, else the card\'s own write gate', () => {
+  const d = decisionsOf({ groups: [{ installId: 'rv', canDecide: true, deciders: [] }, { installId: 'ct', canDecide: false, deciders: [] }, { installId: 'old' }] });
+  assert.equal(mayDecideRow({ installId: 'rv', status: 'pending' }, d, false), true, 'a named approver below the table\'s write level still decides');
+  assert.equal(mayDecideRow({ installId: 'ct', status: 'pending' }, d, true), false, 'the write level without the right does not show the buttons');
+  assert.equal(mayDecideRow({ installId: 'old' }, d, true), true, 'the lane did not say: the fallback');
+  assert.equal(mayDecideRow({ installId: 'gone' }, d, false), false, 'no group for the install: the fallback');
+  assert.equal(mayDecideRow({ status: 'pending' }, d, true), true, 'a row with no install: the fallback');
+  assert.equal(mayDecideRow('text', d, true), true);
+  assert.equal(mayDecideRow({ installId: 'rv' }, null, false), false, 'no read yet: the fallback');
+  assert.equal(mayDecideRow({ installId: 'rv' }, undefined, true), true);
+});
+
+test('a decision refused for the right says the server\'s own words, else where the owner turns the scope on', () => {
+  assert.equal(scopeWords({ code: 'SCOPE_REQUIRED', error: 'Only the people named to decide for Reviews can decide its rows. Who decides on the Environment tab, Mail.' }), 'Only the people named to decide for Reviews can decide its rows. Who decides on the Environment tab, Mail.');
+  assert.equal(scopeWords({ code: 'SCOPE_REQUIRED' }), 'Your role cannot decide this. The owner can turn on "Approve what shows on your site" for your role on the Team tab.');
+  assert.equal(scopeWords({ error: '   ' }), scopeWords(null), 'blank words are no words');
 });

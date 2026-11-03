@@ -19,7 +19,11 @@
 //
 // Reads, once per load (environment.js loadNow, beside the other cards): GET v1/environment/modules, v1/environment/mailers
 // (the live lane, a connected tenant; else the card says where mailers are made), v1/tenant/members (when the team is
-// readable), v1/tenant/scopes (member and above). The published sites come from the Domains card's read on live.
+// readable), v1/tenant/scopes (member and above). The published sites come from the Domains card's read on live. Who
+// decides a form's waiting rows comes from the tab's one read of GET v1/environment/approvals (environment.js
+// loadDecisions, X.decisions): the group's own deciders when the lane answers them, else this card's reading. A Save that
+// changes who decides reads it again (X.reloadDecisions, one read); until that lands the form reads this card's reading of
+// what was saved, never the deciders from before the Save.
 //
 // EVERY READ DEGRADES: a lane whose backend keeps no roles, approvers, intent or theme yet answers without them; the
 // pickers paint empty, a save still works, and the card says once when the answer lacked what was sent.
@@ -31,8 +35,8 @@ import { accessToken } from '../runtime/session.js';
 import { explainLink } from '../components/explainer.js';
 import { iconBtn, leadBtn, stateLead, stateIcon, armed } from './cards.js';
 import { formsOf, resolvedMailer } from './mailerUse.js';
-import { ROLE_WORDS, emailList, teamOf, roleCounts, mailerRecord, toldBy, confirmsOf, whoWords, roleWord, decidersOf, decidersWords, formTags, settingsFor, mailerBodyFor, lostWords } from './mailRouting.js';
-import { FONTS, FONT_WORDS, themeOf, sourceOf, validTheme, themeBody, themeWords, themeTag } from './mailTheme.js';
+import { ROLE_WORDS, emailList, teamOf, roleCounts, mailerRecord, toldBy, confirmsOf, whoWords, roleWord, decidersOf, decidersWords, namedDecidersWords, formTags, settingsFor, mailerBodyFor, lostWords, recipientHoldWords, approversChanged } from './mailRouting.js';
+import { FONTS, FONT_WORDS, MAX_LOGO, themeOf, sourceOf, validTheme, themeChanges, themeAfterSave, siteGoneWords, themeWords, themeTag } from './mailTheme.js';
 import { countWord } from '../ui/words.js';
 
 const ENV_URL = `${PRAG_API_BASE}/environment`;
@@ -51,7 +55,9 @@ function fresh() {
   Object.assign(mc, {
     forms: null, formsErr: '', mailers: null, dflt: '', sendProvenAt: null, mailersNote: '', mailersLink: false, mailersUnknown: false,
     team: null, teamErr: '', scopes: null, sites: null, sitesErr: '',
-    edit: '', editMailer: '', busy: '', err: {}, note: '', noteBad: false, theme: {}
+    edit: '', editMailer: '', busy: '', err: {}, note: '', noteBad: false, theme: {},
+    // the installs whose approvers a Save changed since the tab last read who decides: their line reads the card's own reading
+    stale: new Set()
   });
 }
 fresh();
@@ -59,6 +65,12 @@ fresh();
 /** environment.js hands over its helpers once per render and once per bind; the card never reads the tab's state on its own. */
 export function setMailContext(deps, ctx) { D = deps; X = ctx; }
 export function resetMail() { fresh(); }
+/** The tab's read of who decides landed (environment.js loadDecisions): the card repaints, unless an editor is open (a repaint would drop its unsaved picks; the next paint reads it anyway). */
+export function decisionsArrived() {
+  mc.stale.clear();
+  if (mc.edit || mc.editMailer || Object.values(mc.theme).some(t => t && t.open)) return;
+  paintMail();
+}
 
 function setNote(text, bad = false) { mc.note = text || ''; mc.noteBad = !!bad; }
 function words(ex, fallback) { return ex?.sessionInvalidated ? '' : (ex?.data?.error || D.friendlyError(ex, fallback)); }
@@ -91,7 +103,9 @@ export async function loadMail() {
     mc.mailers = (Array.isArray(ms.value.mailers) ? ms.value.mailers : []).map(mailerRecord).filter(Boolean);
     mc.dflt = String(ms.value.default || '').toLowerCase();
     mc.sendProvenAt = ms.value.sendProvenAt || null;
-    mc.mailersNote = ''; mc.mailersLink = false; mc.mailersUnknown = false;
+    // no mailer yet answers an empty list (the route never asks whether a tenant is connected): the card says where one is
+    // made and that the forms keep every message meanwhile, the same words as a refusal before a tenant
+    mc.mailersNote = mc.mailers.length ? '' : 'No mailer yet. Make one on'; mc.mailersLink = !mc.mailers.length; mc.mailersUnknown = false;
   } else {
     mc.mailers = []; mc.dflt = ''; mc.mailersLink = false; mc.mailersUnknown = false;
     const c = code(ms.reason), s = ms.reason?.status;
@@ -163,7 +177,7 @@ function mailersHtml() {
 }
 
 /** The people of the team as checkboxes (owner first), the five roles as checkboxes with how many hold each today. Without the team (unreadable, or a role that cannot list it) no box paints and the words say the people already named stay as they are: a save then leaves them untouched (teamKnown). */
-function peopleBoxes(attr, picked, { note = '' } = {}) {
+function peopleBoxes(attr, picked, { note = '', fixed = '' } = {}) {
   const e = D.escapeHtml;
   const team = mc.team;
   if (!team) {
@@ -172,7 +186,11 @@ function peopleBoxes(attr, picked, { note = '' } = {}) {
   }
   if (!team.length) return '<p class="lic-hint">No team yet. Invite people on the Team tab; until then the owner hears.</p>';
   const set = new Set((picked || []).map(x => String(x).toLowerCase()));
-  return `<div class="lic-tells-grid">${team.map(p => `<label class="lic-tell"><input type="checkbox" ${attr} value="${e(p.email)}" ${set.has(p.email) ? 'checked' : ''}><span>${e(p.email)}</span><span class="lic-state is-quiet">${e(p.role)}</span></label>`).join('')}</div>${note ? `<p class="lic-hint">${e(note)}</p>` : ''}`;
+  // `fixed`: the one address a Save cannot untick (the form's own recipient the manifest needs or defaults, mailerUse.js
+  // recipientHold): ticked and disabled, and the note says where it is changed
+  const keep = String(fixed || '').toLowerCase();
+  const held = p => !!keep && p.email === keep;
+  return `<div class="lic-tells-grid">${team.map(p => `<label class="lic-tell"><input type="checkbox" ${attr} value="${e(p.email)}" ${set.has(p.email) || held(p) ? 'checked' : ''} ${held(p) ? 'disabled' : ''}><span>${e(p.email)}</span><span class="lic-state is-quiet">${e(p.role)}</span></label>`).join('')}</div>${note ? `<p class="lic-hint">${e(note)}</p>` : ''}`;
 }
 function roleBoxes(attr, picked, { note = '' } = {}) {
   const e = D.escapeHtml;
@@ -246,7 +264,11 @@ function formsHtml() {
     const tableLink = `<a class="acct-inline-link" href="#account?section=environment&card=data" data-acct-section="environment" data-acct-card="data" data-open-table="${e(f.table)}">${e(f.table)}</a>`;
     const toldWords = unknown && told.source !== 'form' ? 'tells whoever its mailer tells' : `tells ${whoWords(told)}${told.source === 'mailer' ? ' (the mailer\'s list)' : ''}`;
     const confirmWords = unknown && confirms.source !== 'form' ? 'confirms to the sender as its mailer does' : `${confirms.value ? 'confirms to the sender' : 'does not confirm to the sender'}${confirms.source === 'mailer' ? ' (as the mailer)' : ''}`;
-    const decideWords = f.waits ? ` Its rows wait for a decision by ${decidersWords(decidersOf(f, mc.team, mc.scopes, ownerEmail()))}.` : '';
+    // who decides: the server's own list for this install when the lane answers it (the ACTIVE team only, and whatever this
+    // role can read of the scopes), else this card's reading of the form and the scopes
+    const g = X.decisions && !mc.stale.has(f.installId) ? X.decisions(f.installId) : null;
+    const by = g && Array.isArray(g.deciders) ? namedDecidersWords(g.deciders, ownerEmail()) : decidersWords(decidersOf(f, mc.team, mc.scopes, ownerEmail()));
+    const decideWords = f.waits ? ` Its rows wait for a decision by ${by}.` : '';
     const pencil = X.canWrite() && mc.edit !== f.installId ? iconBtn('mail-form-edit', 'edit', `Change what ${f.name} sends and who decides`, `data-install="${e(f.installId)}"`) : '';
     return `
       <div class="ev-mail-item" data-row="${e(f.installId)}">
@@ -281,7 +303,7 @@ function formEditHtml(f, m, from) {
   return `
     <div class="ev-mail-edit" data-mail-editor="${e(key)}" role="group" aria-label="What ${e(f.name)} sends">
       <div class="ev-mail-field"><span class="acct-label">Send from</span>${fromCtl}</div>
-      <div class="ev-mail-field"><span class="acct-label">Tell these people</span>${peopleBoxes('data-mail-person', f.notifyTo)}</div>
+      <div class="ev-mail-field"><span class="acct-label">Tell these people</span>${peopleBoxes('data-mail-person', f.notifyTo, { fixed: f.recipientHold ? f.recipient : '', note: recipientHoldWords(f.recipient, f.recipientHold, f.recipientLabel) })}</div>
       <div class="ev-mail-field"><span class="acct-label">Tell these roles</span>${roleBoxes('data-mail-role', f.notifyRoles, { note: `${inherited} A role tells everyone who holds it now, and whoever gets it later.` })}</div>
       <div class="ev-mail-field"><span class="acct-label">Confirm to the sender</span>${confirmSel}</div>
       <div class="ev-mail-field"><span class="acct-label">Who decides</span>${waitsNote}${roleBoxes('data-mail-approver-role', d.named ? d.roles : [])}${peopleBoxes('data-mail-approver', d.named ? d.people : [], { note: decideNote })}</div>
@@ -304,7 +326,10 @@ async function saveForm(installId) {
     mailer: fromSel ? fromSel.value : f.mailer,
     people: known ? pick('[data-mail-person]') : null, roles: pick('[data-mail-role]'),
     confirm: root.querySelector('[data-mail-confirm-sel]')?.value,
-    approverRoles: pick('[data-mail-approver-role]'), approverPeople: known ? pick('[data-mail-approver]') : emailList(f.approversFrom === 'setting' ? f.approvers : [])
+    approverRoles: pick('[data-mail-approver-role]'), approverPeople: known ? pick('[data-mail-approver]') : emailList(f.approversFrom === 'setting' ? f.approvers : []),
+    // the older one-address setting: unticked, it is cleared too, or the form would go on mailing it; never when the
+    // manifest needs it or defaults it (recipientHold), where '' would be refused or bring the default back
+    recipient: f.recipient, recipientHold: f.recipientHold
   });
   const key = `form:${installId}`;
   mc.busy = key; mc.err[key] = ''; setNote(''); paintMail();
@@ -313,6 +338,9 @@ async function saveForm(installId) {
     const got = d && d.module ? formsOf([d.module])[0] : null;
     if (got) mc.forms = mc.forms.map(x => x.installId === installId ? got : x);
     mc.edit = '';
+    // who decides changed: the tab reads GET approvals again (one read; decisionsArrived repaints), and until it lands this
+    // form's line reads the card's own reading of what was saved, never the deciders from before the Save
+    if (X.reloadDecisions && approversChanged(f, settings)) { mc.stale.add(installId); void X.reloadDecisions(); }
     const lost = lostWords(settings, d && d.module && d.module.settings);
     const kept = known ? '' : ' The people already named were kept; the team could not be read.';
     setNote(`${f.name} is saved.${kept}${lost ? ` ${lost}` : ''}`, !!lost);
@@ -328,7 +356,9 @@ async function saveForm(installId) {
 
 /* ---------- the look of the mail, per site ---------- */
 
-function themeState(slug) { return mc.theme[slug] || (mc.theme[slug] = { open: false, loaded: false, readErr: '', source: 'default', theme: themeOf(null), draft: null, follow: true, armFollow: false, err: {}, preview: '', previewErr: '', unsupported: false }); }
+function themeState(slug) { return mc.theme[slug] || (mc.theme[slug] = { open: false, loaded: false, readErr: '', source: 'default', theme: themeOf(null), draft: null, follow: true, armFollow: false, err: {}, preview: '', previewErr: '', unsupported: false, gone: false }); }
+/** The theme routes answer 404 SITE_NOT_FOUND when the site's row is gone; any other 404 is a lane without the route. */
+function siteGone(ex) { return code(ex) === 'SITE_NOT_FOUND'; }
 let armFollowTimer = null;
 const ARM_FOLLOW_MS = 8000;
 /** The Follow switch armed (the first press when the owner had set a look): a second press within the window confirms; anything else puts it back. */
@@ -370,6 +400,7 @@ function siteHtml(s) {
 function themeEditHtml(s, t) {
   const e = D.escapeHtml;
   const key = `theme:${s.slug}`;
+  if (t.gone) return `<div class="ev-mail-edit" data-mail-editor="${e(key)}"><p class="lic-hint is-bad" role="status">${e(siteGoneWords(X.siteName(s)))}</p></div>`;
   if (t.unsupported) return `<div class="ev-mail-edit" data-mail-editor="${e(key)}"><p class="lic-hint">This lane does not keep a mail look yet. Deploy the backend that carries it, then reload.</p></div>`;
   // the look could not be read (anything but a 404): nothing to edit over, so no switch, no fields and no Save; a Read again, and the words
   if (!t.loaded) {
@@ -383,7 +414,7 @@ function themeEditHtml(s, t) {
     if (kind === 'color') ctl = `<span class="ev-mail-color"><input type="color" data-mail-theme-field="${k}" value="${e(draft[k])}" aria-label="${e(label)}"><code>${e(draft[k])}</code></span>`;
     else if (kind === 'font') ctl = `<select class="acct-input" data-mail-theme-field="${k}" aria-label="${e(label)}">${FONTS.map(f => `<option value="${f}" ${draft.fontFamily === f ? 'selected' : ''}>${e(FONT_WORDS[f])}</option>`).join('')}</select>`;
     else if (kind === 'textarea') ctl = `<textarea class="acct-input" data-mail-theme-field="${k}" rows="2" maxlength="300" aria-label="${e(label)}" placeholder="Sent by ${e(draft.brandName || X.siteName(s))}">${e(draft[k])}</textarea>`;
-    else ctl = `<input class="acct-input" type="${kind}" data-mail-theme-field="${k}" value="${e(draft[k])}" maxlength="${k === 'brandName' ? 80 : 2000}" aria-label="${e(label)}" autocomplete="off" spellcheck="false" ${kind === 'url' ? 'placeholder="https://"' : ''}>`;
+    else ctl = `<input class="acct-input" type="${kind}" data-mail-theme-field="${k}" value="${e(draft[k])}" maxlength="${k === 'brandName' ? 80 : MAX_LOGO}" aria-label="${e(label)}" autocomplete="off" spellcheck="false" placeholder="${kind === 'url' ? 'https://' : 'Your organization\'s name'}">`;
     return `<div class="ev-mail-theme-field ${kind === 'textarea' ? 'is-wide' : ''} ${err ? 'is-bad' : ''}"><span class="acct-label">${e(label)}</span>${ctl}${err}</div>`;
   };
   const fields = follow ? '' : `<div class="ev-mail-theme-grid">${THEME_FIELDS.map(field).join('')}</div>`;
@@ -429,10 +460,11 @@ async function readTheme(slug) {
   mc.busy = `theme-read:${slug}`; t.readErr = ''; paintMail();
   try {
     const d = await D.apiFetch(X.url(`${ENV_URL}/publish/${encodeURIComponent(slug)}/theme`));
-    t.theme = themeOf(d && d.theme); t.source = sourceOf(d); t.unsupported = false; t.loaded = true;
+    t.theme = themeOf(d && d.theme); t.source = sourceOf(d); t.unsupported = false; t.gone = false; t.loaded = true;
   } catch (ex) {
     const site = (sites() || []).find(x => x.slug === slug);
-    if (ex?.status === 404 && site && site.mailTheme) { t.theme = themeOf(site.mailTheme); t.source = sourceOf(site); t.loaded = true; }
+    if (siteGone(ex)) { t.gone = true; t.loaded = false; t.readErr = ''; }
+    else if (ex?.status === 404 && site && site.mailTheme) { t.theme = themeOf(site.mailTheme); t.source = sourceOf(site); t.loaded = true; }
     else if (ex?.status === 404) { t.unsupported = true; t.loaded = true; }
     else { t.loaded = false; t.readErr = words(ex, 'The look could not be read right now.'); }
   }
@@ -472,17 +504,20 @@ async function saveTheme(slug) {
   const key = `theme:${slug}`;
   mc.err[key] = '';
   if (!v.ok) { mc.err[key] = 'Look at the fields marked below.'; paintMail(); return; }
+  // only what the owner changed goes (the server merges it over the look as stored): the filled-in name and footer stay unsent
+  const sent = themeChanges(t.theme, v.theme);
   mc.busy = key; setNote(''); paintMail();
   try {
-    const d = await D.apiFetch(X.url(`${ENV_URL}/publish/${encodeURIComponent(slug)}/theme`), { method: 'PUT', body: X.body(themeBody(v.theme)) });
-    t.theme = themeOf(d && d.theme ? d.theme : { ...v.theme, derived: false }); t.source = d && d.source ? sourceOf(d) : 'site';
+    const d = await D.apiFetch(X.url(`${ENV_URL}/publish/${encodeURIComponent(slug)}/theme`), { method: 'PUT', body: X.body(sent) });
+    t.theme = themeAfterSave(t.theme, sent, d && d.theme ? d.theme : { ...t.theme, ...sent, derived: false }); t.source = d && d.source ? sourceOf(d) : 'site';
     t.follow = false; t.draft = null; t.preview = '';
     const site = (sites() || []).find(x => x.slug === slug); if (site) site.mailTheme = { ...t.theme };
     setNote(`The look of ${X.siteName(site || { slug })}'s mail is saved.`);
   } catch (ex) {
     const c = code(ex);
     if (c === 'THEME_INVALID' && ex.data && ex.data.field) t.err[ex.data.field] = ex.data.error;
-    mc.err[key] = ex?.status === 404 ? 'This lane does not keep a mail look yet.' : words(ex, 'The look could not be saved right now.');
+    if (siteGone(ex)) t.gone = true;
+    mc.err[key] = siteGone(ex) ? '' : ex?.status === 404 ? 'This lane does not keep a mail look yet.' : words(ex, 'The look could not be saved right now.');
   }
   mc.busy = ''; paintMail();
 }
@@ -499,7 +534,8 @@ async function resetTheme(slug) {
     const site = (sites() || []).find(x => x.slug === slug); if (site) site.mailTheme = d && d.theme ? { ...t.theme } : null;
     setNote(`${X.siteName(site || { slug })}'s mail ${t.source === 'website' ? 'follows the website again' : 'has the default look again'}.`);
   } catch (ex) {
-    mc.err[key] = ex?.status === 404 ? 'This lane does not keep a mail look yet.' : words(ex, 'That could not be undone right now.');
+    if (siteGone(ex)) t.gone = true;
+    mc.err[key] = siteGone(ex) ? '' : ex?.status === 404 ? 'This lane does not keep a mail look yet.' : words(ex, 'That could not be undone right now.');
     t.follow = false;
   }
   mc.busy = ''; paintMail();
@@ -520,7 +556,8 @@ async function previewTheme(slug) {
     t.preview = await res.text();
   } catch (ex) {
     t.preview = '';
-    t.previewErr = ex?.status === 404 ? 'This lane does not draw the preview yet.' : words(ex, 'The preview could not be drawn right now.');
+    if (siteGone(ex)) t.gone = true;
+    t.previewErr = siteGone(ex) ? '' : ex?.status === 404 ? 'This lane does not draw the preview yet.' : words(ex, 'The preview could not be drawn right now.');
   }
   mc.busy = ''; paintMail();
 }

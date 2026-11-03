@@ -1,7 +1,7 @@
 // tests/mailer-use.test.mjs: which form sends from which mailer (src/account/mailerUse.js). Run: node --test tests/
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { takesMail, tableOf, formsOf, resolvedMailer, formsFor, moderates, intentOf, approversOf } from '../src/account/mailerUse.js';
+import { takesMail, tableOf, formsOf, resolvedMailer, formsFor, moderates, intentOf, approversOf, recipientSetting, recipientHold } from '../src/account/mailerUse.js';
 
 const form = (installId, name, settings = {}, doors = ['submissions'], table) => ({ installId, name, buildName: name, enabled: true, manifest: { doors, ...(table ? { table } : {}) }, settings });
 const mailers = [{ address: 'forms@bridgesindust.com' }, { address: 'reviews@bridgesindust.com' }];
@@ -29,6 +29,29 @@ test('formsOf keeps the mailing installs with their name, table, pick and switch
   // the form's own people and switch (2026-11-02): read as set, so the card can say when a form differs from its mailer
   const own = formsOf([form('f1', 'Contact', { notify_to: ['Ops@site.test', ''], confirm_visitor: 'false' }), form('f2', 'Reviews', { confirm_visitor: true }), form('f3', 'Partners', {})]);
   assert.deepEqual(own.map(f => [f.notifyTo, f.confirmVisitor]), [[['ops@site.test'], false], [[], true], [[], null]]);
+  // the older one-address `recipient` counts among the form's people and is kept on its own, so a Save can clear it
+  const [older] = formsOf([form('f1', 'Contact', { recipient: ' Sales@Site.test ', notify_to: ['ops@site.test'] })]);
+  assert.deepEqual([older.notifyTo, older.recipient], [['sales@site.test', 'ops@site.test'], 'sales@site.test']);
+  assert.equal(formsOf([form('f2', 'Contact', { recipient: 'not an address' })])[0].recipient, '');
+  assert.equal(formsOf([form('f3', 'Contact', {})])[0].recipient, '');
+});
+
+test('the older recipient is the manifest\'s own setting: a Save empties it only when \'\' empties it on the server', () => {
+  // the server reads '' as not sent (auth/buildsStore.js validSettings, the schema loop): the declared default, or 400 when required
+  const decl = (extra) => ({ doors: ['submissions'], settings: [{ key: 'recipient', label: 'Send to', type: 'email', required: false, default: '', ...extra }] });
+  assert.equal(recipientHold(decl({})), '', 'optional, no default: \'\' empties it');
+  assert.equal(recipientHold(decl({ required: true })), 'required', 'the backend\'s own fixture: required, so \'\' is refused');
+  assert.equal(recipientHold(decl({ default: 'sales@site.test' })), 'default', 'a default: \'\' brings it back');
+  assert.equal(recipientHold(decl({ required: true, default: 'sales@site.test' })), 'default', 'required with a default: \'\' takes the default');
+  assert.equal(recipientHold({ doors: ['submissions'] }), '', 'not declared: any save drops it');
+  assert.equal(recipientHold(null), '');
+  assert.deepEqual(recipientSetting(decl({ required: true })), { key: 'recipient', label: 'Send to', type: 'email', required: true, default: '' });
+  assert.equal(recipientSetting({ settings: [{ key: 'other' }] }), null);
+  const fixed = { installId: 'f1', name: 'Contact', manifest: decl({ required: true }), settings: { recipient: 'Sales@Site.test' } };
+  const [f] = formsOf([fixed]);
+  assert.deepEqual([f.recipient, f.recipientHold, f.recipientLabel], ['sales@site.test', 'required', 'Send to']);
+  const [none] = formsOf([{ ...fixed, settings: {} }]);
+  assert.deepEqual([none.recipient, none.recipientHold, none.recipientLabel], ['', '', ''], 'no older recipient stored: nothing held');
 });
 
 test('a form\'s mailer resolves as the server does: its own pick when held, else the default', () => {
