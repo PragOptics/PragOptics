@@ -651,7 +651,8 @@ function rowsTableHtml(rows, shape) {
     const inner = innerOf(r) || {};
     const cells = cols.map(c => { const txt = cellText(inner[c.key]); return `<td class="cell-ellip" data-th="${e(c.label)}" title="${e(txt)}">${e(txt)}</td>`; }).join('');
     const plain = shape.plain ? `<td class="cell-ellip" data-th="Value" title="${e(cellText(r.value))}">${e(cellText(r.value))}</td>` : '';
-    const status = shape.status ? `<td class="cell-tight" data-th="Status">${statusTag(statusOf(r))}</td>` : '';
+    // a decided row says when and by whom under its tag (2026-11-03, the approvals test: the Cards view showed "rejected" and nothing else)
+    const status = shape.status ? `<td class="cell-tight" data-th="Status">${statusTag(statusOf(r))}${decidedWords(r.value) ? `<div class="ev-decided adm-muted">${e(decidedWords(r.value))}</div>` : ''}</td>` : '';
     // the row's mail outcome in a few words (2026-11-02, Cameron: "the rows need status for sent or not, and to user and team")
     const mail = shape.mail ? `<td class="cell-tight adm-muted" data-th="Mail">${e(mailShort(r.value))}</td>` : '';
     const when = shape.when ? `<td class="cell-tight adm-muted" data-th="When">${whenOf(r) ? e(D.fmtDate(whenOf(r))) : ''}</td>` : '';
