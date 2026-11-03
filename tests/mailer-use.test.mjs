@@ -1,7 +1,7 @@
 // tests/mailer-use.test.mjs: which form sends from which mailer (src/account/mailerUse.js). Run: node --test tests/
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { takesMail, tableOf, formsOf, resolvedMailer, formsFor } from '../src/account/mailerUse.js';
+import { takesMail, tableOf, formsOf, resolvedMailer, formsFor, moderates, intentOf } from '../src/account/mailerUse.js';
 
 const form = (installId, name, settings = {}, doors = ['submissions'], table) => ({ installId, name, buildName: name, enabled: true, manifest: { doors, ...(table ? { table } : {}) }, settings });
 const mailers = [{ address: 'forms@bridgesindust.com' }, { address: 'reviews@bridgesindust.com' }];
@@ -47,4 +47,27 @@ test('formsFor splits a mailer\'s forms into the ones that name it and the ones 
   assert.deepEqual(b.explicit.map(f => f.name), ['Reviews']);
   assert.deepEqual(b.byDefault, []);
   assert.deepEqual(formsFor('FORMS@bridgesindust.com', forms, mailers, 'forms@bridgesindust.com').explicit.length, 1, 'case does not matter');
+});
+
+test('rows wait for a decision as the server rules it: the manifest says so unless the setting is off, the setting turns it on, a reader door waits by default', () => {
+  assert.equal(moderates({ manifest: { moderate: true }, settings: {} }), true);
+  assert.equal(moderates({ manifest: { moderate: true }, settings: { moderate: false } }), false);
+  assert.equal(moderates({ manifest: { doors: ['submissions'] }, settings: { moderate: 'true' } }), true);
+  assert.equal(moderates({ manifest: { doors: ['submissions', 'reader'] }, settings: {} }), true);
+  assert.equal(moderates({ manifest: { doors: ['submissions', 'reader'] }, settings: { moderate: 'false' } }), false);
+  assert.equal(moderates({ manifest: { doors: ['submissions'] }, settings: {} }), false);
+  assert.equal(moderates(null), false);
+});
+
+test('the intent word is the owner\'s setting over the manifest\'s, in the plan\'s alphabet; the new settings read empty on an older lane', () => {
+  assert.equal(intentOf({ manifest: { intent: 'review' }, settings: {} }), 'review');
+  assert.equal(intentOf({ manifest: { intent: 'review' }, settings: { intent: 'Quote-Request' } }), 'quote-request');
+  assert.equal(intentOf({ manifest: {}, settings: { intent: 'not a word' } }), '');
+  assert.equal(intentOf({}), '');
+  const [f] = formsOf([form('f1', 'Reviews', { notify_roles: ['Admin', 'agent'], approvers: ['developer', 'Ops@site.test'], intent: 'review', moderate: true }, ['submissions', 'reader'])]);
+  assert.deepEqual([f.notifyRoles, f.approvers, f.intent, f.waits], [['admin'], ['developer', 'ops@site.test'], 'review', true]);
+  const [g] = formsOf([{ ...form('f2', 'Contact'), manifest: { doors: ['submissions'], approvers: ['admin', 'agent'] } }]);
+  assert.deepEqual([g.notifyRoles, g.approvers, g.intent, g.waits], [[], ['admin'], '', false], 'no setting: the manifest\'s default approvers, roles only');
+  const [h] = formsOf([form('f3', 'Partners', { approvers: [] })]);
+  assert.deepEqual(h.approvers, [], 'an empty setting names nobody, whatever the manifest says');
 });

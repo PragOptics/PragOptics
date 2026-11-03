@@ -11,33 +11,32 @@
 // What the code calls the runtime's approval, role and proof reads as mail access: approved, its permission, checked. The
 // routes, codes and state keys keep their names; only the words on the card change.
 //
+// THE MICROSOFT SIDE ONLY (2026-11-03, the plan D6): this card makes mailers and proves them. What a mailer tells, which
+// form sends from it, who is told and who decides moved to the Mail card on the Environment tab (src/account/mailCard.js),
+// so there is one editor for a mail setting; each mailer here reads its line and points there.
+//
 // The card, top to bottom (the hero shape of 2026-11-02, licensingShared.heroHtml):
 //   the hero: the plan's ring with its count, the state as a tag, ONE sentence, New mailer;
 //   the three steps when one is not done (Approve: Microsoft's page and back; the permission; Check);
-//   Your mailers: each one a container with its address, Copy, Send a test, and the forms it sends for;
-//   Your forms: each form that takes submissions (mailerUse.takesMail) with the mailer it sends from, picked here
-//     (PUT v1/environment/modules/{id} { settings: { mailer } }; '' is the environment's mailer, the default);
+//   Your mailers: each one a container with its address, Copy, Send a test, and what it tells, read-only, with the link;
 //   New mailer: the form, under the hero for the first mailer and behind the button after;
 //   the approval's dates and Check again, folded, once every step is green.
 //
 //   GET  v1/environment/licensing/exchange            POST .../exchange/connect -> { url }    GET v1/licensing/exchange/consent (back)
 //   POST .../exchange/role    POST .../exchange/check    POST .../exchange/mailboxes { name, displayName, host }
-//   GET  v1/environment/mailers (the default, the send proof)    POST v1/environment/mailers/test { address }
-//   GET  v1/environment/modules (the forms)                      PUT  v1/environment/modules/{id} { settings: { mailer } }
+//   GET  v1/environment/mailers (the default, the send proof, what each tells)    POST v1/environment/mailers/test { address }
 //
 // The runtime takes tens of seconds (Exchange plus a cold start): the buttons say so while they wait.
-// licensing.js paints the card and routes its clicks and its selects here.
+// licensing.js paints the card and routes its clicks here.
 
 import { iconBtn, leadBtn, copyButton, ringHtml } from './cards.js';
 import { explainLink } from '../components/explainer.js';
 import { LIC_URL, lc, st, url, cardHtml, perms, call, send, reqLead, reqIcon, errHtml, noteHtml, setNote, kept, forget, sentence, showsLicensing, dayWord, countWord, cap, heroHtml, cardLink } from './licensingShared.js';
 import { PRAG_API_BASE } from '../runtime/config.js';
 import { tenantConnected } from './licensingWizard.js';
-import { formsOf, formsFor, resolvedMailer } from './mailerUse.js';
-import { listWords } from './domainFamilies.js';
+import { mailerRecord, whoWords } from './mailRouting.js';
 
 const MAILERS_URL = `${PRAG_API_BASE}/environment/mailers`;
-const MODULES_URL = `${PRAG_API_BASE}/environment/modules`;
 
 const RETURN_KEY = 'pragoptics_exchange_return';
 const RETURN_SAID = {
@@ -63,7 +62,7 @@ const CODES = {
 /** Back from Microsoft's page (bootstrap.js keeps the answer): the card says once what came of it. The reads are dropped with the visit. */
 export function resetExchange() {
   lc.ex = null; lc.exErr = ''; lc.exLive = null; lc.exTest = null;
-  lc.exNew = false; lc.exMailers = null; lc.exForms = null; lc.exFormsErr = ''; lc.exEdit = '';
+  lc.exNew = false; lc.exMailers = null;
   let r = null;
   try { r = JSON.parse(sessionStorage.getItem(RETURN_KEY) || 'null'); sessionStorage.removeItem(RETURN_KEY); } catch { r = null; }
   if (r && r.outcome) {
@@ -75,22 +74,20 @@ export function resetExchange() {
 
 /**
  * The card's reads, once per load, only when the tenant is connected: the exchange record; then, once mail access is
- * approved, the mailers as the forms see them (the default, the send proof) and the forms themselves. A part that fails
- * to read is said on the card in its place; the card itself never waits on it. A lane without the route leaves the card out.
+ * approved, the mailers as the forms see them (the default, the send proof, what each tells). A part that fails to read
+ * is said on the card in its place; the card itself never waits on it. A lane without the route leaves the card out.
  */
 export async function loadExchange() {
-  if (!tenantConnected()) { lc.ex = null; lc.exMailers = null; lc.exForms = null; return; }
+  if (!tenantConnected()) { lc.ex = null; lc.exMailers = null; return; }
   try { lc.ex = await st.D.apiFetch(url(`${LIC_URL}/exchange`)); lc.exErr = ''; }
   catch (ex) {
     lc.ex = null;
     lc.exErr = ex?.status === 404 && !ex?.data?.code ? '' : (ex?.data?.error || st.D.friendlyError(ex, 'Your mailers could not be read right now.'));
   }
   const x = ex();
-  if (!x || !x.approved) { lc.exMailers = null; lc.exForms = null; lc.exFormsErr = ''; return; }
-  const [ms, fs] = await Promise.allSettled([st.D.apiFetch(url(MAILERS_URL)), st.D.apiFetch(url(MODULES_URL))]);
-  lc.exMailers = ms.status === 'fulfilled' && ms.value && typeof ms.value === 'object' ? ms.value : null;
-  lc.exForms = fs.status === 'fulfilled' ? formsOf(fs.value) : null;
-  lc.exFormsErr = fs.status === 'rejected' ? (fs.reason?.data?.error || st.D.friendlyError(fs.reason, 'Your forms could not be read right now.')) : '';
+  if (!x || !x.approved) { lc.exMailers = null; return; }
+  try { const ms = await st.D.apiFetch(url(MAILERS_URL)); lc.exMailers = ms && typeof ms === 'object' ? ms : null; }
+  catch { lc.exMailers = null; }
 }
 function ex() { return lc.ex?.exchange || null; }
 function canManage() { const d = lc.ex; return d ? !!d.canManageDomainsMail : false; }
@@ -129,7 +126,7 @@ export function exchangeHtml() {
     // "0 of 2 mailers · ready" read as a readiness count (2026-11-02, Cameron): the count is the plan's allowance, said so,
     // with the ring; the state is its own tag
     summary = `${count} of ${limit} on your plan${green ? '' : ' · not checked yet'}`;
-    inner = `${heroMailers(x, made, count, limit, green, e)}${ro}${green ? '' : stateHtml(x, e)}${listHtml(x, made, e)}${formsHtml(x, made, e)}${newHtml(x, made, count, limit, e)}${green ? approvedHtml(x, e) : ''}`;
+    inner = `${heroMailers(x, made, count, limit, green, e)}${ro}${green ? '' : stateHtml(x, e)}${listHtml(x, made, e)}${newHtml(x, made, count, limit, e)}${green ? approvedHtml(x, e) : ''}`;
   }
   // folded only while the platform is setting things up (nothing to do); open wherever the person has a step to take
   return cardHtml({ key: 'exchange', icon: 'send', title: 'Mailers', summary: e(summary), explain: EXPLAIN, open: !!x.configured, body: `${noteHtml('exchange')}${errHtml('exchange')}${inner}` });
@@ -176,113 +173,25 @@ function approvedHtml(x, e) {
   return `<details class="lic-past lic-runtime"><summary>${e(when)}</summary><p class="lic-hint">PragOptics makes your mailers in your Microsoft tenant with the permission you approved there. Check again reads your tenant; it takes up to a minute.</p>${check}</details>`;
 }
 
-/** The mailers the platform made, each with the forms it sends for; then what Check found in the tenant beside them. */
+/** The mailers the platform made, each with what it tells (read here, set on the Mail card); then what Check found in the tenant beside them. */
 function listHtml(x, made, e) {
   const live = Array.isArray(lc.exLive) ? lc.exLive : null;
-  const mailers = mailerList(x), dflt = defaultOf(x), forms = lc.exForms;
+  const mailers = mailerList(x), dflt = defaultOf(x);
   const testNote = (m) => lc.exTest && lc.exTest.address === m.address ? `<p class="lic-hint ${lc.exTest.bad ? 'is-bad' : ''}" role="status">${e(lc.exTest.text)}</p>` : '';
-  const sendsFor = (a) => {
-    if (!forms) return lc.exFormsErr ? `<p class="lic-hint is-bad">${e(lc.exFormsErr)}</p>` : '';
-    const use = formsFor(a, forms, mailers, dflt);
-    const names = [...use.explicit.map(f => f.name), ...use.byDefault.map(f => use.explicit.length || mailers.length > 1 ? `${f.name} (as the environment's mailer)` : f.name)];
-    return names.length ? `<p class="lic-mailer-for">Sends for ${e(listWords(names))}.</p>` : `<p class="lic-mailer-for adm-muted">Sends for no form yet${forms.length ? ': pick it under Your forms below' : ''}.</p>`;
+  // what a mailer tells and confirms, as the mailers route answers it; changed on the Mail card, the one editor (2026-11-03)
+  const tells = (a) => {
+    const m = mailerRecord(mailers.find(r => String(r.address || '').toLowerCase() === a));
+    if (!m) return '';
+    return `<p class="lic-mailer-for">Tells ${e(whoWords(m))} · ${m.confirmVisitor ? 'confirms to the sender' : 'does not confirm to the sender'}. Which forms send from it, and who is told, is set on the ${cardLink('environment', 'mail', 'Mail card')}.</p>`;
   };
   const rows = made.map(m => {
     const a = String(m.address || '').toLowerCase();
-    return `<li class="lic-mailer"><div class="lic-dom-row"><span class="ev-code lic-dom-host" id="licEx-${e(m.address)}">${e(m.address)}</span>${a === dflt ? '<span class="acct-tag is-verified">default</span>' : ''}<span class="lic-state is-quiet">${e(m.displayName || m.name || '')}</span><span class="lic-dom-act">${iconBtn({ lic: 'ex-copy' }, 'copy', `Copy ${m.address}`, `data-address="${e(m.address)}"`)}${canManage() ? reqLead(`ex-test:${m.address}`, { lic: 'ex-test' }, 'send', 'Send a test', 'Sending…', `data-address="${e(m.address)}" data-tip="Send one test message from this mailer to you"`) : ''}</span></div>${tellsHtml(a, mailers, e)}${sendsFor(a)}<p class="lic-hint">Made ${e(dayWord(m.createdAt))}. Your team reads it in Outlook once given access in the Exchange admin center.</p>${testNote(m)}</li>`;
+    return `<li class="lic-mailer"><div class="lic-dom-row"><span class="ev-code lic-dom-host" id="licEx-${e(m.address)}">${e(m.address)}</span>${a === dflt ? '<span class="acct-tag is-verified">default</span>' : ''}<span class="lic-state is-quiet">${e(m.displayName || m.name || '')}</span><span class="lic-dom-act">${iconBtn({ lic: 'ex-copy' }, 'copy', `Copy ${m.address}`, `data-address="${e(m.address)}"`)}${canManage() ? reqLead(`ex-test:${m.address}`, { lic: 'ex-test' }, 'send', 'Send a test', 'Sending…', `data-address="${e(m.address)}" data-tip="Send one test message from this mailer to you"`) : ''}</span></div>${tells(a)}<p class="lic-hint">Made ${e(dayWord(m.createdAt))}. Your team reads it in Outlook once given access in the Exchange admin center.</p>${testNote(m)}</li>`;
   }).join('');
   const others = live ? live.filter(m => !made.some(x2 => x2.address === m.address)) : [];
   const liveRows = others.map(m => `<li class="lic-mailer"><div class="lic-dom-row"><span class="ev-code lic-dom-host">${e(m.address)}</span><span class="lic-state is-quiet">${e(m.displayName || m.name || '')}</span></div><p class="lic-hint">In your tenant already, not made here${m.fullAccess?.length ? `; ${countWord(m.fullAccess.length, 'person has', 'people have')} access` : ''}.</p></li>`).join('');
   if (!rows && !liveRows) return live ? '<p class="lic-hint">Your tenant holds no shared mailbox, so you have no mailer yet.</p>' : '';
   return `<h4 class="lic-sub lic-sub--gap">Your mailers</h4><ul class="lic-dom-list">${rows}${liveRows}</ul>${errHtml('exchange-test')}`;
-}
-
-/* ---------- who a mailer tells (2026-11-02, Cameron: "who it mails, as in a specific team in the owners environment") ---------- */
-
-/** The environment's people a mailer may tell: the team seats the licensing read lists (owner first), ACTIVE only. */
-function teamSeats() {
-  const seats = (lc.view?.seats || []).filter(s => s && s.email && String(s.status || 'ACTIVE').toUpperCase() === 'ACTIVE');
-  return seats.sort((x, y) => (y.role === 'owner') - (x.role === 'owner') || String(x.email).localeCompare(String(y.email)));
-}
-/** The mailer's record as the mailers route answers it (its people and switch), by address. */
-function mailerOf(address, mailers) { return (Array.isArray(mailers) ? mailers : []).find(m => String(m.address || '').toLowerCase() === address) || null; }
-
-/** The line "Tells a, b · confirms to the sender", and the editor behind its pencil: the team as checkboxes, the switch, Save. */
-function tellsHtml(address, mailers, e) {
-  const m = mailerOf(address, mailers);
-  if (!m) return '';
-  const notify = Array.isArray(m.notify) ? m.notify : [];
-  const confirms = m.confirmVisitor !== false;
-  const seats = teamSeats();
-  const nameOf = (addr) => { const s = seats.find(x => String(x.email).toLowerCase() === addr); return s && s.role === 'owner' ? `${addr} (owner)` : addr; };
-  const who = notify.length ? listWords(notify.map(nameOf)) : 'the owner';
-  const line = `<p class="lic-mailer-for">Tells ${e(who)} · ${confirms ? 'confirms to the sender' : 'does not confirm to the sender'}.${canAssign() && lc.exEdit !== address ? ` ${iconBtn({ lic: 'ex-tells-edit' }, 'edit', `Change who ${address} tells`, `data-address="${e(address)}"`)}` : ''}</p>`;
-  if (lc.exEdit !== address || !canAssign()) return line;
-  const boxes = seats.length ? seats.map(s => {
-    const addr = String(s.email).toLowerCase();
-    return `<label class="lic-tell"><input type="checkbox" data-lic-tell="${e(address)}" value="${e(addr)}" ${notify.includes(addr) ? 'checked' : ''}><span>${e(s.email)}</span><span class="lic-state is-quiet">${e(s.role || 'member')}</span></label>`;
-  }).join('') : '<p class="lic-hint">No team yet. Invite people on the Team tab; until then the owner hears.</p>';
-  const saving = lc.busy === `ex-tells:${address}`;
-  return `${line}
-    <div class="lic-tells" role="group" aria-label="Who ${e(address)} tells">
-      <p class="lic-hint">Who hears about every message a form sends through this mailer. Nobody checked: the owner. A form with its own list keeps it.</p>
-      <div class="lic-tells-grid">${boxes}</div>
-      <label class="lic-tell lic-tell--switch"><input type="checkbox" id="licExConfirm-${e(address)}" ${confirms ? 'checked' : ''}><span>Confirm to the sender</span><span class="lic-state is-quiet">a copy of what they sent, when the form took their email</span></label>
-      ${errHtml(`exchange-tells:${address}`)}
-      <div class="acct-actions-row">${reqLead(`ex-tells:${address}`, { lic: 'ex-tells-save' }, 'check', 'Save', 'Saving…', `data-address="${e(address)}"`, 'btn-primary')}${saving ? '' : iconBtn({ lic: 'ex-tells-cancel' }, 'x', 'Keep it as it is')}</div>
-    </div>`;
-}
-
-/** Save who a mailer tells and whether it confirms: PUT on the mailer; the answer replaces it in the list the card reads. */
-async function saveTells(address) {
-  const a = String(address || '').toLowerCase();
-  if (!a || lc.busy) return;
-  const notify = [...document.querySelectorAll(`input[data-lic-tell="${CSS.escape(a)}"]:checked`)].map(x => String(x.value || '').toLowerCase()).filter(Boolean);
-  const confirmVisitor = !!document.getElementById(`licExConfirm-${a}`)?.checked;
-  const key = `exchange-tells:${a}`;
-  lc.err[key] = '';
-  await send(`ex-tells:${a}`, 'Saving…', async () => {
-    const d = await call(`${MAILERS_URL}/${encodeURIComponent(a)}`, 'PUT', { notify, confirmVisitor });
-    const got = d && d.mailer;
-    if (got && lc.exMailers && Array.isArray(lc.exMailers.mailers)) lc.exMailers.mailers = lc.exMailers.mailers.map(m => String(m.address || '').toLowerCase() === a ? { ...m, ...got } : m);
-    lc.exEdit = '';
-    setNote('exchange', `${a} tells ${notify.length ? listWords(notify) : 'the owner'} now${confirmVisitor ? ', and confirms to the sender' : ', and does not confirm to the sender'}.`);
-  }, {
-    errKey: key, fallback: 'That could not be saved right now.',
-    codes: { ...CODES, OWNER_ONLY: (ex2) => ex2?.data?.error || 'Only the owner and active members of your team can be told.', NO_MAILER: 'That mailer is gone. Reload the tab.', NOTIFY_INVALID: (ex2) => ex2?.data?.error || 'Pick people from the list.', CONFIRM_INVALID: 'The confirmation switch is on or off.' }
-  });
-}
-
-/**
- * The forms that take submissions, each with the mailer it sends from (2026-11-02, Cameron: "what each mailer is sending
- * on behalf of, as in what table drives it"). The pick is the install's `mailer` setting; empty is the environment's
- * mailer. The server checks the role again on every save (member and above, on a lane that writes).
- */
-function formsHtml(x, made, e) {
-  const forms = lc.exForms;
-  if (!made.length || !forms) return '';
-  const head = '<h4 class="lic-sub lic-sub--gap">Your forms</h4>';
-  if (!forms.length) return `${head}<p class="lic-hint">No form on your site takes submissions yet. A form published from the studio appears here with the mailer it sends from.</p>`;
-  const mailers = mailerList(x), dflt = defaultOf(x);
-  const can = canAssign() && x.writes !== false;
-  const rows = forms.map(f => {
-    const now = resolvedMailer(f, mailers, dflt);
-    const own = String(f.mailer || '').toLowerCase();
-    const picked = own && mailers.some(m => String(m.address || '').toLowerCase() === own) ? own : '';
-    const opts = [`<option value="" ${picked ? '' : 'selected'}>${e(`The environment's mailer${dflt ? ` (${dflt})` : ''}`)}</option>`]
-      .concat(mailers.map(m => `<option value="${e(m.address)}" ${String(m.address || '').toLowerCase() === picked ? 'selected' : ''}>${e(m.address)}</option>`)).join('');
-    const saving = lc.busy === `ex-from:${f.installId}`;
-    const control = can
-      ? `<label class="lic-from-wrap"><span class="lic-k">Send from</span><select class="acct-input lic-from" data-lic-from="${e(f.installId)}" aria-label="Send ${e(f.name)} from" ${lc.busy ? 'disabled' : ''}>${opts}</select></label>${saving ? '<span class="lic-hint" role="status">Saving…</span>' : ''}`
-      : `<span class="lic-state is-quiet">${e(now ? `sends from ${now}` : 'no mailer')}</span>`;
-    // a form that keeps its own people or its own switch (set in the studio's Mail block) says so; the rest follow the mailer
-    const ownBits = [f.notifyTo && f.notifyTo.length ? `tells ${listWords(f.notifyTo)}` : '', f.confirmVisitor === true ? 'confirms to the sender' : f.confirmVisitor === false ? 'no confirmation' : ''].filter(Boolean);
-    const ownNote = ownBits.length ? `<p class="lic-hint">Its own: ${e(ownBits.join('; '))} (set in the studio, on the form's Mail block).</p>` : '';
-    // the table link opens the table itself on the Data card (the open-table note, read by environment.js loadTables)
-    const tableLink = `<a class="acct-inline-link" href="#account?section=environment&card=data" data-acct-section="environment" data-acct-card="data" data-open-table="${e(f.table)}">${e(f.table)}</a>`;
-    return `<li class="lic-form-row"><div class="lic-dom-row"><span class="lic-form-name">${e(f.name)}${f.enabled ? '' : ' <span class="acct-tag">off</span>'}</span><span class="lic-state is-quiet">table ${tableLink}</span><span class="lic-dom-act">${control}</span></div>${ownNote}</li>`;
-  }).join('');
-  return `${head}<p class="lic-hint">The mailer each form sends from: the team's copy goes to the people the mailer tells, and the sender's confirmation follows its switch, unless the form sets its own in the studio. Each row of the form's table says what was sent.</p>${errHtml('exchange-forms')}${noteHtml('exchange-forms')}<ul class="lic-dom-list">${rows}</ul>`;
 }
 
 /** New mailer: under the hero for the first one, behind the button after; disabled with the reason when it cannot run. */
@@ -401,23 +310,6 @@ async function sendTest(address) {
   if (lc.err['exchange-test']) { lc.exTest = { address: a, text: lc.err['exchange-test'], bad: true }; lc.err['exchange-test'] = ''; st.paint(); }
 }
 
-/** A form's Send from pick saved on its install: '' is the environment's mailer. The server checks the role again. */
-async function setFrom(installId, address) {
-  const f = (lc.exForms || []).find(x2 => x2.installId === installId);
-  if (!f || lc.busy) { st.paint(); return; }
-  const mailer = String(address || '').trim().toLowerCase();
-  lc.err['exchange-forms'] = ''; setNote('exchange-forms', '');
-  await send(`ex-from:${installId}`, 'Saving…', async () => {
-    const d = await call(`${MODULES_URL}/${encodeURIComponent(installId)}`, 'PUT', { settings: { mailer } });
-    const got = String(d?.module?.settings?.mailer || '').toLowerCase();
-    f.mailer = got;
-    setNote('exchange-forms', got ? `${f.name} sends from ${got} now.` : `${f.name} sends from the environment's mailer now.`);
-  }, {
-    errKey: 'exchange-forms', fallback: 'That could not be saved right now.',
-    codes: { ...CODES, OWNER_ONLY: (ex2) => ex2?.data?.error || 'Only the owner or a team member can be named there.', MODULE_NOT_FOUND: 'That form is no longer installed. Reload the tab.' }
-  });
-}
-
 /** Handles a data-lic-action this module owns; false when it is not one of them. */
 export function exchangeAction(a, btn) {
   if (a === 'ex-test') { sendTest(btn.dataset.address || ''); return true; }
@@ -427,17 +319,6 @@ export function exchangeAction(a, btn) {
   if (a === 'ex-create') { createMailbox(); return true; }
   if (a === 'ex-new') { lc.exNew = true; st.paint(); document.getElementById('licExName')?.focus(); return true; }
   if (a === 'ex-new-close') { lc.exNew = false; st.paint(); return true; }
-  if (a === 'ex-tells-edit') { lc.exEdit = String(btn.dataset.address || '').toLowerCase(); st.paint(); document.querySelector(`input[data-lic-tell="${CSS.escape(lc.exEdit)}"]`)?.focus(); return true; }
-  if (a === 'ex-tells-cancel') { lc.exEdit = ''; st.paint(); return true; }
-  if (a === 'ex-tells-save') { saveTells(btn.dataset.address || ''); return true; }
   if (a === 'ex-copy') { const address = String(btn.dataset.address || ''); copyButton(btn, address, { select: () => document.getElementById(`licEx-${address}`) }); return true; }
   return false;
-}
-
-/** A change on the tab's selects this module owns (a form's Send from); false when it is not one of them. */
-export function exchangeChange(e) {
-  const sel = e?.target?.closest?.('select[data-lic-from]');
-  if (!sel) return false;
-  setFrom(String(sel.dataset.licFrom || ''), sel.value);
-  return true;
 }

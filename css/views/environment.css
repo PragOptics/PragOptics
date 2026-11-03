@@ -244,8 +244,8 @@ a.ev-more { text-decoration: none; white-space: nowrap; }
   /* the Licensing head has one icon: it stays in the corner instead of a lone row under the title (2026-11-02) */
   .ev-summary.lic-head { position: relative; }
   .ev-summary.lic-head .ev-actions { width: auto; position: absolute; top: 12px; right: 12px; }
-  /* a Licensing card title takes the room left beside its (i) and its chevron, so the chevron never drops to a line of its own (2026-11-02, phone check) */
-  [data-card^="licensing:"] > .ev-card-head .ev-card-title { flex: 1 1 0; min-width: 0; max-width: none; }
+  /* a card title takes the room left beside its (i) and its chevron, so the chevron never drops to a line of its own (2026-11-02, phone check; the Environment cards too, 2026-11-03) */
+  [data-card^="licensing:"] > .ev-card-head .ev-card-title, [data-card^="environment:"] > .ev-card-head .ev-card-title { flex: 1 1 0; min-width: 0; max-width: none; }
   /* tables become stacked rows: each cell labeled by its column */
   .account .adm-table--wrap thead { display: none; }
   .account .adm-table--wrap, .account .adm-table--wrap tbody, .account .adm-table--wrap tr, .account .adm-table--wrap td { display: block; width: 100%; box-sizing: border-box; }
@@ -658,7 +658,8 @@ a.ev-more { text-decoration: none; white-space: nowrap; }
 .lic-dom-lines li + li { margin-top: 6px; }
 .lic-dom-lines .lic-txt, .lic-dom-lines .lic-plan { margin-top: 8px; }
 .lic-hero-tags .ev-dom-when { font-weight: 400; }
-/* WHO A MAILER TELLS (2026-11-02): the team as checkboxes with their roles, the confirmation switch, Save */
+/* WHO A MAILER TELLS (2026-11-02): the team as checkboxes with their roles, the confirmation switch, Save. Since 2026-11-03
+   the pickers live on the Mail card (src/account/mailCard.js); the classes are the panel's one look for a checkbox grid. */
 .lic-tells { margin-top: 8px; padding: 10px 12px; border: 1px dashed var(--border); border-radius: 8px; }
 .lic-tells-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 6px 14px; margin-top: 8px; }
 .lic-tell { display: flex; align-items: center; gap: 8px; font-size: .9rem; min-width: 0; cursor: pointer; }
@@ -666,4 +667,41 @@ a.ev-more { text-decoration: none; white-space: nowrap; }
 .lic-tell > span:first-of-type { min-width: 0; overflow-wrap: anywhere; }
 .lic-tell--switch { margin-top: 10px; flex-wrap: wrap; }
 .lic-mailer-for .ev-icon-btn, .lic-mailer-for button { vertical-align: middle; margin-left: 4px; }
+
+/* THE MAIL CARD (2026-11-03, the plan D6 and D8): one container per mailer, per form and per site, the domain family's
+   look (a bordered box on the soft surface, a head line of name and tags, one sentence, an editor behind the pencil);
+   the look-of-the-mail fields two to a row and one on a phone; the server's frame in a sandboxed box. Nothing here
+   is wider than its card: the grids wrap, the words break, the box is 100% of the card. */
+.ev-mail-sub { margin: 14px 0 0; }
+.ev-mail-sub + .lic-hint { margin-top: 4px; }
+.ev-mail-list { display: grid; gap: 8px; margin-top: 8px; min-width: 0; }
+.ev-mail-item { border: 1px solid var(--border); border-radius: var(--radius-ctl); padding: 10px 12px; background: var(--surface-3); min-width: 0; max-width: 100%; }
+.ev-mail-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; min-width: 0; }
+.ev-mail-name { font-weight: 600; font-size: .92rem; min-width: 0; overflow-wrap: anywhere; }
+.ev-mail-head .ev-mail-act { margin-left: auto; display: inline-flex; gap: 6px; }
+.ev-mail-line { margin: 6px 0 0; font-size: .9rem; line-height: 1.5; overflow-wrap: anywhere; }
+.ev-mail-edit { margin-top: 8px; padding: 10px 12px; border: 1px dashed var(--border); border-radius: 8px; min-width: 0; }
+.ev-mail-edit > .ev-switch { margin-top: 2px; }
+.ev-mail-field { margin-top: 10px; min-width: 0; }
+.ev-mail-field > .acct-label, .ev-mail-theme-field > .acct-label { margin: 0 0 4px; }
+.ev-mail-field select.acct-input { width: auto; max-width: 100%; min-width: 0; }
+.ev-mail-field .lic-tells-grid { margin-top: 2px; }
+.ev-mail-edit .lic-tell--switch { margin-top: 12px; }
+.ev-mail-theme-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 12px; margin-top: 10px; min-width: 0; }
+.ev-mail-theme-field { min-width: 0; }
+.ev-mail-theme-field.is-wide { grid-column: 1 / -1; }
+.ev-mail-theme-field .acct-input { width: 100%; box-sizing: border-box; }
+.ev-mail-theme-field.is-bad .acct-input, .ev-mail-theme-field.is-bad input[type="color"] { border-color: color-mix(in srgb, var(--danger) 60%, transparent); }
+.ev-mail-color { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.ev-mail-color input[type="color"] { width: 40px; height: 34px; padding: 2px; border: 1px solid var(--border); border-radius: var(--radius-ctl); background: var(--grad); cursor: pointer; flex: none; }
+.ev-mail-color code { font-size: .82rem; color: var(--muted); }
+.ev-mail-edit .acct-actions-row { margin-top: 12px; }
+.ev-mail-preview { display: block; width: 100%; max-width: 100%; height: 460px; margin-top: 10px; border: 1px solid var(--border); border-radius: var(--radius-ctl); background: #ffffff; box-sizing: border-box; }
+.ev-mail-preview + .lic-hint { margin-top: 4px; }
+@container (max-width: 640px) {
+  .ev-mail-theme-grid { grid-template-columns: 1fr; }
+  .ev-mail-head .ev-mail-act { margin-left: 0; flex: 1 1 100%; }
+  .ev-mail-field select.acct-input { width: 100%; }
+  .ev-mail-preview { height: 420px; }
+}
 

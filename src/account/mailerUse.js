@@ -9,12 +9,39 @@
 //     app/src/model/mailSettings.js takesMail, the same words);
 //   - its table is manifest.table, else settings.table, else "submissions" (backend auth/publicDoors.js tableOf);
 //   - its `mailer` setting names the address it sends from; empty, or an address the environment no longer holds, means
-//     the environment's mailer, the default (backend auth/environmentMailers.js resolve).
+//     the environment's mailer, the default (backend auth/environmentMailers.js resolve);
+//   - its rows wait for a decision when its manifest says moderate, or its `moderate` setting is on, or it declares the
+//     reader door and the setting is not off (backend auth/moderation.js moderates), 2026-11-03;
+//   - the roles it tells (`notify_roles`), who decides (`approvers`) and its intent word (`intent`, the owner's word over
+//     the manifest's) are read when the lane's backend keeps them and empty when it does not (the plan D1, D4, D5).
+
+import { roleList, emailList } from './mailRouting.js';
 
 /** An install that takes submissions, so it mails (the studio's rule, the same words). */
 export function takesMail(manifest) {
   const doors = manifest && Array.isArray(manifest.doors) ? manifest.doors : [];
   return doors.includes('submissions');
+}
+
+const isOn = v => v === true || v === 'true' || v === 1 || v === '1';
+const isOff = v => v === false || v === 'false' || v === 0 || v === '0';
+/** Whether an install's rows wait for a decision before they show (backend auth/moderation.js moderates, the same three cases). */
+export function moderates(install) {
+  if (!install) return false;
+  const s = install.settings && typeof install.settings === 'object' ? install.settings : {};
+  const m = install.manifest && typeof install.manifest === 'object' ? install.manifest : {};
+  if (m.moderate === true) return !isOff(s.moderate);
+  if (isOn(s.moderate)) return true;
+  const doors = Array.isArray(m.doors) ? m.doors : [];
+  return doors.includes('reader') && !isOff(s.moderate);
+}
+
+/** The intent word of an install: the owner's setting over the publisher's manifest word; '' when neither (the plan D4). */
+export function intentOf(install) {
+  const s = (install && install.settings) || {};
+  const m = (install && install.manifest) || {};
+  const w = String(s.intent || m.intent || '').trim().toLowerCase();
+  return /^[a-z][a-z0-9_-]{1,31}$/.test(w) ? w : '';
 }
 
 /** The table an install's submissions land in (the public door's rule). */
@@ -40,6 +67,11 @@ export function formsOf(modules) {
       // The older `recipient` setting (one address) counts as the form's own list too, as the door counts it.
       notifyTo: [...new Set([s.recipient, ...(Array.isArray(s.notify_to) ? s.notify_to : [])].map(x => String(x || '').trim().toLowerCase()).filter(x => x.includes('@')))],
       confirmVisitor: cv === true || cv === 'true' ? true : cv === false || cv === 'false' ? false : null,
+      // 2026-11-03: the roles told, who decides (the setting, else the manifest's default roles), the intent word, whether rows wait
+      notifyRoles: roleList(s.notify_roles),
+      approvers: Array.isArray(s.approvers) ? [...roleList(s.approvers), ...emailList(s.approvers)] : roleList(m.manifest && m.manifest.approvers),
+      intent: intentOf(m),
+      waits: moderates(m),
       enabled: m.enabled !== false
     };
   });

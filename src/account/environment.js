@@ -36,6 +36,9 @@ import { cardErrorWords } from '../api/stripeWords.js';
 import { familiesOf, liveHostsOf, familyState, listWords } from './domainFamilies.js';
 import { rowShape, innerOf, whenOf, statusOf, cellText, headlineOf } from './dataColumns.js';
 import { mailShort, mailLines } from './rowMail.js';
+// THE MAIL CARD (2026-11-03): who sends, from which mailer, who is told, who decides, the look of the mail; its own module,
+// painted into #evMail here between Data and Connected accounts and handed this tab's helpers (setMailContext)
+import { setMailContext, resetMail, loadMail, mailHtml, paintMail, mailAction, mailChange } from './mailCard.js';
 // the platform's cents formatter, under the name this file has always used for it (the local cents() below is the
 // AI budget's cent-sign variant, so the shared one cannot take that name here)
 import { countWord, cents as money } from '../ui/words.js';
@@ -171,9 +174,10 @@ export async function renderEnvironment(main, deps) {
   ev.connections = null; ev.connProviders = []; ev.connNote = ''; ev.connPick = ''; ev.connBusy = false; ev.connResult = ''; ev.connTesting = ''; ev.connDraft = {}; ev.connArm = ''; ev.rowNote = null; ev.shopifyShop = ''; ev.shopifyLink = ''; ev.shopifyLinkId = ''; ev.connSyncing = ''; ev.rowNote = null;
   ev.tables = null; ev.tablesNote = ''; ev.table = ''; ev.rows = null; ev.rowsAfter = ''; ev.rowsNote = ''; ev.openRow = ''; ev.rowsLoading = false; ev.moderating = ''; ev.moderatingTo = '';
   ev.ai = null; ev.aiNote = ''; ev.aiBusy = false; ev.aiBudget = null; ev.budgetBusy = false;
+  resetMail(); setMailContext(D, mailContext());
   ev.domTab = ev.domTab || 'connect'; initCards();
   // A link that names a card (/#account?section=environment&card=connections) opens that card; account.js scrolls to it.
-  try { const want = JSON.parse(sessionStorage.getItem('pragoptics_open_card') || 'null'); const card = { files: 'files', connections: 'connections', domains: 'domains', keys: 'keys', ai: 'ai', data: 'data' }[String(want?.card || '')]; if (card) setOpen(`environment:${card}`, true); } catch { /* fine */ }
+  try { const want = JSON.parse(sessionStorage.getItem('pragoptics_open_card') || 'null'); const card = { files: 'files', connections: 'connections', domains: 'domains', keys: 'keys', ai: 'ai', data: 'data', mail: 'mail' }[String(want?.card || '')]; if (card) setOpen(`environment:${card}`, true); } catch { /* fine */ }
   main.innerHTML = `
     <header class="acct-sec-head has-explain"><h2 class="acct-sec-title">Environment</h2>${explainLink('environment', 'How your environment works')}</header>
     <p class="acct-error" id="evError" hidden></p>
@@ -233,7 +237,7 @@ async function loadNow() {
     paint();
     if (['READY', 'SUSPENDED'].includes(phaseOf(ev.view.tenant))) {
       if (ev.lane === 'sandbox' && !laneReady(ev.view.tenant)) return;   // the setup card is all there is
-      await Promise.all([loadFiles(), loadTables(), ...(ev.lane === 'live' ? [loadDomains()] : []), loadKeys(), loadConnections()]);
+      await Promise.all([loadFiles(), loadTables(), loadMail(), ...(ev.lane === 'live' ? [loadDomains()] : []), loadKeys(), loadConnections()]);
     }
   } catch (ex) {
     host.innerHTML = '';
@@ -265,7 +269,8 @@ async function loadDomains() {
     ev.cnameTarget = d.cnameTarget || null;
     ev.serving = d.serving || null;
     ev.registrations = d.registrations || [];
-    try { const s = await D.apiFetch(url(`${ENV_URL}/publish`)); ev.sites = (s.sites || []).map(x => ({ slug: String(x.slug || ''), address: String(x.address || ''), project: String(x.project || '') })); } catch { ev.sites = ev.sites || []; }
+    // a site's mail look rides its row (2026-11-03, the Mail card reads it; older lanes carry none)
+    try { const s = await D.apiFetch(url(`${ENV_URL}/publish`)); ev.sites = (s.sites || []).map(x => ({ slug: String(x.slug || ''), address: String(x.address || ''), project: String(x.project || ''), mailTheme: x.mailTheme && typeof x.mailTheme === 'object' ? x.mailTheme : null })); } catch { ev.sites = ev.sites || []; }
     // The human name of a published site is its studio project's name. The site row carries the project
     // id (auth/tenantPublish.js view) and the project carries the name: the same join the home page uses
     // (home.js projectsCard). Load the projects once so the serve picker names each site instead of
@@ -280,6 +285,8 @@ async function loadDomains() {
     else ev.domainNote = ex?.sessionInvalidated ? '' : (ex?.data?.error || D.friendlyError(ex, 'Could not list the domains.'));
   }
   paintDomains();
+  if (ev.sites == null) ev.sites = [];
+  paintMail();   // the Mail card's look-per-site block reads the sites this read brought
 }
 
 async function loadKeys() {
@@ -321,8 +328,8 @@ function paint() {
   // On the sandbox lane the cards appear only once the sandbox is READY;
   // until then the section explains and (for the owner) offers to set it up.
   const cards = ev.lane === 'sandbox'
-    ? (laneReady(ev.view.tenant) ? `<div id="evFiles">${filesHtml()}</div><div id="evData">${dataHtml()}</div><div id="evConnections">${connectionsHtml()}</div><div id="evKeys">${keysHtml()}</div>` : sandboxSetupHtml(ev.view))
-    : `<div id="evFiles">${filesHtml()}</div><div id="evData">${dataHtml()}</div><div id="evConnections">${connectionsHtml()}</div><div id="evDomains">${domainsHtml()}</div><div id="evKeys">${keysHtml()}</div>`;
+    ? (laneReady(ev.view.tenant) ? `<div id="evFiles">${filesHtml()}</div><div id="evData">${dataHtml()}</div><div id="evMail">${mailHtml()}</div><div id="evConnections">${connectionsHtml()}</div><div id="evKeys">${keysHtml()}</div>` : sandboxSetupHtml(ev.view))
+    : `<div id="evFiles">${filesHtml()}</div><div id="evData">${dataHtml()}</div><div id="evMail">${mailHtml()}</div><div id="evConnections">${connectionsHtml()}</div><div id="evDomains">${domainsHtml()}</div><div id="evKeys">${keysHtml()}</div>`;
   host.innerHTML = `
     ${summaryHtml(ev.view)}
     ${ready ? `<div class="ev-cards">${cards}</div>` : ''}
@@ -381,11 +388,12 @@ async function setLane(lane) {
   ev.lane = lane === 'sandbox' ? 'sandbox' : 'live';
   try { sessionStorage.setItem(LANE_KEY, ev.lane); } catch { /* fine */ }
   ev.files = null; ev.keys = null; ev.domains = null; ev.connections = null; ev.connPick = ''; ev.connResult = ''; ev.madeKey = null; ev.filesNote = '';
+  ev.sites = null; resetMail();
   paint();
   if (ev.lane === 'live' || laneReady(ev.view?.tenant)) {
     // the lane switch and the refresh wait while this lane's cards are read, saying why
     const release = hold(document.querySelectorAll('[data-env-action="lane-live"], [data-env-action="lane-sandbox"], [data-env-action="refresh"]'), `Loading the ${ev.lane} lane…`);
-    try { await Promise.all([loadFiles(), ...(ev.lane === 'live' ? [loadDomains()] : []), loadKeys(), loadConnections()]); }
+    try { await Promise.all([loadFiles(), loadMail(), ...(ev.lane === 'live' ? [loadDomains()] : []), loadKeys(), loadConnections()]); }
     finally { release(); }
   }
 }
@@ -3007,20 +3015,32 @@ function copyText(text, btn, select = null) { return copyButton(btn, text, { sel
 /** The <code> a copy button sits beside (a DNS record's value, a nameserver, a link), selected when the clipboard is refused. */
 function codeBeside(btn) { return btn.parentElement?.querySelector('code') || btn.closest('dd')?.previousElementSibling?.querySelector?.('code') || null; }
 
+/** What the Mail card needs of this tab: the request helpers, the card wrapper, the role gate, the lane and the sites in view. */
+function mailContext() {
+  return {
+    url, body, cardHtml,
+    canWrite, myRole, lane: () => ev.lane, view: () => ev.view, sites: () => ev.sites,
+    siteName: (s) => siteFacts(s).name
+  };
+}
+
 export function bindEnvironmentActions(deps) {
   if (bindEnvironmentActions._bound) return;
   bindEnvironmentActions._bound = true;
   D = D || deps;
+  setMailContext(D, mailContext());
 
   document.addEventListener('change', (e) => {
     const sw = e.target.closest?.('[data-env-switch="ai"]');
     if (sw) setAi(!!sw.checked);
+    mailChange(e);
   });
   document.addEventListener('click', (e) => {
     const btn = e.target.closest('[data-env-action]');
     if (!btn) return;
     e.preventDefault();
     const a = btn.dataset.envAction;
+    if (mailAction(a, btn)) return;
     if (a === 'dom-tab') { ev.domTab = btn.dataset.tab || 'connect'; paintDomains(); return; }
     if (a === 'dom-add-toggle') { ev.domAdd = !ev.domAdd; paintDomains(); if (ev.domAdd) document.getElementById('evDomainHost')?.focus(); return; }
     if (a === 'data-row-back') { ev.openRow = ''; paintData(); return; }

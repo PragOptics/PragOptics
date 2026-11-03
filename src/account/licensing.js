@@ -40,7 +40,7 @@ import { billingHtml, billingAction } from './licensingBilling.js';
 import { pax8Html, pax8Action } from './licensingPax8.js';
 import { tenantHtml, tenantAction, resetTenant, reopenTenant, loadTenantStatus, myMailboxHtml, connectHtml, tenantConnectedHtml } from './licensingTenant.js';
 import { requestsHtml, requestsAction, loadRequests, pendingMailbox, ask } from './licensingRequests.js';
-import { exchangeHtml, exchangeAction, exchangeChange, loadExchange, resetExchange } from './licensingExchange.js';
+import { exchangeHtml, exchangeAction, loadExchange, resetExchange } from './licensingExchange.js';
 import { owedHtml, moneyAction } from './licensingMoney.js';
 import { phase1Html, phase2Card, wizardAction, wizardStage, tenantConnected, setupDone, phaseRail, phase2Lead, phase3Lead, bringLead } from './licensingWizard.js';
 import { markSetupStale } from './setup.js';
@@ -573,6 +573,6 @@ export function bindLicensingActions(deps) {
   });
   // what is typed in the tab is remembered as it is typed, so a repaint never wipes it
   const remember = (e) => { if (e.target?.closest?.('#licBody')) keepInput(e); };
-  document.addEventListener('change', (e) => { remember(e); orderChange(e); catalogInput(e); exchangeChange(e); });
+  document.addEventListener('change', (e) => { remember(e); orderChange(e); catalogInput(e); });
   document.addEventListener('input', (e) => { remember(e); if (e.target && e.target.id === 'licCatQ') catalogInput(e); if (e.target && e.target.id === 'licAddQty') orderChange(e); });
 }

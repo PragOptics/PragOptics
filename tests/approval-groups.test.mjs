@@ -1,7 +1,7 @@
 // tests/approval-groups.test.mjs: the Approvals section's pure part (src/account/approvalGroups.js). Run: node --test tests/
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { groupsOf, totals, countsLine, labelOf, textOf, itemLines, groupSummary } from '../src/account/approvalGroups.js';
+import { groupsOf, totals, countsLine, labelOf, textOf, itemLines, groupSummary, groupWords, decidersWords, cannotDecideWords } from '../src/account/approvalGroups.js';
 
 const answer = { ok: true, groups: [
   { installId: 'rv', name: 'Reviews', table: 'reviews', pending: 2, more: false, items: [
@@ -41,4 +41,22 @@ test('an item says its fields in the install\'s order with its labels, the headl
   assert.deepEqual(itemLines(g[0].items[1]).lines.map(l => [l.label, l.text]), [['Text', 'Fine']]);
   assert.equal(labelOf('full_name', {}), 'Full name'); assert.equal(labelOf('phoneNumber', {}), 'Phone Number'); assert.equal(labelOf('x', { x: 'Given' }), 'Given');
   assert.equal(textOf(true), 'yes'); assert.equal(textOf({ a: 1 }), ''); assert.equal(textOf(' a  b '), 'a b');
+});
+
+test('a group carries its intent, whether this person decides it and who may; an older answer falls back to the one flag', () => {
+  const g = groupsOf({ canDecide: false, groups: [
+    { installId: 'rv', name: 'Reviews', intent: 'Review', canDecide: true, deciders: ['Owner@site.test', 'ops@site.test', 'ops@site.test', 'nope'], items: [{ key: 'k' }] },
+    { installId: 'ct', name: 'Contact', items: [] }
+  ] });
+  assert.deepEqual([g[0].intent, g[0].canDecide, g[0].deciders], ['review', true, ['owner@site.test', 'ops@site.test']]);
+  assert.equal(g[0].items[0].intent, 'review', 'an item takes its group\'s intent when the server left it out');
+  assert.deepEqual([g[1].intent, g[1].canDecide, g[1].deciders], ['', false, []], 'the old shape: the answer\'s flag, nothing else');
+  assert.equal(groupsOf({ canDecide: true, groups: [{ installId: 'x' }] })[0].canDecide, true);
+  assert.equal(groupWords(g[0]), 'review · decided by owner@site.test and ops@site.test');
+  assert.equal(groupWords(g[1]), '');
+  assert.equal(groupWords({ intent: 'quote' }), 'quote');
+  assert.equal(decidersWords({ deciders: ['a@x.co'] }), 'decided by a@x.co');
+  assert.equal(decidersWords(answer.groups[0]), '');
+  assert.match(cannotDecideWords(g[0]), /^You can see what waits here\. It is decided by owner@site.test and ops@site.test\.$/);
+  assert.match(cannotDecideWords(g[1]), /Approve what shows on your site/);
 });
