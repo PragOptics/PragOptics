@@ -10,6 +10,10 @@
 //   D3  a role is expanded at send time against the ACTIVE team; here only to count and to name who that is today.
 //   D5  a form may name its approvers (roles and people); the owner always decides; a form that names none falls to the
 //       environment's rule: the owner and every role that holds "Approve what shows on your site".
+//
+// The card's lines and its editors' notes speak in ONE wording (the live pass of 2026-11-03: the notes under the boxes
+// followed the ticks only after Save): formAfter and mailerAfter read what a Save would make of the boxes as ticked now,
+// and tellsWords (toldNote), mailerLine, asMailerWords and decideNote say it in the words the saved line uses.
 
 export const ROLE_WORDS = Object.freeze(['owner', 'admin', 'developer', 'member', 'viewer']);
 const APPROVE = 'approve_content';
@@ -113,6 +117,66 @@ export function whoWords(x = {}) {
 }
 
 /**
+ * Who a form tells, in the words of its line on the Mail card and of its editor's note (one wording): "tells ops@site and
+ * every admin", "tells every developer (the mailer's list)", "tells the owner". `unknown`: the mailers could not be read
+ * (a viewer), so a form with nothing of its own "tells whoever its mailer tells". Takes toldBy's shape.
+ */
+export function tellsWords(told, { unknown = false } = {}) {
+  const t = told && typeof told === 'object' ? told : {};
+  if (unknown && t.source !== 'form') return 'tells whoever its mailer tells';
+  return `tells ${whoWords({ people: t.people || [], roles: t.roles || [] })}${t.source === 'mailer' ? ' (the mailer\'s list)' : ''}`;
+}
+
+/**
+ * The note under a form's Tell boxes: what a Save would do, in the words of the form's line ("Tells ops@site and every
+ * admin."). `sends: false` is no mailer the form would send from (a new environment before its first mailer, the sandbox
+ * lane, the "no mailer" tag): nothing is sent, so the note says that first, then who it tells once it has one; with nothing
+ * of its own that is whoever its mailer tells (D2), never "the owner" as if someone heard now (the review of 2026-11-03).
+ */
+export function toldNote(told, { unknown = false, sends = true } = {}) {
+  if (!sends) return `Nothing is sent without a mailer; once it has one, it ${tellsWords(told, { unknown: true })}.`;
+  return asSentence(tellsWords(told, { unknown }));
+}
+
+/**
+ * The Confirm select's first option, the switch of the mailer it follows: "As the mailer (confirms)", "As the mailer (does
+ * not confirm)"; no mailer to read: "As the mailer". Takes the mailer the form would send from with the Send from pick as
+ * it is now, so the option follows that pick before Save (the review of 2026-11-03).
+ */
+export function asMailerWords(mailer) {
+  const m = mailer && typeof mailer === 'object' ? mailer : null;
+  return `As the mailer${m ? ` (${m.confirmVisitor !== false ? 'confirms' : 'does not confirm'})` : ''}`;
+}
+
+/** A phrase as a sentence of its own: "tells the owner" -> "Tells the owner."; '' stays ''. */
+export function asSentence(phrase) {
+  const s = String(phrase == null ? '' : phrase).trim();
+  if (!s) return '';
+  return `${s.charAt(0).toUpperCase()}${s.slice(1)}${/[.!?]$/.test(s) ? '' : '.'}`;
+}
+
+/** A mailer's line, the saved one and its editor's note alike: "Tells ops@site and every admin · confirms to the sender." Takes a mailer record or mailerAfter's. */
+export function mailerLine(m) {
+  const x = m && typeof m === 'object' ? m : {};
+  return `Tells ${whoWords({ notify: x.notify || [], notifyRoles: x.notifyRoles || [] })} · ${x.confirmVisitor !== false ? 'confirms to the sender' : 'does not confirm to the sender'}.`;
+}
+
+/**
+ * A mailer as it would read once `body` (mailerBodyFor's) is saved, so its editor's note says what the Save would do: a
+ * key the body leaves out keeps what is stored (the team unread leaves notify out, and the people stay).
+ */
+export function mailerAfter(m, body) {
+  const x = m && typeof m === 'object' ? m : {};
+  const b = body && typeof body === 'object' ? body : {};
+  return {
+    ...x,
+    notify: emailList(Array.isArray(b.notify) ? b.notify : x.notify),
+    notifyRoles: roleList(Array.isArray(b.notifyRoles) ? b.notifyRoles : x.notifyRoles),
+    confirmVisitor: typeof b.confirmVisitor === 'boolean' ? b.confirmVisitor : x.confirmVisitor !== false
+  };
+}
+
+/**
  * Who decides a form's waiting rows (D5): the form's own approvers when it names any (the owner always among them),
  * else the environment's rule, the owner and every role whose scopes hold "Approve what shows on your site"
  * (`scopeRoles` is GET v1/tenant/scopes `roles`: { admin: [ids], developer: [ids], member: [ids] }).
@@ -120,16 +184,30 @@ export function whoWords(x = {}) {
 export function decidersOf(form, members, scopeRoles, ownerEmail = '') {
   const own = parseApprovers(form && form.approvers);
   const named = own.roles.length > 0 || own.people.length > 0;
-  const roles = named ? own.roles : Object.entries(scopeRoles && typeof scopeRoles === 'object' ? scopeRoles : {}).filter(([, ids]) => Array.isArray(ids) && ids.includes(APPROVE)).map(([r]) => low(r)).filter(r => ROLE_WORDS.includes(r));
+  const roles = named ? own.roles : (approveRoles(scopeRoles) || []);
   const people = named ? own.people : [];
   const owner = low(ownerEmail);
   return { named, roles, people, emails: uniq([owner, ...expandRoles(roles, members), ...people].filter(Boolean)) };
 }
 
-/** Who decides, in words: always the owner first: "the owner", "the owner and every admin", "the owner, every admin and ops@site". */
-export function decidersWords(d) {
+/**
+ * The roles whose scopes hold "Approve what shows on your site" (`scopeRoles` is GET v1/tenant/scopes `roles`), the
+ * environment's rule for a form that names nobody (D5); null when the scopes were not read, so those roles are not known.
+ */
+export function approveRoles(scopeRoles) {
+  if (!scopeRoles || typeof scopeRoles !== 'object') return null;
+  return Object.entries(scopeRoles).filter(([, ids]) => Array.isArray(ids) && ids.includes(APPROVE)).map(([r]) => low(r)).filter(r => ROLE_WORDS.includes(r));
+}
+
+/**
+ * Who decides, in words: always the owner first: "the owner", "the owner and every admin", "the owner, every admin and
+ * ops@site". The owner's own address ticked among the people is the owner, said once, as namedDecidersWords says the
+ * server's list (the review of 2026-11-03).
+ */
+export function decidersWords(d, ownerEmail = '') {
+  const owner = low(ownerEmail);
   const roles = roleList(d && d.roles).filter(r => r !== 'owner');
-  const people = emailList(d && d.people);
+  const people = emailList(d && d.people).filter(x => x !== owner);
   return listWords(['the owner', ...roles.map(roleWord), ...people]);
 }
 
@@ -201,6 +279,61 @@ export function approversChanged(form, settings) {
   const had = new Set(form && form.approversFrom === 'setting' && Array.isArray(form.approvers) ? form.approvers.map(low) : []);
   const now = new Set((settings && Array.isArray(settings.approvers) ? settings.approvers : []).map(low));
   return had.size !== now.size || [...now].some(x => !had.has(x));
+}
+
+/**
+ * The form as it would read once `settings` (settingsFor's body) is saved, so the editor's notes say what the Save would do
+ * with the boxes as they are ticked now. The server merges the body over the stored settings, so a key left out keeps
+ * what is stored. Its people are notify_to and the older recipient (kept unless the body empties it, counted as the door
+ * counts it, mailerUse.js formsOf); who decides is read as the server reads it (auth/approvals.js approversOf, mailerUse.js
+ * approversOf): the approvers sent when they name anyone, else the form's own default role words (`approversDefault`),
+ * else nobody, which is the environment's rule.
+ */
+export function formAfter(form, settings) {
+  const f = form && typeof form === 'object' ? form : {};
+  const s = settings && typeof settings === 'object' ? settings : {};
+  const older = s.recipient === '' ? '' : low(f.recipient);
+  const c = low(s.confirm_visitor);
+  const kept = f.confirmVisitor === true || f.confirmVisitor === false ? f.confirmVisitor : null;
+  const out = {
+    ...f,
+    mailer: 'mailer' in s ? low(s.mailer) : low(f.mailer),
+    recipient: older,
+    notifyTo: Array.isArray(s.notify_to) ? emailList([older, ...s.notify_to]) : emailList(f.notifyTo),
+    notifyRoles: roleList(Array.isArray(s.notify_roles) ? s.notify_roles : f.notifyRoles),
+    confirmVisitor: !('confirm_visitor' in s) ? kept : c === 'true' ? true : c === 'false' ? false : null
+  };
+  if (Array.isArray(s.approvers)) {
+    const own = uniq([...roleList(s.approvers), ...emailList(s.approvers)]);
+    const dflt = Array.isArray(f.approversDefault) ? roleList(f.approversDefault) : f.approversFrom === 'manifest' ? roleList(f.approvers) : [];
+    Object.assign(out, own.length ? { approvers: own, approversFrom: 'setting' } : { approvers: dflt, approversFrom: dflt.length ? 'manifest' : '' });
+  }
+  return out;
+}
+
+/** Whether the people named to decide differ once saved: the approvers `after` (formAfter's) reads against the ones `form` reads, in any order. Unchanged, the server's own list of deciders still holds. */
+export function decidersChanged(form, after) {
+  const a = new Set(((form && Array.isArray(form.approvers)) ? form.approvers : []).map(low));
+  const b = new Set(((after && Array.isArray(after.approvers)) ? after.approvers : []).map(low));
+  return a.size !== b.size || [...b].some(x => !a.has(x));
+}
+
+/**
+ * The note under Who decides, in the words of the form's line ("Its rows wait for a decision by ..."): "Decided by the
+ * owner and every admin." With nothing ticked it says why: the form's own default, or the environment's rule. `by` is
+ * who decides in words (namedDecidersWords or decidersWords); `from` is formAfter's approversFrom. `ruleRoles` is
+ * approveRoles' answer: no role (beside the owner) holding the scope says so, never that such roles decide; null (the
+ * scopes unread) says the rule (the review of 2026-11-03).
+ */
+export function decideNote(by, from = 'setting', { ruleRoles = null } = {}) {
+  const lead = `Decided by ${String(by == null ? '' : by).trim() || 'the owner'}.`;
+  if (from === 'manifest') return `${lead} Nothing is picked, so this form's own default holds.`;
+  if (from !== 'setting') {
+    const none = Array.isArray(ruleRoles) && !roleList(ruleRoles).some(r => r !== 'owner');
+    return none ? `${lead} Nothing is picked, and no role holds "Approve what shows on your site".`
+      : `${lead} Nothing is picked, so every role with "Approve what shows on your site" decides.`;
+  }
+  return lead;
 }
 
 /**

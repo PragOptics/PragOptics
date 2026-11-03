@@ -594,18 +594,31 @@ function bindDataActions() {
     if (t.matches('[data-policy-switch]')) return void setTablePolicy({ studioWrite: !!t.checked });
   });
 }
+/** Each policy the owner saved, numbered (table -> { seq, policy }, setTablePolicy): a read of the listing out when it landed keeps it (readTables). */
+let policySaves = 0;
+const policySaved = new Map();
 /* The listing: each table with its count when known, and (once the backend answers them, 2026-11-03 D10) its policy
- * { read, write, formFed, studioWrite }, its owner { installId, label } and this caller's canRead / canWrite. */
-async function loadTables() {
-  bindDataActions();
+ * { read, write, formFed, studioWrite }, its owner { installId, label } and this caller's canRead / canWrite. ONE read of
+ * GET v1/environment/data. `keep`: a read that fails leaves the listing the card already holds (a Refresh on an open table
+ * never empties the library under it) and says why above it. */
+async function readTables({ keep = false } = {}) {
+  // a policy the owner saved while this read was out is newer than what the read holds (the review of 2026-11-03: the
+  // listing could land after the switch's PUT and put the policy from before it back): the saved one stays on its table
+  const since = policySaves;
   try {
     const d = await D.apiFetch(url(`${ENV_URL}/data`));
-    ev.tables = d.tables || [];
+    const list = d.tables || [];
+    for (const t of list) { const s = t && policySaved.get(t.table); if (s && s.seq > since) t.policy = s.policy; }
+    ev.tables = list;
     ev.tablesNote = '';
   } catch (ex) {
-    ev.tables = [];
+    if (!keep || !Array.isArray(ev.tables)) ev.tables = [];
     ev.tablesNote = ex?.sessionInvalidated ? '' : (ex?.data?.error || D.friendlyError(ex, 'Could not list the tables.'));
   }
+}
+async function loadTables() {
+  bindDataActions();
+  await readTables();
   paintData();
   // A DEEP LINK TO A TABLE AND A ROW (2026-11-02): the Approvals section's Open, or the Mail card's table link, leaves a note;
   // the table opens and the row with it, instead of the library the person then has to walk
@@ -619,10 +632,10 @@ async function loadTables() {
     if (want.row && ev.table === want.table) { ev.openRow = String(want.row); paintData(); }
   }
 }
-/** The rows of one table, fifty at a time; `more` continues from the last key. */
-async function loadRows(table, more = false) {
+/** The rows of one table, fifty at a time; `more` continues from the last key. `keepView`: the same table read again (Refresh) keeps the Visuals field picked. */
+async function loadRows(table, more = false, { keepView = false } = {}) {
   if (!table) return;
-  if (!more) { ev.table = table; ev.rows = null; ev.rowsAfter = ''; ev.openRow = ''; ev.policyNote = ''; ev.rowsFailed = false; if (ev.vis) ev.vis.field = ''; }
+  if (!more) { const same = keepView && ev.table === table; ev.table = table; ev.rows = null; ev.rowsAfter = ''; ev.openRow = ''; ev.policyNote = ''; ev.rowsFailed = false; if (ev.vis && !same) ev.vis.field = ''; }
   ev.rowsLoading = true; ev.rowsNote = ''; paintData();
   try {
     const d = await D.apiFetch(url(`${ENV_URL}/data/${encodeURIComponent(table)}`, { values: 1, limit: 50, after: more ? ev.rowsAfter : '' }));
@@ -658,6 +671,18 @@ async function loadAllRows() {
     if (ev.table === table) ev.rowsLoading = false;   // another table opened meanwhile keeps its own read's state
     paintData();
   }
+}
+/* REFRESH ON AN OPEN TABLE (2026-11-03, the live pass, defect 3: the override switch appeared only after a full reload once
+ * the first submission marked the table). The rows AND the listing: one read of GET v1/environment/data beside the rows, so
+ * a table a form began to fill since the page loaded (its policy's formFed, set at its first public submission) shows its
+ * lock words and, to the owner, the switch; its canRead and canWrite are read again with it. The table stays open and the
+ * view stays (Table, Cards or Visuals, and the Visuals field picked). A second press while the listing is out reads it once. */
+let tablesReading = null;
+async function reloadTable(table) {
+  if (!table) return;
+  if (!tablesReading) tablesReading = readTables({ keep: true }).finally(() => { tablesReading = null; });
+  await Promise.all([tablesReading, loadRows(table, false, { keepView: true })]);
+  paintData();
 }
 function closeTable() { ev.table = ''; ev.rows = null; ev.rowsAfter = ''; ev.openRow = ''; ev.rowsNote = ''; ev.rowsFailed = false; paintData(); }
 function valueText(v) { try { return typeof v === 'string' ? v : JSON.stringify(v, null, 2); } catch { return String(v); } }
@@ -881,7 +906,9 @@ async function setTablePolicy(patch) {
   try {
     const r = await D.apiFetch(url(`${ENV_URL}/data/${encodeURIComponent(table)}`), { method: 'PUT', body: body(patch) });
     const row = (ev.tables || []).find(x => x.table === table);
-    if (row) row.policy = r && r.policy && typeof r.policy === 'object' ? r.policy : { ...(row.policy || {}), ...patch };
+    const policy = r && r.policy && typeof r.policy === 'object' ? r.policy : { ...((row && row.policy) || {}), ...patch };
+    if (row) row.policy = policy;
+    policySaved.set(table, { seq: ++policySaves, policy });
   } catch (ex) {
     // the live backend answers 404 until the policy route lands: the card says so (the plan's degrade)
     ev.policyNote = ex?.sessionInvalidated ? '' : policySaveWords(ex?.status, ex?.data?.code, ex?.data?.error || D.friendlyError(ex, 'Could not save who sees this table.'));
@@ -3264,7 +3291,9 @@ export function bindEnvironmentActions(deps) {
     if (a === 'domain-unserve') return void unserveDomain(btn.dataset.host || '');
     if (a === 'domain-unbind') return void unbindDomain(btn.dataset.host || '', btn);
     if (a === 'domain-copy') return void copyText(btn.dataset.text || '', btn, () => codeBeside(btn));
-    if (a === 'data-open' || a === 'data-reload') return void loadRows(btn.dataset.table || '');
+    if (a === 'data-open') return void loadRows(btn.dataset.table || '');
+    // Refresh on the open table reads the listing too (reloadTable): a table a form began to fill shows its lock at once
+    if (a === 'data-reload') return void reloadTable(btn.dataset.table || '');
     if (a === 'data-close') return void closeTable();
     if (a === 'data-more') return void loadRows(ev.table, true);
     if (a === 'data-row') { const k = btn.dataset.key || ''; ev.openRow = ev.openRow === k ? '' : k; paintData(); return; }

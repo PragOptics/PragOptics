@@ -118,6 +118,9 @@ export function formsOf(modules) {
       // 2026-11-03: the roles told, who decides, the intent word, whether rows wait
       notifyRoles: roleList(s.notify_roles),
       ...approversOf(m),
+      // the manifest's own default role words, whatever the setting names: what an emptied Who decides falls to (the Mail
+      // card's note says it before Save, mailRouting.js formAfter), 2026-11-03
+      approversDefault: roleList(m.manifest && m.manifest.approvers),
       intent: intentOf(m),
       waits: moderates(m),
       enabled: m.enabled !== false

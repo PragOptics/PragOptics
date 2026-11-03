@@ -28,6 +28,13 @@
 // EVERY READ DEGRADES: a lane whose backend keeps no roles, approvers, intent or theme yet answers without them; the
 // pickers paint empty, a save still works, and the card says once when the answer lacked what was sent.
 //
+// THE NOTES FOLLOW THE TICKS (the live pass of 2026-11-03, defect 2): under a form's Tell boxes, under its Who decides and
+// at the foot of a mailer's editor, one line says what a Save would do with the boxes as ticked now ("Tells the owner.",
+// "Decided by the owner and every admin.", "Tells ops@site · confirms to the sender."), in the words of the saved line;
+// with no mailer the form would send from it says nothing is sent (toldNote), and the Confirm select's first option names
+// the switch of the mailer the Send from pick would send from (asMailerWords), the review of 2026-11-03.
+// The editor's picks are read once (formPicks, mailerPicks) for both the Save and the notes (editorNow), so they never differ.
+//
 // The rules in words live in mailRouting.js and mailTheme.js (pure, tested); this file is the DOM and the requests.
 
 import { PRAG_API_BASE } from '../runtime/config.js';
@@ -35,7 +42,7 @@ import { accessToken } from '../runtime/session.js';
 import { explainLink } from '../components/explainer.js';
 import { iconBtn, leadBtn, stateLead, stateIcon, armed } from './cards.js';
 import { formsOf, resolvedMailer } from './mailerUse.js';
-import { ROLE_WORDS, emailList, teamOf, roleCounts, mailerRecord, toldBy, confirmsOf, whoWords, roleWord, decidersOf, decidersWords, namedDecidersWords, formTags, settingsFor, mailerBodyFor, lostWords, recipientHoldWords, approversChanged } from './mailRouting.js';
+import { ROLE_WORDS, emailList, teamOf, roleCounts, mailerRecord, toldBy, confirmsOf, whoWords, roleWord, decidersOf, decidersWords, namedDecidersWords, formTags, settingsFor, mailerBodyFor, lostWords, recipientHoldWords, approversChanged, tellsWords, toldNote, asMailerWords, approveRoles, mailerLine, mailerAfter, formAfter, decidersChanged, decideNote } from './mailRouting.js';
 import { FONTS, FONT_WORDS, MAX_LOGO, themeOf, sourceOf, validTheme, themeChanges, themeAfterSave, siteGoneWords, themeWords, themeTag } from './mailTheme.js';
 import { countWord } from '../ui/words.js';
 
@@ -138,6 +145,8 @@ export function paintMail() {
   h.innerHTML = mailHtml();
   // the frame the server drew goes into its sandboxed box as a document, never as markup of this page
   for (const f of h.querySelectorAll('iframe[data-mail-preview]')) { const t = mc.theme[f.dataset.mailPreview]; if (t && t.preview) f.srcdoc = t.preview; }
+  // an open editor's notes read the boxes as painted (a stored address the boxes cannot show is what a Save drops)
+  for (const r of h.querySelectorAll('[data-mail-editor^="form:"], [data-mail-editor^="mailer:"]')) editorNow(r);
 }
 
 export function mailHtml() {
@@ -163,8 +172,7 @@ function mailersHtml() {
     return `${head}<p class="lic-hint">${line}${mc.mailersLink ? ' Your forms still store every message; nothing is sent until a mailer exists.' : ''}</p>`;
   }
   const rows = list.map(m => {
-    const who = whoWords(m);
-    const line = `Tells ${who} · ${m.confirmVisitor ? 'confirms to the sender' : 'does not confirm to the sender'}.`;
+    const line = mailerLine(m);
     const pencil = X.canWrite() && mc.editMailer !== m.address ? iconBtn('mail-mailer-edit', 'edit', `Change who ${m.address} tells`, `data-address="${e(m.address)}"`) : '';
     return `
       <div class="ev-mail-item" data-row="mailer:${e(m.address)}">
@@ -192,23 +200,28 @@ function peopleBoxes(attr, picked, { note = '', fixed = '' } = {}) {
   const held = p => !!keep && p.email === keep;
   return `<div class="lic-tells-grid">${team.map(p => `<label class="lic-tell"><input type="checkbox" ${attr} value="${e(p.email)}" ${set.has(p.email) || held(p) ? 'checked' : ''} ${held(p) ? 'disabled' : ''}><span>${e(p.email)}</span><span class="lic-state is-quiet">${e(p.role)}</span></label>`).join('')}</div>${note ? `<p class="lic-hint">${e(note)}</p>` : ''}`;
 }
-function roleBoxes(attr, picked, { note = '' } = {}) {
+function roleBoxes(attr, picked, { note = '', nowHtml = '' } = {}) {
   const e = D.escapeHtml;
   const counts = mc.team ? roleCounts(mc.team) : null;
   const set = new Set((picked || []).map(x => String(x).toLowerCase()));
-  return `<div class="lic-tells-grid">${ROLE_WORDS.map(r => `<label class="lic-tell"><input type="checkbox" ${attr} value="${r}" ${set.has(r) ? 'checked' : ''}><span>${e(roleWord(r))}</span>${counts ? `<span class="lic-state is-quiet">${e(countWord(counts[r], 'person', 'people'))} today</span>` : ''}</label>`).join('')}</div>${note ? `<p class="lic-hint">${e(note)}</p>` : ''}`;
+  return `<div class="lic-tells-grid">${ROLE_WORDS.map(r => `<label class="lic-tell"><input type="checkbox" ${attr} value="${r}" ${set.has(r) ? 'checked' : ''}><span>${e(roleWord(r))}</span>${counts ? `<span class="lic-state is-quiet">${e(countWord(counts[r], 'person', 'people'))} today</span>` : ''}</label>`).join('')}</div>${nowHtml}${note ? `<p class="lic-hint">${e(note)}</p>` : ''}`;
 }
 function errLine(key) { const t = mc.err[key]; return t ? `<p class="acct-error ev-note" role="alert">${D.escapeHtml(t)}</p>` : ''; }
+/** A note that follows the ticks (editorNow keeps it in step before Save): what a Save would do, in the saved line's words. */
+function nowLine(kind, text) { return `<p class="lic-hint" data-mail-now="${kind}" aria-live="polite">${D.escapeHtml(text)}</p>`; }
+/** The values of the boxes ticked under `root` that match `sel` (a box held ticked and disabled counts, as the Save counts it). */
+function ticked(root, sel) { return [...root.querySelectorAll(`${sel}:checked`)].map(x => String(x.value || '')); }
 
 function mailerEditHtml(m) {
   const e = D.escapeHtml;
   const key = `mailer:${m.address}`;
   return `
     <div class="ev-mail-edit" data-mail-editor="${e(key)}" role="group" aria-label="Who ${e(m.address)} tells">
-      <p class="lic-hint">Who hears about every message a form sends through this mailer, unless the form names its own. Nobody picked: the owner.</p>
+      <p class="lic-hint">Who hears about every message a form sends through this mailer, unless the form names its own.</p>
       <div class="ev-mail-field"><span class="acct-label">People</span>${peopleBoxes('data-mail-person', m.notify)}</div>
       <div class="ev-mail-field"><span class="acct-label">Roles</span>${roleBoxes('data-mail-role', m.notifyRoles, { note: 'A role tells everyone who holds it now, and whoever gets it later.' })}</div>
       <label class="lic-tell lic-tell--switch"><input type="checkbox" data-mail-confirm ${m.confirmVisitor ? 'checked' : ''}><span>Confirm to the sender</span><span class="lic-state is-quiet">a copy of what they sent, when the form took their email</span></label>
+      ${nowLine('mailer', mailerLine(m))}
       ${errLine(key)}
       <div class="acct-actions-row">${stateLead('mail-mailer-save', 'check', 'Save', busyState(key, 'Saving…'), `data-address="${e(m.address)}"`, 'btn-primary')}${mc.busy === key ? '' : iconBtn('mail-mailer-cancel', 'x', 'Keep it as it is')}</div>
     </div>`;
@@ -219,10 +232,8 @@ async function saveMailer(address) {
   if (!m || mc.busy) return;
   const root = document.querySelector(`[data-mail-editor="mailer:${CSS.escape(m.address)}"]`);
   if (!root) return;
-  const pick = sel => [...root.querySelectorAll(`${sel}:checked`)].map(x => String(x.value || ''));
-  // no team read, no people boxes: notify stays out of the body and the server keeps the people stored (never wiped by an empty pick)
   const known = teamKnown();
-  const sent = mailerBodyFor({ people: known ? pick('[data-mail-person]') : null, roles: pick('[data-mail-role]'), confirm: !!root.querySelector('[data-mail-confirm]')?.checked });
+  const sent = mailerPicks(root);
   const key = `mailer:${m.address}`;
   mc.busy = key; mc.err[key] = ''; setNote(''); paintMail();
   try {
@@ -244,7 +255,73 @@ async function saveMailer(address) {
   mc.busy = ''; paintMail();
 }
 
+/** What a mailer's editor would save now (mailRouting.js mailerBodyFor): no team read, no people boxes, so notify stays out of the body and the server keeps the people stored (never wiped by an empty pick). */
+function mailerPicks(root) {
+  return mailerBodyFor({ people: teamKnown() ? ticked(root, '[data-mail-person]') : null, roles: ticked(root, '[data-mail-role]'), confirm: !!root.querySelector('[data-mail-confirm]')?.checked });
+}
+
 /* ---------- the forms ---------- */
+
+/**
+ * Who decides a form's waiting rows, in words, for its line and its editor's note alike: the server's own list for the
+ * install (GET v1/environment/approvals, the ACTIVE team only, and whatever this role can read of the scopes) when the lane
+ * answers it and nothing since changed who decides (`fresh`, and no Save waiting for the read again, mc.stale); else this
+ * card's reading of `form` and the scopes.
+ */
+function decidersBy(form, fresh = true) {
+  const g = fresh && X.decisions && !mc.stale.has(form.installId) ? X.decisions(form.installId) : null;
+  return g && Array.isArray(g.deciders) ? namedDecidersWords(g.deciders, ownerEmail()) : decidersWords(decidersOf(form, mc.team, mc.scopes, ownerEmail()), ownerEmail());
+}
+
+/**
+ * What a form's editor would save now (ONE settings body, mailRouting.js settingsFor), from the boxes as they are ticked: the
+ * Save sends it and the notes read it (editorNow). No team read, no people boxes: notify_to stays out of the body (the
+ * server merges and keeps what is stored) and the approver addresses already stored go back unchanged beside the roles
+ * picked; nothing stored is ever wiped by an empty pick. The older one-address setting: unticked, it is cleared too, or
+ * the form would go on mailing it; never when the manifest needs it or defaults it (recipientHold), where '' would be
+ * refused or bring the default back.
+ */
+function formPicks(root, f) {
+  const fromSel = root.querySelector('[data-mail-from]');
+  const known = teamKnown();
+  return settingsFor({
+    mailer: fromSel ? fromSel.value : f.mailer,
+    people: known ? ticked(root, '[data-mail-person]') : null, roles: ticked(root, '[data-mail-role]'),
+    confirm: root.querySelector('[data-mail-confirm-sel]')?.value,
+    approverRoles: ticked(root, '[data-mail-approver-role]'), approverPeople: known ? ticked(root, '[data-mail-approver]') : emailList(f.approversFrom === 'setting' ? f.approvers : []),
+    recipient: f.recipient, recipientHold: f.recipientHold
+  });
+}
+
+/**
+ * What a form would do once `settings` is saved, in the saved line's words: who it tells (from the mailer it would send
+ * from; none, the "no mailer" tag, and nothing is sent), whose switch "As the mailer" follows, and who decides.
+ */
+function formNow(f, settings) {
+  const after = formAfter(f, settings);
+  const from = resolvedMailer(after, mc.mailers || [], mc.dflt);
+  const m = mailerOf(from);
+  return {
+    told: toldNote(toldBy(after, m, mc.team), { unknown: mc.mailersUnknown, sends: mc.mailersUnknown || !!from }),
+    confirm: asMailerWords(m),
+    decide: decideNote(decidersBy(after, !decidersChanged(f, after)), after.approversFrom, { ruleRoles: approveRoles(mc.scopes) })
+  };
+}
+
+/** An editor's notes brought in step with its boxes (a tick, a pick, the switch): only the notes' words change, so the boxes, the focus and the unsaved picks stay as they are. */
+function editorNow(root) {
+  const key = String(root?.dataset?.mailEditor || '');
+  const say = (kind, text) => { const p = root.querySelector(`[data-mail-now="${kind}"]`); if (p && p.textContent !== text) p.textContent = text; };
+  if (key.startsWith('form:')) {
+    const f = (mc.forms || []).find(x => x.installId === key.slice(5));
+    if (!f) return;
+    const n = formNow(f, formPicks(root, f));
+    say('told', n.told); say('confirm', n.confirm); say('decide', n.decide);
+  } else if (key.startsWith('mailer:')) {
+    const m = mailerOf(key.slice(7));
+    if (m) say('mailer', mailerLine(mailerAfter(m, mailerPicks(root))));
+  }
+}
 
 function formsHtml() {
   const e = D.escapeHtml;
@@ -262,13 +339,10 @@ function formsHtml() {
     const confirms = confirmsOf(f, m);
     const tags = formTags(f, { from, confirms: confirms.value, dflt: mc.dflt, unknown }).map(t => `<span class="acct-tag ${t.cls}">${e(t.word)}</span>`).join('');
     const tableLink = `<a class="acct-inline-link" href="#account?section=environment&card=data" data-acct-section="environment" data-acct-card="data" data-open-table="${e(f.table)}">${e(f.table)}</a>`;
-    const toldWords = unknown && told.source !== 'form' ? 'tells whoever its mailer tells' : `tells ${whoWords(told)}${told.source === 'mailer' ? ' (the mailer\'s list)' : ''}`;
+    const toldWords = tellsWords(told, { unknown });
     const confirmWords = unknown && confirms.source !== 'form' ? 'confirms to the sender as its mailer does' : `${confirms.value ? 'confirms to the sender' : 'does not confirm to the sender'}${confirms.source === 'mailer' ? ' (as the mailer)' : ''}`;
-    // who decides: the server's own list for this install when the lane answers it (the ACTIVE team only, and whatever this
-    // role can read of the scopes), else this card's reading of the form and the scopes
-    const g = X.decisions && !mc.stale.has(f.installId) ? X.decisions(f.installId) : null;
-    const by = g && Array.isArray(g.deciders) ? namedDecidersWords(g.deciders, ownerEmail()) : decidersWords(decidersOf(f, mc.team, mc.scopes, ownerEmail()));
-    const decideWords = f.waits ? ` Its rows wait for a decision by ${by}.` : '';
+    // who decides: the server's own list for this install when the lane answers it, else this card's reading (decidersBy)
+    const decideWords = f.waits ? ` Its rows wait for a decision by ${decidersBy(f)}.` : '';
     const pencil = X.canWrite() && mc.edit !== f.installId ? iconBtn('mail-form-edit', 'edit', `Change what ${f.name} sends and who decides`, `data-install="${e(f.installId)}"`) : '';
     return `
       <div class="ev-mail-item" data-row="${e(f.installId)}">
@@ -288,25 +362,24 @@ function formEditHtml(f, m, from) {
   const fromCtl = mailers.length
     ? `<select class="acct-input" data-mail-from aria-label="Send ${e(f.name)} from"><option value="" ${picked ? '' : 'selected'}>${e(`The environment's mailer${mc.dflt ? ` (${mc.dflt})` : ''}`)}</option>${mailers.map(x => `<option value="${e(x.address)}" ${x.address === picked ? 'selected' : ''}>${e(x.address)}</option>`).join('')}</select>`
     : `<p class="lic-hint">No mailer yet, so nothing is sent; the messages are kept in ${e(f.table)}.</p>`;
-  const inherited = m ? `Nothing picked: the mailer's, ${whoWords(m)}.` : 'Nothing picked: the owner.';
+  // the notes say what a Save would do with the boxes as ticked (painted from what is stored; editorNow keeps them in step)
+  const now = formNow(f, {});
   const confirmSel = `<select class="acct-input" data-mail-confirm-sel aria-label="Confirm to the sender">
-      <option value="" ${f.confirmVisitor == null ? 'selected' : ''}>${e(`As the mailer${m ? ` (${m.confirmVisitor ? 'confirms' : 'does not confirm'})` : ''}`)}</option>
+      <option value="" data-mail-now="confirm" ${f.confirmVisitor == null ? 'selected' : ''}>${e(now.confirm)}</option>
       <option value="true" ${f.confirmVisitor === true ? 'selected' : ''}>Yes, a copy of what they sent</option>
       <option value="false" ${f.confirmVisitor === false ? 'selected' : ''}>No</option>
     </select>`;
   const d = decidersOf(f, mc.team, mc.scopes, ownerEmail());
-  // nothing picked falls as the server falls (mailerUse.js approversOf): to the form's own default roles when its module names any, else to the environment's rule
-  const decideNote = f.approversFrom === 'manifest' ? `The owner always decides. Nothing picked: this form's own default, ${decidersWords(d)}.`
-    : d.named ? 'The owner always decides.'
-    : `The owner always decides. Nothing picked: ${decidersWords(d)} (every role with "Approve what shows on your site").`;
+  // nothing picked falls as the server falls (mailerUse.js approversOf, mailRouting.js formAfter): to the form's own default
+  // roles when its module names any, else to the environment's rule; the note under the boxes says which (decideNote)
   const waitsNote = f.waits ? '' : '<p class="lic-hint">Rows of this form show without a decision today; this is who decides when they wait.</p>';
   return `
     <div class="ev-mail-edit" data-mail-editor="${e(key)}" role="group" aria-label="What ${e(f.name)} sends">
       <div class="ev-mail-field"><span class="acct-label">Send from</span>${fromCtl}</div>
       <div class="ev-mail-field"><span class="acct-label">Tell these people</span>${peopleBoxes('data-mail-person', f.notifyTo, { fixed: f.recipientHold ? f.recipient : '', note: recipientHoldWords(f.recipient, f.recipientHold, f.recipientLabel) })}</div>
-      <div class="ev-mail-field"><span class="acct-label">Tell these roles</span>${roleBoxes('data-mail-role', f.notifyRoles, { note: `${inherited} A role tells everyone who holds it now, and whoever gets it later.` })}</div>
+      <div class="ev-mail-field"><span class="acct-label">Tell these roles</span>${roleBoxes('data-mail-role', f.notifyRoles, { nowHtml: nowLine('told', now.told), note: 'A role tells everyone who holds it now, and whoever gets it later.' })}</div>
       <div class="ev-mail-field"><span class="acct-label">Confirm to the sender</span>${confirmSel}</div>
-      <div class="ev-mail-field"><span class="acct-label">Who decides</span>${waitsNote}${roleBoxes('data-mail-approver-role', d.named ? d.roles : [])}${peopleBoxes('data-mail-approver', d.named ? d.people : [], { note: decideNote })}</div>
+      <div class="ev-mail-field"><span class="acct-label">Who decides</span>${waitsNote}${roleBoxes('data-mail-approver-role', d.named ? d.roles : [])}${peopleBoxes('data-mail-approver', d.named ? d.people : [])}${nowLine('decide', now.decide)}</div>
       ${errLine(key)}
       <div class="acct-actions-row">${stateLead('mail-form-save', 'check', 'Save', busyState(key, 'Saving…'), `data-install="${e(f.installId)}"`, 'btn-primary')}${mc.busy === key ? '' : iconBtn('mail-form-cancel', 'x', 'Keep it as it is')}</div>
     </div>`;
@@ -317,20 +390,9 @@ async function saveForm(installId) {
   if (!f || mc.busy) return;
   const root = document.querySelector(`[data-mail-editor="form:${CSS.escape(installId)}"]`);
   if (!root) return;
-  const pick = sel => [...root.querySelectorAll(`${sel}:checked`)].map(x => String(x.value || ''));
-  const fromSel = root.querySelector('[data-mail-from]');
-  // no team read, no people boxes: notify_to stays out of the body (the server merges and keeps what is stored) and the
-  // approver addresses already stored go back unchanged beside the roles picked; nothing stored is ever wiped by an empty pick
+  // the one body the notes read too (formPicks): the team unread keeps the people stored, the older recipient as it may be
   const known = teamKnown();
-  const settings = settingsFor({
-    mailer: fromSel ? fromSel.value : f.mailer,
-    people: known ? pick('[data-mail-person]') : null, roles: pick('[data-mail-role]'),
-    confirm: root.querySelector('[data-mail-confirm-sel]')?.value,
-    approverRoles: pick('[data-mail-approver-role]'), approverPeople: known ? pick('[data-mail-approver]') : emailList(f.approversFrom === 'setting' ? f.approvers : []),
-    // the older one-address setting: unticked, it is cleared too, or the form would go on mailing it; never when the
-    // manifest needs it or defaults it (recipientHold), where '' would be refused or bring the default back
-    recipient: f.recipient, recipientHold: f.recipientHold
-  });
+  const settings = formPicks(root, f);
   const key = `form:${installId}`;
   mc.busy = key; mc.err[key] = ''; setNote(''); paintMail();
   try {
@@ -595,5 +657,8 @@ export function mailChange(e) {
     if (f.type === 'color') { const c = f.parentElement?.querySelector('code'); if (c) c.textContent = f.value; }
     return true;
   }
+  // a tick, a pick or the switch in a form's or a mailer's editor: its notes say what a Save would do now (editorNow)
+  const ed = e?.target?.closest?.('[data-mail-editor^="form:"], [data-mail-editor^="mailer:"]');
+  if (ed) { editorNow(ed); return true; }
   return false;
 }

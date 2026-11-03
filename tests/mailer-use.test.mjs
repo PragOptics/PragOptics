@@ -108,4 +108,9 @@ test('who decides reads as the backend reads it (auth/approvals.js approversOf):
   assert.deepEqual(approversOf(null), { approvers: [], approversFrom: '' });
   const [f] = formsOf([{ ...form('f1', 'Reviews', { approvers: [] }), manifest }]);
   assert.deepEqual([f.approvers, f.approversFrom], [['admin'], 'manifest'], 'formsOf carries the same reading');
+  // the manifest's default rides beside the setting, so the Mail card can say what an emptied Who decides falls to
+  assert.deepEqual(f.approversDefault, ['admin']);
+  const [g] = formsOf([{ ...form('f2', 'Reviews', { approvers: ['dev@site.test'] }), manifest }]);
+  assert.deepEqual([g.approvers, g.approversFrom, g.approversDefault], [['dev@site.test'], 'setting', ['admin']], 'a setting that names someone still carries the default it would fall to');
+  assert.deepEqual(formsOf([form('f3', 'Contact', {})])[0].approversDefault, [], 'no default: none');
 });
