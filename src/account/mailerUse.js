@@ -13,7 +13,10 @@
 //   - its rows wait for a decision when its manifest says moderate, or its `moderate` setting is on, or it declares the
 //     reader door and the setting is not off (backend auth/moderation.js moderates), 2026-11-03;
 //   - the roles it tells (`notify_roles`), who decides (`approvers`) and its intent word (`intent`, the owner's word over
-//     the manifest's) are read when the lane's backend keeps them and empty when it does not (the plan D1, D4, D5).
+//     the manifest's) are read when the lane's backend keeps them and empty when it does not (the plan D1, D4, D5);
+//   - who decides is the setting when it names anyone, else the manifest's default role words (backend auth/approvals.js
+//     approversOf, the same reading), so an owner who unchecks every box falls to the module's own default, as the
+//     server does.
 
 import { roleList, emailList } from './mailRouting.js';
 
@@ -44,6 +47,20 @@ export function intentOf(install) {
   return /^[a-z][a-z0-9_-]{1,31}$/.test(w) ? w : '';
 }
 
+/**
+ * Who an install names to decide, read as the backend reads it (auth/approvals.js approversOf): its `approvers` setting
+ * when it names anyone (role words and addresses), else the manifest's default role words, else nobody. An empty setting
+ * therefore falls to the manifest's default, never to "nobody". `approversFrom` says which: 'setting' | 'manifest' | ''.
+ */
+export function approversOf(install) {
+  const s = (install && install.settings) || {};
+  const m = (install && install.manifest) || {};
+  const own = Array.isArray(s.approvers) ? [...new Set(s.approvers.map(x => String(x == null ? '' : x).trim().toLowerCase()).filter(Boolean))] : [];
+  if (own.length) return { approvers: [...roleList(own), ...emailList(own)], approversFrom: 'setting' };
+  const dflt = roleList(m.approvers);
+  return { approvers: dflt, approversFrom: dflt.length ? 'manifest' : '' };
+}
+
 /** The table an install's submissions land in (the public door's rule). */
 export function tableOf(install) {
   const m = install && install.manifest;
@@ -67,9 +84,9 @@ export function formsOf(modules) {
       // The older `recipient` setting (one address) counts as the form's own list too, as the door counts it.
       notifyTo: [...new Set([s.recipient, ...(Array.isArray(s.notify_to) ? s.notify_to : [])].map(x => String(x || '').trim().toLowerCase()).filter(x => x.includes('@')))],
       confirmVisitor: cv === true || cv === 'true' ? true : cv === false || cv === 'false' ? false : null,
-      // 2026-11-03: the roles told, who decides (the setting, else the manifest's default roles), the intent word, whether rows wait
+      // 2026-11-03: the roles told, who decides, the intent word, whether rows wait
       notifyRoles: roleList(s.notify_roles),
-      approvers: Array.isArray(s.approvers) ? [...roleList(s.approvers), ...emailList(s.approvers)] : roleList(m.manifest && m.manifest.approvers),
+      ...approversOf(m),
       intent: intentOf(m),
       waits: moderates(m),
       enabled: m.enabled !== false

@@ -344,7 +344,7 @@ const ICONS = {
 
 const ACCOUNT_SECTIONS = [
   { id: 'home',         label: 'Home' },
-  { id: 'approvals',    label: 'Approvals' },    // 2026-11-02, Cameron: "a spot in the ui for an owner or team who would approve"; shown by scope (approvalsHidden)
+  { id: 'approvals',    label: 'Approvals' },    // 2026-11-02, Cameron: "a spot in the ui for an owner or team who would approve"; shown to the team in view, never the agent (approvalsHidden)
   { id: 'profile',      label: 'Profile' },
   { id: 'products',     label: 'Registered hardware' },
   { id: 'subscription', label: 'Billing' },
@@ -506,8 +506,16 @@ function scopesInView() {
   if (roleInView() === 'owner') return ['approve_content'];
   return teamRole.userId === pingUserId() && teamRole.teamId === pickedTeamId() && Array.isArray(teamRole.scopes) ? teamRole.scopes : [];
 }
-/** Approvals (2026-11-02) shows to the owner and to a role the owner gave "Approve what shows on your site"; nobody else sees the entry. */
-function approvalsHidden() { return TEAM_ON && !scopesInView().includes('approve_content'); }
+/** Approvals (2026-11-02; widened 2026-11-03 with the backend's D5 rule) shows to everyone on the team in view: a member or a
+ *  viewer an install names under Who decides may decide although their role holds no "Approve what shows on your site", so the
+ *  entry can no longer follow that one scope. Hidden only while the role on the team in view is unknown or none, and for the
+ *  agent (an agent never decides; its portal menu is agentModeGroups). The section itself says per group who decides and
+ *  hides Approve and Reject where the server answers canDecide false. */
+function approvalsHidden() {
+  if (!TEAM_ON) return false;
+  const r = roleInView();
+  return r === null || r === 'none' || r === 'agent';
+}
 /** Every answer from the team view says the role on the team it was asked about (no tenant= is the default team). */
 function noteTeamView(url, options, data) {
   if (String(options?.method || 'GET').toUpperCase() !== 'GET') return;
@@ -5270,7 +5278,8 @@ const CARD_IDS = {
   subscription: { plan: 'acctPricing', card: 'acctPmActions', payment: 'acctPmActions', details: 'card-billing-details', bandwidth: 'card-billing-bandwidth' },
   profile: { name: 'card-profile-name', passkeys: 'acctPasskeyList', password: 'acctPasswordError', phone: 'acctPhoneState', email: 'acctAliasList' },
   team: { members: 'card-team-members', invite: 'card-team-invite' },
-  licensing: { account: 'card-licensing-account', tenant: 'card-licensing-tenant', agreement: 'card-licensing-agreement', mail: 'card-licensing-mailboxes', mailboxes: 'card-licensing-mailboxes' }
+  // mailers (2026-11-03): the Mailers card (licensingExchange.js, key exchange), where New mailer lives; the Mail card's "No mailer yet" link lands here
+  licensing: { account: 'card-licensing-account', tenant: 'card-licensing-tenant', agreement: 'card-licensing-agreement', mail: 'card-licensing-mailboxes', mailboxes: 'card-licensing-mailboxes', mailers: 'card-licensing-exchange' }
 };
 /** Keep a card for its section to open once it has painted (the same note a card link in the address leaves). */
 function keepOpenCard(section, card) {

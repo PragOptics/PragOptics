@@ -774,10 +774,11 @@ function decidedWords(v) {
  * pending gets the two: the row's value is written back with its status and the moment it was decided, which is what a
  * reader-door module shows or hides by (auth/publicDoors.js items). Members who can write see them; nobody else. Who can
  * write is the table's own answer once the listing carries it (2026-11-03 D10, canWrite against the table's write level);
- * before that, the role-level canWrite() as always. */
+ * before that, the role-level canWrite() as always. A paused environment (SUSPENDED) hides them whatever the listing says:
+ * the server answers the listing's canWrite from the role alone and refuses every write with 409 while paused. */
 function moderateButtons(r) {
   const e = D.escapeHtml;
-  if (statusOf(r) !== 'pending' || !tableCanWrite(currentTable(), canWrite())) return '';
+  if (statusOf(r) !== 'pending' || paused() || !tableCanWrite(currentTable(), canWrite())) return '';
   const out = ev.moderating === r.key;
   return stateLead('data-approve', 'check', 'Approve', { out: out && ev.moderatingTo === 'approved', busyWord: 'Approving…', waiting: out && ev.moderatingTo !== 'approved' ? 'Waiting for the other decision' : '' }, `data-key="${e(r.key)}" data-tip="Show it: the row's status becomes approved"`, 'btn-primary')
     + stateLead('data-reject', 'x', 'Reject', { out: out && ev.moderatingTo === 'rejected', busyWord: 'Rejecting…', waiting: out && ev.moderatingTo !== 'rejected' ? 'Waiting for the other decision' : '' }, `data-key="${e(r.key)}" data-tip="Keep it out of sight: the row's status becomes rejected"`, 'is-risky');

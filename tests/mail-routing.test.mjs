@@ -87,6 +87,13 @@ test('a form\'s tags say where it sends from, whether it confirms, whether rows 
   const own = formTags({ mailer: 'forms@site.test', enabled: true }, { from: 'forms@site.test', confirms: true, dflt: 'forms@site.test' });
   assert.deepEqual(own.map(x => x.word), ['from forms@site.test', 'confirms']);
   assert.deepEqual(formTags({}, { from: '', confirms: true })[0], { word: 'no mailer', cls: 'is-bad' });
+  // a pick the environment no longer holds sends from the default by fallback (mailerUse.js resolvedMailer): the tag says so
+  assert.equal(formTags({ mailer: 'old@site.test' }, { from: 'forms@site.test', confirms: true, dflt: 'forms@site.test' })[0].word, 'from forms@site.test (the default)');
+  assert.equal(formTags({ mailer: 'Forms@Site.test' }, { from: 'forms@site.test', confirms: true, dflt: 'forms@site.test' })[0].word, 'from forms@site.test', 'the form\'s own pick, whatever its case, is not "the default"');
+  assert.equal(formTags({ mailer: 'reviews@site.test' }, { from: 'reviews@site.test', confirms: true, dflt: 'forms@site.test' })[0].word, 'from reviews@site.test');
+  // the mailers unread (a viewer): the tag names the form's own pick or "its mailer", never "no mailer"
+  assert.deepEqual(formTags({ mailer: '' }, { from: '', confirms: true, unknown: true })[0], { word: 'from its mailer', cls: '' });
+  assert.deepEqual(formTags({ mailer: 'reviews@site.test' }, { from: '', confirms: true, unknown: true })[0], { word: 'from reviews@site.test', cls: '' });
 });
 
 test('one Save, one settings body: the mailer, the people, the roles, the switch, the approvers in one list', () => {
@@ -95,6 +102,16 @@ test('one Save, one settings body: the mailer, the people, the roles, the switch
   assert.deepEqual(settingsFor({}), { mailer: '', notify_to: [], notify_roles: [], confirm_visitor: '', approvers: [] });
   assert.equal(settingsFor({ confirm: 'maybe' }).confirm_visitor, '', 'anything but true or false follows the mailer');
   assert.deepEqual(mailerBodyFor({ people: ['ops@site.test'], roles: ['member'], confirm: false }), { notify: ['ops@site.test'], notifyRoles: ['member'], confirmVisitor: false });
+});
+
+test('the team unread (people: null): notify_to and notify stay out of the body so the server keeps the people stored; the approver addresses stored go back beside the roles picked', () => {
+  const s = settingsFor({ mailer: 'forms@site.test', people: null, roles: ['admin'], confirm: 'false', approverRoles: ['developer'], approverPeople: ['ops@site.test'] });
+  assert.deepEqual(s, { mailer: 'forms@site.test', notify_roles: ['admin'], confirm_visitor: 'false', approvers: ['developer', 'ops@site.test'] });
+  assert.ok(!('notify_to' in s), 'no notify_to key at all: an empty list would wipe the stored people');
+  assert.deepEqual(settingsFor({ people: [] }).notify_to, [], 'an empty pick with the team shown does clear the list');
+  const m = mailerBodyFor({ people: null, roles: ['member'], confirm: true });
+  assert.deepEqual(m, { notifyRoles: ['member'], confirmVisitor: true });
+  assert.ok(!('notify' in m));
 });
 
 test('a lane whose backend dropped the roles says so once; nothing lost says nothing', () => {

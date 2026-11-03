@@ -9,7 +9,7 @@
 // The columns' helpers (dataColumns.js) decide what a row's fields are and when it happened; the Mail column's words
 // (rowMail.js) name a row's mail state, so the By mail bars read exactly as the Table's Mail column does.
 
-import { innerOf, whenOf, statusOf, labelOf, cellText } from './dataColumns.js';
+import { innerOf, whenOf, statusOf, labelOf, cellText, HIDDEN } from './dataColumns.js';
 import { mailShort } from './rowMail.js';
 
 export const UNITS = Object.freeze(['day', 'week', 'month']);
@@ -106,13 +106,14 @@ function textsOf(v) {
   const t = String(cellText(v)).trim();
   return t ? [t] : [];
 }
-/** The rows' own fields a person can count by: [{ key, label, count, distinct }], the most carried first. */
+/** The rows' own fields a person can count by: [{ key, label, count, distinct }], the most carried first. The platform's bookkeeping keys (dataColumns.js HIDDEN: id, status, at, mail, ...) never count, as the Table never shows them. */
 export function fieldKeys(rows) {
   const seen = new Map();
   for (const r of rows || []) {
     const inner = innerOf(r);
     if (!inner) continue;
     for (const [k, v] of Object.entries(inner)) {
+      if (HIDDEN.has(k)) continue;
       const ts = textsOf(v);
       if (!ts.length) continue;
       const f = seen.get(k) || { key: k, label: labelOf(k), count: 0, values: new Set() };
@@ -129,13 +130,14 @@ export function defaultField(fields) {
   const f = list.find(x => x.distinct >= 2 && x.distinct <= MAX_FIELD_BUCKETS && x.distinct < x.count) || list[0];
   return f ? f.key : '';
 }
-/** By one field: its values as buckets, the most common first, the rest folded into one "other" row: { key, buckets, distinct, without }. */
+/** By one field: its values as buckets, the most common first, the rest folded into one "other" row: { key, buckets, distinct, without }. A bookkeeping key (HIDDEN) counts nothing. */
 export function byField(rows, key) {
   const m = new Map();
   let without = 0;
+  const hidden = HIDDEN.has(key);
   for (const r of rows || []) {
     const inner = innerOf(r);
-    const ts = inner ? textsOf(inner[key]) : [];
+    const ts = inner && !hidden ? textsOf(inner[key]) : [];
     if (!ts.length) { without++; continue; }
     for (const t of ts) m.set(t, (m.get(t) || 0) + 1);
   }

@@ -1,7 +1,7 @@
 // tests/mailer-use.test.mjs: which form sends from which mailer (src/account/mailerUse.js). Run: node --test tests/
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { takesMail, tableOf, formsOf, resolvedMailer, formsFor, moderates, intentOf } from '../src/account/mailerUse.js';
+import { takesMail, tableOf, formsOf, resolvedMailer, formsFor, moderates, intentOf, approversOf } from '../src/account/mailerUse.js';
 
 const form = (installId, name, settings = {}, doors = ['submissions'], table) => ({ installId, name, buildName: name, enabled: true, manifest: { doors, ...(table ? { table } : {}) }, settings });
 const mailers = [{ address: 'forms@bridgesindust.com' }, { address: 'reviews@bridgesindust.com' }];
@@ -65,9 +65,24 @@ test('the intent word is the owner\'s setting over the manifest\'s, in the plan\
   assert.equal(intentOf({ manifest: {}, settings: { intent: 'not a word' } }), '');
   assert.equal(intentOf({}), '');
   const [f] = formsOf([form('f1', 'Reviews', { notify_roles: ['Admin', 'agent'], approvers: ['developer', 'Ops@site.test'], intent: 'review', moderate: true }, ['submissions', 'reader'])]);
-  assert.deepEqual([f.notifyRoles, f.approvers, f.intent, f.waits], [['admin'], ['developer', 'ops@site.test'], 'review', true]);
+  assert.deepEqual([f.notifyRoles, f.approvers, f.approversFrom, f.intent, f.waits], [['admin'], ['developer', 'ops@site.test'], 'setting', 'review', true]);
   const [g] = formsOf([{ ...form('f2', 'Contact'), manifest: { doors: ['submissions'], approvers: ['admin', 'agent'] } }]);
-  assert.deepEqual([g.notifyRoles, g.approvers, g.intent, g.waits], [[], ['admin'], '', false], 'no setting: the manifest\'s default approvers, roles only');
+  assert.deepEqual([g.notifyRoles, g.approvers, g.approversFrom, g.intent, g.waits], [[], ['admin'], 'manifest', '', false], 'no setting: the manifest\'s default approvers, roles only');
   const [h] = formsOf([form('f3', 'Partners', { approvers: [] })]);
-  assert.deepEqual(h.approvers, [], 'an empty setting names nobody, whatever the manifest says');
+  assert.deepEqual([h.approvers, h.approversFrom], [[], ''], 'an empty setting and no manifest default: nobody named');
+});
+
+test('who decides reads as the backend reads it (auth/approvals.js approversOf): the setting when it names anyone, else the manifest\'s default role words', () => {
+  const manifest = { doors: ['submissions'], approvers: ['admin', 'agent', 'nonsense'] };
+  // an empty setting falls to the manifest's default, never to "nobody": the owner who unchecks every box gets the module's own default back
+  assert.deepEqual(approversOf({ manifest, settings: { approvers: [] } }), { approvers: ['admin'], approversFrom: 'manifest' });
+  assert.deepEqual(approversOf({ manifest, settings: {} }), { approvers: ['admin'], approversFrom: 'manifest' });
+  assert.deepEqual(approversOf({ manifest, settings: { approvers: ['', null] } }), { approvers: ['admin'], approversFrom: 'manifest' }, 'blank entries count as nothing named');
+  // the setting wins whole when it names anyone: roles first, then addresses, lower-cased and once each
+  assert.deepEqual(approversOf({ manifest, settings: { approvers: ['Ops@site.test', 'viewer', 'ops@site.test', 'VIEWER'] } }), { approvers: ['viewer', 'ops@site.test'], approversFrom: 'setting' });
+  assert.deepEqual(approversOf({ manifest, settings: { approvers: ['dev@site.test'] } }), { approvers: ['dev@site.test'], approversFrom: 'setting' }, 'an address alone is a setting that names someone; the manifest\'s roles do not join it');
+  assert.deepEqual(approversOf({ manifest: { doors: ['submissions'] }, settings: { approvers: [] } }), { approvers: [], approversFrom: '' });
+  assert.deepEqual(approversOf(null), { approvers: [], approversFrom: '' });
+  const [f] = formsOf([{ ...form('f1', 'Reviews', { approvers: [] }), manifest }]);
+  assert.deepEqual([f.approvers, f.approversFrom], [['admin'], 'manifest'], 'formsOf carries the same reading');
 });

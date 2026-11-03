@@ -136,10 +136,15 @@ export function decidersWords(d) {
 /**
  * The tags on a form's head: where it sends from, whether it confirms, whether its rows wait, its intent word, off.
  * [{ word, cls }], cls one of the card's tag states ('' | is-verified | is-pending | is-primary | is-bad).
+ * `from` is the address as the server resolves it; it reads "(the default)" whenever that is the default and the form's
+ * own pick is not it (nothing picked, or a mailer the environment no longer holds). `unknown`: the mailers could not be
+ * read (a viewer), so the tag names the mailer without saying which.
  */
-export function formTags(form, { from = '', confirms = true, dflt = '' } = {}) {
+export function formTags(form, { from = '', confirms = true, dflt = '', unknown = false } = {}) {
   const out = [];
-  if (from) out.push({ word: `from ${from}${dflt && from === dflt && !(form && form.mailer) ? ' (the default)' : ''}`, cls: '' });
+  const own = low(form && form.mailer);
+  if (unknown) out.push({ word: own ? `from ${own}` : 'from its mailer', cls: '' });
+  else if (from) out.push({ word: `from ${from}${dflt && from === dflt && own !== from ? ' (the default)' : ''}`, cls: '' });
   else out.push({ word: 'no mailer', cls: 'is-bad' });
   out.push(confirms ? { word: 'confirms', cls: 'is-verified' } : { word: 'no confirmation', cls: '' });
   if (form && form.waits) out.push({ word: 'waits for a decision', cls: 'is-pending' });
@@ -152,21 +157,24 @@ export function formTags(form, { from = '', confirms = true, dflt = '' } = {}) {
  * The install's settings body for one Save (D6: one PUT v1/environment/modules/{installId} { settings }): the mailer
  * ('' is the environment's), the people and roles told, the submitter's switch ('' follows the mailer), the approvers
  * (roles and people in one list, as the setting holds them).
+ * `people: null` means the team could not be read, so no people were shown: notify_to is left out of the body and the
+ * server keeps what is stored (it merges the settings sent over the ones it holds). The approvers are one list, so
+ * `approverPeople` then carries the addresses already stored, sent back unchanged beside the roles picked.
  */
 export function settingsFor({ mailer = '', people = [], roles = [], confirm = '', approverRoles = [], approverPeople = [] } = {}) {
   const c = String(confirm == null ? '' : confirm).toLowerCase();
   return {
     mailer: low(mailer),
-    notify_to: emailList(people),
+    ...(people === null ? {} : { notify_to: emailList(people) }),
     notify_roles: roleList(roles),
     confirm_visitor: c === 'true' || c === 'false' ? c : '',
     approvers: uniq([...roleList(approverRoles), ...emailList(approverPeople)])
   };
 }
 
-/** The mailer's body for one Save: PUT v1/environment/mailers/{address} { notify, notifyRoles, confirmVisitor }. */
+/** The mailer's body for one Save: PUT v1/environment/mailers/{address} { notify, notifyRoles, confirmVisitor }; `people: null` (the team unread) leaves notify out so the stored people stay. */
 export function mailerBodyFor({ people = [], roles = [], confirm = true } = {}) {
-  return { notify: emailList(people), notifyRoles: roleList(roles), confirmVisitor: !!confirm };
+  return { ...(people === null ? {} : { notify: emailList(people) }), notifyRoles: roleList(roles), confirmVisitor: !!confirm };
 }
 
 /**

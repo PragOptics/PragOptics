@@ -75,6 +75,25 @@ test('the fields a person can count by come from the rows\' own keys; the defaul
   assert.deepEqual(byField(products, 'tags').buckets.map(b => [b.key, b.count]), [['red', 2], ['big', 1]]);
 });
 
+test('the By field pick never offers the platform\'s bookkeeping keys (dataColumns HIDDEN): a plain-object table with id, status, at, mail counts by its own fields only', () => {
+  // a studio- or key-written table: the stored value is the row itself, so its id and status sit beside its fields
+  const plain = [
+    { key: 'p1', value: { id: 'p1', status: 'active', at: '2026-11-01T12:00:00Z', mail: { team: {} }, decidedBy: 'x', title: 'Widget', colour: 'red' } },
+    { key: 'p2', value: { id: 'p2', status: 'active', at: '2026-11-02T12:00:00Z', title: 'Gadget', colour: 'red' } },
+    { key: 'p3', value: { id: 'p3', status: 'retired', at: '2026-11-03T12:00:00Z', title: 'Gizmo', colour: 'blue' } }
+  ];
+  const f = fieldKeys(plain);
+  assert.deepEqual(f.map(x => x.key), ['colour', 'title'], 'id, status, at, mail and decidedBy are the Table\'s hidden keys and never fields to count by');
+  assert.equal(defaultField(f), 'colour');
+  assert.deepEqual(byField(plain, 'id'), { key: 'id', buckets: [], distinct: 0, without: 3 }, 'asked for a hidden key by hand, it counts nothing');
+  assert.deepEqual(byField(plain, 'colour').buckets.map(b => [b.key, b.count]), [['red', 2], ['blue', 1]]);
+  const v = visualsOf(plain, { field: 'status' });
+  assert.equal(v.field, 'colour', 'a hidden key asked for gives way to the default');
+  assert.deepEqual(v.byStatus.map(b => [b.key, b.count]), [['active', 2], ['retired', 1]], 'status still counts in its own block');
+  // the submission rows read as before: fields only, nothing of the envelope
+  assert.deepEqual(fieldKeys(rows).map(x => x.key), ['name', 'rating', 'sector']);
+});
+
 test('by a field: the values as buckets, the most common first, rows that leave it empty counted apart, a long tail folded into "other"', () => {
   const s = byField(rows, 'sector');
   assert.deepEqual(s.buckets.map(b => [b.key, b.count]), [['Refining', 3], ['Water', 2]]);

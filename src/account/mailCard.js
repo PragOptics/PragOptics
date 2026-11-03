@@ -29,9 +29,9 @@
 import { PRAG_API_BASE } from '../runtime/config.js';
 import { accessToken } from '../runtime/session.js';
 import { explainLink } from '../components/explainer.js';
-import { iconBtn, leadBtn, stateLead, stateIcon } from './cards.js';
+import { iconBtn, leadBtn, stateLead, stateIcon, armed } from './cards.js';
 import { formsOf, resolvedMailer } from './mailerUse.js';
-import { ROLE_WORDS, teamOf, roleCounts, mailerRecord, toldBy, confirmsOf, whoWords, roleWord, decidersOf, decidersWords, formTags, settingsFor, mailerBodyFor, lostWords } from './mailRouting.js';
+import { ROLE_WORDS, emailList, teamOf, roleCounts, mailerRecord, toldBy, confirmsOf, whoWords, roleWord, decidersOf, decidersWords, formTags, settingsFor, mailerBodyFor, lostWords } from './mailRouting.js';
 import { FONTS, FONT_WORDS, themeOf, sourceOf, validTheme, themeBody, themeWords, themeTag } from './mailTheme.js';
 import { countWord } from '../ui/words.js';
 
@@ -49,7 +49,7 @@ let X = null;   // the Environment tab's context: url, body, cardHtml, canWrite,
 const mc = {};
 function fresh() {
   Object.assign(mc, {
-    forms: null, formsErr: '', mailers: null, dflt: '', sendProvenAt: null, mailersNote: '', mailersLink: false,
+    forms: null, formsErr: '', mailers: null, dflt: '', sendProvenAt: null, mailersNote: '', mailersLink: false, mailersUnknown: false,
     team: null, teamErr: '', scopes: null, sites: null, sitesErr: '',
     edit: '', editMailer: '', busy: '', err: {}, note: '', noteBad: false, theme: {}
   });
@@ -66,8 +66,10 @@ function code(ex) { return String(ex?.data?.code || ''); }
 function busyState(key, busyWord) { const mine = mc.busy === key; return { out: mine, busyWord, waiting: mc.busy && !mine ? 'Waiting for the other save' : '' }; }
 function mailerOf(address) { return (mc.mailers || []).find(m => m.address === String(address || '').toLowerCase()) || null; }
 function ownerEmail() { return String(X?.view?.()?.tenant?.ownerEmail || '').toLowerCase(); }
-/** Where a mail setting is changed from the Licensing tab, and where mailers are made from here. */
-const MAIL_CARD_LINK = '<a class="acct-inline-link" href="#account?section=licensing&card=mailboxes" data-acct-section="licensing" data-acct-card="mailboxes">the Licensing tab</a>';
+/** Where mailers are made: the Mailers card on the Licensing tab (licensingExchange.js, New mailer; account.js CARD_IDS licensing.mailers). */
+const MAIL_CARD_LINK = '<a class="acct-inline-link" href="#account?section=licensing&card=mailers" data-acct-section="licensing" data-acct-card="mailers">the Licensing tab, Mailers</a>';
+/** Whether the team was read, so people could be shown and picked; false means the stored people are kept untouched by a save. */
+function teamKnown() { return Array.isArray(mc.team); }
 
 /* ---------- the reads ---------- */
 
@@ -89,13 +91,15 @@ export async function loadMail() {
     mc.mailers = (Array.isArray(ms.value.mailers) ? ms.value.mailers : []).map(mailerRecord).filter(Boolean);
     mc.dflt = String(ms.value.default || '').toLowerCase();
     mc.sendProvenAt = ms.value.sendProvenAt || null;
-    mc.mailersNote = ''; mc.mailersLink = false;
+    mc.mailersNote = ''; mc.mailersLink = false; mc.mailersUnknown = false;
   } else {
-    mc.mailers = []; mc.dflt = '';
+    mc.mailers = []; mc.dflt = ''; mc.mailersLink = false; mc.mailersUnknown = false;
     const c = code(ms.reason), s = ms.reason?.status;
-    if (c === 'LIVE_LANE_ONLY') { mc.mailersNote = 'Mailers belong to the live lane. A form on this lane sends from none.'; mc.mailersLink = false; }
+    if (c === 'LIVE_LANE_ONLY') mc.mailersNote = 'Mailers belong to the live lane. A form on this lane sends from none.';
     else if (c === 'TENANT_NOT_CONNECTED' || s === 404 || s === 409) { mc.mailersNote = 'No mailer yet. Make one on'; mc.mailersLink = true; }
-    else mc.mailersNote = words(ms.reason, 'Your mailers could not be read right now.');
+    // the mailers route is member and above: a viewer reads the forms and is told where mailers are set, not refused
+    else if (s === 403 && !ms.reason?.sessionInvalidated) { mc.mailersNote = 'Mailers are set by a member of the team. Your forms still send through them.'; mc.mailersUnknown = true; }
+    else { mc.mailersNote = words(ms.reason, 'Your mailers could not be read right now.'); mc.mailersUnknown = true; }
   }
   if (fs.status === 'fulfilled') { mc.forms = formsOf(fs.value); mc.formsErr = ''; }
   else { mc.forms = []; mc.formsErr = words(fs.reason, 'Your forms could not be read right now.'); }
@@ -158,11 +162,14 @@ function mailersHtml() {
   return `${head}<p class="lic-hint">What each mailer tells and confirms by default. A form that names its own people or roles keeps them; the rest follow their mailer.${mc.sendProvenAt ? ` A test went out ${e(D.fmtDate(mc.sendProvenAt))}.` : ''}</p><div class="ev-mail-list">${rows}</div>`;
 }
 
-/** The people of the team as checkboxes (owner first), the five roles as checkboxes with how many hold each today. */
+/** The people of the team as checkboxes (owner first), the five roles as checkboxes with how many hold each today. Without the team (unreadable, or a role that cannot list it) no box paints and the words say the people already named stay as they are: a save then leaves them untouched (teamKnown). */
 function peopleBoxes(attr, picked, { note = '' } = {}) {
   const e = D.escapeHtml;
   const team = mc.team;
-  if (!team) return `<p class="lic-hint">${e(mc.teamErr || 'Your role cannot list the team; pick roles instead, or name people on the Team tab.')}</p>`;
+  if (!team) {
+    const kept = (picked || []).length ? ` ${countWord((picked || []).length, 'person', 'people')} already named stay as they are: ${e((picked || []).join(', '))}.` : ' Anyone already named stays as they are.';
+    return `<p class="lic-hint">${e(mc.teamErr || 'Your role cannot list the team; pick roles instead, or name people on the Team tab.')}${kept}</p>`;
+  }
   if (!team.length) return '<p class="lic-hint">No team yet. Invite people on the Team tab; until then the owner hears.</p>';
   const set = new Set((picked || []).map(x => String(x).toLowerCase()));
   return `<div class="lic-tells-grid">${team.map(p => `<label class="lic-tell"><input type="checkbox" ${attr} value="${e(p.email)}" ${set.has(p.email) ? 'checked' : ''}><span>${e(p.email)}</span><span class="lic-state is-quiet">${e(p.role)}</span></label>`).join('')}</div>${note ? `<p class="lic-hint">${e(note)}</p>` : ''}`;
@@ -195,7 +202,9 @@ async function saveMailer(address) {
   const root = document.querySelector(`[data-mail-editor="mailer:${CSS.escape(m.address)}"]`);
   if (!root) return;
   const pick = sel => [...root.querySelectorAll(`${sel}:checked`)].map(x => String(x.value || ''));
-  const sent = mailerBodyFor({ people: pick('[data-mail-person]'), roles: pick('[data-mail-role]'), confirm: !!root.querySelector('[data-mail-confirm]')?.checked });
+  // no team read, no people boxes: notify stays out of the body and the server keeps the people stored (never wiped by an empty pick)
+  const known = teamKnown();
+  const sent = mailerBodyFor({ people: known ? pick('[data-mail-person]') : null, roles: pick('[data-mail-role]'), confirm: !!root.querySelector('[data-mail-confirm]')?.checked });
   const key = `mailer:${m.address}`;
   mc.busy = key; mc.err[key] = ''; setNote(''); paintMail();
   try {
@@ -204,7 +213,8 @@ async function saveMailer(address) {
     if (got) mc.mailers = mc.mailers.map(x => x.address === m.address ? got : x);
     mc.editMailer = '';
     const lost = lostWords(sent, d && d.mailer, ['notifyRoles']);
-    setNote(`${m.address} tells ${whoWords(got || sent)} now${sent.confirmVisitor ? ', and confirms to the sender' : ', and does not confirm to the sender'}.${lost ? ` ${lost}` : ''}`, !!lost);
+    const kept = known ? '' : ' The people it told before were kept; the team could not be read.';
+    setNote(`${m.address} tells ${whoWords(got || { ...m, ...sent })} now${sent.confirmVisitor ? ', and confirms to the sender' : ', and does not confirm to the sender'}.${kept}${lost ? ` ${lost}` : ''}`, !!lost);
   } catch (ex) {
     const c = code(ex);
     mc.err[key] = c === 'OWNER_ONLY' ? (ex.data.error || 'Only the owner and active members of your team can be told.')
@@ -225,15 +235,17 @@ function formsHtml() {
   if (mc.formsErr) return `${head}<p class="lic-hint is-bad">${e(mc.formsErr)}</p>`;
   if (!forms || !forms.length) return `${head}<p class="lic-hint">No form on your site takes submissions yet. A form published from the studio appears here with the mailer it sends from, who it tells and who decides.</p>`;
   const mailers = mc.mailers || [];
+  // the mailers unread (a viewer's 403, a failed read): a form with nothing of its own follows a mailer this card cannot see, so the words say that, never "the owner"
+  const unknown = mc.mailersUnknown;
   const rows = forms.map(f => {
     const from = resolvedMailer(f, mailers, mc.dflt);
     const m = mailerOf(from);
     const told = toldBy(f, m, mc.team);
     const confirms = confirmsOf(f, m);
-    const tags = formTags(f, { from, confirms: confirms.value, dflt: mc.dflt }).map(t => `<span class="acct-tag ${t.cls}">${e(t.word)}</span>`).join('');
+    const tags = formTags(f, { from, confirms: confirms.value, dflt: mc.dflt, unknown }).map(t => `<span class="acct-tag ${t.cls}">${e(t.word)}</span>`).join('');
     const tableLink = `<a class="acct-inline-link" href="#account?section=environment&card=data" data-acct-section="environment" data-acct-card="data" data-open-table="${e(f.table)}">${e(f.table)}</a>`;
-    const toldWords = `tells ${whoWords(told)}${told.source === 'mailer' ? ' (the mailer\'s list)' : ''}`;
-    const confirmWords = `${confirms.value ? 'confirms to the sender' : 'does not confirm to the sender'}${confirms.source === 'mailer' ? ' (as the mailer)' : ''}`;
+    const toldWords = unknown && told.source !== 'form' ? 'tells whoever its mailer tells' : `tells ${whoWords(told)}${told.source === 'mailer' ? ' (the mailer\'s list)' : ''}`;
+    const confirmWords = unknown && confirms.source !== 'form' ? 'confirms to the sender as its mailer does' : `${confirms.value ? 'confirms to the sender' : 'does not confirm to the sender'}${confirms.source === 'mailer' ? ' (as the mailer)' : ''}`;
     const decideWords = f.waits ? ` Its rows wait for a decision by ${decidersWords(decidersOf(f, mc.team, mc.scopes, ownerEmail()))}.` : '';
     const pencil = X.canWrite() && mc.edit !== f.installId ? iconBtn('mail-form-edit', 'edit', `Change what ${f.name} sends and who decides`, `data-install="${e(f.installId)}"`) : '';
     return `
@@ -261,7 +273,10 @@ function formEditHtml(f, m, from) {
       <option value="false" ${f.confirmVisitor === false ? 'selected' : ''}>No</option>
     </select>`;
   const d = decidersOf(f, mc.team, mc.scopes, ownerEmail());
-  const decideNote = d.named ? 'The owner always decides.' : `The owner always decides. Nothing picked: ${decidersWords(d)} (every role with "Approve what shows on your site").`;
+  // nothing picked falls as the server falls (mailerUse.js approversOf): to the form's own default roles when its module names any, else to the environment's rule
+  const decideNote = f.approversFrom === 'manifest' ? `The owner always decides. Nothing picked: this form's own default, ${decidersWords(d)}.`
+    : d.named ? 'The owner always decides.'
+    : `The owner always decides. Nothing picked: ${decidersWords(d)} (every role with "Approve what shows on your site").`;
   const waitsNote = f.waits ? '' : '<p class="lic-hint">Rows of this form show without a decision today; this is who decides when they wait.</p>';
   return `
     <div class="ev-mail-edit" data-mail-editor="${e(key)}" role="group" aria-label="What ${e(f.name)} sends">
@@ -282,11 +297,14 @@ async function saveForm(installId) {
   if (!root) return;
   const pick = sel => [...root.querySelectorAll(`${sel}:checked`)].map(x => String(x.value || ''));
   const fromSel = root.querySelector('[data-mail-from]');
+  // no team read, no people boxes: notify_to stays out of the body (the server merges and keeps what is stored) and the
+  // approver addresses already stored go back unchanged beside the roles picked; nothing stored is ever wiped by an empty pick
+  const known = teamKnown();
   const settings = settingsFor({
     mailer: fromSel ? fromSel.value : f.mailer,
-    people: pick('[data-mail-person]'), roles: pick('[data-mail-role]'),
+    people: known ? pick('[data-mail-person]') : null, roles: pick('[data-mail-role]'),
     confirm: root.querySelector('[data-mail-confirm-sel]')?.value,
-    approverRoles: pick('[data-mail-approver-role]'), approverPeople: pick('[data-mail-approver]')
+    approverRoles: pick('[data-mail-approver-role]'), approverPeople: known ? pick('[data-mail-approver]') : emailList(f.approversFrom === 'setting' ? f.approvers : [])
   });
   const key = `form:${installId}`;
   mc.busy = key; mc.err[key] = ''; setNote(''); paintMail();
@@ -296,7 +314,8 @@ async function saveForm(installId) {
     if (got) mc.forms = mc.forms.map(x => x.installId === installId ? got : x);
     mc.edit = '';
     const lost = lostWords(settings, d && d.module && d.module.settings);
-    setNote(`${f.name} is saved.${lost ? ` ${lost}` : ''}`, !!lost);
+    const kept = known ? '' : ' The people already named were kept; the team could not be read.';
+    setNote(`${f.name} is saved.${kept}${lost ? ` ${lost}` : ''}`, !!lost);
   } catch (ex) {
     const c = code(ex);
     mc.err[key] = c === 'OWNER_ONLY' ? (ex.data.error || 'Only the owner and active members of your team can be told or decide.')
@@ -309,7 +328,18 @@ async function saveForm(installId) {
 
 /* ---------- the look of the mail, per site ---------- */
 
-function themeState(slug) { return mc.theme[slug] || (mc.theme[slug] = { open: false, loaded: false, source: 'default', theme: themeOf(null), draft: null, follow: true, err: {}, preview: '', previewErr: '', unsupported: false }); }
+function themeState(slug) { return mc.theme[slug] || (mc.theme[slug] = { open: false, loaded: false, readErr: '', source: 'default', theme: themeOf(null), draft: null, follow: true, armFollow: false, err: {}, preview: '', previewErr: '', unsupported: false }); }
+let armFollowTimer = null;
+const ARM_FOLLOW_MS = 8000;
+/** The Follow switch armed (the first press when the owner had set a look): a second press within the window confirms; anything else puts it back. */
+function armFollow(slug, on) {
+  clearTimeout(armFollowTimer);
+  for (const k of Object.keys(mc.theme)) if (k !== slug || !on) mc.theme[k].armFollow = false;
+  if (on) {
+    themeState(slug).armFollow = true;
+    armFollowTimer = setTimeout(() => { if (themeState(slug).armFollow) { themeState(slug).armFollow = false; paintMail(); } }, ARM_FOLLOW_MS);
+  }
+}
 
 function themesHtml() {
   const e = D.escapeHtml;
@@ -341,6 +371,10 @@ function themeEditHtml(s, t) {
   const e = D.escapeHtml;
   const key = `theme:${s.slug}`;
   if (t.unsupported) return `<div class="ev-mail-edit" data-mail-editor="${e(key)}"><p class="lic-hint">This lane does not keep a mail look yet. Deploy the backend that carries it, then reload.</p></div>`;
+  // the look could not be read (anything but a 404): nothing to edit over, so no switch, no fields and no Save; a Read again, and the words
+  if (!t.loaded) {
+    return `<div class="ev-mail-edit" data-mail-editor="${e(key)}"><p class="lic-hint is-bad">${e(t.readErr || 'The look could not be read right now.')} Nothing here changes until it can be read.</p><div class="acct-actions-row">${stateLead('mail-theme-reread', 'undo', 'Read again', busyState(`theme-read:${s.slug}`, 'Reading…'), `data-slug="${e(s.slug)}"`)}</div></div>`;
+  }
   const follow = t.follow;
   const draft = t.draft || t.theme;
   const field = ([k, label, kind]) => {
@@ -353,17 +387,20 @@ function themeEditHtml(s, t) {
     return `<div class="ev-mail-theme-field ${kind === 'textarea' ? 'is-wide' : ''} ${err ? 'is-bad' : ''}"><span class="acct-label">${e(label)}</span>${ctl}${err}</div>`;
   };
   const fields = follow ? '' : `<div class="ev-mail-theme-grid">${THEME_FIELDS.map(field).join('')}</div>`;
-  const back = t.source === 'site' && !follow ? leadBtn('mail-theme-reset', 'undo', 'Back to the website\'s look', `data-slug="${e(s.slug)}" data-tip="Let the mail follow the website again; your own look is forgotten"`) : '';
+  const back = t.source === 'site' && !follow ? leadBtn('mail-theme-reset', 'undo', 'Back to the website\'s look', `data-slug="${e(s.slug)}" data-tip="Let the mail follow the website again; your own look is forgotten. Asks once."`) : '';
   const save = follow ? '' : stateLead('mail-theme-save', 'check', 'Save the look', busyState(key, 'Saving…'), `data-slug="${e(s.slug)}"`, 'btn-primary');
   const preview = stateLead('mail-theme-preview', 'eye', t.preview ? 'Preview again' : 'Show a preview', busyState(`preview:${s.slug}`, 'Drawing…'), `data-slug="${e(s.slug)}" data-tip="A sample message in the look as it is saved"`);
   const frame = t.preview ? `<iframe class="ev-mail-preview" data-mail-preview="${e(s.slug)}" sandbox="" title="A sample message in ${e(X.siteName(s))}'s look"></iframe><p class="lic-hint">The look as it is saved. Save first to see a change.</p>` : '';
+  // the switch armed (the owner had set a look and pressed Follow once): it stays off, says what a second press does, offers Keep my look
+  const armedLine = t.armFollow ? `<p class="lic-hint is-bad" role="status">Press the switch again and the look you set is forgotten; the mail follows the website from then on. ${iconBtn('mail-theme-keep', 'x', 'Keep my look', `data-slug="${e(s.slug)}"`)}</p>` : '';
   return `
     <div class="ev-mail-edit" data-mail-editor="${e(key)}" role="group" aria-label="The look of ${e(X.siteName(s))}'s mail">
-      <label class="ev-switch" data-tip="${follow ? 'Turn off to set your own name, colours, font and footer' : 'Turn on and the mail follows the website again'}">
+      <label class="ev-switch" data-tip="${follow ? 'Turn off to set your own name, colours, font and footer' : t.source === 'site' ? 'Turn on to let the mail follow the website again; it asks once' : 'Turn on and the mail follows the website again'}">
         <input type="checkbox" role="switch" data-mail-follow data-slug="${e(s.slug)}" ${follow ? 'checked' : ''} ${mc.busy ? 'disabled' : ''} aria-label="Follow the website">
         <span class="ev-switch-track" aria-hidden="true"><span class="ev-switch-thumb"></span></span>
         <span class="ev-switch-text">${follow ? 'Follows the website' : 'Your own look'}</span>
       </label>
+      ${armedLine}
       ${fields}
       ${errLine(key)}
       <div class="acct-actions-row">${save}${back}${preview}</div>
@@ -372,33 +409,49 @@ function themeEditHtml(s, t) {
     </div>`;
 }
 
-/** Open a site's look: the theme route once (its source is the truth); a lane without the route reads the publish list's mailTheme, or says so. */
+/** Open a site's look: closed, it opens and reads once (readTheme); open, it closes. */
 async function openTheme(slug) {
   const t = themeState(slug);
-  if (t.open) { t.open = false; paintMail(); return; }
+  if (t.open) { t.open = false; armFollow(slug, false); paintMail(); return; }
   t.open = true;
-  if (!t.loaded && !mc.busy) {
-    mc.busy = `theme-read:${slug}`; paintMail();
-    try {
-      const d = await D.apiFetch(X.url(`${ENV_URL}/publish/${encodeURIComponent(slug)}/theme`));
-      t.theme = themeOf(d && d.theme); t.source = sourceOf(d); t.unsupported = false;
-    } catch (ex) {
-      const site = (sites() || []).find(x => x.slug === slug);
-      if (ex?.status === 404 && site && site.mailTheme) { t.theme = themeOf(site.mailTheme); t.source = sourceOf(site); }
-      else if (ex?.status === 404) t.unsupported = true;
-      else t.previewErr = words(ex, 'The look could not be read right now.');
-    }
-    t.loaded = true; t.follow = t.source !== 'site'; t.draft = null;
-    mc.busy = '';
+  if (!t.loaded && !mc.busy) await readTheme(slug);
+  else paintMail();
+}
+
+/**
+ * The read: the theme route once (its source is the truth); a lane without the route (404) reads the publish list's mailTheme,
+ * or says so. Any other failure leaves the site UNLOADED: the editor shows the words and Read again, never the default theme
+ * as if it were the site's (a Save over that would have replaced the look the owner set).
+ */
+async function readTheme(slug) {
+  const t = themeState(slug);
+  if (mc.busy) return;
+  mc.busy = `theme-read:${slug}`; t.readErr = ''; paintMail();
+  try {
+    const d = await D.apiFetch(X.url(`${ENV_URL}/publish/${encodeURIComponent(slug)}/theme`));
+    t.theme = themeOf(d && d.theme); t.source = sourceOf(d); t.unsupported = false; t.loaded = true;
+  } catch (ex) {
+    const site = (sites() || []).find(x => x.slug === slug);
+    if (ex?.status === 404 && site && site.mailTheme) { t.theme = themeOf(site.mailTheme); t.source = sourceOf(site); t.loaded = true; }
+    else if (ex?.status === 404) { t.unsupported = true; t.loaded = true; }
+    else { t.loaded = false; t.readErr = words(ex, 'The look could not be read right now.'); }
   }
+  if (t.loaded) { t.follow = t.source !== 'site'; t.draft = null; }
+  mc.busy = '';
   paintMail();
 }
 
-/** The switch: off opens the fields with the current look as the draft; on, when the owner had set a look, lets it go (DELETE). */
+/**
+ * The switch: off opens the fields with the current look as the draft. On, when the owner had set a look, is TWO presses:
+ * the first arms it (the switch stays off and one sentence says the look will be forgotten), the second within the window
+ * lets it go (DELETE); anything else keeps the look. On, when nothing was set, just closes the fields.
+ */
 async function followTheme(slug, on) {
   const t = themeState(slug);
-  if (!on) { t.follow = false; t.draft = { ...t.theme }; t.err = {}; paintMail(); return; }
+  if (!on) { armFollow(slug, false); t.follow = false; t.draft = { ...t.theme }; t.err = {}; paintMail(); return; }
   if (t.source !== 'site') { t.follow = true; t.draft = null; t.err = {}; paintMail(); return; }
+  if (!t.armFollow) { armFollow(slug, true); paintMail(); return; }
+  armFollow(slug, false);
   await resetTheme(slug);
 }
 
@@ -442,7 +495,7 @@ async function resetTheme(slug) {
   try {
     const d = await D.apiFetch(X.url(`${ENV_URL}/publish/${encodeURIComponent(slug)}/theme`), { method: 'DELETE', body: X.body({}) });
     t.theme = themeOf(d && d.theme); t.source = d && d.source ? sourceOf(d) : 'default';
-    t.follow = true; t.draft = null; t.err = {}; t.preview = '';
+    t.follow = true; t.armFollow = false; t.draft = null; t.err = {}; t.preview = '';
     const site = (sites() || []).find(x => x.slug === slug); if (site) site.mailTheme = d && d.theme ? { ...t.theme } : null;
     setNote(`${X.siteName(site || { slug })}'s mail ${t.source === 'website' ? 'follows the website again' : 'has the default look again'}.`);
   } catch (ex) {
@@ -485,8 +538,11 @@ export function mailAction(a, btn) {
   if (a === 'mail-form-cancel') { mc.edit = ''; paintMail(); return true; }
   if (a === 'mail-form-save') { saveForm(ds.install || ''); return true; }
   if (a === 'mail-theme-open') { openTheme(ds.slug || ''); return true; }
+  if (a === 'mail-theme-reread') { readTheme(ds.slug || ''); return true; }
+  if (a === 'mail-theme-keep') { armFollow(ds.slug || '', false); paintMail(); return true; }
   if (a === 'mail-theme-save') { saveTheme(ds.slug || ''); return true; }
-  if (a === 'mail-theme-reset') { resetTheme(ds.slug || ''); return true; }
+  // the labelled way back asks once too (cards.js armed: the second press within six seconds acts)
+  if (a === 'mail-theme-reset') { if (btn && !armed(btn, 'Forget the look you set?', { keep: 'Keep my look' })) return true; resetTheme(ds.slug || ''); return true; }
   if (a === 'mail-theme-preview') { previewTheme(ds.slug || ''); return true; }
   return true;
 }
