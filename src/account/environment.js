@@ -71,7 +71,9 @@ const ev = { lane: laneChoice(), teamId: '', view: null, files: null, filesTrunc
   // What survives a failed Connect: the name and the NON-secret identifiers
   // (an Account SID, a tenant id), so a typo in the token does not mean
   // re-typing everything. Secret fields are never kept.
-  connDraft: {}, connArm: '' };
+  connDraft: {}, connArm: '',
+  // Remove a row (2026-11-08): the key whose typed-DELETE confirm is open, and the key whose delete is in flight.
+  rowDelArm: '', rowDeleting: '' };
 let D = null;
 
 // The registration flow's own state (round 3b-2): a quote, the registrant
@@ -808,7 +810,7 @@ function rowDetailHtml(r, shape) {
     <div class="ev-row-detail">
       <p class="ev-row-meta adm-muted">${when ? `<span>${e(D.fmtDate(when))}</span>` : ''}${tag}${decidedWords(r.value) ? `<span>${e(decidedWords(r.value))}</span>` : ''}<code>${e(r.key)}</code>${r.size != null ? `<span>${e(bytesFmt(r.size))}</span>` : ''}</p>
       ${value}
-      <div class="act-row">${iconBtn('domain-copy', 'copy', 'Copy as JSON', `data-text="${e(valueText(r.value))}"`)}${moderateButtons(r)}</div>
+      <div class="act-row">${iconBtn('domain-copy', 'copy', 'Copy as JSON', `data-text="${e(valueText(r.value))}"`)}${moderateButtons(r)}${rowDeleteControl(r)}</div>
     </div>`;
 }
 /** When and through what a row was decided (2026-11-02, auth/approvals.js decidedBy): "decided Nov 2, 2026 through the mail sent to a@b" / "by c@d" / older rows: "decided Nov 2, 2026". */
@@ -867,6 +869,46 @@ async function moderateRow(key, status) {
   ev.moderating = ''; ev.moderatingTo = '';
   await loadRows(table);
   if (ev.table === table) { ev.openRow = key; paintData(); }
+}
+
+/* REMOVE A ROW FOR GOOD (2026-11-08, the Data card showed a row and gave Copy as JSON but no way to remove it). The backend
+ * door is built and live on every lane: DELETE v1/environment/data/{table}/{key} (functions/environmentData.js), which
+ * meters the owner's storage gauge and honours the form-fed lock — a table a form fills takes a delete only on a row that
+ * waits (a refusal) or once the owner allows rewriting; a decided row is refused until then. This control mirrors that, so a
+ * click never dead-ends: a locked, decided row is told what to turn on instead of offered a button that would refuse. */
+function rowDeleteControl(r) {
+  const e = D.escapeHtml;
+  const t = currentTable(), pol = policyOf(t);
+  if (paused() || !tableCanWrite(t, canWrite())) return '';
+  const locked = !!(pol && pol.formFed && !pol.studioWrite);
+  if (locked && statusOf(r) !== 'pending') return `<span class="adm-muted ev-del-hint">${e('Locked. Turn on "Let rows be rewritten by hand" on the table to remove a decided row.')}</span>`;
+  if (ev.rowDelArm !== r.key) return iconBtn('data-row-del-arm', 'trash', 'Remove this row', `data-key="${e(r.key)}"`, 'is-risky');
+  const going = ev.rowDeleting === r.key;
+  return `<span class="ev-del-confirm">
+      <input id="evRowDelete" class="acct-input ev-del-in" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="type DELETE" aria-label="Type DELETE to remove this row"${going ? ' disabled' : ''}>
+      ${stateLead('data-row-del-go', 'trash', 'Remove', { out: going, busyWord: 'Removing…' }, `data-key="${e(r.key)}" data-tip="Remove this row for good"`, 'is-risky')}
+      ${iconBtn('data-row-del-cancel', 'x', 'Keep it', '', 'btn-ico')}
+    </span>`;
+}
+/** Remove one row: the typed word must be DELETE, then DELETE the key; the rows are read again and the list shown (the row is gone). A refusal gets the policy's words (dataRefusal: a form-fed table names the switch to turn on). */
+async function deleteRow(key) {
+  if (ev.rowDeleting) return;
+  const table = ev.table;
+  if (!table || !key) return;
+  const typed = (document.getElementById('evRowDelete')?.value || '').trim();
+  if (typed !== 'DELETE') { ev.rowsNote = 'Type DELETE to remove this row.'; paintData(); document.getElementById('evRowDelete')?.focus(); return; }
+  ev.rowDeleting = key; ev.rowsNote = ''; paintData();
+  try {
+    await D.apiFetch(url(`${ENV_URL}/data/${encodeURIComponent(table)}/${encodeURIComponent(key)}`), { method: 'DELETE' });
+  } catch (ex) {
+    ev.rowDeleting = '';
+    ev.rowsNote = ex?.sessionInvalidated ? '' : dataRefusal(ex, 'The row could not be removed.');
+    paintData();
+    return;
+  }
+  ev.rowDeleting = ''; ev.rowDelArm = ''; ev.openRow = '';
+  await loadRows(table);
+  if (ev.table === table) paintData();
 }
 
 /* WHO SEES IT, WHO CHANGES ROWS, AND THE OVERRIDE (2026-11-03, D10 and D11; Cameron: "you sure you want to do this, it
@@ -3264,6 +3306,9 @@ export function bindEnvironmentActions(deps) {
     if (a === 'data-view') { setDataView(btn.dataset.view || 'table'); paintData(); return; }
     if (a === 'data-approve') return void moderateRow(btn.dataset.key || '', 'approved');
     if (a === 'data-reject') return void moderateRow(btn.dataset.key || '', 'rejected');
+    if (a === 'data-row-del-arm') { ev.rowDelArm = btn.dataset.key || ''; ev.rowsNote = ''; paintData(); document.getElementById('evRowDelete')?.focus(); return; }
+    if (a === 'data-row-del-cancel') { ev.rowDelArm = ''; ev.rowsNote = ''; paintData(); return; }
+    if (a === 'data-row-del-go') return void deleteRow(btn.dataset.key || '');
     // the read paints every Refresh as out while it runs (refreshCtl), so a second press finds it disabled
     if (a === 'refresh') { if (btn.disabled || envLoad) return; return void refreshAll(); }
     if (a === 'budget-save') return void saveBudget(btn);
@@ -3352,6 +3397,7 @@ export function bindEnvironmentActions(deps) {
   document.addEventListener('keydown', (e) => {
     if ((e.key === 'Enter' || e.key === ' ') && e.target.matches?.('tr.ev-row')) { e.preventDefault(); e.target.click(); return; }
     if (e.key === 'Enter' && e.target.id === 'evKeyLabel') { e.preventDefault(); document.querySelector('[data-env-action="key-make"]')?.click(); }
+    if (e.key === 'Enter' && e.target.id === 'evRowDelete') { e.preventDefault(); document.querySelector('[data-env-action="data-row-del-go"]')?.click(); }
     if (e.key === 'Enter' && (e.target.id === 'evConnLabel' || e.target.matches?.('[data-conn-field]'))) { e.preventDefault(); document.querySelector('[data-env-action="conn-add"]')?.click(); }
     if (e.key === 'Enter' && e.target.id === 'evDomainHost') { e.preventDefault(); document.querySelector('[data-env-action="domain-add"]')?.click(); }
     if (e.key === 'Enter' && e.target.id === 'evRegHost') { e.preventDefault(); document.querySelector('[data-env-action="domain-reg-check"]')?.click(); }
