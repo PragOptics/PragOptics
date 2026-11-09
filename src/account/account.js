@@ -317,6 +317,7 @@ function friendlyError(ex, fallback, { passwordFlow = false } = {}) {
 const ICONS = {
   home:         '<path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/>',
   profile:      '<circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1"/>',
+  approvals:    '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>',
   products:     '<rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 1v3M15 1v3M9 20v3M15 20v3M1 9h3M1 15h3M20 9h3M20 15h3"/>',
   subscription: '<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/>',
   orders:       '<circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>',
@@ -671,7 +672,7 @@ function shellHtml() {
     <div class="adm-shell">
       <nav class="adm-side" aria-label="Account sections">
         <div class="adm-side-brand">
-          <span class="adm-side-avatar">${avatarHtml(cachedPing()?.user, 36)}</span>
+          <span class="adm-side-avatar">${avatarHtml(cachedPing()?.user, 44)}</span>
           <div class="adm-side-brand-text">
             <span class="adm-side-kicker">Account</span>
             <span class="adm-side-title">${escapeHtml(currentEmail() || 'You')}</span>
