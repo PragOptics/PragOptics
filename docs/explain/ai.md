@@ -1,28 +1,34 @@
-# AI and its credit
+# How AI works
 
-Your environment has an AI assistant: it writes and edits your site, builds the pieces the Studio runs, answers questions about your data, and works the same from the software, from your site, and from your own programs through an API key. It runs through the platform, never through an account of your own, so there is no key to manage and nothing to sign up for.
+Your environment has an AI assistant. It writes and edits your site in the Studio, and an assistant you install on a published site answers your visitors from your own knowledge files. Which AI answers is your choice, on the AI card of the Environment page.
+
+## Your own account, or platform credit
+
+There are two ways to run it.
+
+```flow
+Your connected account | Connect your own OpenAI, Google, Anthropic or compatible account under Connected accounts. Every answer runs on that account and that bill. Nothing of the platform's limits it; the caps you set per assistant are the only limits.
+Platform credit | Buy prepaid AI credit on the AI card. Each answer is priced at the model's rate plus the platform's margin and comes off your balance. Credit never expires.
+```
+
+The AI card lets the owner pick which one answers: your connected account, platform credit, or automatic, which uses your account when one is connected and platform credit otherwise. The Studio and your published site both follow that choice.
+
+## The free taste
+
+On the Free plan, with no account connected and no credit bought, the assistant answers 10 calls a month on the platform, up to 2 cents. Enough to see what it does.
 
 ## The switch
 
-AI is off until the team's owner or an admin turns it on from the AI card on Environment. Off means every AI call answers that it is off, and nothing is spent.
-
-## The credit
-
-Every plan carries a monthly AI credit, in dollars, that renews on the first of the month:
-
-```flow
-Free | 10 calls a month, up to 2 cents. Enough to see what it does.
-User | $1
-Partner | $5
-Super | $25
-```
-
-Every call is priced at the model's own rate for the words in and the words out, and that price comes off the credit. When the credit is spent the assistant says so and stops until the month resets; a higher plan carries more. Nothing is ever charged past the credit; there is no overage.
+AI is off until the team's owner or an admin turns it on from the AI card. Off means every AI call answers that it is off, and nothing is spent.
 
 ## Picking a model
 
-The card lists the models you can use, from the fastest and cheapest to the most capable, with what a typical exchange costs on each. The Studio and your programs choose the model on every call, so a quick question can run on the cheap one and a page design on the strong one. The card shows how many runs and how much of the credit each model has used this month.
+The card lists the models you can use, from the fastest and cheapest to the most capable, with what a typical answer costs on each. On platform credit the price shown is what comes off your balance. On your own account it is the provider's own rate, an estimate for your eyes. The Studio chooses the model on every call, so a quick question can run on the cheap one and a page design on the strong one.
+
+## Caps
+
+Each assistant on your site carries a monthly answer cap and a per-visitor cap that you set. On platform credit, each assistant may also be given a share of the balance it may spend. On your own account the caps are yours alone.
 
 ## What leaves your environment
 
-The words you send and the data you attach to the question, and nothing else. The platform's provider does not use them to train models. Data in other environments is never visible to yours.
+The words you send and the knowledge excerpts chosen for the question, and nothing else. They go to the provider that answers: the platform's provider on platform credit, or your own provider on your connected account, under that provider's terms. Data in other environments is never visible to yours.

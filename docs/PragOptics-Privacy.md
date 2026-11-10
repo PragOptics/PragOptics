@@ -171,7 +171,7 @@ PragOptics relies on third-party services to operate core platform functions, in
 - Identity and access providers
 - Payment and billing processors
 - Messaging and communication delivery services
-- AI model providers: BI's provider for answers paid from a plan's AI credit, or a provider the Participant connects on their own account, which then processes the question under its own terms
+- AI model providers: BI's provider for answers paid with prepaid platform credit, or a provider the Participant connects on their own account, which then processes the question under its own terms
 - Microsoft licensing: Microsoft's authorized distributor, which opens the business's licensing account and places its orders, and Microsoft, which provides the licenses, the tenant and the mailboxes under the Microsoft Customer Agreement
 - The providers behind accounts a Participant connects, which act under their own terms
 

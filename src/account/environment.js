@@ -30,7 +30,7 @@ import { explainLink } from '../components/explainer.js';
 import { accessToken } from '../runtime/session.js';
 import { stripeAppearance } from '../api/stripeAppearance.js';
 import { ensureStripeJs } from '../runtime/stripeLoader.js';
-import { ico, iconBtn, leadBtn, btnLabel, cardHtml as sharedCard, isOpen, setOpen, initCards, busy, hold, stateLead, stateIcon, copyButton } from './cards.js';
+import { ico, iconBtn, leadBtn, btnLabel, cardHtml as sharedCard, isOpen, setOpen, initCards, busy, hold, stateLead, stateIcon, copyButton, openModal } from './cards.js';
 import { cardErrorWords } from '../api/stripeWords.js';
 // 2026-11-02 (Cameron: "im building this for humans"): one container per domain family, and a table's rows as a table
 import { familiesOf, liveHostsOf, familyState, listWords } from './domainFamilies.js';
@@ -1021,7 +1021,7 @@ export async function renderAi(main, deps) {
   ev.ai = null; ev.aiNote = ''; ev.aiBusy = false; ev.aiBudget = null; ev.budgetBusy = false;
   initCards(); setOpen('environment:ai', true);   // the tab's one card is the page: always open here, whatever the Environment tab remembered
   main.innerHTML = `
-    <header class="acct-sec-head has-explain"><h2 class="acct-sec-title">AI</h2>${explainLink('ai', 'How the AI credit works')}</header>
+    <header class="acct-sec-head has-explain"><h2 class="acct-sec-title">AI</h2>${explainLink('ai', 'How AI works')}</header>
     <p class="acct-error" id="evError" hidden></p>
     <div id="evAi"><p class="acct-loading">Loading…</p></div>
   `;
@@ -1097,18 +1097,26 @@ async function setAi(on) {
 
 function aiHtml() {
   const e = D.escapeHtml, a = ev.ai;
-  const manage = ['owner', 'admin', 'agent'].includes(ev.view?.membership?.role);   // the AI switch is admin-ranked on the server; an agent ranks with admin
+  const manage = ['owner', 'admin', 'agent'].includes(ev.view?.membership?.role);   // the AI switch and the choice are admin-ranked on the server; an agent ranks with admin
+  const isOwner = ev.view?.membership?.role === 'owner';                            // the credit is the owner's money
   let summary, inner;
   if (!a) { summary = ev.aiNote ? 'not on this lane' : 'loading'; inner = ev.aiNote ? `<p class="acct-empty">${e(ev.aiNote)}</p>` : '<p class="acct-loading">Loading…</p>'; }
   else {
-    const c = a.credit || {}, on = !!a.enabled, ready = !!a.provider?.configured;
-    const used = Number(c.usedCents || 0), limit = Number(c.limitCents || 0);
-    const pct = limit ? Math.min(100, used / limit * 100) : 0;
-    const cls = pct >= 95 ? 'is-hot' : pct >= 70 ? 'is-warn' : '';
-    const callLine = c.callLimit ? `${e(String(c.calls || 0))} of ${e(String(c.callLimit))} calls` : `${e(String(c.calls || 0))} calls`;
-    // the environment's own AI connection (2026-09-21): every answer goes through the owner's account; the credit is not used
+    const on = !!a.enabled, ready = !!a.provider?.configured;
+    // WHICH AI ANSWERS (2026-11-10, Cameron's ruling): the environment's own connected account, platform credit, or automatic; the owner's prepaid balance; the free taste
     const own = a.connection && a.connection.provider ? a.connection : null;
-    summary = !ready ? 'being set up' : !on ? 'off' : own ? `on · through your ${e(own.label || own.provider)} connection` : `on · ${e(dollars(used))} of ${e(dollars(limit))} this month`;
+    const source = ['own', 'platform', 'auto'].includes(String(a.source || '')) ? String(a.source) : 'auto';
+    const bal = Number(a.balance?.balanceCents || 0), taste = a.taste || null, month = a.month || {};
+    const onOwn = !!own && source !== 'platform';
+    const needs = source === 'own' && !own;
+    const ownName = own ? e(own.label || own.provider) : '';
+    summary = !ready ? 'being set up' : !on ? 'off' : needs ? 'on · no AI account connected' : onOwn ? `on · your ${ownName} account` : bal > 0 ? `on · ${e(dollars(bal))} of credit` : taste && !taste.used ? `on · ${e(String(Math.max(0, taste.callLimit - taste.calls)))} free calls left` : 'on · no AI credit';
+    const srcOpt = (val, label, note) => `
+        <label class="ev-ai-src${source === val ? ' is-picked' : ''}">
+          <input type="radio" name="evAiSource" value="${val}" data-env-source ${source === val ? 'checked' : ''} ${manage && !ev.aiBusy ? '' : 'disabled'}>
+          <span class="ev-ai-src-text"><b>${label}</b><br><span class="adm-muted lic-desc">${note}</span></span>
+        </label>`;
+    const perAnswer = (l) => onOwn ? `${e(cents(l.exchangeCents))} <span class="adm-muted">est.</span>` : e(cents(l.priceCents != null ? l.priceCents : l.exchangeCents));
     inner = `
       ${!ready ? '<p class="acct-card-note">AI is being set up on the platform. Nothing to do on your side; the switch appears here when it is ready.</p>' : `
       <div class="ev-ai-row">
@@ -1118,36 +1126,117 @@ function aiHtml() {
           <span class="ev-switch-text">${ev.aiBusy ? 'Saving…' : on ? 'AI is on' : 'AI is off'}</span>
         </label>
       </div>
-      ${own ? `<p class="acct-card-note ev-note">Answers on this lane go through your <b>${e(own.label || own.provider)}</b> connection, on your own account and bill: the platform's credit below is not used, and the platform's monthly ceiling does not apply. Lanes: ${e((own.lanes || []).map(l => `${l.lane} (${l.model})`).join(', ') || 'the connection’s')}. Remove the connection from Connected accounts to return to the platform's models.</p>` : ''}
-      <div class="use-row ev-meter">
-        <div class="use-head"><span class="use-name">This month's credit</span><span class="use-val">${e(dollars(used))} / ${e(dollars(limit))} · ${callLine}</span></div>
-        <div class="use-track"><div class="use-fill ${cls}" style="width:${pct.toFixed(1)}%"></div></div>
+      <h4 class="acct-card-sub">Which AI answers</h4>
+      <div class="ev-ai-sources" role="radiogroup" aria-label="Which AI answers">
+        ${srcOpt('auto', 'Automatic', own ? `Your ${ownName} account, because it is connected` : 'Platform credit until you connect an account')}
+        ${srcOpt('own', 'My connected account', own ? `${ownName}, on your own bill` : 'None connected yet')}
+        ${srcOpt('platform', 'Platform credit', 'Prepaid, priced per answer')}
       </div>
-      <p class="acct-card-note ev-note">Every call is priced at the model's rate and paid from this plan's monthly credit, which renews on the first. ${c.callLimit ? `The Free plan carries ${e(String(c.callLimit))} calls a month; AI continues on the User plan.` : 'A higher plan carries more.'}</p>
+      ${needs ? `<p class="acct-card-note ev-note">No AI account is connected, so nothing answers. ${isOwner ? 'Connect one under Connected accounts on the Environment tab, or pick Platform credit.' : 'The owner connects one under Connected accounts, or picks Platform credit.'}</p>` : ''}
+      ${own
+        ? `<p class="acct-card-note ev-note">Your <b>${ownName}</b> account is connected. On it, answers are on your own bill and nothing of the platform's limits them; the caps you set per assistant below are the only limits. This month: ${e(String(month.ownCalls || 0))} answers, about ${e(dollars(month.ownCostCents || 0))} at the provider's rates. Manage the account under Connected accounts on the Environment tab.</p>`
+        : `<p class="acct-card-note ev-note">${isOwner ? 'You can connect' : 'The owner can connect'} an OpenAI, Google, Anthropic or compatible account under Connected accounts on the Environment tab. Answers then run on that account and that bill.</p>`}
+      <h4 class="acct-card-sub">Platform credit</h4>
+      <div class="use-row ev-meter">
+        <div class="use-head"><span class="use-name">Balance</span><span class="use-val">${e(dollars(bal))}</span></div>
+      </div>
+      <p class="acct-card-note ev-note">${taste ? (taste.used ? `This month's ${e(String(taste.callLimit))} free calls are used. ` : `${e(String(Math.max(0, taste.callLimit - taste.calls)))} of ${e(String(taste.callLimit))} free calls left this month. `) : ''}Platform credit is prepaid and never expires. Each answer is priced at the model's rate plus the platform's margin and comes off the balance. This month: ${e(String(month.calls || 0))} answers, ${e(dollars(month.usedCents || 0))}.</p>
+      ${isOwner ? `<div class="ev-actions">${leadBtn('ai-topup', 'activity', 'Add AI credit', '', 'btn-primary')}</div>` : ''}
       ${(a.lanes || []).length ? `
       <div class="adm-table-scroll">
         <table class="adm-table adm-table--wrap ev-table">
-          <thead><tr><th>Model</th><th>Runs</th><th class="adm-num">Per exchange</th><th class="adm-num">Spent</th></tr></thead>
+          <thead><tr><th>Model</th><th>Runs</th><th class="adm-num">Per answer</th><th class="adm-num">Spent</th></tr></thead>
           <tbody>
             ${a.lanes.map(l => { const s = (a.byLane || {})[l.lane] || {}; return `
               <tr>
                 <td data-th="Model"><span class="lic-name">${e(cap(l.lane))}</span>${l.lane === a.defaultLane ? ' <span class="acct-tag is-primary">default</span>' : ''}<br><span class="adm-muted lic-desc">${e(l.model)}</span></td>
                 <td class="cell-tight" data-th="Runs">${e(String(s.calls || 0))}</td>
-                <td class="adm-num cell-tight" data-th="Per exchange">${e(cents(l.exchangeCents))}</td>
+                <td class="adm-num cell-tight" data-th="Per answer">${perAnswer(l)}</td>
                 <td class="adm-num cell-tight" data-th="Spent">${e(dollars((s.spendMicro || 0) / 10000))}</td>
               </tr>`; }).join('')}
           </tbody>
         </table>
       </div>
-      <p class="acct-card-note ev-note">Per exchange is a typical question and answer, about 2,000 words in and 400 out. The Studio and your API keys pick the model on each call.</p>` : ''}
+      <p class="acct-card-note ev-note">Per answer is a typical question and answer, about 2,000 words in and 400 out. ${onOwn ? 'On your own account the figure is the provider\'s rate, an estimate for your eyes.' : 'On platform credit it is what comes off your balance.'} The Studio picks the model on each call.</p>` : ''}
       <p class="acct-card-note ev-note">Answers come from this environment's own knowledge files and its installed modules on the lane, nothing else. AI answers can be wrong: check anything that matters.</p>
       ${budgetHtml(manage)}`}`;
   }
   return cardHtml({
     key: 'ai', icon: 'activity', title: 'AI', summary, open: true,
-    explain: explainLink('ai', 'How the AI credit works'),
+    explain: explainLink('ai', 'How AI works'),
     body: `<p class="acct-error" id="evAiError" hidden></p>${inner}`
   });
+}
+/** Which AI answers (2026-11-10): own, platform or auto; admin-ranked on the server, audited. */
+async function setAiSource(source) {
+  if (ev.aiBusy) return;
+  ev.aiBusy = true; paintAi();
+  D.showError('evAiError', '');
+  try { await post(`${ENV_URL}/ai/source`, { source }, AI_LANE); ev.aiBusy = false; await loadAi(); }
+  catch (ex) { ev.aiBusy = false; paintAi(); D.showError('evAiError', errText(ex, 'Could not change which AI answers.')); }
+}
+/** Add AI credit (2026-11-10): a one-time Stripe charge on the owner's card, the site's Payment Element, as the agent-support top-up uses.
+ *  POST .../ai/topup opens the PaymentIntent; Stripe's webhook lands it on the balance a moment after it confirms. */
+async function aiTopup() {
+  let stripe = null, elements = null, amountCents = 0;
+  const m = openModal('evAiTopup', `
+    <div class="acct-modal"><div class="acct-modal-card la-topup">
+      <h3>Add AI credit</h3>
+      <p class="acct-card-note">A one-time charge to your card. Credit is prepaid, never expires, and only AI answers on platform credit draw from it. $5 to $5,000.</p>
+      <p class="acct-error" id="evAiTopupErr" hidden></p>
+      <div id="evAiTopupStep1">
+        <label class="acct-label" for="evAiTopupAmt">Amount (USD)</label>
+        <div class="la-req-row">
+          <input class="acct-input" id="evAiTopupAmt" inputmode="decimal" placeholder="20.00" />
+          <button class="btn btn-sm btn-primary" type="button" data-topup="continue">Continue</button>
+        </div>
+      </div>
+      <div id="evAiTopupStep2" hidden>
+        <div id="evAiTopupPayEl"></div>
+        <div class="ev-dom-actions act-row">
+          <button class="btn btn-sm" type="button" data-close>Cancel</button>
+          <button class="btn btn-sm btn-primary" type="button" data-topup="pay">Pay</button>
+        </div>
+      </div>
+    </div></div>`, { onClick: async (evt) => {
+      if (evt.target.closest('[data-close]')) return void m.close();
+      const b = evt.target.closest('[data-topup]'); if (!b) return;
+      const err = (t) => { const el = m.host.querySelector('#evAiTopupErr'); if (el) { el.textContent = t || ''; el.hidden = !t; } };
+      if (b.dataset.topup === 'continue') {
+        const dollarsIn = Number(String(m.host.querySelector('#evAiTopupAmt')?.value || '').replace(/[$,\s]/g, ''));
+        if (!Number.isFinite(dollarsIn) || dollarsIn < 5 || dollarsIn > 5000) return err('Enter an amount from $5 to $5,000.');
+        amountCents = Math.round(dollarsIn * 100);
+        b.disabled = true; err('');
+        try {
+          const data = await post(`${ENV_URL}/ai/topup`, { amountCents }, AI_LANE);
+          await ensureStripeJs().catch(() => null);
+          stripe = window.Stripe?.(window.STRIPE_PUBLISHABLE_KEY);
+          if (!stripe) throw new Error('Stripe is not available right now.');
+          elements = stripe.elements({ clientSecret: data.clientSecret, appearance: stripeAppearance() });
+          elements.create('payment').mount(m.host.querySelector('#evAiTopupPayEl'));
+          m.host.querySelector('#evAiTopupStep1').hidden = true;
+          const s2 = m.host.querySelector('#evAiTopupStep2'); s2.hidden = false;
+          const pay = s2.querySelector('[data-topup="pay"]'); if (pay) pay.textContent = `Pay ${dollars(amountCents)}`;
+        } catch (ex) { b.disabled = false; err(errText(ex, 'Could not start the top-up.')); }
+        return;
+      }
+      if (b.dataset.topup === 'pay') {
+        if (!stripe || !elements) return;
+        b.disabled = true; err('');
+        try {
+          const { error, paymentIntent } = await stripe.confirmPayment({
+            elements, confirmParams: { return_url: `${location.origin}${location.pathname}#account?section=ai` }, redirect: 'if_required'
+          });
+          // the site's own sentence for what Stripe answered, never Stripe's own text
+          if (error) throw Object.assign(new Error(cardErrorWords(error, { doing: 'pay' })), { plain: true });
+          if (paymentIntent && !['succeeded', 'processing'].includes(paymentIntent.status)) throw Object.assign(new Error('The payment did not go through. Try again, or use another card.'), { plain: true });
+          m.close();
+          // Stripe's webhook lands the credit a moment after it confirms: read again until it lands
+          const before = Number(ev.ai?.balance?.balanceCents || 0);
+          for (let i = 0; i < 5; i++) { await new Promise(r => setTimeout(r, 1500)); await loadAi(); if (Number(ev.ai?.balance?.balanceCents || 0) > before) break; }
+        } catch (ex) { b.disabled = false; err(ex?.plain ? ex.message : cardErrorWords(ex, { doing: 'pay' })); }
+      }
+    } });
 }
 
 /* ---------- files ---------- */
@@ -3292,6 +3381,8 @@ export function bindEnvironmentActions(deps) {
   document.addEventListener('change', (e) => {
     const sw = e.target.closest?.('[data-env-switch="ai"]');
     if (sw) setAi(!!sw.checked);
+    const src = e.target.closest?.('[data-env-source]');
+    if (src && src.checked) setAiSource(src.value);
     mailChange(e);
   });
   document.addEventListener('click', (e) => {
@@ -3312,6 +3403,7 @@ export function bindEnvironmentActions(deps) {
     // the read paints every Refresh as out while it runs (refreshCtl), so a second press finds it disabled
     if (a === 'refresh') { if (btn.disabled || envLoad) return; return void refreshAll(); }
     if (a === 'budget-save') return void saveBudget(btn);
+    if (a === 'ai-topup') return void aiTopup();
     if (a === 'lane-live') return void setLane('live');
     if (a === 'lane-sandbox') return void setLane('sandbox');
     if (a === 'sandbox-setup') return void setupSandbox(btn);
