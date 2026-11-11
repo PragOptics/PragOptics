@@ -736,6 +736,8 @@ select.adm-select option, select.adm-input option {
 .rp-diag { margin: 8px 0 0; font-size: .8rem; color: var(--ink); border-collapse: collapse; }
 .rp-diag td { padding: 2px 12px 2px 0; vertical-align: top; }
 .rp-note { margin-top: 10px; }
+.rp-ai { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--border); }
+.rp-ai-head { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; margin-bottom: 6px; }
 .rp-note textarea { width: 100%; min-width: 0; box-sizing: border-box; resize: vertical; font: inherit; line-height: 1.5; }
 
 /* ---- Manage account modal: sections, not a label column ---- */

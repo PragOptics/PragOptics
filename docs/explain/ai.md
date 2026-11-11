@@ -32,3 +32,16 @@ Each assistant on your site carries a monthly answer cap and a per-visitor cap t
 ## What leaves your environment
 
 The words you send and the knowledge excerpts chosen for the question, and nothing else. They go to the provider that answers: the platform's provider on platform credit, or your own provider on your connected account, under that provider's terms. Data in other environments is never visible to yours.
+
+## AI Agents over your tables
+
+An AI Agent is an AI that reads one of your data tables for you. You name it, pick the table it watches (support cases, form submissions, orders, anything a form or a program writes), tell it what to look for in your own words, and choose when it runs: only when you press Run now, every hour, or every day.
+
+```flow
+It reads what changed | Only the records added or changed since its last review, oldest first, fifty at a time.
+It reports | A headline, one line per record with how serious it looks and whether a person must look, and the patterns it saw. The report is a row of the table ai-agent-reports in your Data card, with a trace of every record it read: the key, when it changed, and its version.
+It mails the team | To the roles you tick (owner, admins, members), from your own mailer. No mailer yet, and the report still lands in the Data card.
+It never acts | It reports and says when a person must look. It never answers a customer, changes a record, or approves anything.
+```
+
+It runs on whichever AI your environment uses, in the order you set on the card above: your connected account, platform credit, or both. A review on platform credit costs one answer on the model you pick for the agent; on your own account it is your provider's own rate. The Run now button is for owners and admins; everyone on the team sees the reports.

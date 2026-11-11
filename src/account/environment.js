@@ -39,6 +39,8 @@ import { mailShort, mailLines } from './rowMail.js';
 // THE MAIL CARD (2026-11-03): who sends, from which mailer, who is told, who decides, the look of the mail; its own module,
 // painted into #evMail here between Data and Connected accounts and handed this tab's helpers (setMailContext)
 import { setMailContext, resetMail, loadMail, mailHtml, paintMail, mailAction, mailChange, decisionsArrived } from './mailCard.js';
+// THE AI AGENTS CARD (2026-11-10): one AI per table that reviews what changed and reports; painted into #evAiAgents under the AI card (aiAgentsCard.js)
+import { setAgentsContext, resetAgents, loadAgents, agentsAction } from './aiAgentsCard.js';
 // the platform's cents formatter, under the name this file has always used for it (the local cents() below is the
 // AI budget's cent-sign variant, so the shared one cannot take that name here)
 import { countWord, cents as money } from '../ui/words.js';
@@ -1036,17 +1038,20 @@ const AI_LANE = 'live';
 export async function renderAi(main, deps) {
   D = deps;
   ev.ai = null; ev.aiNote = ''; ev.aiBusy = false; ev.aiBudget = null; ev.budgetBusy = false; ev.archive = null; ev.archiveNote = ''; ev.archiveStatus = '';
+  resetAgents(); setAgentsContext(D, { url, body, myRole, lane: () => AI_LANE, view: () => ev.view });
   initCards(); setOpen('environment:ai', true);   // the tab's one card is the page: always open here, whatever the Environment tab remembered
   main.innerHTML = `
     <header class="acct-sec-head has-explain"><h2 class="acct-sec-title">AI</h2>${explainLink('ai', 'How AI works')}</header>
     <p class="acct-error" id="evError" hidden></p>
     <div id="evAi"><p class="acct-loading">Loading…</p></div>
+    <div id="evAiAgents"></div>
   `;
   try { ev.view = await fetchView(); }
   catch (ex) { D.showError('evError', D.friendlyError(ex, 'Could not load your environment.')); return; }
   const h = document.getElementById('evAi');
   if (!ev.view.tenant || !['READY', 'SUSPENDED'].includes(phaseOf(ev.view.tenant))) { if (h) h.innerHTML = '<p class="acct-empty">AI runs in your environment. Set the environment up first, on the Environment tab.</p>'; return; }
   await loadAi();
+  await loadAgents();
 }
 function paintAi() { const h = document.getElementById('evAi'); if (h) h.innerHTML = aiHtml(); }
 async function loadAi() {
@@ -2534,11 +2539,11 @@ function archiveHtml() {
   const form = owner ? `
       <div class="ev-conn-fields">
         <label class="ev-conn-field"><span class="ev-conn-field-label">GitHub account</span>
-          <select class="acct-select" id="evArcConn">${accounts.length ? accounts.map(c => `<option value="${e(c.id)}" ${c.id === picked ? 'selected' : ''}>${e(c.label)}${c.login ? ` (${e(c.login)})` : ''}${c.status !== 'ACTIVE' ? ' · not active' : ''}</option>`).join('') : '<option value="">Connect a GitHub account first</option>'}</select></label>
+          <select class="acct-input acct-select" id="evArcConn">${accounts.length ? accounts.map(c => `<option value="${e(c.id)}" ${c.id === picked ? 'selected' : ''}>${e(c.label)}${c.login ? ` (${e(c.login)})` : ''}${c.status !== 'ACTIVE' ? ' · not active' : ''}</option>`).join('') : '<option value="">Connect a GitHub account first</option>'}</select></label>
         <label class="ev-conn-field"><span class="ev-conn-field-label">Repository</span><input class="acct-input" type="text" id="evArcRepo" maxlength="200" value="${e(s?.repo || '')}" placeholder="a name, or owner/name" autocomplete="off" spellcheck="false" /></label>
         <label class="ev-conn-field"><span class="ev-conn-field-label">Branch</span><input class="acct-input" type="text" id="evArcBranch" maxlength="100" value="${e(s?.branch || 'main')}" placeholder="main" autocomplete="off" spellcheck="false" /></label>
         <label class="ev-conn-field"><span class="ev-conn-field-label">Schedule</span>
-          <select class="acct-select" id="evArcSchedule">${[['off', 'Only when I press Archive now'], ['daily', 'Every night, and when I press'], ['weekly', 'Every week, and when I press']].map(([v, w]) => `<option value="${v}" ${(s?.schedule || 'off') === v ? 'selected' : ''}>${w}</option>`).join('')}</select></label>
+          <select class="acct-input acct-select" id="evArcSchedule">${[['off', 'Only when I press Archive now'], ['daily', 'Every night, and when I press'], ['weekly', 'Every week, and when I press']].map(([v, w]) => `<option value="${v}" ${(s?.schedule || 'off') === v ? 'selected' : ''}>${w}</option>`).join('')}</select></label>
       </div>
       <div class="ev-scopes" role="group" aria-label="What the archive carries">
         ${ARCHIVE_PARTS.map(([k, icon, word, tip]) => `<label class="acct-chip" data-tip="${e(tip)}"><input type="checkbox" id="evArcInc-${k}" ${inc[k] === false ? '' : 'checked'} />${ico(icon, 14)}<span>${word}</span></label>`).join('')}
@@ -3634,6 +3639,7 @@ export function bindEnvironmentActions(deps) {
     // the read paints every Refresh as out while it runs (refreshCtl), so a second press finds it disabled
     if (a === 'refresh') { if (btn.disabled || envLoad) return; return void refreshAll(); }
     if (a === 'budget-save') return void saveBudget(btn);
+    if (agentsAction(a, btn)) return;
     if (a === 'ai-topup') return void aiTopup();
     if (a === 'lane-live') return void setLane('live');
     if (a === 'lane-sandbox') return void setLane('sandbox');

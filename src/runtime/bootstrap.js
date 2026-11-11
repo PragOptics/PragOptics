@@ -942,6 +942,8 @@ window.applyPostLoginResolution = applyPostLoginResolution;
       try {
         const card = q.get("card") || "";
         if (card) sessionStorage.setItem("pragoptics_open_card", JSON.stringify({ section: q.get("section") || "", card, row: q.get("row") || "" }));
+        // a table and its row (2026-11-10, the AI Agent's mail links a record and the report): the note the Data card consumes (environment.js loadTables)
+        if (card === "data" && q.get("table")) sessionStorage.setItem("pragoptics_open_table", JSON.stringify({ table: q.get("table") || "", row: q.get("row") || "" }));
       } catch { /* routeToAccountOnLoad keeps it from the address */ }
       if (!took) return;
       const rest = q.toString();
@@ -952,10 +954,10 @@ window.applyPostLoginResolution = applyPostLoginResolution;
       // a provider's return, a tenant answer, the desk's approval answer or the studio door's team: kept, and the address
       // left naming the section (the handoff sets the address after the first capture ran)
       captureAccountReturn();
-      let provider = "", section = "", card = "", row = "";
+      let provider = "", section = "", card = "", row = "", table = "";
       // The return rides in the hash (/#account?connect=stripe&id=...): the site strips a query string on load and keeps the hash.
       // A card link (2026-09-16, the software's "one button"): /#account?section=environment&card=domains&row=stripe opens that section and scrolls to that card.
-      try { const q = new URLSearchParams(String(location.hash || "").split("?")[1] || ""); provider = q.get("connect") || ""; section = q.get("section") || ""; card = q.get("card") || ""; row = q.get("row") || ""; } catch { /* no params */ }
+      try { const q = new URLSearchParams(String(location.hash || "").split("?")[1] || ""); provider = q.get("connect") || ""; section = q.get("section") || ""; card = q.get("card") || ""; row = q.get("row") || ""; table = q.get("table") || ""; } catch { /* no params */ }
       // Microsoft 365 (2026-09-23): the sign-in and the administrator's approval both come back as connect=microsoft.
       // Kept by captureAccountReturn, a return reads section=environment here; one still in the address (sessionStorage
       // refused it) lands on Environment below, where handleProviderReturn reads it from the address.
@@ -964,6 +966,7 @@ window.applyPostLoginResolution = applyPostLoginResolution;
         // only a named card is kept: an address the panel already rewrote to its bare section must not overwrite the card
         // captureAccountReturn kept before that (a section with no card opens no card either way)
         if (card) { try { sessionStorage.setItem("pragoptics_open_card", JSON.stringify({ section, card, row })); } catch { /* the section still opens */ } }
+        if (card === "data" && table) { try { sessionStorage.setItem("pragoptics_open_table", JSON.stringify({ table, row })); } catch { /* the card still opens */ } }
         else {
           // a card kept for another section (a link never finished) does not open later on its own
           try { const kept = JSON.parse(sessionStorage.getItem("pragoptics_open_card") || "null"); if (kept && kept.section !== section) sessionStorage.removeItem("pragoptics_open_card"); } catch { /* nothing kept */ }

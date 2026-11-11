@@ -27,6 +27,15 @@
 .ev-key-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 12px; }
 .ev-key-row .acct-input { flex: 1 1 260px; min-width: 0; }
 .ev-scopes { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+/* the AI Agents card (2026-11-10) */
+.ev-agents { display: grid; gap: 10px; margin-top: 10px; }
+.ev-agent { padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; min-width: 0; }
+.ev-agent-head { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; }
+.ev-agent-name { font-weight: 700; display: inline-flex; gap: 6px; align-items: center; }
+.ev-agent-run { margin: 6px 0 0; }
+.ev-agent-actions { margin-top: 8px; }
+.ev-agent-form { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
+.ev-agent-form textarea.acct-input { width: 100%; min-height: 72px; resize: vertical; font: inherit; }
 /* THE BRAND-TINTED NOTE BOX (2026-10-05): one tint for a result, a status line, a flash and the test-lane banner, here, in
    team.css and in admin.css; each keeps its own margin, padding and type. */
 .ev-key-result, .ev-conn-result, .tm-invite-result, .tm-status, .tm-scopes-yours, .na-flash, .lic-banner.is-test {

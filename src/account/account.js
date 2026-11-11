@@ -100,6 +100,7 @@ const ADMIN_ROLES_REMOVE_URL = `${PRAG_API_BASE}/admin/roles/remove`;
 const ADMIN_ANOMALIES_URL = `${PRAG_API_BASE}/admin/anomalies`;
 const ADMIN_SUPPORT_URL = `${PRAG_API_BASE}/admin/support`;
 const ADMIN_ANOMALY_PATCH_URL = `${PRAG_API_BASE}/admin/anomalies/patch`;
+const ADMIN_ANOMALY_ANALYZE_URL = `${PRAG_API_BASE}/admin/anomalies/analyze`;   // the AI read of a report against the backend's own source (2026-11-10)
 
 // Catalog snapshots survive lane flips (localStorage is per-origin, and the
 // lane toggle reloads the same origin): snapshot on one lane, import on the
@@ -3871,6 +3872,7 @@ function rpCardHtml(r) {
       <p class="rp-summary">${escapeHtml(r.summary)}</p>
       ${r.details ? `<pre class="adm-pre rp-details-text">${escapeHtml(r.details)}</pre>` : '<p class="adm-muted">No further details were given.</p>'}
       <details class="rp-details"><summary>Page details</summary>${rpDiagHtml({ ...(r.context || {}), apiLane: r.apiLane })}</details>
+      ${rpAiHtml(r)}
       ${open ? `
         <div class="rp-note">
           <textarea class="adm-input" id="rpNote-${escapeHtml(r.id)}" rows="2" maxlength="2000" placeholder="Note to the reporter (optional). Sent by email when you close."></textarea>
@@ -3882,6 +3884,41 @@ function rpCardHtml(r) {
         <div class="adm-muted" style="margin-top:8px">Closed ${escapeHtml(fmtDate(r.closedAt))}${r.closedBy ? ` by ${escapeHtml(r.closedBy)}` : ''}</div>
         <div class="adm-actions-row"><button class="btn btn-sm btn-lead" type="button" data-rp-reopen="${escapeHtml(r.id)}">${ico('undo')}<span>Reopen</span></button></div>`}
     </div>`;
+}
+
+/* THE AI READ (2026-11-10, Cameron: "the AI can also read my backend source logic and run inference against it, vs reports, and
+ * suggest fixes to me via email"): the platform's AI reads the report against the backend's own source; the read sits on the
+ * row (cause, confidence, files, fix, diff, checks, a reply for a support request) and is mailed to the routed operators.
+ * The sweep reads every open report within ten minutes; the button reads one now, or again. */
+function rpAiHtml(r) {
+  const ai = r.ai;
+  const word = rpKind === 'support' ? 'request' : 'report';
+  const btn = `<button class="btn btn-sm btn-lead" type="button" data-rp-analyze="${escapeHtml(r.id)}" data-tip="The platform's AI reads this ${word} against the backend's own source and says the likely cause and the fix; the read is mailed to the routed operators">${ico('sparkles')}<span>${ai ? 'Read it again' : 'Read it with the AI'}</span></button>`;
+  if (!ai) return `<div class="rp-ai"><div class="adm-actions-row">${btn}</div></div>`;
+  const files = (ai.files || []).length ? ai.files : (ai.filesRead || []);
+  return `
+    <div class="rp-ai">
+      <div class="rp-ai-head"><span class="adm-pill is-claimed">AI read</span><span class="adm-muted">${escapeHtml(fmtDate(ai.at))}${ai.model ? ` · ${escapeHtml(ai.model)}` : ''} · ${escapeHtml(String(ai.costCents ?? 0))} cents · confidence ${escapeHtml(ai.confidence || 'low')}</span></div>
+      <p class="rp-summary">${escapeHtml(ai.cause || '')}</p>
+      ${ai.fix ? `<pre class="adm-pre rp-details-text">${escapeHtml(ai.fix)}</pre>` : '<p class="adm-muted">No fix proposed.</p>'}
+      ${ai.reply ? `<div class="adm-muted">A reply to send</div><pre class="adm-pre rp-details-text">${escapeHtml(ai.reply)}</pre>` : ''}
+      ${files.length ? `<div class="adm-muted">Files: ${escapeHtml(files.join(', '))}</div>` : ''}
+      ${(ai.checks || []).length ? `<div class="adm-muted">Check: ${escapeHtml(ai.checks.join('; '))}</div>` : ''}
+      ${ai.diff ? `<details class="rp-details"><summary>The diff it proposes</summary><pre class="adm-pre">${escapeHtml(ai.diff)}</pre></details>` : ''}
+      <div class="adm-actions-row">${btn}</div>
+    </div>`;
+}
+async function rpAnalyze(btn) {
+  const id = btn.dataset.rpAnalyze;
+  const orig = btnLabel(btn);
+  btn.disabled = true; btnLabel(btn, 'Reading…');
+  try {
+    await apiFetch(ADMIN_ANOMALY_ANALYZE_URL, { method: 'POST', body: JSON.stringify({ id, kind: rpKind }) });
+    await loadReports();
+  } catch (ex) {
+    showError('rpError', friendlyError(ex, 'The AI could not read it.'));
+    btn.disabled = false; btnLabel(btn, orig);
+  }
 }
 
 /** Which desk is on screen: the anomaly reports or the support requests (2026-09-22). */
@@ -5188,6 +5225,8 @@ function bindOnce() {
     if (rpCloseBtn) { e.preventDefault(); rpCloseReport(rpCloseBtn); return; }
     const rpReopenBtn = e.target.closest('[data-rp-reopen]');
     if (rpReopenBtn) { e.preventDefault(); rpPatch(rpReopenBtn, rpReopenBtn.dataset.rpReopen, { status: 'OPEN' }); return; }
+    const rpAnalyzeBtn = e.target.closest('[data-rp-analyze]');
+    if (rpAnalyzeBtn) { e.preventDefault(); rpAnalyze(rpAnalyzeBtn); return; }
     const rpTab = e.target.closest('[data-adm-reports]');
     if (rpTab) {
       e.preventDefault();
