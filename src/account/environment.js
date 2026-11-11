@@ -1166,6 +1166,8 @@ function aiHtml() {
       ${own
         ? `<p class="acct-card-note ev-note">Your <b>${ownName}</b> account is connected. On it, answers are on your own bill and nothing of the platform's limits them; the caps you set per assistant below are the only limits. This month: ${e(String(month.ownCalls || 0))} answers, about ${e(dollars(month.ownCostCents || 0))} at the provider's rates. Manage the account under Connected accounts on the Environment tab.</p>`
         : `<p class="acct-card-note ev-note">${isOwner ? 'You can connect' : 'The owner can connect'} an OpenAI, Google, Anthropic or compatible account under Connected accounts on the Environment tab. Answers then run on that account and that bill.</p>`}
+      ${own && isOwner ? `<div class="ev-key-row"><input class="acct-input" type="number" id="evAiOwnCap" min="0" step="0.01" value="${a.ownCapCents ? e((a.ownCapCents / 100).toFixed(2)) : ''}" placeholder="no limit" aria-label="Monthly limit on your own account, in dollars" /> ${leadBtn('ai-own-cap', 'save', 'Set the limit', '')}</div>
+      <p class="acct-card-note ev-dom-door">A limit in dollars on what this environment may spend on your own account through PragOptics each month, by the provider's estimate; blank is none. At the limit your account stops answering here${source === 'own' ? '' : ', and platform credit answers instead'}.</p>` : ''}
       <h4 class="acct-card-sub">Platform credit</h4>
       <div class="use-row ev-meter">
         <div class="use-head"><span class="use-name">Balance</span><span class="use-val">${e(dollars(bal))}</span></div>
@@ -1198,6 +1200,18 @@ function aiHtml() {
   });
 }
 /** Which AI answers (2026-11-10): own, platform or auto; admin-ranked on the server, audited. */
+/* THE OWNER'S OWN LIMIT (2026-11-10, case 12): dollars on the card, cents on the row; 0 is none. */
+async function setAiOwnCap(btn) {
+  const raw = (document.getElementById('evAiOwnCap')?.value || '').trim();
+  const dollars = raw === '' ? 0 : Number(raw);
+  if (!Number.isFinite(dollars) || dollars < 0) { D.showError('evAiError', 'The limit is a number of dollars, or blank for none.'); return; }
+  if (btn.disabled) return;
+  D.showError('evAiError', '');
+  const done = busy(btn, 'Saving…');
+  try { await post(`${ENV_URL}/ai/own-cap`, { cents: Math.round(dollars * 100) }, AI_LANE); await loadAi(); }
+  catch (ex) { D.showError('evAiError', errText(ex, 'The limit could not be saved.')); }
+  finally { done(); }
+}
 async function setAiSource(source) {
   if (ev.aiBusy) return;
   ev.aiBusy = true; paintAi();
@@ -3695,6 +3709,7 @@ export function bindEnvironmentActions(deps) {
     if (agentsAction(a, btn)) return;
     if (documentsAction(a, btn)) return;
     if (importAction(a, btn)) return;
+    if (a === 'ai-own-cap') return void setAiOwnCap(btn);
     if (a === 'ai-topup') return void aiTopup();
     if (a === 'lane-live') return void setLane('live');
     if (a === 'lane-sandbox') return void setLane('sandbox');
