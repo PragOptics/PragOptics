@@ -549,7 +549,7 @@ function ensureTeamsCount() {
  * in it, and the way to switch. Until now the name showed only on the Team tab, the Environment card, the agent portal's
  * brand and the setup steps; on Profile, Billing, Licensing, Live Agents, Builds and every operator desk nothing said
  * where you were. It lives outside #acctMain, so a section that rewrites itself never drops it. */
-const ROLE_WORDS = { owner: 'Owner', admin: 'Admin', developer: 'Developer', member: 'Member', viewer: 'Viewer', guest: 'Guest', agent: 'Agent', none: 'Not a member' };
+const ROLE_WORDS = { owner: 'Owner', admin: 'Admin', developer: 'Developer', member: 'Member', viewer: 'Viewer', guest: 'Guest', agent: 'Live Agent', none: 'Not a member' };   // the human partner is a Live Agent (Cameron, 2026-11-10); the AI is an AI Agent
 /** The environment in view: its name, the person's role in it, and whether the switch applies. */
 function envInView() {
   if (agentMode()) return { name: agentEnvLabel() || 'this environment', role: isOwner() ? 'owner' : 'agent', switchable: false, agent: true };
@@ -3226,7 +3226,7 @@ function customRoles() { return Array.isArray(cache.customRoles) ? cache.customR
 function roleLabel(key) {
   const k = String(key || '');
   const c = customRoles().find(r => r.key === k);
-  return c ? c.label : (k ? k.charAt(0).toUpperCase() + k.slice(1) : '');
+  return c ? c.label : (ROLE_WORDS[k] || (k ? k.charAt(0).toUpperCase() + k.slice(1) : ''));
 }
 
 // One POST per action, every one carrying the row's email as expectEmail so
