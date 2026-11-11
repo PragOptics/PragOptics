@@ -10,7 +10,7 @@
 //   syncUserTheme()  call after any write of the cached ping, and on the
 //                    account panel's entry; safe to call often
 
-import { applyTheme, getTheme, applyStarfield, getStarfield } from './theme.js';
+import { applyTheme, getTheme, applyStarfield, getStarfield, applyNoise, getNoise } from './theme.js';
 import { accessToken } from './session.js';
 
 function cachedPing() {
@@ -45,6 +45,8 @@ export function syncUserTheme() {
   if ((theme === 'light' || theme === 'dark') && theme !== getTheme()) applyTheme(theme);
   const stars = String(u.starfield || '');
   if ((stars === 'on' || stars === 'off') && stars !== getStarfield()) applyStarfield(stars);
+  const noise = String(u.noise || '');
+  if ((noise === 'full' || noise === 'reduced') && noise !== getNoise()) applyNoise(noise);
 }
 
 /** The Profile section saved a choice: keep the cached ping honest so a re-sync does not undo it. */

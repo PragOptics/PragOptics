@@ -39,7 +39,7 @@ import { accessToken } from '../runtime/session.js';
 import { dayWord, money, cents, esc as escapeHtml } from '../ui/words.js';
 import { writeClipboard } from '../ui/clipboard.js';
 import { cardErrorWords } from '../api/stripeWords.js';
-import { applyTheme, getTheme, applyStarfield, getStarfield } from '../runtime/theme.js';
+import { applyTheme, getTheme, applyStarfield, getStarfield, applyNoise, getNoise } from '../runtime/theme.js';
 import { sunSvg, moonSvg, LIGHT_LABEL, DARK_LABEL } from '../components/themeMarks.js';
 import { syncUserTheme, rememberUserTheme, rememberUserPreference } from '../runtime/userTheme.js';
 
@@ -787,6 +787,28 @@ async function setThemePreference(theme, btn = null) {
   } finally { done(); }
 }
 
+// REDUCE NOISE (2026-11-10): the switch beside the stars; the words go at once, the save follows, a failed save says so.
+async function setNoisePreference(value) {
+  const v = value === 'reduced' ? 'reduced' : 'full';
+  applyNoise(v);
+  const sw = document.getElementById('acctNoiseSwitch');
+  const word = sw?.closest('.ev-switch')?.querySelector('.ev-switch-text');
+  if (sw) sw.checked = v === 'reduced';
+  showError('acctThemeError', '');
+  if (sw) sw.disabled = true;
+  if (word) word.textContent = 'Saving…';
+  try {
+    await apiFetch(PREFS_URL, { method: 'POST', body: JSON.stringify({ noise: v }) });
+    rememberUserPreference('noise', v);
+  } catch (ex) {
+    if (ex?.status === 404 || ex?.status === 400) { showError('acctThemeError', 'Applied here. This lane does not remember the noise choice yet.'); return; }
+    showError('acctThemeError', friendlyError(ex, 'Applied here, but the choice could not be saved to your account.'));
+  } finally {
+    if (sw) sw.disabled = false;
+    if (word) word.textContent = `Reduce noise ${v === 'reduced' ? 'on' : 'off'}`;
+  }
+}
+
 // The starfield switch, remembered on the account beside the theme; the
 // canvas goes at once, the save follows, a failed save says so and leaves
 // the choice applied here.
@@ -947,7 +969,7 @@ async function saveName(btn) {
 }
 
 async function renderProfile(main) {
-  const theme = getTheme(), stars = getStarfield();
+  const theme = getTheme(), stars = getStarfield(), noise = getNoise();
   main.innerHTML = `
     <header class="acct-sec-head"><h2 class="acct-sec-title">Profile</h2></header>
     ${mailOfferHtml()}
@@ -965,7 +987,7 @@ async function renderProfile(main) {
         </div>
       </div>` })}
     ${nameCardHtml()}
-    ${cardHtml({ key: 'profile:appearance', icon: 'sun', title: 'Appearance', summary: `${escapeHtml(theme)} · stars ${escapeHtml(stars)}`, body: `
+    ${cardHtml({ key: 'profile:appearance', icon: 'sun', title: 'Appearance', summary: `${escapeHtml(theme)} · stars ${escapeHtml(stars)}${noise === 'reduced' ? ' · reduced noise' : ''}`, body: `
       <div class="acct-seg" role="group" aria-label="Theme">
         <button class="btn btn-sm acct-theme-btn" type="button" data-acct-action="theme-set" data-theme="dark" aria-pressed="${theme === 'dark' ? 'true' : 'false'}">${DARK_LABEL}${moonSvg('acct-theme-ico')}</button>
         <button class="btn btn-sm acct-theme-btn" type="button" data-acct-action="theme-set" data-theme="light" aria-pressed="${theme === 'light' ? 'true' : 'false'}">${LIGHT_LABEL}${sunSvg('acct-theme-ico')}</button>
@@ -975,7 +997,12 @@ async function renderProfile(main) {
         <span class="ev-switch-track" aria-hidden="true"><span class="ev-switch-thumb"></span></span>
         <span class="ev-switch-text">Starfield ${stars === 'on' ? 'on' : 'off'}</span>
       </label>
-      <p class="acct-card-note ev-dom-door">Remembered on your account, so the site looks the same wherever you sign in.</p>
+      <label class="ev-switch acct-noise-switch">
+        <input type="checkbox" id="acctNoiseSwitch" ${noise === 'reduced' ? 'checked' : ''}>
+        <span class="ev-switch-track" aria-hidden="true"><span class="ev-switch-thumb"></span></span>
+        <span class="ev-switch-text">Reduce noise ${noise === 'reduced' ? 'on' : 'off'}</span>
+      </label>
+      <p class="acct-card-note ev-dom-door">Remembered on your account, so the site looks the same wherever you sign in. Reduce noise hides the explanations under the cards and the How-it-works links; every button, form and field stays.</p>
       <p class="acct-error" id="acctThemeError" hidden></p>` })}
     ${cardHtml({ key: 'profile:emails', icon: 'mail', title: 'Email addresses', summary: 'loading', body: `
       <ul class="acct-alias-list" id="acctAliasList"><li class="acct-loading">Loading…</li></ul>
@@ -5286,6 +5313,7 @@ function bindOnce() {
     if (e.target.id === 'acctAvatarFile') { onAvatarPick(e.target); return; }
     // Appearance: the starfield is a switch (2026-09-23 polish)
     if (e.target.id === 'acctStarsSwitch') { setStarfieldPreference(e.target.checked ? 'on' : 'off'); return; }
+    if (e.target.id === 'acctNoiseSwitch') { setNoisePreference(e.target.checked ? 'reduced' : 'full'); return; }
     if (e.target.id === 'admUserStatus' || e.target.id === 'admUserTier') renderUserRows();
     // Orders desk: the date range reloads the selection and its totals.
     if (e.target.id === 'odFrom' || e.target.id === 'odTo') {

@@ -14,5 +14,9 @@
     if (localStorage.getItem("pragoptics_starfield") === "off") {
       document.documentElement.setAttribute("data-starfield", "off");
     }
+    // Reduce noise (2026-11-10, theme.js): the words around the tools stay hidden from the first frame.
+    if (localStorage.getItem("pragoptics_noise") === "reduced") {
+      document.documentElement.setAttribute("data-noise", "reduced");
+    }
   } catch (e) { /* storage blocked: dark */ }
 })();

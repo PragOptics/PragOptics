@@ -270,6 +270,11 @@ select.acct-input, select.adm-select, select.adm-input { background-color: var(-
 
 /* ---- Report Anomaly modal ---- */
 .acct-select { appearance: auto; }
+/* REDUCE NOISE (2026-11-10, runtime/theme.js): the words around the tools hidden; every button, form and field stays. */
+[data-noise="reduced"] .acct-card-note.ev-dom-door,
+[data-noise="reduced"] .ev-card-explain,
+[data-noise="reduced"] .acct-sec-head .explain-link,
+[data-noise="reduced"] .adm-note { display: none; }
 .acct-textarea { resize: vertical; min-height: 96px; font: inherit; line-height: 1.5; }
 .acct-report-head { display: flex; align-items: center; gap: 14px; margin-bottom: 10px; }
 .acct-report-head .acct-modal-h { margin-bottom: 4px; }

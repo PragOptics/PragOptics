@@ -57,6 +57,29 @@ export function applyStarfield(value) {
   } catch { /* CustomEvent unsupported: CSS hides the canvas anyway */ }
 }
 
+// REDUCE NOISE (2026-11-10, Cameron: "imagine a toggle that is called, reduce noise, and it apply across the users backend, so
+// the studio and front end could utilize it ... only issue ... someone loses sight of a tool they may need"). Same shape as the
+// starfield: per-browser, stamped on <html> before first paint by themeBoot.js, remembered on the account (userTheme.js).
+// Reduced hides the words around the tools (the explanations under the cards, the How-it-works links); every button,
+// form and field stays. Full is the default; anything but a stored "reduced" resolves to full.
+const NOISE_KEY = 'pragoptics_noise';
+
+/** 'full' | 'reduced' */
+export function getNoise() {
+  try { return localStorage.getItem(NOISE_KEY) === 'reduced' ? 'reduced' : 'full'; }
+  catch { return 'full'; }
+}
+
+/** Apply the noise choice to <html>, persist it, and announce the change. */
+export function applyNoise(value) {
+  const reduced = value === 'reduced';
+  const root = document.documentElement;
+  if (reduced) root.setAttribute('data-noise', 'reduced');
+  else root.removeAttribute('data-noise');
+  try { localStorage.setItem(NOISE_KEY, reduced ? 'reduced' : 'full'); } catch { /* blocked */ }
+  try { window.dispatchEvent(new CustomEvent('pragoptics:noisechange', { detail: { noise: reduced ? 'reduced' : 'full' } })); } catch { /* fine */ }
+}
+
 /** Flip the theme and return the new value. */
 export function toggleTheme() {
   const next = getTheme() === 'light' ? 'dark' : 'light';
