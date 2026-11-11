@@ -2129,7 +2129,7 @@ async function pollRegistration(host) {
 
 /* ---------- connected accounts ---------- */
 
-const PROVIDER_ICON = { twilio: 'SMS', shippo: 'Ship', stripe: 'Pay', github: 'Git', microsoft: '365', shopify: 'Shop' };
+const PROVIDER_ICON = { twilio: 'SMS', shippo: 'Ship', stripe: 'Pay', github: 'Git', microsoft: '365', shopify: 'Shop', google: 'AI', openai: 'AI', anthropic: 'AI' };
 
 function providerOf(id) { return (ev.connProviders || []).find(p => p.id === id) || null; }
 
@@ -2144,6 +2144,7 @@ function connIdentity(c) {
   if (isManagedShippo(c)) return e(c.status === 'ACTIVE' ? `${d.carrierAccounts || 0} carrier ${d.carrierAccounts === 1 ? 'account' : 'accounts'}${(d.carriers || []).length ? ' · ' + d.carriers.join(', ') : ''}` : 'not yet authorized');
   if (isManagedShopify(c)) return e(c.status === 'ACTIVE' ? [d.name, d.domain || d.shop, d.productCount !== undefined ? `${d.productCount} products` : ''].filter(Boolean).join(' · ') : `${d.shop || ''} · waiting for the supplier`);
   if (c.provider === 'shippo') return e(d.mode ? `${d.mode} token` : '');
+  if (isManagedGoogle(c)) return e([d.email, d.projectId ? `project ${d.projectId}` : (d.email ? 'no paying project picked yet' : 'not yet signed in')].filter(Boolean).join(' · '));
   if (c.provider === 'github') return e(d.login ? `@${d.login}` : '');
   // who signed in stays off the row until the sign-in is finished (the backend keeps it aside)
   if (isManagedMicrosoft(c)) return e([d.org, d.account].filter(Boolean).join(' · ') || (d.awaitingConfirm ? 'signed in, not finished yet' : 'not yet signed in'));
@@ -2214,6 +2215,8 @@ function isManagedShopify(c) { return c?.provider === 'shopify' && c?.detail?.ma
  * needsApproval or approvedAt from before the sign-in, and the sign-in is the newer news.
  */
 function isManagedMicrosoft(c) { return c?.provider === 'microsoft' && c?.detail?.managed === 'microsoft-connect'; }
+/** A Google account signed in with Google (2026-11-10): the person's grant in the vault, the paying project on the row. */
+function isManagedGoogle(c) { return c?.provider === 'google' && c?.detail?.managed === 'google-oauth'; }
 function msWaiting(c) { return c?.status !== 'ACTIVE' && c?.status !== 'REJECTED'; }
 function msAwaiting(c) { return msWaiting(c) && !!c.detail?.awaitingConfirm; }
 function msNeedsApproval(c) { return msWaiting(c) && !msAwaiting(c) && !!c.detail?.needsApproval; }
@@ -2392,6 +2395,7 @@ function connectionsHtml() {
                   ${isManagedStripe(c) && (() => { const s = stripeState(c.detail); return s.kind === 'action' || s.kind === 'incomplete' || (s.kind === 'payments' && s.needs.length > 0); })() ? doorBtn('conn-stripe-continue', 'external', 'Continue setup', 'Opening with Stripe…', "Stripe's own pages for what it still needs", '', 'btn-primary') : ''}
                   ${isManagedTwilio(c) && c.status !== 'ACTIVE' ? doorBtn('conn-twilio-start', 'external', c.detail?.disconnected || c.detail?.declined ? 'Connect again' : 'Authorize at Twilio', 'Opening with Twilio…', "Twilio's authorization page for PragOptics, on your own Twilio account", '', 'btn-primary') : ''}
                   ${isManagedShippo(c) && c.status !== 'ACTIVE' ? doorBtn('conn-shippo-start', 'external', c.detail?.disconnected || c.detail?.declined ? 'Connect again' : 'Authorize at Shippo', 'Opening with Shippo…', "Shippo's authorization page for PragOptics; sign in or create your Shippo account there", '', 'btn-primary') : ''}
+                  ${isManagedGoogle(c) && c.status !== 'ACTIVE' ? (c.detail?.email && !c.detail?.disconnected && !c.detail?.failed && !c.detail?.declined ? stateLead('conn-google-pick', 'check', 'Pick the project that pays', { out: ev.connPicking === c.id, busyWord: 'Reading your projects…' }, `data-id="${e(c.id)}"`, 'btn-primary') : doorBtn('conn-google-start', 'external', c.detail?.email ? 'Sign in again' : 'Sign in at Google', 'Opening with Google…', 'Sign in with Google and approve PragOptics', '')) : ''}
                   ${isManagedMicrosoft(c) && c.status !== 'ACTIVE' && !msApproving(c) ? (msNeedsApproval(c)
                     ? doorBtn('conn-microsoft-approve', 'external', 'Approve for my organization', 'Opening with Microsoft…', "Microsoft's approval page: your organization's Microsoft administrator signs in there and approves PragOptics once", '', 'btn-primary')
                       + doorBtn('conn-microsoft-start', 'external', 'Sign in at Microsoft', 'Opening with Microsoft…', 'Once your administrator has approved PragOptics, sign in and connect', '')
@@ -2426,6 +2430,7 @@ function connectionsHtml() {
     ...(has(isManagedShippo) ? [] : [['m:shippo', 'Shippo, your account']]),
     // Microsoft has no test mode: its door is on the live lane only (the sandbox card says so in one sentence)
     ...(ev.lane === 'sandbox' || has(isManagedMicrosoft) ? [] : [['m:microsoft', 'Microsoft 365, sign in with Microsoft']]),
+    ...(has(isManagedGoogle) ? [] : [['m:google', 'Google Gemini, sign in with Google']]),
     ['m:shopify', 'Shopify supplier']
   ];
   // the pasted Microsoft kind is not offered even where an older lane still lists it (decision 9: humans do not fetch API keys)
@@ -2450,6 +2455,9 @@ function connectionsHtml() {
     else if (pick === 'm:microsoft') door = `
         <div class="ev-key-row">${stateLead('conn-microsoft-start', 'external', 'Connect Microsoft 365', { out: ev.connBusy && !ev.connRow, busyWord: 'Opening with Microsoft…', waiting: pickWait }, '', 'btn-primary')}</div>
         <p class="acct-card-note ev-dom-door">Sign in at Microsoft with a work or school account in your organization and approve PragOptics. It asks Microsoft only to read: your profile and the SharePoint sites that account can open, so the software can import their lists and Excel workbooks. Your organization's Microsoft administrator may have to approve it first.</p>`;
+    else if (pick === 'm:google') door = `
+        <div class="ev-key-row">${stateLead('conn-google-start', 'external', 'Sign in at Google', { out: ev.connBusy && !ev.connRow, busyWord: 'Opening with Google…', waiting: pickWait }, '', 'btn-primary')}</div>
+        <p class="acct-card-note ev-dom-door">Sign in with your Google account and approve PragOptics, then pick the Google Cloud project that pays for the answers. The project needs the Generative Language API enabled and billing set up in Google AI Studio; Google asks that of every project. Your assistants then run on your Google account and bill, with no key to make.</p>`;
     else if (pick === 'm:shopify') door = `
         <div class="ev-key-row">
           <input class="acct-input" id="evShopifyShop" type="text" inputmode="url" autocomplete="off" placeholder="supplier-name.myshopify.com" aria-label="Your supplier's Shopify store address" value="${e(ev.shopifyShop || '')}">
@@ -3094,6 +3102,84 @@ async function refreshTwilioConnect(id, quiet = false) {
  * finished sign-in comes back as outcome=confirm&ticket=..., which confirmMicrosoftConnect finishes.
  * The platform's refusals come back as the platform's words here, never a setting's name or Microsoft's text.
  */
+/* THE GOOGLE WALK (2026-11-10): Sign in at Google, come back, pick the project that pays. The platform keeps the grant in the
+ * environment's vault; the row shows who signed in and which project pays. A row signed in but without a project is not yet
+ * answering, and the picker opens by itself on the return. */
+async function startGoogleConnect() {
+  if (ev.connBusy) return;
+  D.showError('evConnError', '');
+  ev.connBusy = true; ev.connResult = ''; paintConnections();
+  try {
+    const d = await post(`${ENV_URL}/connections/google/start`, {});
+    if (!d?.url) throw new Error('The platform did not answer with a Google page to open.');
+    try { sessionStorage.setItem('pragoptics_connect_return', JSON.stringify({ provider: 'google', id: String(d.connection?.id || '') })); } catch { /* the return still carries the id */ }
+    window.location.assign(d.url);
+    return;
+  } catch (ex) {
+    ev.connBusy = false;
+    const code = String(ex?.data?.code || '');
+    if (code === 'ALREADY_CONNECTED') { ev.connPick = ''; ev.connResult = 'A Google account is already connected here.'; await loadConnections(); return; }
+    paintConnections();
+    D.showError('evConnError', code === 'GOOGLE_CONNECT_NOT_CONFIGURED' || ex?.status === 404 ? 'Google sign-in is not switched on for this lane yet.' : errText(ex, 'Could not open the Google page right now.'));
+  }
+}
+async function googleReturn(id, outcome) {
+  const c = (ev.connections || []).find(x => x.id === id);
+  const rowSays = String(c?.lastError || '').trim();
+  const said = { declined: rowSays || 'You declined at Google. Nothing was connected.', failed: rowSays || 'The sign-in at Google did not finish, and nothing was connected. Press Sign in at Google to try again.' }[outcome];
+  ev.connResult = said || 'Back from Google. Signed in; now pick the project that pays.';
+  paintConnections();
+  if (said) return;
+  await loadConnections();
+  await pickGoogleProject(id);
+}
+/** The paying project: the person's active Google Cloud projects from the platform, one picked, proven and named on the row. */
+async function pickGoogleProject(id) {
+  if (!id || ev.connPicking) return;
+  D.showError('evConnError', '');
+  ev.connPicking = id; paintConnections();
+  let projects = [], note = '';
+  try { const d = await post(`${ENV_URL}/connections/google/projects`, { id }); projects = Array.isArray(d.projects) ? d.projects : []; note = d.note || ''; }
+  catch (ex) { ev.connPicking = ''; paintConnections(); D.showError('evConnError', errText(ex, 'Could not read your Google Cloud projects.')); return; }
+  ev.connPicking = ''; paintConnections();
+  const e = D.escapeHtml;
+  const current = (ev.connections || []).find(x => x.id === id)?.detail?.projectId || '';
+  const m = openModal('evGoogleProject', `
+    <div class="acct-modal"><div class="acct-modal-card la-topup">
+      <h3>Which Google Cloud project pays?</h3>
+      <p class="acct-card-note">${e(note || 'Pick the project that pays for the answers.')}</p>
+      <p class="acct-error" id="evGoogleProjectErr" hidden></p>
+      ${projects.length ? `
+      <label class="acct-label" for="evGoogleProjectSel">Project</label>
+      <select class="acct-input acct-select" id="evGoogleProjectSel">${projects.map(p => `<option value="${e(p.projectId)}" ${p.projectId === current ? 'selected' : ''}>${e(p.name)} (${e(p.projectId)})</option>`).join('')}</select>` : ''}
+      <div class="ev-dom-actions act-row">
+        <button class="btn btn-sm" type="button" data-close>${projects.length ? 'Not now' : 'Close'}</button>
+        ${projects.length ? '<button class="btn btn-sm btn-primary" type="button" data-pick="go">Use this project</button>' : ''}
+      </div>
+    </div></div>`, { onClick: async (evt) => {
+      if (evt.target.closest('[data-close]')) return void m.close();
+      const b = evt.target.closest('[data-pick]'); if (!b) return;
+      const err = (t) => { const el = m.host.querySelector('#evGoogleProjectErr'); if (el) { el.textContent = t || ''; el.hidden = !t; } };
+      const projectId = m.host.querySelector('#evGoogleProjectSel')?.value || '';
+      if (!projectId) return err('Pick a project.');
+      b.disabled = true; err('');
+      try {
+        const d = await post(`${ENV_URL}/connections/google/project`, { id, projectId });
+        m.close();
+        ev.connPick = ''; ev.connResult = d.note || 'Connected.';
+        await loadConnections();
+      } catch (ex) { b.disabled = false; err(errText(ex, 'Google did not accept that project.')); }
+    } });
+}
+async function refreshGoogleConnect(id, quiet = false) {
+  if (!id || ev.connTesting) return;
+  if (!quiet) D.showError('evConnError', '');
+  ev.connTesting = id; paintConnections();
+  try { const d = await post(`${ENV_URL}/connections/google/refresh`, { id }); rowNote(id, d.message || 'Google answered for the account.'); }
+  catch (ex) { if (!quiet) rowNote(id, errText(ex, 'Could not check that Google account.'), true); }
+  ev.connTesting = '';
+  await loadConnections();
+}
 async function startMicrosoftConnect(mode = 'connect') {
   if (ev.connBusy || ev.connConfirming) return;
   D.showError('evConnError', '');
@@ -3247,7 +3333,7 @@ function readProviderReturn() {
   let provider = '', id = '', outcome = '', ticket = '';
   try {
     const q = new URLSearchParams(String(window.location.hash || '').split('?')[1] || '');
-    if (['stripe', 'twilio', 'shippo', 'shopify', 'microsoft'].includes(q.get('connect'))) { provider = q.get('connect'); id = q.get('id') || ''; outcome = q.get('outcome') || 'return'; ticket = q.get('ticket') || ''; history.replaceState(null, '', window.location.pathname + '#account'); }
+    if (['stripe', 'twilio', 'shippo', 'shopify', 'microsoft', 'google'].includes(q.get('connect'))) { provider = q.get('connect'); id = q.get('id') || ''; outcome = q.get('outcome') || 'return'; ticket = q.get('ticket') || ''; history.replaceState(null, '', window.location.pathname + '#account'); }
   } catch { /* no query to read */ }
   if (!id) {
     try {
@@ -3329,6 +3415,7 @@ async function handleProviderReturn() {
   if (r.provider === 'microsoft' && r.outcome === 'confirm') { const ticket = r.ticket; r.ticket = ''; await confirmMicrosoftConnect(r.id, ticket); return; }
   if (!(ev.connections || []).some(c => c.id === r.id)) return;
   if (r.provider === 'microsoft') { await microsoftReturn(r.id, r.outcome); return; }
+  if (r.provider === 'google') { await googleReturn(r.id, r.outcome); return; }
   const back = PROVIDER_RETURN[r.provider] || PROVIDER_RETURN.stripe;
   ev.connResult = back.words(r.outcome);
   paintConnections();
@@ -3505,6 +3592,8 @@ export function bindEnvironmentActions(deps) {
     if (a === 'conn-shopify-refresh') return void refreshShopifyConnect(btn.dataset.id || '');
     if (a === 'conn-shopify-sync') return void syncShopifyProducts(btn.dataset.id || '');
     if (a === 'conn-microsoft-start') return void startMicrosoftConnect('connect');
+    if (a === 'conn-google-start') return void startGoogleConnect();
+    if (a === 'conn-google-pick') return void pickGoogleProject(btn.dataset.id || '');
     if (a === 'conn-microsoft-approve') return void startMicrosoftConnect('approve');
     if (a === 'conn-microsoft-refresh') return void refreshMicrosoftConnect(btn.dataset.id || '');
   });
