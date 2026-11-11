@@ -17,6 +17,8 @@ function fresh() { return { data: null, note: '', edit: null, arm: '', pick: new
 
 export function setDocumentsContext(deps, ctx) { D = deps; X = ctx; }
 export function resetDocuments() { st = fresh(); }
+/** The saved profiles, for the Import card's picker. */
+export function documentProfiles() { return (st.data && st.data.profiles) || []; }
 const errText = (ex, fallback) => (ex?.sessionInvalidated ? '' : (ex?.data?.error || D.friendlyError(ex, fallback)));
 const manage = () => ['owner', 'admin', 'agent'].includes(X.myRole());
 const member = () => ['owner', 'admin', 'agent', 'developer', 'member'].includes(X.myRole());

@@ -47,6 +47,11 @@
 .ev-docs-list { margin: 10px 0 0; padding-left: 0; list-style: none; display: grid; gap: 8px; }
 .ev-docs-list li { min-width: 0; overflow-wrap: anywhere; }
 .ev-docs-search .ev-key-row .acct-select { flex: 0 1 200px; }
+/* the Import card (2026-11-10) */
+.ev-import-bar { height: 6px; border-radius: 999px; background: color-mix(in srgb, var(--ink) 8%, transparent); overflow: hidden; margin-top: 8px; }
+.ev-import-bar span { display: block; height: 100%; background: var(--brand-600); transition: width 400ms ease; }
+.ev-import-size { margin-top: 8px; }
+.acct-chip input[type="radio"] { position: absolute; opacity: 0; width: 0; height: 0; margin: 0; }
 /* THE BRAND-TINTED NOTE BOX (2026-10-05): one tint for a result, a status line, a flash and the test-lane banner, here, in
    team.css and in admin.css; each keeps its own margin, padding and type. */
 .ev-key-result, .ev-conn-result, .tm-invite-result, .tm-status, .tm-scopes-yours, .na-flash, .lic-banner.is-test {
