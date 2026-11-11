@@ -2175,6 +2175,7 @@ function connIdentity(c) {
   if (isManagedShopify(c)) return e(c.status === 'ACTIVE' ? [d.name, d.domain || d.shop, d.productCount !== undefined ? `${d.productCount} products` : ''].filter(Boolean).join(' · ') : `${d.shop || ''} · waiting for the supplier`);
   if (c.provider === 'shippo') return e(d.mode ? `${d.mode} token` : '');
   if (isManagedGoogle(c)) return e([d.email, d.projectId ? `project ${d.projectId}` : (d.email ? 'no paying project picked yet' : 'not yet signed in')].filter(Boolean).join(' · '));
+  if (isManagedGithub(c)) return e(c.status === 'ACTIVE' ? [d.login ? `@${d.login}` : '', d.accountType === 'Organization' ? 'organization' : '', d.repositorySelection === 'all' ? 'every repository' : d.repositorySelection === 'selected' ? 'the repositories picked' : ''].filter(Boolean).join(' · ') : (d.uninstalled ? 'the app was removed at GitHub' : d.declined ? 'not installed' : 'not installed yet'));
   if (c.provider === 'github') return e(d.login ? `@${d.login}` : '');
   // who signed in stays off the row until the sign-in is finished (the backend keeps it aside)
   if (isManagedMicrosoft(c)) return e([d.org, d.account].filter(Boolean).join(' · ') || (d.awaitingConfirm ? 'signed in, not finished yet' : 'not yet signed in'));
@@ -2247,6 +2248,8 @@ function isManagedShopify(c) { return c?.provider === 'shopify' && c?.detail?.ma
 function isManagedMicrosoft(c) { return c?.provider === 'microsoft' && c?.detail?.managed === 'microsoft-connect'; }
 /** A Google account signed in with Google (2026-11-10): the person's grant in the vault, the paying project on the row. */
 function isManagedGoogle(c) { return c?.provider === 'google' && c?.detail?.managed === 'google-oauth'; }
+// THE GITHUB APP (2026-11-10): a GitHub row the PragOptics app made, installed in one press; the archive and the import read and push with its installation's token
+function isManagedGithub(c) { return c?.provider === 'github' && c?.detail?.managed === 'github-app'; }
 function msWaiting(c) { return c?.status !== 'ACTIVE' && c?.status !== 'REJECTED'; }
 function msAwaiting(c) { return msWaiting(c) && !!c.detail?.awaitingConfirm; }
 function msNeedsApproval(c) { return msWaiting(c) && !msAwaiting(c) && !!c.detail?.needsApproval; }
@@ -2255,7 +2258,7 @@ function msApproved(c) { return msWaiting(c) && !msAwaiting(c) && !c.detail?.nee
 const MS_AWAITING_WORDS = 'The Microsoft sign-in is waiting to be finished on the PragOptics page where Connect was pressed. If that page was closed, press Connect again.';
 // What the row's other controls say while its sign-in is being finished (THE BUTTON RULE: disabled, saying why).
 const MS_CONFIRM_WAIT = 'Wait for the Microsoft sign-in to finish';
-function isManaged(c) { return isManagedStripe(c) || isManagedTwilio(c) || isManagedShippo(c) || isManagedShopify(c) || isManagedMicrosoft(c); }
+function isManaged(c) { return isManagedStripe(c) || isManagedTwilio(c) || isManagedShippo(c) || isManagedShopify(c) || isManagedMicrosoft(c) || isManagedGithub(c); }
 
 /** The Microsoft row's tag: connected, waiting for you at Microsoft, needs your Microsoft administrator, PragOptics is approving, disconnected. */
 function msStatusTag(c) {
@@ -2405,7 +2408,7 @@ function connectionsHtml() {
               const p = providerOf(c.provider);
               const testing = ev.connTesting === c.id;
               const kind = isManagedShopify(c) ? 'supplier' : isManaged(c) ? 'via PragOptics' : `key ••••${e(c.hint || '')}`;
-              const refreshAction = isManagedStripe(c) ? 'conn-stripe-refresh' : isManagedTwilio(c) ? 'conn-twilio-refresh' : isManagedShippo(c) ? 'conn-shippo-refresh' : isManagedShopify(c) ? 'conn-shopify-refresh' : isManagedMicrosoft(c) ? 'conn-microsoft-refresh' : 'conn-test';
+              const refreshAction = isManagedGithub(c) ? 'conn-github-app-refresh' : isManagedStripe(c) ? 'conn-stripe-refresh' : isManagedTwilio(c) ? 'conn-twilio-refresh' : isManagedShippo(c) ? 'conn-shippo-refresh' : isManagedShopify(c) ? 'conn-shopify-refresh' : isManagedMicrosoft(c) ? 'conn-microsoft-refresh' : 'conn-test';
               // a provider's page opened from this row: its button turns and says so; the other rows' (and this row's
               // other door, a Microsoft row waiting on an approval carries two) wait, saying why; while a Microsoft sign-in is
               // being finished every door waits for it (a door leaves the page, and the finish is still out)
@@ -2426,6 +2429,7 @@ function connectionsHtml() {
                   ${isManagedTwilio(c) && c.status !== 'ACTIVE' ? doorBtn('conn-twilio-start', 'external', c.detail?.disconnected || c.detail?.declined ? 'Connect again' : 'Authorize at Twilio', 'Opening with Twilio…', "Twilio's authorization page for PragOptics, on your own Twilio account", '', 'btn-primary') : ''}
                   ${isManagedShippo(c) && c.status !== 'ACTIVE' ? doorBtn('conn-shippo-start', 'external', c.detail?.disconnected || c.detail?.declined ? 'Connect again' : 'Authorize at Shippo', 'Opening with Shippo…', "Shippo's authorization page for PragOptics; sign in or create your Shippo account there", '', 'btn-primary') : ''}
                   ${isManagedGoogle(c) && c.status !== 'ACTIVE' ? (c.detail?.email && !c.detail?.disconnected && !c.detail?.failed && !c.detail?.declined ? stateLead('conn-google-pick', 'check', 'Pick the project that pays', { out: ev.connPicking === c.id, busyWord: 'Reading your projects…' }, `data-id="${e(c.id)}"`, 'btn-primary') : doorBtn('conn-google-start', 'external', c.detail?.email ? 'Sign in again' : 'Sign in at Google', 'Opening with Google…', 'Sign in with Google and approve PragOptics', '')) : ''}
+                  ${isManagedGithub(c) && c.status !== 'ACTIVE' ? doorBtn('conn-github-app-start', 'external', c.detail?.installationId || c.detail?.uninstalled ? 'Install again' : 'Install on GitHub', 'Opening GitHub…', "GitHub's install page for the PragOptics app", '') : ''}
                   ${isManagedMicrosoft(c) && c.status !== 'ACTIVE' && !msApproving(c) ? (msNeedsApproval(c)
                     ? doorBtn('conn-microsoft-approve', 'external', 'Approve for my organization', 'Opening with Microsoft…', "Microsoft's approval page: your organization's Microsoft administrator signs in there and approves PragOptics once", '', 'btn-primary')
                       + doorBtn('conn-microsoft-start', 'external', 'Sign in at Microsoft', 'Opening with Microsoft…', 'Once your administrator has approved PragOptics, sign in and connect', '')
@@ -2461,6 +2465,7 @@ function connectionsHtml() {
     // Microsoft has no test mode: its door is on the live lane only (the sandbox card says so in one sentence)
     ...(ev.lane === 'sandbox' || has(isManagedMicrosoft) ? [] : [['m:microsoft', 'Microsoft 365, sign in with Microsoft']]),
     ...(has(isManagedGoogle) ? [] : [['m:google', 'Google Gemini, sign in with Google']]),
+    ...(has(isManagedGithub) ? [] : [['m:github-app', 'GitHub, install the PragOptics app']]),
     ['m:shopify', 'Shopify supplier']
   ];
   // the pasted Microsoft kind is not offered even where an older lane still lists it (decision 9: humans do not fetch API keys)
@@ -2485,6 +2490,9 @@ function connectionsHtml() {
     else if (pick === 'm:microsoft') door = `
         <div class="ev-key-row">${stateLead('conn-microsoft-start', 'external', 'Connect Microsoft 365', { out: ev.connBusy && !ev.connRow, busyWord: 'Opening with Microsoft…', waiting: pickWait }, '', 'btn-primary')}</div>
         <p class="acct-card-note ev-dom-door">Sign in at Microsoft with a work or school account in your organization and approve PragOptics. It asks Microsoft only to read: your profile and the SharePoint sites that account can open, so the software can import their lists and Excel workbooks. Your organization's Microsoft administrator may have to approve it first.</p>`;
+    else if (pick === 'm:github-app') door = `
+        <div class="ev-key-row">${stateLead('conn-github-app-start', 'external', 'Install on GitHub', { out: ev.connBusy && !ev.connRow, busyWord: 'Opening GitHub…', waiting: pickWait }, '', 'btn-primary')}</div>
+        <p class="acct-card-note ev-dom-door">GitHub asks where to install PragOptics, your account or an organization, and which repositories it may reach. No token to paste: the platform asks GitHub for a short-lived one whenever it archives to a repository or imports from one. Remove the app at GitHub any time and the connection says so.</p>`;
     else if (pick === 'm:google') door = `
         <div class="ev-key-row">${stateLead('conn-google-start', 'external', 'Sign in at Google', { out: ev.connBusy && !ev.connRow, busyWord: 'Opening with Google…', waiting: pickWait }, '', 'btn-primary')}</div>
         <p class="acct-card-note ev-dom-door">Sign in with your Google account and approve PragOptics, then pick the Google Cloud project that pays for the answers. The project needs the Generative Language API enabled and billing set up in Google AI Studio; Google asks that of every project. Your assistants then run on your Google account and bill, with no key to make.</p>`;
@@ -3294,6 +3302,41 @@ async function pickGoogleProject(id) {
       } catch (ex) { b.disabled = false; err(errText(ex, 'Google did not accept that project.')); }
     } });
 }
+/* THE GITHUB APP'S DOOR (2026-11-10): GitHub's install page opened from the platform; back here the row is read again. */
+async function startGithubApp() {
+  if (ev.connBusy) return;
+  D.showError('evConnError', '');
+  ev.connBusy = true; ev.connResult = ''; paintConnections();
+  try {
+    const d = await post(`${ENV_URL}/connections/github-app/start`, {});
+    if (!d?.url) throw new Error('The platform did not answer with a GitHub page to open.');
+    try { sessionStorage.setItem('pragoptics_connect_return', JSON.stringify({ provider: 'github', id: String(d.connection?.id || '') })); } catch { /* the return still carries the id */ }
+    window.location.assign(d.url);
+    return;
+  } catch (ex) {
+    ev.connBusy = false;
+    paintConnections();
+    D.showError('evConnError', String(ex?.data?.code || '') === 'GITHUB_APP_NOT_CONFIGURED' || ex?.status === 404 ? 'The PragOptics GitHub app is not switched on for this lane yet.' : errText(ex, 'Could not open GitHub right now.'));
+  }
+}
+async function githubAppReturn(id, outcome) {
+  const c = (ev.connections || []).find(x => x.id === id);
+  const rowSays = String(c?.lastError || '').trim();
+  const said = { declined: rowSays || 'You did not finish at GitHub. Nothing was connected.', failed: rowSays || 'GitHub did not confirm the installation, and nothing was connected. Press Install on GitHub to try again.' }[outcome];
+  ev.connResult = said || 'Back from GitHub: the PragOptics app is installed. Archives and imports can use its repositories now.';
+  paintConnections();
+  if (said) return;
+  await refreshGithubApp(id, true);
+}
+async function refreshGithubApp(id, quiet = false) {
+  if (!id || ev.connTesting) return;
+  if (!quiet) D.showError('evConnError', '');
+  ev.connTesting = id; paintConnections();
+  try { const d = await post(`${ENV_URL}/connections/github-app/refresh`, { id }); rowNote(id, d.message || 'GitHub answered for the installation.'); }
+  catch (ex) { if (!quiet) rowNote(id, errText(ex, 'Could not check that installation.'), true); }
+  ev.connTesting = '';
+  await loadConnections();
+}
 async function refreshGoogleConnect(id, quiet = false) {
   if (!id || ev.connTesting) return;
   if (!quiet) D.showError('evConnError', '');
@@ -3456,7 +3499,7 @@ function readProviderReturn() {
   let provider = '', id = '', outcome = '', ticket = '';
   try {
     const q = new URLSearchParams(String(window.location.hash || '').split('?')[1] || '');
-    if (['stripe', 'twilio', 'shippo', 'shopify', 'microsoft', 'google'].includes(q.get('connect'))) { provider = q.get('connect'); id = q.get('id') || ''; outcome = q.get('outcome') || 'return'; ticket = q.get('ticket') || ''; history.replaceState(null, '', window.location.pathname + '#account'); }
+    if (['stripe', 'twilio', 'shippo', 'shopify', 'microsoft', 'google', 'github'].includes(q.get('connect'))) { provider = q.get('connect'); id = q.get('id') || ''; outcome = q.get('outcome') || 'return'; ticket = q.get('ticket') || ''; history.replaceState(null, '', window.location.pathname + '#account'); }
   } catch { /* no query to read */ }
   if (!id) {
     try {
@@ -3539,6 +3582,7 @@ async function handleProviderReturn() {
   if (!(ev.connections || []).some(c => c.id === r.id)) return;
   if (r.provider === 'microsoft') { await microsoftReturn(r.id, r.outcome); return; }
   if (r.provider === 'google') { await googleReturn(r.id, r.outcome); return; }
+  if (r.provider === 'github') { await githubAppReturn(r.id, r.outcome); return; }
   const back = PROVIDER_RETURN[r.provider] || PROVIDER_RETURN.stripe;
   ev.connResult = back.words(r.outcome);
   paintConnections();
@@ -3723,6 +3767,8 @@ export function bindEnvironmentActions(deps) {
     if (a === 'conn-shopify-sync') return void syncShopifyProducts(btn.dataset.id || '');
     if (a === 'conn-microsoft-start') return void startMicrosoftConnect('connect');
     if (a === 'conn-google-start') return void startGoogleConnect();
+    if (a === 'conn-github-app-start') return void startGithubApp();
+    if (a === 'conn-github-app-refresh') return void refreshGithubApp(btn.dataset.id || '');
     if (a === 'conn-google-pick') return void pickGoogleProject(btn.dataset.id || '');
     if (a === 'conn-microsoft-approve') return void startMicrosoftConnect('approve');
     if (a === 'conn-microsoft-refresh') return void refreshMicrosoftConnect(btn.dataset.id || '');

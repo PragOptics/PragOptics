@@ -74,3 +74,7 @@ Only the person who pressed Connect can finish it, signed in to PragOptics, with
 ## What is not here yet
 
 A database of your own (a Postgres connection string) arrives with the database adapter, once the platform can prove such a string works before storing it. Every provider on the card today is checked for real before it is saved.
+
+## GitHub, the PragOptics app
+
+Pick "GitHub, install the PragOptics app" and press Install on GitHub. GitHub asks where to install it, your account or an organization, and which repositories it may reach; you come back here and the row says who installed it and what it reaches. Nothing is pasted and nothing is stored: whenever the platform archives this environment to one of those repositories, or imports from one, it asks GitHub for a short-lived token of its own. Remove the app at GitHub any time, under your account's applications, and the connection says the app was removed. A pasted token still works the old way for an account the app is not installed on.

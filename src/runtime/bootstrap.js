@@ -927,7 +927,7 @@ window.applyPostLoginResolution = applyPostLoginResolution;
       } catch { /* the desk still lists where the item stands */ }
       try {
         const provider = q.get("connect") || "", id = q.get("id") || "";
-        if (["stripe", "twilio", "shippo", "microsoft"].includes(provider) && id) {
+        if (["stripe", "twilio", "shippo", "microsoft", "google", "github"].includes(provider) && id) {
           const outcome = q.get("outcome") || "return";
           const ticket = provider === "microsoft" && outcome === "confirm" ? String(q.get("ticket") || "") : "";
           sessionStorage.setItem("pragoptics_connect_return", JSON.stringify({ provider, id, outcome, ...(ticket ? { ticket } : {}) }));
@@ -961,7 +961,7 @@ window.applyPostLoginResolution = applyPostLoginResolution;
       // Microsoft 365 (2026-09-23): the sign-in and the administrator's approval both come back as connect=microsoft.
       // Kept by captureAccountReturn, a return reads section=environment here; one still in the address (sessionStorage
       // refused it) lands on Environment below, where handleProviderReturn reads it from the address.
-      const fromProvider = provider === "stripe" || provider === "twilio" || provider === "shippo" || provider === "microsoft";
+      const fromProvider = provider === "stripe" || provider === "twilio" || provider === "shippo" || provider === "microsoft" || provider === "google" || provider === "github";
       if (section || card) {
         // only a named card is kept: an address the panel already rewrote to its bare section must not overwrite the card
         // captureAccountReturn kept before that (a section with no card opens no card either way)
