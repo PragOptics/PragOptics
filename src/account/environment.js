@@ -176,11 +176,11 @@ export async function renderEnvironment(main, deps) {
   ev.connections = null; ev.connProviders = []; ev.connNote = ''; ev.connPick = ''; ev.connBusy = false; ev.connResult = ''; ev.connTesting = ''; ev.connDraft = {}; ev.connArm = ''; ev.rowNote = null; ev.shopifyShop = ''; ev.shopifyLink = ''; ev.shopifyLinkId = ''; ev.connSyncing = ''; ev.rowNote = null;
   ev.tables = null; ev.tablesNote = ''; ev.table = ''; ev.rows = null; ev.rowsAfter = ''; ev.rowsNote = ''; ev.openRow = ''; ev.rowsLoading = false; ev.rowsFailed = false; ev.moderating = ''; ev.moderatingTo = '';
   ev.decisions = null;
-  ev.ai = null; ev.aiNote = ''; ev.aiBusy = false; ev.aiBudget = null; ev.budgetBusy = false;
+  ev.ai = null; ev.aiNote = ''; ev.aiBusy = false; ev.aiBudget = null; ev.budgetBusy = false; ev.archive = null; ev.archiveNote = ''; ev.archiveStatus = '';
   resetMail(); setMailContext(D, mailContext());
   ev.domTab = ev.domTab || 'connect'; initCards();
   // A link that names a card (/#account?section=environment&card=connections) opens that card; account.js scrolls to it.
-  try { const want = JSON.parse(sessionStorage.getItem('pragoptics_open_card') || 'null'); const card = { files: 'files', connections: 'connections', domains: 'domains', keys: 'keys', ai: 'ai', data: 'data', mail: 'mail' }[String(want?.card || '')]; if (card) setOpen(`environment:${card}`, true); } catch { /* fine */ }
+  try { const want = JSON.parse(sessionStorage.getItem('pragoptics_open_card') || 'null'); const card = { files: 'files', connections: 'connections', domains: 'domains', keys: 'keys', ai: 'ai', data: 'data', mail: 'mail', archive: 'archive' }[String(want?.card || '')]; if (card) setOpen(`environment:${card}`, true); } catch { /* fine */ }
   main.innerHTML = `
     <header class="acct-sec-head has-explain"><h2 class="acct-sec-title">Environment</h2>${explainLink('environment', 'How your environment works')}</header>
     <p class="acct-error" id="evError" hidden></p>
@@ -240,7 +240,7 @@ async function loadNow() {
     paint();
     if (['READY', 'SUSPENDED'].includes(phaseOf(ev.view.tenant))) {
       if (ev.lane === 'sandbox' && !laneReady(ev.view.tenant)) return;   // the setup card is all there is
-      await Promise.all([loadFiles(), loadTables(), loadMail(), loadDecisions(), ...(ev.lane === 'live' ? [loadDomains()] : []), loadKeys(), loadConnections()]);
+      await Promise.all([loadFiles(), loadTables(), loadMail(), loadDecisions(), ...(ev.lane === 'live' ? [loadDomains()] : []), loadKeys(), loadConnections(), loadArchive()]);
     }
   } catch (ex) {
     host.innerHTML = '';
@@ -331,8 +331,8 @@ function paint() {
   // On the sandbox lane the cards appear only once the sandbox is READY;
   // until then the section explains and (for the owner) offers to set it up.
   const cards = ev.lane === 'sandbox'
-    ? (laneReady(ev.view.tenant) ? `<div id="evFiles">${filesHtml()}</div><div id="evData">${dataHtml()}</div><div id="evMail">${mailHtml()}</div><div id="evConnections">${connectionsHtml()}</div><div id="evKeys">${keysHtml()}</div>` : sandboxSetupHtml(ev.view))
-    : `<div id="evFiles">${filesHtml()}</div><div id="evData">${dataHtml()}</div><div id="evMail">${mailHtml()}</div><div id="evConnections">${connectionsHtml()}</div><div id="evDomains">${domainsHtml()}</div><div id="evKeys">${keysHtml()}</div>`;
+    ? (laneReady(ev.view.tenant) ? `<div id="evFiles">${filesHtml()}</div><div id="evData">${dataHtml()}</div><div id="evMail">${mailHtml()}</div><div id="evConnections">${connectionsHtml()}</div><div id="evArchive">${archiveHtml()}</div><div id="evKeys">${keysHtml()}</div>` : sandboxSetupHtml(ev.view))
+    : `<div id="evFiles">${filesHtml()}</div><div id="evData">${dataHtml()}</div><div id="evMail">${mailHtml()}</div><div id="evConnections">${connectionsHtml()}</div><div id="evArchive">${archiveHtml()}</div><div id="evDomains">${domainsHtml()}</div><div id="evKeys">${keysHtml()}</div>`;
   host.innerHTML = `
     ${summaryHtml(ev.view)}
     ${ready ? `<div class="ev-cards">${cards}</div>` : ''}
@@ -390,13 +390,13 @@ async function setLane(lane) {
   if (lane === 'sandbox' && !canUseSandbox()) return;   // only the builders switch to the sandbox lane
   ev.lane = lane === 'sandbox' ? 'sandbox' : 'live';
   try { sessionStorage.setItem(LANE_KEY, ev.lane); } catch { /* fine */ }
-  ev.files = null; ev.keys = null; ev.domains = null; ev.connections = null; ev.connPick = ''; ev.connResult = ''; ev.madeKey = null; ev.filesNote = '';
+  ev.files = null; ev.keys = null; ev.domains = null; ev.connections = null; ev.archive = null; ev.connPick = ''; ev.connResult = ''; ev.madeKey = null; ev.filesNote = '';
   ev.sites = null; ev.decisions = null; resetMail();
   paint();
   if (ev.lane === 'live' || laneReady(ev.view?.tenant)) {
     // the lane switch and the refresh wait while this lane's cards are read, saying why
     const release = hold(document.querySelectorAll('[data-env-action="lane-live"], [data-env-action="lane-sandbox"], [data-env-action="refresh"]'), `Loading the ${ev.lane} lane…`);
-    try { await Promise.all([loadFiles(), loadMail(), loadDecisions(), ...(ev.lane === 'live' ? [loadDomains()] : []), loadKeys(), loadConnections()]); }
+    try { await Promise.all([loadFiles(), loadMail(), loadDecisions(), ...(ev.lane === 'live' ? [loadDomains()] : []), loadKeys(), loadConnections(), loadArchive()]); }
     finally { release(); }
   }
 }
@@ -410,7 +410,7 @@ async function setupSandbox(btn) {
     try { ev.view = await fetchView(); } catch { /* keep */ }
     ev.sandboxBusy = false;
     paint();
-    if (d.phase === 'READY') await Promise.all([loadFiles(), loadKeys(), loadConnections()]);
+    if (d.phase === 'READY') await Promise.all([loadFiles(), loadKeys(), loadConnections(), loadArchive()]);
     const host = document.getElementById('evSandboxError'); if (host && d.note && d.phase !== 'READY') { host.textContent = d.note; host.hidden = false; host.classList.remove('acct-error'); host.classList.add('acct-card-note'); }
   } catch (ex) {
     ev.sandboxBusy = false; paint();
@@ -435,6 +435,23 @@ function paintDomains() {
 }
 function paintKeys() { const h = document.getElementById('evKeys'); if (h) h.innerHTML = keysHtml(); }
 function paintConnections() { const h = document.getElementById('evConnections'); if (h) h.innerHTML = connectionsHtml(); }
+function paintArchive() { const h = document.getElementById('evArchive'); if (h) h.innerHTML = archiveHtml(); }
+/* THE ARCHIVE (2026-11-10, Cameron: "external archiving ... integral to the platform"; "data is data ... it should be able to
+ * come into pragoptics, and out of. simple"): ONE read of GET v1/environment/archive: the settings, the last run, the GitHub
+ * accounts connected on this lane. The same doors as Connected accounts refuse it (a free plan, a lane without a vault). */
+async function loadArchive() {
+  try {
+    ev.archive = await D.apiFetch(url(`${ENV_URL}/archive`));
+    ev.archiveNote = '';
+  } catch (ex) {
+    ev.archive = null;
+    if (ex?.status === 404) ev.archiveNote = 'The archive routes are not on this lane yet.';
+    else if (ex?.data?.code === 'UPGRADE_REQUIRED') ev.archiveNote = ex.data.error;
+    else if (ex?.data?.code === 'CONNECTIONS_NOT_CONFIGURED') ev.archiveNote = 'Connected accounts are not switched on for this lane yet.';
+    else ev.archiveNote = errText(ex, 'Could not read the archive settings.');
+  }
+  paintArchive();
+}
 
 function emptyHtml(view) {
   // Every owner gets an environment (2026-09-16): pooled storage on Free, the
@@ -1018,7 +1035,7 @@ function dataHtml() {
 const AI_LANE = 'live';
 export async function renderAi(main, deps) {
   D = deps;
-  ev.ai = null; ev.aiNote = ''; ev.aiBusy = false; ev.aiBudget = null; ev.budgetBusy = false;
+  ev.ai = null; ev.aiNote = ''; ev.aiBusy = false; ev.aiBudget = null; ev.budgetBusy = false; ev.archive = null; ev.archiveNote = ''; ev.archiveStatus = '';
   initCards(); setOpen('environment:ai', true);   // the tab's one card is the page: always open here, whatever the Environment tab remembered
   main.innerHTML = `
     <header class="acct-sec-head has-explain"><h2 class="acct-sec-title">AI</h2>${explainLink('ai', 'How AI works')}</header>
@@ -2491,6 +2508,60 @@ function connectionsHtml() {
   });
 }
 
+/* THE ARCHIVE CARD: where this environment's work goes outside PragOptics. The owner sets it (data leaving is the owner's
+ * call, server-enforced); owners, admins and Live Agents press Archive now. The nightly and weekly runs take the live lane. */
+const ARCHIVE_PARTS = [['projects', 'layers', 'Projects', 'Every project and its latest draft'], ['tables', 'database', 'Tables', 'Every table, every row, up to 20,000 a table'], ['files', 'folder', 'Files', 'Every file up to 5 MB, 60 MB in all'], ['modules', 'puzzle', 'Installs', 'The installed builds and their settings, never a secret'], ['connections', 'plug', 'Connected accounts', 'Which accounts are connected, never a credential']];
+function archiveHtml() {
+  const e = D.escapeHtml;
+  const a = ev.archive;
+  const s = a?.settings || null;
+  const owner = myRole() === 'owner' && !paused();
+  const mayRun = canManageConnections() && !!s;
+  const summary = a == null ? (ev.archiveNote ? 'not on this lane' : 'loading')
+    : !s ? 'not set up'
+    : `${s.schedule === 'off' ? 'on a press' : s.schedule} to ${s.repo}${a.last ? (a.last.ok ? ` · last ${D.fmtDate(a.lastAt)}` : ' · last run failed') : ''}`;
+  const explain = explainLink('archive', 'How archiving works');
+  if (a == null) {
+    return cardHtml({ key: 'archive', icon: 'upload', title: 'Archive', summary, explain,
+      body: ev.archiveNote ? `<p class="acct-card-note">${e(ev.archiveNote)}</p>` : '<p class="acct-loading">Loading the archive settings…</p>' });
+  }
+  const accounts = a.connections || [];
+  const picked = s?.connectionId || (accounts.find(c => c.status === 'ACTIVE') || accounts[0] || {}).id || '';
+  const inc = s?.include || {};
+  const last = !a.last ? '' : a.last.ok
+    ? `<p class="acct-card-note">Last archived ${e(D.fmtDate(a.lastAt))}: ${e(countWord(Number(a.last.counts?.projects || 0), 'project', 'projects'))}, ${e(countWord(Number(a.last.counts?.rows || 0), 'row', 'rows'))}, ${e(countWord(Number(a.last.counts?.files || 0), 'file', 'files'))}, to ${a.last.url ? `<a href="${e(a.last.url)}" target="_blank" rel="noopener">${e(a.last.repo)}@${e(a.last.branch)}</a>` : e(`${a.last.repo || ''}@${a.last.branch || ''}`)}${a.last.created ? ' (repository created)' : ''}.</p>`
+    : `<p class="acct-card-note acct-error-words">Last run ${e(D.fmtDate(a.lastAt))} failed: ${e(a.last.error || 'no reason given')}</p>`;
+  const form = owner ? `
+      <div class="ev-conn-fields">
+        <label class="ev-conn-field"><span class="ev-conn-field-label">GitHub account</span>
+          <select class="acct-select" id="evArcConn">${accounts.length ? accounts.map(c => `<option value="${e(c.id)}" ${c.id === picked ? 'selected' : ''}>${e(c.label)}${c.login ? ` (${e(c.login)})` : ''}${c.status !== 'ACTIVE' ? ' · not active' : ''}</option>`).join('') : '<option value="">Connect a GitHub account first</option>'}</select></label>
+        <label class="ev-conn-field"><span class="ev-conn-field-label">Repository</span><input class="acct-input" type="text" id="evArcRepo" maxlength="200" value="${e(s?.repo || '')}" placeholder="a name, or owner/name" autocomplete="off" spellcheck="false" /></label>
+        <label class="ev-conn-field"><span class="ev-conn-field-label">Branch</span><input class="acct-input" type="text" id="evArcBranch" maxlength="100" value="${e(s?.branch || 'main')}" placeholder="main" autocomplete="off" spellcheck="false" /></label>
+        <label class="ev-conn-field"><span class="ev-conn-field-label">Schedule</span>
+          <select class="acct-select" id="evArcSchedule">${[['off', 'Only when I press Archive now'], ['daily', 'Every night, and when I press'], ['weekly', 'Every week, and when I press']].map(([v, w]) => `<option value="${v}" ${(s?.schedule || 'off') === v ? 'selected' : ''}>${w}</option>`).join('')}</select></label>
+      </div>
+      <div class="ev-scopes" role="group" aria-label="What the archive carries">
+        ${ARCHIVE_PARTS.map(([k, icon, word, tip]) => `<label class="acct-chip" data-tip="${e(tip)}"><input type="checkbox" id="evArcInc-${k}" ${inc[k] === false ? '' : 'checked'} />${ico(icon, 14)}<span>${word}</span></label>`).join('')}
+      </div>
+      <div class="act-row ev-key-row">
+        ${leadBtn('archive-save', 'save', s ? 'Save' : 'Set up the archive', '', 'btn-primary')}
+        ${mayRun ? leadBtn('archive-run', 'upload', 'Archive now', '') : ''}
+      </div>
+      ${accounts.length ? '' : '<p class="acct-card-note">No GitHub account is connected on this lane yet. Connect one under Connected accounts, then come back here.</p>'}`
+    : `
+      <p class="acct-card-note">${s ? `Archives go to <b>${e(s.repo)}</b> on branch <b>${e(s.branch || 'main')}</b>, ${s.schedule === 'off' ? 'only when someone presses Archive now' : s.schedule === 'daily' ? 'every night and when someone presses Archive now' : 'every week and when someone presses Archive now'}. The owner sets where it goes.` : 'The owner has not set up an archive yet. The owner sets where the work goes, since it leaves PragOptics.'}</p>
+      ${mayRun ? `<div class="act-row ev-key-row">${leadBtn('archive-run', 'upload', 'Archive now', '')}</div>` : ''}`;
+  return cardHtml({
+    key: 'archive', icon: 'upload', title: 'Archive', summary, explain,
+    body: `
+      ${form}
+      <p class="acct-card-note ev-dom-door">One commit on your own GitHub with this environment's work: projects, tables, files, installs, connected accounts. Never a credential. Nothing in the repository is ever deleted by an archive; the scheduled runs take the live lane.</p>
+      <p class="acct-error" id="evArchiveError" hidden></p>
+      ${ev.archiveStatus ? `<p class="acct-card-note" id="evArchiveStatus">${e(ev.archiveStatus)}</p>` : ''}
+      ${last}`
+  });
+}
+
 function keysHtml() {
   const e = D.escapeHtml;
   const me = ev.view?.membership || {};
@@ -2634,6 +2705,45 @@ async function makeKey(btn) {
   } catch (ex) {
     D.showError('evKeyError', errText(ex, 'The key could not be made.'));
   } finally { done(); }
+}
+
+async function saveArchive(btn) {
+  D.showError('evArchiveError', '');
+  const payload = {
+    connectionId: document.getElementById('evArcConn')?.value || '',
+    repo: (document.getElementById('evArcRepo')?.value || '').trim(),
+    branch: (document.getElementById('evArcBranch')?.value || '').trim() || 'main',
+    schedule: document.getElementById('evArcSchedule')?.value || 'off',
+    include: Object.fromEntries(ARCHIVE_PARTS.map(([k]) => [k, !!document.getElementById(`evArcInc-${k}`)?.checked]))
+  };
+  if (!payload.connectionId) { D.showError('evArchiveError', 'Pick the GitHub account the archive goes to. Connect one under Connected accounts if there is none.'); return; }
+  if (!payload.repo) { D.showError('evArchiveError', 'Name the repository: a name of yours, or owner/name.'); return; }
+  if (btn.disabled) return;
+  const done = busy(btn, 'Saving…');
+  try {
+    const r = await D.apiFetch(url(`${ENV_URL}/archive`), { method: 'PUT', body: body(payload) });
+    ev.archiveStatus = r.note || 'Saved.';
+    await loadArchive();
+  } catch (ex) {
+    D.showError('evArchiveError', errText(ex, 'The archive settings could not be saved.'));
+  } finally { done(); }
+}
+async function runArchive(btn) {
+  D.showError('evArchiveError', '');
+  if (btn.disabled) return;
+  const done = busy(btn, 'Archiving…');
+  let failed = '';
+  try {
+    const r = await post(`${ENV_URL}/archive/run`, {});
+    const c = r.result?.counts || {};
+    ev.archiveStatus = `Archived: ${countWord(Number(c.projects || 0), 'project', 'projects')}, ${countWord(Number(c.rows || 0), 'row', 'rows')}, ${countWord(Number(c.files || 0), 'file', 'files')}${r.result?.created ? '; the repository was created' : ''}.`;
+  } catch (ex) {
+    failed = errText(ex, 'The archive did not run.');
+    ev.archiveStatus = '';
+  }
+  await loadArchive();   // the row is stamped either way: the last run shows, in words when it failed
+  if (failed) D.showError('evArchiveError', failed);
+  done();
 }
 
 let keyArmTimer = null;
@@ -3576,6 +3686,8 @@ export function bindEnvironmentActions(deps) {
     if (a === 'domain-reg-cancel') { ev.reg = freshReg(); paintDomains(); return; }
     if (a === 'conn-add') { if (!ev.connBusy) ev.connRow = ''; return void addConnection(btn); }
     if (a === 'conn-openai-provision') { if (!ev.connBusy) ev.connRow = ''; return void provisionOpenai(btn); }
+    if (a === 'archive-save') return void saveArchive(btn);
+    if (a === 'archive-run') return void runArchive(btn);
     if (a === 'conn-test') return void testConnection(btn.dataset.id || '');
     if (a === 'conn-remove') return void removeConnection(btn.dataset.id || '', btn.dataset.label || 'this connection', btn);
     if (a === 'conn-remove-cancel') { clearTimeout(connArmTimer); ev.connArm = ''; paintConnections(); return; }
