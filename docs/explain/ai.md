@@ -11,7 +11,7 @@ Your connected account | Connect your own OpenAI, Google, Anthropic or compatibl
 Platform credit | Buy prepaid AI credit on the AI card. Each answer is priced at the model's rate plus the platform's margin and comes off your balance. Credit never expires.
 ```
 
-The AI card lets the owner pick which one answers: your connected account, platform credit, or automatic, which uses your account when one is connected and platform credit otherwise. The Studio and your published site both follow that choice.
+The AI card lets the owner pick which answers: your connected account only, platform credit only, or both in the order you choose. With both, the second answers when the first cannot: your account first and platform credit when it is rejected or unreachable, or platform credit first and your account when the credit runs out. The Studio and your published site both follow that choice.
 
 ## The free taste
 

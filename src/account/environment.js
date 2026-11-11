@@ -1105,9 +1105,9 @@ function aiHtml() {
     const on = !!a.enabled, ready = !!a.provider?.configured;
     // WHICH AI ANSWERS (2026-11-10, Cameron's ruling): the environment's own connected account, platform credit, or automatic; the owner's prepaid balance; the free taste
     const own = a.connection && a.connection.provider ? a.connection : null;
-    const source = ['own', 'platform', 'auto'].includes(String(a.source || '')) ? String(a.source) : 'auto';
+    const source = ['own', 'platform', 'own-first', 'platform-first'].includes(String(a.source || '')) ? String(a.source) : 'own-first';   // 'auto', the older word, reads as own-first
     const bal = Number(a.balance?.balanceCents || 0), taste = a.taste || null, month = a.month || {};
-    const onOwn = !!own && source !== 'platform';
+    const onOwn = !!own && (source === 'own' || source === 'own-first');
     const needs = source === 'own' && !own;
     const ownName = own ? e(own.label || own.provider) : '';
     summary = !ready ? 'being set up' : !on ? 'off' : needs ? 'on · no AI account connected' : onOwn ? `on · your ${ownName} account` : bal > 0 ? `on · ${e(dollars(bal))} of credit` : taste && !taste.used ? `on · ${e(String(Math.max(0, taste.callLimit - taste.calls)))} free calls left` : 'on · no AI credit';
@@ -1128,9 +1128,10 @@ function aiHtml() {
       </div>
       <h4 class="acct-card-sub">Which AI answers</h4>
       <div class="ev-ai-sources" role="radiogroup" aria-label="Which AI answers">
-        ${srcOpt('auto', 'Automatic', own ? `Your ${ownName} account, because it is connected` : 'Platform credit until you connect an account')}
-        ${srcOpt('own', 'My connected account', own ? `${ownName}, on your own bill` : 'None connected yet')}
-        ${srcOpt('platform', 'Platform credit', 'Prepaid, priced per answer')}
+        ${srcOpt('own', 'My connected account only', own ? `${ownName}, on your own bill` : 'None connected yet')}
+        ${srcOpt('platform', 'Platform credit only', 'Prepaid, priced per answer')}
+        ${srcOpt('own-first', 'Both, my account first', own ? `${ownName}; platform credit when it cannot answer` : 'Platform credit until you connect an account')}
+        ${srcOpt('platform-first', 'Both, platform credit first', own ? `Platform credit; your ${ownName} account when the credit runs out` : 'Platform credit; your account once you connect one')}
       </div>
       ${needs ? `<p class="acct-card-note ev-note">No AI account is connected, so nothing answers. ${isOwner ? 'Connect one under Connected accounts on the Environment tab, or pick Platform credit.' : 'The owner connects one under Connected accounts, or picks Platform credit.'}</p>` : ''}
       ${own
