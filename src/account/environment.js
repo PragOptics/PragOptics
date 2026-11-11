@@ -41,6 +41,8 @@ import { mailShort, mailLines } from './rowMail.js';
 import { setMailContext, resetMail, loadMail, mailHtml, paintMail, mailAction, mailChange, decisionsArrived } from './mailCard.js';
 // THE AI AGENTS CARD (2026-11-10): one AI per table that reviews what changed and reports; painted into #evAiAgents under the AI card (aiAgentsCard.js)
 import { setAgentsContext, resetAgents, loadAgents, agentsAction } from './aiAgentsCard.js';
+// THE DOCUMENTS CARD (2026-11-10): scanned pages, photos and PDFs read by the environment's AI into records; painted into #evDocuments after Files (documentsCard.js)
+import { setDocumentsContext, resetDocuments, loadDocuments, documentsHtml, paintDocuments, documentsAction, documentsChange } from './documentsCard.js';
 // the platform's cents formatter, under the name this file has always used for it (the local cents() below is the
 // AI budget's cent-sign variant, so the shared one cannot take that name here)
 import { countWord, cents as money } from '../ui/words.js';
@@ -180,9 +182,10 @@ export async function renderEnvironment(main, deps) {
   ev.decisions = null;
   ev.ai = null; ev.aiNote = ''; ev.aiBusy = false; ev.aiBudget = null; ev.budgetBusy = false; ev.archive = null; ev.archiveNote = ''; ev.archiveStatus = '';
   resetMail(); setMailContext(D, mailContext());
+  resetDocuments(); setDocumentsContext(D, { url, body, myRole, lane: () => ev.lane, view: () => ev.view, files: () => ev.files, tables: () => ev.tables, reloadTables: () => readTables({ keep: true }).then(() => paintData()), openRow: (table, row) => { setOpen('environment:data', true); loadRows(table).then(() => { if (row && ev.table === table) { ev.openRow = String(row); paintData(); } document.getElementById('evData')?.scrollIntoView({ block: 'start' }); }); } });
   ev.domTab = ev.domTab || 'connect'; initCards();
   // A link that names a card (/#account?section=environment&card=connections) opens that card; account.js scrolls to it.
-  try { const want = JSON.parse(sessionStorage.getItem('pragoptics_open_card') || 'null'); const card = { files: 'files', connections: 'connections', domains: 'domains', keys: 'keys', ai: 'ai', data: 'data', mail: 'mail', archive: 'archive' }[String(want?.card || '')]; if (card) setOpen(`environment:${card}`, true); } catch { /* fine */ }
+  try { const want = JSON.parse(sessionStorage.getItem('pragoptics_open_card') || 'null'); const card = { files: 'files', connections: 'connections', domains: 'domains', keys: 'keys', ai: 'ai', data: 'data', mail: 'mail', archive: 'archive', documents: 'documents' }[String(want?.card || '')]; if (card) setOpen(`environment:${card}`, true); } catch { /* fine */ }
   main.innerHTML = `
     <header class="acct-sec-head has-explain"><h2 class="acct-sec-title">Environment</h2>${explainLink('environment', 'How your environment works')}</header>
     <p class="acct-error" id="evError" hidden></p>
@@ -242,7 +245,7 @@ async function loadNow() {
     paint();
     if (['READY', 'SUSPENDED'].includes(phaseOf(ev.view.tenant))) {
       if (ev.lane === 'sandbox' && !laneReady(ev.view.tenant)) return;   // the setup card is all there is
-      await Promise.all([loadFiles(), loadTables(), loadMail(), loadDecisions(), ...(ev.lane === 'live' ? [loadDomains()] : []), loadKeys(), loadConnections(), loadArchive()]);
+      await Promise.all([loadFiles(), loadTables(), loadMail(), loadDecisions(), ...(ev.lane === 'live' ? [loadDomains()] : []), loadKeys(), loadConnections(), loadArchive(), loadDocuments()]);
     }
   } catch (ex) {
     host.innerHTML = '';
@@ -259,6 +262,7 @@ async function loadFiles() {
     const d = await D.apiFetch(url(`${ENV_URL}/files`, { limit: 200 }));
     ev.files = d.items || [];
     ev.filesTruncated = !!d.truncated;
+    paintDocuments();   // the Documents card's picker lists the readable files
   } catch (ex) {
     ev.files = [];
     ev.filesNote = ex?.sessionInvalidated ? '' : (ex?.data?.error || D.friendlyError(ex, 'Could not list the files.'));
@@ -333,8 +337,8 @@ function paint() {
   // On the sandbox lane the cards appear only once the sandbox is READY;
   // until then the section explains and (for the owner) offers to set it up.
   const cards = ev.lane === 'sandbox'
-    ? (laneReady(ev.view.tenant) ? `<div id="evFiles">${filesHtml()}</div><div id="evData">${dataHtml()}</div><div id="evMail">${mailHtml()}</div><div id="evConnections">${connectionsHtml()}</div><div id="evArchive">${archiveHtml()}</div><div id="evKeys">${keysHtml()}</div>` : sandboxSetupHtml(ev.view))
-    : `<div id="evFiles">${filesHtml()}</div><div id="evData">${dataHtml()}</div><div id="evMail">${mailHtml()}</div><div id="evConnections">${connectionsHtml()}</div><div id="evArchive">${archiveHtml()}</div><div id="evDomains">${domainsHtml()}</div><div id="evKeys">${keysHtml()}</div>`;
+    ? (laneReady(ev.view.tenant) ? `<div id="evFiles">${filesHtml()}</div><div id="evDocuments">${documentsHtml()}</div><div id="evData">${dataHtml()}</div><div id="evMail">${mailHtml()}</div><div id="evConnections">${connectionsHtml()}</div><div id="evArchive">${archiveHtml()}</div><div id="evKeys">${keysHtml()}</div>` : sandboxSetupHtml(ev.view))
+    : `<div id="evFiles">${filesHtml()}</div><div id="evDocuments">${documentsHtml()}</div><div id="evData">${dataHtml()}</div><div id="evMail">${mailHtml()}</div><div id="evConnections">${connectionsHtml()}</div><div id="evArchive">${archiveHtml()}</div><div id="evDomains">${domainsHtml()}</div><div id="evKeys">${keysHtml()}</div>`;
   host.innerHTML = `
     ${summaryHtml(ev.view)}
     ${ready ? `<div class="ev-cards">${cards}</div>` : ''}
@@ -392,13 +396,13 @@ async function setLane(lane) {
   if (lane === 'sandbox' && !canUseSandbox()) return;   // only the builders switch to the sandbox lane
   ev.lane = lane === 'sandbox' ? 'sandbox' : 'live';
   try { sessionStorage.setItem(LANE_KEY, ev.lane); } catch { /* fine */ }
-  ev.files = null; ev.keys = null; ev.domains = null; ev.connections = null; ev.archive = null; ev.connPick = ''; ev.connResult = ''; ev.madeKey = null; ev.filesNote = '';
+  ev.files = null; ev.keys = null; ev.domains = null; ev.connections = null; ev.archive = null; resetDocuments(); ev.connPick = ''; ev.connResult = ''; ev.madeKey = null; ev.filesNote = '';
   ev.sites = null; ev.decisions = null; resetMail();
   paint();
   if (ev.lane === 'live' || laneReady(ev.view?.tenant)) {
     // the lane switch and the refresh wait while this lane's cards are read, saying why
     const release = hold(document.querySelectorAll('[data-env-action="lane-live"], [data-env-action="lane-sandbox"], [data-env-action="refresh"]'), `Loading the ${ev.lane} lane…`);
-    try { await Promise.all([loadFiles(), loadMail(), loadDecisions(), ...(ev.lane === 'live' ? [loadDomains()] : []), loadKeys(), loadConnections(), loadArchive()]); }
+    try { await Promise.all([loadFiles(), loadMail(), loadDecisions(), ...(ev.lane === 'live' ? [loadDomains()] : []), loadKeys(), loadConnections(), loadArchive(), loadDocuments()]); }
     finally { release(); }
   }
 }
@@ -412,7 +416,7 @@ async function setupSandbox(btn) {
     try { ev.view = await fetchView(); } catch { /* keep */ }
     ev.sandboxBusy = false;
     paint();
-    if (d.phase === 'READY') await Promise.all([loadFiles(), loadKeys(), loadConnections(), loadArchive()]);
+    if (d.phase === 'READY') await Promise.all([loadFiles(), loadKeys(), loadConnections(), loadArchive(), loadDocuments()]);
     const host = document.getElementById('evSandboxError'); if (host && d.note && d.phase !== 'READY') { host.textContent = d.note; host.hidden = false; host.classList.remove('acct-error'); host.classList.add('acct-card-note'); }
   } catch (ex) {
     ev.sandboxBusy = false; paint();
@@ -3619,6 +3623,7 @@ export function bindEnvironmentActions(deps) {
     if (sw) setAi(!!sw.checked);
     const src = e.target.closest?.('[data-env-source]');
     if (src && src.checked) setAiSource(src.value);
+    if (documentsChange(e)) return;
     mailChange(e);
   });
   document.addEventListener('click', (e) => {
@@ -3640,6 +3645,7 @@ export function bindEnvironmentActions(deps) {
     if (a === 'refresh') { if (btn.disabled || envLoad) return; return void refreshAll(); }
     if (a === 'budget-save') return void saveBudget(btn);
     if (agentsAction(a, btn)) return;
+    if (documentsAction(a, btn)) return;
     if (a === 'ai-topup') return void aiTopup();
     if (a === 'lane-live') return void setLane('live');
     if (a === 'lane-sandbox') return void setLane('sandbox');

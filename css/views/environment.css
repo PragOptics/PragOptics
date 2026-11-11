@@ -36,6 +36,17 @@
 .ev-agent-actions { margin-top: 8px; }
 .ev-agent-form { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
 .ev-agent-form textarea.acct-input { width: 100%; min-height: 72px; resize: vertical; font: inherit; }
+/* the Documents card (2026-11-10) */
+.ev-docs-fields { display: grid; gap: 8px; margin-top: 12px; }
+.ev-docs-field { display: grid; grid-template-columns: minmax(120px, 1fr) minmax(90px, 120px) minmax(160px, 2fr) auto auto; gap: 6px; align-items: center; }
+@media (max-width: 720px) { .ev-docs-field { grid-template-columns: 1fr 1fr; } .ev-docs-field [data-dp-fhint] { grid-column: 1 / -1; } }
+.ev-docs-reader, .ev-docs-search { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border); }
+.ev-docs-files { display: grid; gap: 4px; margin-top: 8px; max-height: 240px; overflow: auto; padding: 4px 2px; }
+.ev-docs-file { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 4px 6px; border-radius: 8px; cursor: pointer; }
+.ev-docs-file:hover { background: color-mix(in srgb, var(--ink) 4%, transparent); }
+.ev-docs-list { margin: 10px 0 0; padding-left: 0; list-style: none; display: grid; gap: 8px; }
+.ev-docs-list li { min-width: 0; overflow-wrap: anywhere; }
+.ev-docs-search .ev-key-row .acct-select { flex: 0 1 200px; }
 /* THE BRAND-TINTED NOTE BOX (2026-10-05): one tint for a result, a status line, a flash and the test-lane banner, here, in
    team.css and in admin.css; each keeps its own margin, padding and type. */
 .ev-key-result, .ev-conn-result, .tm-invite-result, .tm-status, .tm-scopes-yours, .na-flash, .lic-banner.is-test {
