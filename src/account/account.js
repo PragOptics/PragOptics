@@ -2892,6 +2892,7 @@ async function renderAdminAi(main) {
     const cap = d.cap || {}, p = d.provider || {};
     const money = d.money && typeof d.money === 'object' ? d.money : null;   // the month's money since backend 88b5f8c; a lane without it shows cost alone
     const pct = Number(cap.percent || 0);
+    const hasCap = Number(cap.capCents) > 0;   // AI_PLATFORM_CAP_CENTS is optional (2026-11-10): unset, the prepaid balances are the ceiling
     const cls = pct >= 95 ? 'is-hot' : pct >= 70 ? 'is-warn' : '';
     host.innerHTML = `
       <div class="adm-stat-grid">
@@ -2899,16 +2900,16 @@ async function renderAdminAi(main) {
         ${statCard(cents(cap.totalCents), money ? 'Cost to the platform' : `Spent in ${escapeHtml(d.month || '')}`, money ? 'paid to the provider' : '')}
         ${money ? statCard(cents(money.marginCents), 'Margin', `${escapeHtml(String(money.marginPercent ?? ''))}% on cost`, Number(money.marginCents) < 0 ? 'amber' : '') : ''}
         ${money ? statCard(cents(money.outstandingCents), 'Credit outstanding', `${nFmt(money.outstandingOwners || 0)} ${Number(money.outstandingOwners) === 1 ? 'account holds' : 'accounts hold'} prepaid credit`) : ''}
-        ${statCard(cents(cap.capCents), 'Platform ceiling', 'AI_PLATFORM_CAP_CENTS', pct >= 80 ? 'amber' : '')}
+        ${hasCap ? statCard(cents(cap.capCents), 'Platform ceiling', 'AI_PLATFORM_CAP_CENTS', pct >= 80 ? 'amber' : '') : statCard('none', 'Platform ceiling', 'AI_PLATFORM_CAP_CENTS not set')}
         ${statCard(nFmt(cap.totalCalls), 'Answers this month')}
         ${statCard(escapeHtml(p.configured ? p.name : 'not configured'), 'Provider', p.configured ? `${(p.lanes || []).length} lanes, default ${escapeHtml(p.defaultLane || '')}` : 'AI_PROVIDER and AI_API_KEY', p.configured ? '' : 'amber')}
       </div>
       <div class="adm-card">
-        <div class="use-row ev-meter">
+        ${hasCap ? `<div class="use-row ev-meter">
           <div class="use-head"><span class="use-name">Ceiling used</span><span class="use-val">${escapeHtml(String(pct))}%${cap.warned80 ? ' · 80% alert sent' : ''}</span></div>
           <div class="use-track"><div class="use-fill ${cls}" style="width:${Math.min(100, pct).toFixed(1)}%"></div></div>
-        </div>
-        <p class="adm-note">Past the ceiling every AI call on the platform answers 503 until the month resets or the setting is raised. Platform credit is prepaid: each answer is charged at the provider's cost plus the margin (AI_MARGIN_PERCENT, 100 unless set). A Free account has ten answers to try. An environment on its own AI account pays its provider directly; its answers are counted here, never charged.</p>
+        </div>` : ''}
+        <p class="adm-note">${hasCap ? 'Past the ceiling every AI call on the platform answers 503 until the month resets or the setting is raised.' : 'No platform ceiling is set: each account\'s prepaid credit is its own ceiling. Set AI_PLATFORM_CAP_CENTS and past it every AI call on the platform answers 503 until the month resets or the setting is raised.'} Platform credit is prepaid: each answer is charged at the provider's cost plus the margin (AI_MARGIN_PERCENT, 100 unless set). A Free account has ten answers to try. An environment on its own AI account pays its provider directly; its answers are counted here, never charged.</p>
       </div>
       ${(p.lanes || []).length ? `
       <div class="adm-card">
