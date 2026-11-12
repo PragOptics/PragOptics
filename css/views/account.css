@@ -272,6 +272,7 @@ select.acct-input, select.adm-select, select.adm-input { background-color: var(-
 .acct-select { appearance: auto; }
 /* REDUCE NOISE (2026-11-10, runtime/theme.js): the words around the tools hidden; every button, form and field stays. */
 [data-noise="reduced"] .acct-card-note.ev-dom-door,
+[data-noise="reduced"] .acct-card-note.ev-note,
 [data-noise="reduced"] .ev-card-explain,
 [data-noise="reduced"] .acct-sec-head .explain-link,
 [data-noise="reduced"] .adm-note { display: none; }

@@ -1189,7 +1189,7 @@ function aiHtml() {
           </tbody>
         </table>
       </div>
-      <p class="acct-card-note ev-note">Per answer is a typical question and answer, about 2,000 words in and 400 out. ${onOwn ? 'On your own account the figure is the provider\'s rate, an estimate for your eyes.' : 'On platform credit it is what comes off your balance.'} The Studio picks the model on each call.</p>` : ''}
+      <p class="acct-card-note ev-note">Per answer is a typical question and answer, about 2,000 words in and 400 out. Spent adds what platform credit was charged and, on your own account, the provider's estimate.${onOwn ? 'On your own account the figure is the provider\'s rate, an estimate for your eyes.' : 'On platform credit it is what comes off your balance.'} The Studio picks the model on each call.</p>` : ''}
       <p class="acct-card-note ev-note">Answers come from this environment's own knowledge files and its installed modules on the lane, nothing else. AI answers can be wrong: check anything that matters.</p>
       ${budgetHtml(manage)}`}`;
   }
@@ -1234,6 +1234,7 @@ async function aiTopup() {
           <input class="acct-input" id="evAiTopupAmt" inputmode="decimal" placeholder="20.00" />
           <button class="btn btn-sm btn-primary" type="button" data-topup="continue">Continue</button>
         </div>
+        <div class="ev-dom-actions act-row"><button class="btn btn-sm" type="button" data-close>Cancel</button></div>
       </div>
       <div id="evAiTopupStep2" hidden>
         <div id="evAiTopupPayEl"></div>
@@ -1242,7 +1243,9 @@ async function aiTopup() {
           <button class="btn btn-sm btn-primary" type="button" data-topup="pay">Pay</button>
         </div>
       </div>
-    </div></div>`, { onClick: async (evt) => {
+    </div></div>`, { onKey: (ev) => { if (ev.key === 'Escape') m.close(); }, onClick: async (evt) => {
+      // Escape, the backdrop and Cancel all close the dialog at either step (2026-11-12: step one had no way out but a reload)
+      if (evt.target.classList && evt.target.classList.contains('acct-modal')) return void m.close();
       if (evt.target.closest('[data-close]')) return void m.close();
       const b = evt.target.closest('[data-topup]'); if (!b) return;
       const err = (t) => { const el = m.host.querySelector('#evAiTopupErr'); if (el) { el.textContent = t || ''; el.hidden = !t; } };

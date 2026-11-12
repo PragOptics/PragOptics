@@ -2890,13 +2890,17 @@ async function renderAdminAi(main) {
   try {
     const d = await apiFetch(ADMIN_AI_URL);
     const cap = d.cap || {}, p = d.provider || {};
+    const money = d.money && typeof d.money === 'object' ? d.money : null;   // the month's money since backend 88b5f8c; a lane without it shows cost alone
     const pct = Number(cap.percent || 0);
     const cls = pct >= 95 ? 'is-hot' : pct >= 70 ? 'is-warn' : '';
     host.innerHTML = `
       <div class="adm-stat-grid">
-        ${statCard(cents(cap.totalCents), `Spent in ${escapeHtml(d.month || '')}`)}
+        ${money ? statCard(cents(money.revenueCents), `Charged in ${escapeHtml(d.month || '')}`, 'platform credit drawn by answers') : ''}
+        ${statCard(cents(cap.totalCents), money ? 'Cost to the platform' : `Spent in ${escapeHtml(d.month || '')}`, money ? 'paid to the provider' : '')}
+        ${money ? statCard(cents(money.marginCents), 'Margin', `${escapeHtml(String(money.marginPercent ?? ''))}% on cost`, Number(money.marginCents) < 0 ? 'amber' : '') : ''}
+        ${money ? statCard(cents(money.outstandingCents), 'Credit outstanding', `${nFmt(money.outstandingOwners || 0)} ${Number(money.outstandingOwners) === 1 ? 'account holds' : 'accounts hold'} prepaid credit`) : ''}
         ${statCard(cents(cap.capCents), 'Platform ceiling', 'AI_PLATFORM_CAP_CENTS', pct >= 80 ? 'amber' : '')}
-        ${statCard(nFmt(cap.totalCalls), 'Calls this month')}
+        ${statCard(nFmt(cap.totalCalls), 'Answers this month')}
         ${statCard(escapeHtml(p.configured ? p.name : 'not configured'), 'Provider', p.configured ? `${(p.lanes || []).length} lanes, default ${escapeHtml(p.defaultLane || '')}` : 'AI_PROVIDER and AI_API_KEY', p.configured ? '' : 'amber')}
       </div>
       <div class="adm-card">
@@ -2904,7 +2908,7 @@ async function renderAdminAi(main) {
           <div class="use-head"><span class="use-name">Ceiling used</span><span class="use-val">${escapeHtml(String(pct))}%${cap.warned80 ? ' · 80% alert sent' : ''}</span></div>
           <div class="use-track"><div class="use-fill ${cls}" style="width:${Math.min(100, pct).toFixed(1)}%"></div></div>
         </div>
-        <p class="adm-note">Past the ceiling every AI call on the platform answers 503 until the month resets or the setting is raised. Each account is also held to its own credit: Free 10 calls and 2 cents, User $1, Partner $5, Super $25.</p>
+        <p class="adm-note">Past the ceiling every AI call on the platform answers 503 until the month resets or the setting is raised. Platform credit is prepaid: each answer is charged at the provider's cost plus the margin (AI_MARGIN_PERCENT, 100 unless set). A Free account has ten answers to try. An environment on its own AI account pays its provider directly; its answers are counted here, never charged.</p>
       </div>
       ${(p.lanes || []).length ? `
       <div class="adm-card">
@@ -2921,15 +2925,18 @@ async function renderAdminAi(main) {
         ${!(d.rows || []).length ? '<p class="adm-empty">Nobody has used AI this month.</p>' : `
         <div class="adm-table-scroll">
           <table class="adm-table">
-            <thead><tr><th>Account</th><th>Tier</th><th class="adm-num">Spent</th><th class="adm-num">Credit</th><th class="adm-num">Calls</th><th>Lanes</th></tr></thead>
+            <thead><tr><th>Account</th><th>Tier</th><th class="adm-num">Charged</th><th class="adm-num">Cost</th><th class="adm-num">Margin</th><th class="adm-num">Credit left</th><th class="adm-num">Answers</th><th class="adm-num">Own account</th><th>Lanes</th></tr></thead>
             <tbody>
-              ${d.rows.map(r => { const over = r.limitCents && r.usedCents >= r.limitCents; return `
+              ${d.rows.map(r => { const hasMoney = r.costCents != null; const neg = hasMoney && Number(r.marginCents) < 0; return `
                 <tr>
                   <td class="adm-cell-email cell-ellip" title="${escapeHtml(r.email || r.userId)}">${escapeHtml(r.email || r.userId)}</td>
                   <td>${tierPill(r.tier)}</td>
-                  <td class="adm-num ${over ? 'adm-money-neg' : ''}">${escapeHtml(cents(r.usedCents))}</td>
-                  <td class="adm-num">${escapeHtml(cents(r.limitCents))}${r.callLimit ? ` · ${escapeHtml(String(r.callLimit))} calls` : ''}</td>
+                  <td class="adm-num">${escapeHtml(cents(r.usedCents))}</td>
+                  <td class="adm-num">${hasMoney ? escapeHtml(cents(r.costCents)) : '—'}</td>
+                  <td class="adm-num ${neg ? 'adm-money-neg' : ''}">${hasMoney ? escapeHtml(cents(r.marginCents)) : '—'}</td>
+                  <td class="adm-num">${r.balanceCents != null ? escapeHtml(cents(r.balanceCents)) : '—'}</td>
                   <td class="adm-num">${escapeHtml(nFmt(r.calls))}</td>
+                  <td class="adm-num">${Number(r.ownCalls) > 0 ? `${escapeHtml(nFmt(r.ownCalls))} · ${escapeHtml(cents(r.ownCostCents || 0))} est.` : '—'}</td>
                   <td class="adm-muted">${escapeHtml(Object.entries(r.byLane || {}).map(([k, v]) => `${k} ${v.calls}`).join(', '))}</td>
                 </tr>`; }).join('')}
             </tbody>
@@ -5462,3 +5469,15 @@ export function onAccountEnter() {
   lastEnter = { id: activeSection, at: now };
   showSection(activeSection);
 }
+
+// A hash change while the account page is open follows it (2026-11-12): a link to #account?section=<id> pressed on the page, or typed
+// into the address bar, opens that section without a reload. showSection writes the same hash with replaceState, which never fires this.
+window.addEventListener('hashchange', () => {
+  try {
+    const h = String(location.hash || '');
+    if (!/^#account/i.test(h)) return;
+    if (!document.getElementById('acctMain')) return;   // the account page is not on screen
+    const id = new URLSearchParams(h.split('?')[1] || '').get('section');
+    if (id && id !== activeSection) showSection(id);
+  } catch { /* the page stays as it is */ }
+});
