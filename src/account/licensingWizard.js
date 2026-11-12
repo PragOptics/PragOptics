@@ -191,7 +191,7 @@ export function phase1Html(v) {
         <span class="ev-dom-pick-d">${e(desc)}</span>
       </button>`;
   const chooser = done ? '' : `
-    <p class="acct-card-note ev-dom-lead">Microsoft 365 for your team: mail, licenses and your own tenant. Start with a tenant PragOptics sets up for you, or connect one your business already has.</p>
+    <p class="acct-card-note ev-dom-lead ev-note">Microsoft 365 for your team: mail, licenses and your own tenant. Start with a tenant PragOptics sets up for you, or connect one your business already has.</p>
     <div class="ev-dom-choose" role="group" aria-label="How do you want to set up Microsoft 365">
       ${pick('new', 'rocket', 'Set up a new tenant', 'PragOptics creates your Microsoft account and tenant, records the agreement and orders your first mailbox. One step, about a minute, nothing charged.')}
       ${pick('bring', 'building', 'Connect a tenant we have', 'Give the ID of your business\'s Microsoft tenant and approve PragOptics in it once. No account, agreement or order is needed for that.')}

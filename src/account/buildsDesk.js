@@ -174,7 +174,7 @@ export async function renderMyBuilds(main, deps) {
   D = deps;
   main.innerHTML = `
     <header class="acct-sec-head"><h2 class="acct-sec-title">My Builds</h2><div class="ev-actions">${iconBtn({ builds: 'refresh' }, 'refresh', 'Refresh', 'id="mbRefresh"')}</div></header>
-    <p class="acct-card-note">What you published to the board from the Studio (Export, Publish as a module). A finished build is a draft only you see: install it in your own environment to prove it, then submit it for review; you can retract it until an operator decides. A new version of the same module replaces the old one on the board once approved. It waits for review before others see it; you can install it in your own environment right away.</p>
+    <p class="acct-card-note ev-note">What you published to the board from the Studio (Export, Publish as a module). A finished build is a draft only you see: install it in your own environment to prove it, then submit it for review; you can retract it until an operator decides. A new version of the same module replaces the old one on the board once approved. It waits for review before others see it; you can install it in your own environment right away.</p>
     <p class="acct-error" id="mbError" hidden></p>
     <div id="mbBody"><p class="acct-loading">Loading…</p></div>
   `;

@@ -515,7 +515,7 @@ function inviteHtml(v) {
   const isOwner = myRole === 'owner';
   return cardHtml({ key: 'team:invite', icon: 'userPlus', title: 'Invite someone', summary: e(open ? `${open} seat${open === 1 ? '' : 's'} open${pending.length ? ` · ${pending.length} pending` : ''}` : (pending.length ? `no seats open · ${pending.length} pending` : 'no seats open')), body: `
     <section class="tm-invite-card">
-      <p class="acct-card-note">They get an email with a one-time link that works for seven days, and they must sign in with the address you invite. ${open ? `${e(String(open))} seat${open === 1 ? '' : 's'} open.` : (isOwner ? 'No seats open: invite as a viewer, free a seat, or add seats.' : 'No seats open: free a seat, or ask the owner for more seats.')}${isOwner ? '' : ' Only the owner invites admins and viewers.'}</p>
+      <p class="acct-card-note ev-note">They get an email with a one-time link that works for seven days, and they must sign in with the address you invite. ${open ? `${e(String(open))} seat${open === 1 ? '' : 's'} open.` : (isOwner ? 'No seats open: invite as a viewer, free a seat, or add seats.' : 'No seats open: free a seat, or ask the owner for more seats.')}${isOwner ? '' : ' Only the owner invites admins and viewers.'}</p>
       <div class="tm-invite-row">
         <input class="acct-input tm-invite-email" type="email" id="tmInviteEmail" placeholder="name@company.com" autocomplete="off" spellcheck="false" aria-label="Email to invite" />
         <select class="adm-select tm-invite-role" id="tmInviteRole" aria-label="Role for the invite">
@@ -795,7 +795,7 @@ function scopesHtml() {
       : `As ${A_ROLE[mine]} you have none of these. Ask the owner if you need one.`;
   }
   return cardHtml({ key: 'team:scopes', icon: 'shield', title, summary: e(summary), body: `
-    <p class="acct-card-note tm-scopes-lead">${e(lead)}</p>
+    <p class="acct-card-note tm-scopes-lead ev-note">${e(lead)}</p>
     ${yours ? `<p class="tm-scopes-yours">${ico(shownOf(sc, mine).length ? 'checkCircle' : 'info')}<span>${e(yours)}</span></p>` : ''}
     <div class="tm-scopes">${SCOPE_ROLES.map(r => scopeRoleHtml(r, sc, mine)).join('')}</div>` });
 }
