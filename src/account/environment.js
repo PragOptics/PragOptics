@@ -2519,7 +2519,7 @@ function connectionsHtml() {
           ${stateLead('conn-shopify-start', 'link', 'Make the link', { out: ev.connBusy && !ev.connRow, busyWord: 'Making the link…', waiting: pickWait }, '', 'btn-primary')}
         </div>
         <p class="acct-card-note ev-dom-door">Your supplier's store address. You send them the link, they approve, and their products land here for your site. They bill you as they always have.</p>`;
-    else if (picked) door = `${connFieldsHtml(picked)}<div class="ev-key-row">${stateLead('conn-add', 'plug', 'Connect', { out: ev.connBusy && !ev.connRow, busyWord: `Checking with ${picked.label}…`, waiting: pickWait }, '', 'btn-primary')}</div>${picked.id === 'openai' ? openaiWalkHtml(pickWait) : ''}`;
+    else if (picked) door = `${connFieldsHtml(picked)}<div class="ev-key-row">${stateLead('conn-add', 'plug', 'Connect', { out: ev.connBusy && !ev.connRow, busyWord: `Checking with ${picked.label}…`, waiting: pickWait }, '', 'btn-primary')}</div>`;
     form = `
       <div class="ev-conn-add">
         <div class="ev-key-row">
@@ -3070,39 +3070,6 @@ async function exportEnvironment(btn) {
 // The credential leaves this form once, over the session, to the API, which
 // proves it with the provider and vaults it. The inputs are cleared on every
 // outcome so a rejected paste is not left sitting in the page.
-/* THE OPENAI WALK (2026-11-10): the other way in for a person who has never made an API key. One Admin key, pasted once; the
- * platform makes the project and the service account in their OpenAI organization and connects with the key it is born with.
- * The admin key goes to the platform for those calls and is not kept, not here and not there. */
-function openaiWalkHtml(pickWait) {
-  const e = D.escapeHtml;
-  return `
-      <p class="acct-card-note ev-dom-door">Or let PragOptics set it up: paste an <b>Admin API key</b> from your OpenAI organization (platform.openai.com, Organization, Admin keys). PragOptics makes a project named PragOptics and a service account in your organization and connects with that account's key. The admin key is used once and not kept.</p>
-      <div class="ev-key-row">
-        <input class="acct-input" type="password" id="evOpenaiAdminKey" autocomplete="new-password" placeholder="sk-admin-…" aria-label="OpenAI Admin API key" value="">
-        ${stateLead('conn-openai-provision', 'plug', 'Set it up for me', { out: ev.connBusy && !ev.connRow, busyWord: 'Setting up with OpenAI…', waiting: pickWait }, '', '')}
-      </div>`;
-}
-async function provisionOpenai(btn) {
-  if (ev.connBusy) return;
-  D.showError('evConnError', '');
-  const el = document.getElementById('evOpenaiAdminKey');
-  const adminKey = el?.value?.trim() || '';
-  if (!adminKey) { D.showError('evConnError', 'Paste your OpenAI Admin API key.'); el?.focus(); return; }
-  const label = document.getElementById('evConnLabel')?.value?.trim() || '';
-  if (el) el.value = '';   // the admin key never sits in the page past the press
-  ev.connBusy = true; ev.connResult = ''; paintConnections();
-  try {
-    const d = await post(`${ENV_URL}/connections/openai/provision`, { adminKey, label });
-    ev.connPick = ''; ev.connDraft = {}; ev.connResult = d.note || `${d.connection?.label || 'OpenAI'} is connected and verified.`;
-    await loadConnections();
-  } catch (ex) {
-    ev.connBusy = false; paintConnections();
-    D.showError('evConnError', errText(ex, 'Could not set up OpenAI.'));
-    document.getElementById('evOpenaiAdminKey')?.focus();
-    return;
-  }
-  ev.connBusy = false; paintConnections();
-}
 async function addConnection(btn) {
   const p = providerOf(ev.connPick);
   if (!p || ev.connBusy) return;
@@ -3764,7 +3731,6 @@ export function bindEnvironmentActions(deps) {
     if (a === 'domain-reg-edit-contact') { ev.reg.contact = readContact(); ev.reg.editContact = true; paintDomains(); document.getElementById('evRegFirst')?.focus(); return; }
     if (a === 'domain-reg-cancel') { ev.reg = freshReg(); paintDomains(); return; }
     if (a === 'conn-add') { if (!ev.connBusy) ev.connRow = ''; return void addConnection(btn); }
-    if (a === 'conn-openai-provision') { if (!ev.connBusy) ev.connRow = ''; return void provisionOpenai(btn); }
     if (a === 'archive-save') return void saveArchive(btn);
     if (a === 'archive-run') return void runArchive(btn);
     if (a === 'conn-test') return void testConnection(btn.dataset.id || '');
