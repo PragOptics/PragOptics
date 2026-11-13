@@ -820,7 +820,7 @@ window.applyPostLoginResolution = applyPostLoginResolution;
       // sign-in lands on the section the return needs.
       else if (/^#account/i.test(String(location.hash || ""))) routeToAccountOnLoad();
       // The software (2026-09-16): /#software sends a signed-in account straight to it once it is hosted (ping.software.url); signed out, the sign-in lands there.
-      else if (/^#software/i.test(String(location.hash || ""))) routeToSoftwareOnLoad();
+      else if (/^#software/i.test(String(location.hash || ""))) landOnSoftware();
     })();
 
     async function redeemStudioHandoff(code, to) {
@@ -868,6 +868,21 @@ window.applyPostLoginResolution = applyPostLoginResolution;
     // login modal for a signed-out click).
     function routeToSoftwareOnLoad(extra = "") {
       goToSoftware(STUDIO_URL, extra);
+    }
+
+    // The /#software LANDING (the studio's own Sign in button sends a signed-out person here; Cameron, 2026-11-13: "it just
+    // keeps taking me back to the studio"): signed in, the session is carried into the studio by the handoff; signed out,
+    // the sign-in opens HERE and lands in the studio after (back === "software" above), instead of bouncing the person
+    // straight back to the plain studio with no sign-in, which was a loop no one could leave. The site's own Open Studio
+    // button is untouched: it still navigates without a sign-in (his ruling of 2026-10-13, routeToSoftwareOnLoad).
+    // An "install=<buildId>" riding in the address (/#software?install=...) is kept for the landing after the sign-in.
+    function landOnSoftware() {
+      let extra = "";
+      try { const q = String(location.hash || "").replace(/^#software??/i, ""); if (/^[A-Za-z0-9_=&-]{1,120}$/.test(q)) extra = q; } catch { extra = ""; }
+      if (isSessionActive()) { goToSoftware(STUDIO_URL, extra); return; }
+      try { sessionStorage.setItem("pragoptics_return_to", "software"); if (extra) sessionStorage.setItem("pragoptics_software_extra", extra); } catch { /* the sign-in still opens; it lands on the account after */ }
+      try { history.replaceState(null, "", location.pathname + location.search); } catch { /* the address keeps the hash */ }
+      setTimeout(() => { openLoginModal("login"); }, 50);
     }
 
     /**
