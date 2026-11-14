@@ -10,6 +10,10 @@ Use it by name | An assistant picks "Platform AI" or one of your names. A module
 See where it went | Each name shows a hint of the key, who may use it, how often it was used and where.
 ```
 
+## In the studio
+
+The Developer panel's Connections tab shows the same list and the same form: paste a key, name it, it is in your vault. An assistant's settings offer "Runs on": Platform AI, or one of your names. A key typed into a call's header still moves to the vault on its own, and it gets a name as it is kept, made of the call's name and the header, like BRIDGES_API_AUTHORIZATION; the header then says "in your vault as BRIDGES_API_AUTHORIZATION". Rename it here if you like.
+
 ## Who may see and use it
 
 Only you, the owner, until you say otherwise. A team member sees nothing and can use nothing until you allow their role, or them, on that one name. Nothing is used without you knowing: every use is counted on the name.
