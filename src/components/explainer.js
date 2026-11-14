@@ -32,6 +32,7 @@ const DOCS = {
   warranty:    { title: 'Registration and transfers' },
   environment: { title: 'Your environment and storage' },
   keys:        { title: 'API keys' },
+  variables:   { title: 'Environment variables' },
   domains:     { title: 'Connecting a domain' },
   licensing:   { title: 'Licenses and mailboxes' },
   'live-agents': { title: 'Live agents, not AI' },
