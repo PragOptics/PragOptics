@@ -16,7 +16,7 @@ const ENV_URL = `${PRAG_API_BASE}/environment`;
 let D = null;   // apiFetch, escapeHtml, fmtDate, friendlyError, showError
 let X = null;   // url, body, myRole, lane, connections() (the Connected accounts card's provider catalog)
 let st = fresh();
-function fresh() { return { data: null, note: '', noteCode: '', plan: null, planNote: '', form: { provider: '', name: '', roles: [], approval: false, host: '', header: '' }, busy: false, result: '', rowNote: null, arm: '', renaming: '' }; }
+function fresh() { return { data: null, note: '', noteCode: '', plan: null, planNote: '', form: { provider: '', name: '', roles: [], approval: false, host: '', header: '' }, saving: false, naming: false, result: '', rowNote: null, arm: '', renaming: '' }; }
 
 export function setVariablesContext(deps, ctx) { D = deps; X = ctx; }
 export function resetVariables() { st = fresh(); }
@@ -59,7 +59,7 @@ export function variablesHtml() {
   const plan = isOwner && Array.isArray(st.plan) && st.plan.length ? `
       <div class="ev-var-migrate">
         <p class="acct-card-note">${e(migrationWords(st.plan))}</p>
-        <div class="ev-key-row">${stateLead('var-migrate', 'key', 'Name them', { out: st.busy, busyWord: 'Naming…' }, '', 'btn-primary')}</div>
+        <div class="ev-key-row">${stateLead('var-migrate', 'key', 'Name them', { out: st.naming, busyWord: 'Naming…' }, '', 'btn-primary')}</div>
       </div>` : '';
   const list = vars.length ? `<ul class="ev-var-list">${vars.map(v => rowHtml(v, isOwner, e)).join('')}</ul>`
     : `<p class="acct-card-note ev-note">${isOwner ? 'No variables yet. Paste a key below and it is kept in your vault under the name you give it.' : 'The owner has not shared a variable with your role yet.'}</p>`;
@@ -129,7 +129,7 @@ function formHtml(e) {
         </div>
         ${receives}
         <div class="ev-key-row">
-          ${stateLead('var-save', 'key', 'Save to your vault', { out: st.busy, busyWord: picked.id === 'other' ? 'Saving…' : `Checking with ${picked.label}…` }, '', 'btn-primary')}
+          ${stateLead('var-save', 'key', 'Save to your vault', { out: st.saving, busyWord: picked.id === 'other' ? 'Saving…' : `Checking with ${picked.label}…` }, '', 'btn-primary')}
           <span class="acct-card-note">${preview ? `Saved as <code class="ev-code">${e(preview)}</code>. ${f.roles.length ? '' : 'Only you until you allow a role.'}` : 'A name is letters, digits and underscores, like GEMINI_API_KEY.'}</span>
         </div>` : ''}
       </div>`;
@@ -137,7 +137,7 @@ function formHtml(e) {
 
 /** The one save: the form read once, the key sent once, never kept. */
 async function saveVariable() {
-  if (st.busy) return;
+  if (st.saving) return;
   D.showError('evVarError', '');
   const picked = providerChoices(X.connections() || []).find(c => c.id === st.form.provider);
   if (!picked) { D.showError('evVarError', 'Pick the service the key is for.'); return; }
@@ -149,15 +149,15 @@ async function saveVariable() {
   });
   if (!checked.ok) { D.showError('evVarError', checked.error); const el = checked.field === 'name' ? document.getElementById('evVarName') : checked.field === 'value' ? document.getElementById('evVarValue') : checked.field === 'host' ? document.getElementById('evVarHost') : document.querySelector(`[data-var-extra="${checked.field}"]`); el?.focus(); return; }
   st.form.name = checked.body.name; st.form.host = checked.body.host || ''; st.form.header = checked.body.header || ''; st.form.roles = checked.body.allow.roles; st.form.approval = checked.body.requireApproval;
-  st.busy = true; st.result = ''; paintVariables();
+  st.saving = true; st.result = ''; paintVariables();
   try {
     const d = await post(`${ENV_URL}/variables`, checked.body);
     st.result = d.note || `Moved to your vault as ${d.variable?.name || checked.body.name}.`;
     st.form = { provider: '', name: '', roles: [], approval: false, host: '', header: '' };
-    st.busy = false;
+    st.saving = false;
     await loadVariables();
   } catch (ex) {
-    st.busy = false; paintVariables();
+    st.saving = false; paintVariables();
     D.showError('evVarError', errText(ex, 'Could not save the variable.'));
     if (ex?.data?.field) document.querySelector(`[data-var-extra="${ex.data.field}"]`)?.focus();
   }
@@ -174,7 +174,7 @@ export function variablesAction(a, btn) {
   if (!a || !String(a).startsWith('var-')) return false;
   const name = btn?.dataset?.name || '';
   if (a === 'var-save') { void saveVariable(); return true; }
-  if (a === 'var-migrate') { void (async () => { if (st.busy) return; st.busy = true; paintVariables(); try { const d = await post(`${ENV_URL}/variables-migration`, {}); st.result = d.note || 'Named.'; } catch (ex) { D.showError('evVarError', errText(ex, 'Could not name the existing keys.')); } st.busy = false; await loadVariables(); })(); return true; }
+  if (a === 'var-migrate') { void (async () => { if (st.naming) return; st.naming = true; paintVariables(); try { const d = await post(`${ENV_URL}/variables-migration`, {}); st.result = d.note || 'Named.'; } catch (ex) { D.showError('evVarError', errText(ex, 'Could not name the existing keys.')); } st.naming = false; await loadVariables(); })(); return true; }
   if (a === 'var-rename') { st.renaming = name; st.arm = ''; paintVariables(); document.querySelector(`[data-var-rename-input="${CSS.escape(name)}"]`)?.focus(); return true; }
   if (a === 'var-rename-cancel') { st.renaming = ''; paintVariables(); return true; }
   if (a === 'var-rename-save') { const to = nameOf(document.querySelector(`[data-var-rename-input="${CSS.escape(name)}"]`)?.value || ''); if (!to) { rowNote(name, 'A name is letters, digits and underscores, starting with a letter.', true); paintVariables(); return true; } st.renaming = ''; void patchVariable(name, { rename: to }, v => `Renamed to ${v?.name || to}. Anything that named ${name} now has to name ${v?.name || to}.`); return true; }
