@@ -16,7 +16,7 @@ const ENV_URL = `${PRAG_API_BASE}/environment`;
 let D = null;   // apiFetch, escapeHtml, fmtDate, friendlyError, showError
 let X = null;   // url, body, myRole, lane, connections() (the Connected accounts card's provider catalog)
 let st = fresh();
-function fresh() { return { data: null, note: '', plan: null, planNote: '', form: { provider: '', name: '', roles: [], approval: false, host: '', header: '' }, busy: false, result: '', rowNote: null, arm: '', renaming: '' }; }
+function fresh() { return { data: null, note: '', noteCode: '', plan: null, planNote: '', form: { provider: '', name: '', roles: [], approval: false, host: '', header: '' }, busy: false, result: '', rowNote: null, arm: '', renaming: '' }; }
 
 export function setVariablesContext(deps, ctx) { D = deps; X = ctx; }
 export function resetVariables() { st = fresh(); }
@@ -31,6 +31,7 @@ export async function loadVariables() {
     st.note = '';
   } catch (ex) {
     st.data = null;
+    st.noteCode = ex?.status === 404 ? 'NOT_ON_LANE' : String(ex?.data?.code || '');
     st.note = ex?.status === 404 ? 'Environment variables are not on this lane yet.'
       : ex?.data?.code === 'UPGRADE_REQUIRED' ? ex.data.error
       : ex?.data?.code === 'VAULT_NOT_CONFIGURED' ? 'The vault is not switched on for this lane yet.'
@@ -48,7 +49,9 @@ export function variablesHtml() {
   const e = D.escapeHtml, d = st.data;
   const explain = explainLink('variables', 'How environment variables work');
   if (!d) {
-    return cardHtml({ key: 'variables', icon: 'key', title: 'Environment variables', summary: st.note ? 'not on this lane' : 'loading', explain,
+    // the summary says why in two words: a plan, a lane without the routes, a vault not switched on, or still loading
+    const summary = !st.note ? 'loading' : st.noteCode === 'UPGRADE_REQUIRED' ? 'with a plan' : st.noteCode === 'VAULT_NOT_CONFIGURED' ? 'not switched on' : 'not on this lane';
+    return cardHtml({ key: 'variables', icon: 'key', title: 'Environment variables', summary, explain,
       body: st.note ? `<p class="acct-card-note">${e(st.note)}</p>` : '<p class="acct-loading">Loading your variables…</p>' });
   }
   const vars = d.variables || [], isOwner = !!d.owner;
