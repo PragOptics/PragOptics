@@ -106,6 +106,16 @@ export function initFooter() {
  * The Report a site form (src/account/report.js openConductReport), opened from the footer and from the address
  * /#report. A signed-in visitor's session rides along so the report records who sent it; nobody needs one.
  */
+/** CONTACT, FOR ANYONE (2026-11-15): every [data-open-contact] opens the Contact form (components/contactForm.js); its data-about prefixes the message. */
+export function wireContactLinks(root = document) {
+  root.addEventListener("click", async (e) => {
+    const a = e.target.closest("[data-open-contact]");
+    if (!a) return;
+    e.preventDefault();
+    try { const m = await import("./contactForm.js"); await m.openContact({ about: a.dataset.about || "" }); }
+    catch { if (a.getAttribute("href")) window.location.href = a.getAttribute("href"); }   // the module did not load: the plain way still works
+  });
+}
 export async function openReportSite() {
   try {
     const m = await import("../account/report.js");

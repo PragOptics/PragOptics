@@ -100,7 +100,7 @@ function trackHtml() {
         ? `<p>Tracking: ${/^https:\/\//.test(o.trackingUrl || '') ? `<a class="acct-inline-link" href="${escapeHtml(o.trackingUrl)}" target="_blank" rel="noopener">${escapeHtml(o.trackingNumber)}</a>` : `<code>${escapeHtml(o.trackingNumber)}</code>`}${o.shipCarrier ? ` <span class="muted">${escapeHtml(o.shipCarrier)} ${escapeHtml(o.shipService || '')}</span>` : ''}</p>
            ${o.shipmentStatus ? `<p class="muted co-note">Carrier status: ${escapeHtml(CARRIER_STATUS[String(o.shipmentStatus).toUpperCase()] || o.shipmentStatus)}${o.lastTrackUpdateAt ? `, updated ${escapeHtml(new Date(o.lastTrackUpdateAt).toLocaleString())}` : ''}.${o.shipmentStatusDetail ? ` ${escapeHtml(o.shipmentStatusDetail)}` : ''}</p>` : ''}`
         : '<p class="muted">No tracking yet. It appears here and in your email the moment the label is printed.</p>'}
-      <p class="muted co-note">Questions about this order: <a class="acct-inline-link" href="mailto:support@bridgesindust.com">support@bridgesindust.com</a>. Returns follow the <a href="#" class="acct-inline-link" data-legal="returns">returns policy</a>.</p>
+      <p class="muted co-note">Questions about this order: <a class="acct-inline-link" href="mailto:support@bridgesindust.com" data-open-contact data-about="Order ${escapeHtml(o.orderId || o.id || '')}">write to us</a>. Returns follow the <a href="#" class="acct-inline-link" data-legal="returns">returns policy</a>.</p>
     </div>` : '';
   return `
     <form class="co-form co-track" id="coTrackForm" novalidate>

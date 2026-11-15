@@ -24,7 +24,7 @@
     import { loadView } from './viewLoader.js';
     import { setHelixSpeedMul } from '../components/dna_swirl.speed.controller.js';
     import { resolvePostLoginUI } from "../runtime/postLoginResolver.js";
-    import { initFooter } from '../components/footer.js';
+    import { initFooter, wireContactLinks } from '../components/footer.js';
     import { initCookieNotice } from '../components/cookieNotice.js';
     import { initLegalViewer } from '../components/legalViewer.js';
     import { initExplainer } from '../components/explainer.js';
@@ -104,6 +104,8 @@
     syncUserTheme();
 
     initFooter();
+    // Every "write to us" link on the page opens the Contact form instead of the visitor's mail app (2026-11-15; components/contactForm.js).
+    wireContactLinks();
     initCookieNotice();
 
     initHeaderMenu();

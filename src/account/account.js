@@ -3973,7 +3973,7 @@ async function renderDesk(main) {
       </div>
     </header>
     <p class="adm-note">${support
-      ? 'Support requests customers send from their account: questions and things they need done. Each says which lane it came from. Close with a note and the answer goes to them by email with their reference.'
+      ? 'Support requests customers send from their account, and messages anyone sends through Write to us without an account (CM- references). Each says which lane it came from. Close with a note and the answer goes to them by email with their reference.'
       : 'Anomaly reports customers file from their account. Each carries the page details they agreed to send and the lane it came from. Close with a note and the reporter gets the note by email with their reference.'}</p>
     <p class="adm-error" id="rpError" hidden></p>
     <div id="rpBody"><p class="adm-note">Loading…</p></div>
