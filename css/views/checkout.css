@@ -290,3 +290,6 @@
 .co-track-result { margin-top: 18px; text-align: left; align-items: stretch; }
 .co-track-result .co-h2 { margin: 0; }
 .co-track-lines { width: 100%; }
+
+/* the honeypot of the Notify-me form (2026-11-15): off the page and out of the tab order, read by the platform door */
+.co-pot { position: absolute; left: -10000px; top: auto; width: 1px; height: 1px; overflow: hidden; }

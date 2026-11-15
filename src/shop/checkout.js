@@ -12,6 +12,7 @@
 
 import { lines, subtotal, removeItem, subscribe } from './cart.js';
 import { formatPrice, ALL_PRODUCTS, SHOP_LIVE } from './products.js';
+import { submitLaunchInterest, warmLaunchAlerts, looksLikeEmail } from './launchInterest.js';   // the sign-up lands on the platform (2026-11-15)
 import { LANE, PRAG_API_BASE, ORDERS_CLAIM_LIVE } from '../runtime/config.js';
 import { accessToken } from '../runtime/session.js';
 import { tierCardsHtml, bindTierCards, loadPublicPrices } from '../components/tierCards.js';
@@ -774,6 +775,8 @@ function notifyHtml(product) {
           <label for="co-name">Name <span class="muted">(optional)</span></label>
           <input id="co-name" name="name" type="text" autocomplete="name" placeholder="Full name">
         </div>
+        <div class="co-pot" aria-hidden="true"><label for="co-website">Leave this field empty</label><input id="co-website" name="website" type="text" tabindex="-1" autocomplete="off"></div>
+        <p class="acct-error" id="coNotifyError" hidden></p>
         <div class="co-actions">
           <button class="ph-btn" type="submit">Notify me at launch</button>
           <button class="ph-btn ph-btn-ghost" type="button" data-co-cancel>Back</button>
@@ -870,6 +873,7 @@ function render() {
                 `Launch alert for ${product?.name || 'this product'}.`,
                 'One click. No charge. We email you the moment it ships.');
       $host.innerHTML = notifyHtml(product);
+      warmLaunchAlerts();
       return;
     }
     setHeader('Checkout', 'Nothing here yet.',
@@ -990,18 +994,27 @@ function bindOnce() {
     if (notifyForm) {
       e.preventDefault();
       const email = notifyForm.email.value.trim();
-      if (!email || !/^\S+@\S+\.\S+$/.test(email)) {
+      if (!looksLikeEmail(email)) {
         notifyForm.email.setCustomValidity('Enter a valid email.');
         notifyForm.email.reportValidity();
         return;
       }
       notifyForm.email.setCustomValidity('');
       const productId = notifyForm.productId.value;
+      const product = ALL_PRODUCTS.find(p => p.id === productId) || { id: productId, name: productId };
+      const errEl = notifyForm.querySelector('#coNotifyError');
+      const button = notifyForm.querySelector('button[type=submit]');
+      if (errEl) { errEl.hidden = true; errEl.textContent = ''; }
+      if (button) { button.disabled = true; button.textContent = 'Sending…'; }
       try {
-        const prior = JSON.parse(localStorage.getItem('pragoptics_notifies_v1') || '[]');
-        prior.push({ email, name: notifyForm.name.value.trim(), productId, at: new Date().toISOString() });
-        localStorage.setItem('pragoptics_notifies_v1', JSON.stringify(prior));
-      } catch {}
+        // THE PLATFORM'S OWN FORMS DOOR (2026-11-15): the sign-up is a row in the Launch alerts table of the PragOptics environment,
+        // the team mailed by the environment's mailer, the visitor confirmed; the browser keeps nothing
+        await submitLaunchInterest({ product, email, name: notifyForm.name.value.trim(), page: location.hash || location.pathname, hp: notifyForm.website ? notifyForm.website.value : '' });
+      } catch (err) {
+        if (button) { button.disabled = false; button.textContent = 'Notify me at launch'; }
+        if (errEl) { errEl.textContent = err.words || 'That did not go through. Try again.'; errEl.hidden = false; }
+        return;
+      }
       clearNotifyIntent();
       if ($host) $host.innerHTML = notifyConfirmationHtml(email);
       return;

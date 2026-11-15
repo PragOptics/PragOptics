@@ -27,6 +27,7 @@ import { renderHome, bindHomeActions } from './home.js';
 import { renderApprovals, bindApprovalsActions } from './approvals.js';
 import { avatarHtml, fileToAvatar, saveAvatar } from './avatar.js';
 import { renderBuildsQueue, renderMyBuilds } from './buildsDesk.js';
+import { renderInterestDesk } from './interestDesk.js';   // Launch interest: the shop's Notify me sign-ups (2026-11-15)
 import { renderNeedsAttention } from './needsAttentionDesk.js';
 import { renderAgreementNotice } from './agreementNotice.js';
 import { renderSetup, markSetupStale } from './setup.js';
@@ -326,6 +327,7 @@ const ICONS = {
   payments:     '<path d="M12 1v22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>',
   builds:       '<path d="M12 2l9 4.9V17L12 22 3 17V6.9z"/><path d="M12 22V12"/><path d="M21 7l-9 5-9-5"/>',
   buildsqueue:  '<path d="M12 2l9 4.9V17L12 22 3 17V6.9z"/><path d="M12 22V12"/><path d="M21 7l-9 5-9-5"/>',
+  interest:     '<path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>',
   overview:     '<path d="M4 13h6V4H4z"/><path d="M14 20h6v-9h-6z"/><path d="M14 8h6V4h-6z"/><path d="M4 20h6v-4H4z"/>',
   users:        '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
   warranty:     '<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M7 11h5"/><path d="M7 15h8"/><path d="M16 3l4 4"/><path d="M8 3L4 7"/>',
@@ -366,6 +368,7 @@ const INTERNAL_SECTIONS = [
   { id: 'tenants',    label: 'Tenants' },
   { id: 'agentdesk',  label: 'Agents' },
   { id: 'buildsqueue', label: 'Builds' },
+  { id: 'interest', label: 'Launch interest' },
   { id: 'notify',     label: 'Notifications' },
   { id: 'reports',    label: 'Anomalies' },
   { id: 'support',    label: 'Support' },
@@ -5060,6 +5063,7 @@ function paintSection(id, main) {
   if (id === 'users')        return void renderUsers(main);
   if (id === 'tenants')      return void renderTenants(main, teamDeps());
   if (id === 'buildsqueue')  return void renderBuildsQueue(main, teamDeps());
+  if (id === 'interest')     return void renderInterestDesk(main, teamDeps());
   if (id === 'attention')    return void renderNeedsAttention(main, teamDeps());
   if (id === 'notify')       return void renderNotify(main);
   if (id === 'reports')      return void renderReports(main);
