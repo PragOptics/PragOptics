@@ -39,7 +39,8 @@ function rowHtml(a) {
   const when = D.fmtDate ? D.fmtDate(a.at) : a.at;
   return `<div class="hm-row" data-arrival="${e(a.kind)}:${e(a.id)}">
       <div class="hm-row-main">
-        <p class="hm-row-t">${e(kindWords(a.kind))} <span class="adm-muted">${e(a.who)}</span></p>
+        <p class="hm-row-t">${e(kindWords(a.kind))}</p>
+        <p class="hm-row-s">${e(a.who)}</p>
         <p class="hm-row-s">${e(when)}${a.summary ? ` · ${e(a.summary)}` : ''} <code class="adm-muted">${e(a.ref)}</code></p>
       </div>
       <div class="hm-row-act">

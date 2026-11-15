@@ -661,6 +661,8 @@ async function loadTables() {
   else if (wanted) {
     await loadRows(want.table);
     if (want.row && ev.table === want.table) { ev.openRow = String(want.row); paintData(); }
+    // the person arrived for this row: bring the card to them once it is painted (2026-11-15, Cameron: Open landed on the page and the row sat below the fold)
+    try { document.getElementById('evData')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch { /* the row is open where it is */ }
   }
 }
 /** The rows of one table, fifty at a time; `more` continues from the last key. `keepView`: the same table read again (Refresh) keeps the Visuals field picked. */
@@ -3648,6 +3650,8 @@ export function bindEnvironmentActions(deps) {
     }
     loadRows(want.table).then(() => {
       if (want.row && ev.table === want.table) { ev.openRow = String(want.row); paintData(); }
+    // the person arrived for this row: bring the card to them once it is painted (2026-11-15, Cameron: Open landed on the page and the row sat below the fold)
+    try { document.getElementById('evData')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch { /* the row is open where it is */ }
       try { document.getElementById('evData')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch { /* fine */ }
     });
   });
