@@ -12,7 +12,7 @@ See where it went | Each name shows a hint of the key, who may use it, how often
 
 ## In the studio
 
-The Developer panel's Connections tab shows the same list and the same form: paste a key, name it, it is in your vault. An assistant's settings offer "Runs on": Platform AI, or one of your names. A key typed into a call's header still moves to the vault on its own, and it gets a name as it is kept, made of the call's name and the header, like BRIDGES_API_AUTHORIZATION; the header then says "in your vault as BRIDGES_API_AUTHORIZATION". Rename it here if you like.
+A request's or a connection's header can name one of your variables instead of carrying a value: beside the value box, pick the name. The project keeps the name alone; the platform fills the key at the moment of the call and sends it only to the address the variable belongs to, in the studio's preview and on the published page alike. The Developer panel's Connections tab shows the same list and the same form: paste a key, name it, it is in your vault. An assistant's settings offer "Runs on": Platform AI, or one of your names. A key typed into a call's header still moves to the vault on its own, and it gets a name as it is kept, made of the call's name and the header, like BRIDGES_API_AUTHORIZATION; the header then says "in your vault as BRIDGES_API_AUTHORIZATION". Rename it here if you like.
 
 ## Who may see and use it
 
