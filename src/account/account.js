@@ -28,7 +28,7 @@ import { renderApprovals, bindApprovalsActions } from './approvals.js';
 import { avatarHtml, fileToAvatar, saveAvatar } from './avatar.js';
 import { renderBuildsQueue, renderMyBuilds } from './buildsDesk.js';
 import { renderInterestBlock, interestCount } from './interestDesk.js';
-import { renderArrivalsBlock, arrivalsCount } from './arrivalsBlock.js';   // Not acknowledged: every arrival he has not acted on, on the Overview (2026-11-15)   // Launch interest: the shop's Notify me sign-ups, on the Catalog desk and the Overview (2026-11-15)
+import { renderArrivalsBlock } from './arrivalsBlock.js';   // Not yet acknowledged: every arrival he has not acted on, one block on the Overview (2026-11-15; the count lives in the block, no tile repeats it)   // Launch interest: the shop's Notify me sign-ups, on the Catalog desk and the Overview (2026-11-15)
 import { renderNeedsAttention } from './needsAttentionDesk.js';
 import { renderAgreementNotice } from './agreementNotice.js';
 import { renderSetup, markSetupStale } from './setup.js';
@@ -2999,12 +2999,11 @@ async function renderOverview(main) {
   loadCostAlert();
   const grid = main.querySelector('#admOverviewGrid');
   try {
-    const [users, avail, claimed, interest, waiting] = await Promise.all([
+    const [users, avail, claimed, interest] = await Promise.all([
       apiFetch(`${USERS_URL}?limit=1000`).catch(() => ({ users: [] })),
       apiFetch(`${LIST_URL}?status=AVAILABLE&limit=1000`).catch(() => ({ codes: [] })),
       apiFetch(`${LIST_URL}?status=CLAIMED&limit=1000`).catch(() => ({ codes: [] })),
-      interestCount(apiFetch).catch(() => null),   // the shop's Notify me sign-ups (2026-11-15)
-      arrivalsCount(apiFetch).catch(() => null)    // what he has not acted on (2026-11-15); null where the lane lacks the route
+      interestCount(apiFetch).catch(() => null)   // the shop's Notify me sign-ups (2026-11-15)
     ]);
     const all = users.users || [];
     cache.users = all;
@@ -3017,8 +3016,7 @@ async function renderOverview(main) {
         avail.truncated ? 'capped at first 1000' : '') +
       statCard((claimed.codes || []).length + (claimed.truncated ? '+' : ''), 'Codes claimed',
         claimed.truncated ? 'capped at first 1000' : '') +
-      statCard(interest == null ? '?' : interest, 'Launch interest', interest == null ? 'could not be read' : 'waiting for a product') +
-      (waiting == null ? '' : statCard(waiting, 'Not acknowledged', waiting ? 'requests you have not acted on' : 'everything acted on', waiting > 0 ? 'amber' : ''));
+      statCard(interest == null ? '?' : interest, 'Launch interest', interest == null ? 'could not be read' : 'waiting for a product');
   } catch (ex) {
     grid.innerHTML = `<p class="adm-empty">${escapeHtml(friendlyError(ex, 'Could not load overview.'))}</p>`;
   }

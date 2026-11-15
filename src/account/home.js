@@ -15,7 +15,7 @@
 import { PRAG_API_BASE } from '../runtime/config.js';
 import { cardHtml as sharedCard, ico, leadBtn, initCards } from './cards.js';
 import { groupsOf, countsLine } from './approvalGroups.js';
-import { renderEnvArrivalsBlock } from './envArrivalsBlock.js';   // Not yet acknowledged: every submission nobody acted on, on Home (2026-11-15)
+import { renderWaitingCard } from './envArrivalsBlock.js';   // Waiting on you: the decisions and the submissions nobody acted on, one card (2026-11-15)
 
 let D = null;
 const hm = { projects: null, sites: null, domains: null, connections: null, members: null, data: null, files: null, errs: {} };
@@ -82,8 +82,9 @@ async function load() {
 function paint() {
   const body = document.getElementById('hmBody');
   if (!body) return;
-  body.innerHTML = `${approvalsLine()}<div id="hmArrivals"></div>${projectsCard()}${glanceRow()}${cleanupSection()}`;
-  renderEnvArrivalsBlock(document.getElementById('hmArrivals'), D, { url: (p) => tq(p) });   // silent until the lane carries the route
+  // ONE CARD for what waits on the team (2026-11-15, Cameron: clean, not a hodge podge): the Approvals line and the submissions to acknowledge, together; nothing when nothing waits
+  body.innerHTML = `<div id="hmWaiting"></div>${projectsCard()}${glanceRow()}${cleanupSection()}`;
+  renderWaitingCard(document.getElementById('hmWaiting'), D, { url: (p) => tq(p), decisionsHtml: approvalsLine() });
 }
 
 /** "2 waiting in Reviews" with the way to the Approvals section; nothing at all when nothing waits (the definition's decision 6). */

@@ -1,12 +1,15 @@
 // src/account/envArrivalsBlock.js
 //
-// NOT YET ACKNOWLEDGED, on the environment's Home (2026-11-15, Cameron: "it needs the same kind of shit that pragoptics just got
-// as far as users who install contact forms, we need the same kind of process that pragoptics has that you just built. this is
-// for the people"). Every submission a form on the website filed into this environment's tables that nobody on the team has
-// acted on, newest first, read from GET v1/environment/arrivals (functions/environmentArrivals.js). Acknowledge marks it (who,
-// when) through POST v1/environment/arrivals/{table}/{key}/ack and the row leaves the list; nobody is mailed. Open goes to the
-// row in the Data card (the same note the Approvals desk leaves). A moderated install's rows are decided on Approvals and never
-// show here. On a lane that does not carry the route yet the block stays empty and silent. The operator's twin: arrivalsBlock.js.
+// WAITING ON YOU, one card on the environment's Home (2026-11-15). Cameron: "it needs the same kind of shit that pragoptics just
+// got as far as users who install contact forms ... this is for the people", and the same hour: "i want the front end to be
+// clean and understandable and not a fucking hodge podge of shit". So one card holds everything that waits on the team:
+//   1. the decisions: what waits on Approvals (a review to publish or reject), the one line with the way there, exactly as before;
+//   2. the acknowledgements: every submission a form on the website filed into this environment's tables that nobody has acted
+//      on, newest first, from GET v1/environment/arrivals (functions/environmentArrivals.js); Acknowledge marks it (who, when)
+//      through POST v1/environment/arrivals/{table}/{key}/ack and the row leaves the list, nobody is mailed; Open goes to the
+//      row in the Data card (the note the Approvals desk leaves).
+// Nothing at all when nothing waits. On a lane that does not carry the arrivals route the card shows the decisions alone.
+// The platform operator's twin is arrivalsBlock.js on the admin Overview.
 
 const OPEN_TABLE_KEY = 'pragoptics_open_table';   // the note the Data card reads (approvals.js, environment.js)
 let D = null;
@@ -39,24 +42,25 @@ function rowHtml(a) {
 }
 
 /**
- * The Home's block. `url(path)` builds the lane's address with the team in it (home.js tq). Empty and silent where the lane
- * lacks the route or the caller may read no form-fed table.
+ * The card. `url(path)` builds the lane's address with the team in it (home.js tq); `decisionsHtml` is the Approvals line
+ * when something waits there, '' otherwise. The host stays empty when nothing waits at all.
  */
-export async function renderEnvArrivalsBlock(host, deps, { url }) {
+export async function renderWaitingCard(host, deps, { url, decisionsHtml = '' }) {
   if (!host) return;
   D = deps;
-  let items;
+  let items = [], readFailed = '';
   try { const d = await D.apiFetch(url('/environment/arrivals')); items = d.items || []; }
-  catch (ex) {
-    if (ex && (ex.status === 404 || ex.status === 405 || ex.status === 403)) { host.innerHTML = ''; return; }
-    host.innerHTML = `<section class="acct-card"><h3 class="acct-card-h">Not yet acknowledged</h3><p class="acct-error">${e(D.friendlyError(ex, 'The submissions could not be read.'))}</p></section>`; return;
-  }
+  catch (ex) { if (!(ex && (ex.status === 404 || ex.status === 405 || ex.status === 403))) readFailed = D.friendlyError(ex, 'The submissions could not be read.'); }
   const paint = () => {
+    if (!decisionsHtml && !items.length && !readFailed) { host.innerHTML = ''; return; }
     host.innerHTML = `
-      <section class="acct-card hm-arrivals">
-        <h3 class="acct-card-h">Not yet acknowledged <span class="adm-note" id="hmArrivalsCount">${e(countWords(items.length))}</span></h3>
-        <p class="acct-card-note">Every message a form on your website filed that nobody on the team has acted on, newest first. Acknowledge marks it as seen by you (nobody is mailed). Reviews and anything else that waits for a decision are on Approvals.</p>
-        ${items.length ? `<div class="adm-table-scroll"><table class="adm-table"><thead><tr><th>When</th><th>Form</th><th>Row</th><th>From</th><th>Words</th><th></th></tr></thead><tbody>${items.map(rowHtml).join('')}</tbody></table></div>` : ''}
+      <section class="acct-card hm-waiting">
+        <h3 class="acct-card-h">Waiting on you</h3>
+        ${decisionsHtml}
+        ${readFailed ? `<p class="acct-error">${e(readFailed)}</p>` : ''}
+        ${items.length ? `
+          <p class="acct-card-note"><span id="hmArrivalsCount">${e(countWords(items.length))}</span>. Acknowledge marks one as seen by you; nobody is mailed.</p>
+          <div class="adm-table-scroll"><table class="adm-table"><thead><tr><th>When</th><th>Form</th><th>Row</th><th>From</th><th>Words</th><th></th></tr></thead><tbody>${items.map(rowHtml).join('')}</tbody></table></div>` : ''}
       </section>`;
   };
   paint();
