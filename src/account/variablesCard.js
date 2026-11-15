@@ -82,8 +82,9 @@ function rowHtml(v, isOwner, e) {
   const arm = st.arm === v.name;
   const controls = !isOwner ? '' : `
       <div class="ev-var-controls">
-        <div class="ev-var-checks" role="group" aria-label="Who may use ${e(v.name)}"><span class="ev-var-checks-lead">Who may use it</span>${ALLOW_ROLES.map(([id, label]) => `<label class="ev-var-check"><input type="checkbox" data-var-allow="${e(v.name)}" value="${e(id)}" ${(v.allow?.roles || []).includes(id) ? 'checked' : ''} /> ${e(label)}</label>`).join('')}</div>
-        <div class="ev-var-checks"><label class="ev-var-check"><input type="checkbox" data-var-approval="${e(v.name)}" ${v.requireApproval ? 'checked' : ''} /> Require approval on use</label></div>
+        <div class="ev-var-checks ev-var-approval"><label class="ev-var-check"><input type="checkbox" data-var-approval="${e(v.name)}" ${v.requireApproval ? 'checked' : ''} /> Require approval on use</label><span class="acct-card-note">Anyone on the team may ask; each use waits for your yes.</span></div>
+        <p class="ev-var-lead">Who may use it</p>
+        <div class="ev-var-checks" role="group" aria-label="Who may use ${e(v.name)}">${ALLOW_ROLES.map(([id, label]) => `<label class="ev-var-check"><input type="checkbox" data-var-allow="${e(v.name)}" value="${e(id)}" ${(v.allow?.roles || []).includes(id) ? 'checked' : ''} ${v.requireApproval ? 'disabled' : ''} /> ${e(label)}</label>`).join('')}</div>
         <div class="ev-key-row">
         ${st.renaming === v.name
           ? `<span class="ev-key-row ev-var-rename"><input class="acct-input" type="text" data-var-rename-input="${e(v.name)}" maxlength="64" value="${e(v.name)}" aria-label="New name" /><button type="button" class="btn btn-primary" data-env-action="var-rename-save" data-name="${e(v.name)}">Save</button><button type="button" class="btn" data-env-action="var-rename-cancel">Cancel</button></span>`
@@ -95,7 +96,7 @@ function rowHtml(v, isOwner, e) {
       </div>`;
   return `<li class="ev-var-row" data-var="${e(v.name)}">
       <div class="ev-var-head"><code class="ev-code">${e(v.name)}</code><span class="ev-var-meta">${e(where)}${v.hint ? ` · …${e(v.hint)}` : ''}${v.requireApproval ? ' · approval on use' : ''}</span></div>
-      <p class="acct-card-note">${e(allowWords(v.allow))}. ${e(useWords(v, D.fmtDate))}${pending ? ` ${e(pending)}` : ''}</p>
+      <p class="acct-card-note">${e(allowWords(v.allow, { requireApproval: !!v.requireApproval }))}. ${e(useWords(v, D.fmtDate))}${pending ? ` ${e(pending)}` : ''}</p>
       ${controls}${note}
     </li>`;
 }
@@ -125,12 +126,13 @@ function formHtml(e) {
         </div>
         ${extra ? `<div class="ev-key-row">${extra}</div>` : ''}
         ${other ? `<div class="ev-key-row">${other}</div>` : ''}
-        <div class="ev-var-checks" role="group" aria-label="Who may use it"><span class="ev-var-checks-lead">Who may use it</span>${ALLOW_ROLES.map(([id, label]) => `<label class="ev-var-check"><input type="checkbox" data-var-form-role="${e(id)}" ${f.roles.includes(id) ? 'checked' : ''} /> ${e(label)}</label>`).join('')}</div>
-        <div class="ev-var-checks"><label class="ev-var-check"><input type="checkbox" id="evVarApproval" ${f.approval ? 'checked' : ''} /> Require approval on use</label></div>
+        <div class="ev-var-checks ev-var-approval"><label class="ev-var-check"><input type="checkbox" id="evVarApproval" ${f.approval ? 'checked' : ''} /> Require approval on use</label><span class="acct-card-note">Anyone on the team may ask; each use waits for your yes.</span></div>
+        <p class="ev-var-lead">Who may use it</p>
+        <div class="ev-var-checks" role="group" aria-label="Who may use it">${ALLOW_ROLES.map(([id, label]) => `<label class="ev-var-check"><input type="checkbox" data-var-form-role="${e(id)}" ${f.roles.includes(id) ? 'checked' : ''} ${f.approval ? 'disabled' : ''} /> ${e(label)}</label>`).join('')}</div>
         ${receives}
         <div class="ev-key-row">
           ${stateLead('var-save', 'key', 'Save to your vault', { out: st.saving, busyWord: picked.id === 'other' ? 'Saving…' : `Checking with ${picked.label}…` }, '', 'btn-primary')}
-          <span class="acct-card-note">${preview ? `Saved as <code class="ev-code">${e(preview)}</code>. ${f.roles.length ? '' : 'Only you until you allow a role.'}` : 'A name is letters, digits and underscores, like GEMINI_API_KEY.'}</span>
+          <span class="acct-card-note">${preview ? `Saved as <code class="ev-code">${e(preview)}</code>. ${whoWords(f)}` : 'A name is letters, digits and underscores, like GEMINI_API_KEY.'}</span>
         </div>` : ''}
       </div>`;
 }
@@ -163,6 +165,10 @@ async function saveVariable() {
   }
 }
 function rowNote(name, text, error = false) { st.rowNote = text ? { name, text, error } : null; }
+/** What the form's choice means, in a sentence; empty when a role is picked (the roles say it). */
+function whoWords(f) { return f.approval ? 'Anyone on the team may ask; each use waits for your approval.' : f.roles.length ? '' : 'Only you until you allow a role.'; }
+function formNote() { const s = document.querySelector('.ev-var-add .ev-key-row:last-child .acct-card-note'); if (!s) return; const p = nameOf(st.form.name); s.innerHTML = p ? `Saved as <code class="ev-code">${D.escapeHtml(p)}</code>. ${whoWords(st.form)}` : 'A name is letters, digits and underscores, like GEMINI_API_KEY.'; }
+
 async function patchVariable(name, payload, done) {
   D.showError('evVarError', '');
   try { const d = await post(`${ENV_URL}/variables/${encodeURIComponent(name)}`, payload, 'PATCH'); rowNote(d.variable?.name || name, done(d.variable)); await loadVariables(); }
@@ -194,12 +200,13 @@ export function variablesChange(e) {
   const t = e.target;
   if (!t) return false;
   if (t.id === 'evVarProvider') { st.form.provider = t.value; if (!st.form.name) st.form.name = suggestedName(t.value); paintVariables(); document.getElementById('evVarName')?.focus(); return true; }
-  if (t.id === 'evVarName') { st.form.name = t.value; const s = t.closest('.ev-var-add')?.querySelector('.ev-key-row:last-child .acct-card-note'); if (s) { const p = nameOf(t.value); s.innerHTML = p ? `Saved as <code class="ev-code">${D.escapeHtml(p)}</code>. ${st.form.roles.length ? '' : 'Only you until you allow a role.'}` : 'A name is letters, digits and underscores, like GEMINI_API_KEY.'; } return true; }
-  if (t.matches?.('[data-var-form-role]')) { st.form.roles = [...document.querySelectorAll('[data-var-form-role]:checked')].map(i => i.dataset.varFormRole); return true; }
-  if (t.id === 'evVarApproval') { st.form.approval = !!t.checked; return true; }
+  if (t.id === 'evVarName') { st.form.name = t.value; formNote(); return true; }
+  if (t.matches?.('[data-var-form-role]')) { st.form.roles = [...document.querySelectorAll('[data-var-form-role]:checked')].map(i => i.dataset.varFormRole); formNote(); return true; }
+  // approval on use is instead of a scope (his word 2026-11-15): on, the roles clear and grey out; the pasted key is left where it is
+  if (t.id === 'evVarApproval') { st.form.approval = !!t.checked; if (st.form.approval) st.form.roles = []; for (const b of document.querySelectorAll('[data-var-form-role]')) { if (st.form.approval) b.checked = false; b.disabled = st.form.approval; } formNote(); return true; }
   if (t.id === 'evVarHost') { st.form.host = t.value; return true; }
   if (t.id === 'evVarHeader') { st.form.header = t.value; return true; }
-  if (t.matches?.('[data-var-allow]')) { const name = t.dataset.varAllow; const roles = [...document.querySelectorAll(`[data-var-allow="${CSS.escape(name)}"]:checked`)].map(i => i.value); void patchVariable(name, { allow: { roles, users: [] } }, v => `${allowWords(v?.allow)} may use ${name}.`); return true; }
-  if (t.matches?.('[data-var-approval]')) { const name = t.dataset.varApproval; void patchVariable(name, { requireApproval: !!t.checked }, v => v?.requireApproval ? `A member's first use of ${name} in any one place now waits for your approval.` : `${name} no longer waits for your approval.`); return true; }
+  if (t.matches?.('[data-var-allow]')) { const name = t.dataset.varAllow; const roles = [...document.querySelectorAll(`[data-var-allow="${CSS.escape(name)}"]:checked`)].map(i => i.value); void patchVariable(name, { allow: { roles, users: [] } }, v => v?.requireApproval ? `${name} waits for your approval on each use.` : `${allowWords(v?.allow)} may use ${name}.`); return true; }
+  if (t.matches?.('[data-var-approval]')) { const name = t.dataset.varApproval; void patchVariable(name, { requireApproval: !!t.checked }, v => v?.requireApproval ? `${name} now waits for your approval on each use; anyone on the team may ask, the roles are cleared.` : `${name} no longer waits for your approval; only you until you allow a role.`); return true; }
   return false;
 }

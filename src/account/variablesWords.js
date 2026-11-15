@@ -28,7 +28,8 @@ export function providerChoices(catalog) {
 }
 
 /** Who may use a variable, in words: the owner always; the roles and people the owner allowed. */
-export function allowWords(allow, { people = null } = {}) {
+export function allowWords(allow, { people = null, requireApproval = false } = {}) {
+  if (requireApproval) return 'Anyone on the team may ask; each use waits for your approval';
   const roles = Array.isArray(allow?.roles) ? allow.roles : [];
   const users = Array.isArray(allow?.users) ? allow.users : [];
   const parts = [];

@@ -43,3 +43,7 @@ assert.equal(formBody({ name: "k", value: "v", provider: "other", host: "not a h
 assert.equal(formBody({ name: "k", value: "v", provider: "twilio", extra: { accountSid: "" } }).field, "accountSid");
 assert.deepEqual(formBody({ name: "k", value: "v", provider: "twilio", extra: { accountSid: " AC1 " } }).body.fields, { accountSid: "AC1" });
 console.log("variables-words: ok");
+
+// approval on use is instead of scoping (2026-11-15): the words say so, whatever roles the row still carries
+assert.equal(allowWords({ roles: ['admin'] }, { requireApproval: true }), 'Anyone on the team may ask; each use waits for your approval');
+assert.equal(allowWords({ roles: ['admin'] }, { requireApproval: false }), 'You and admins');
