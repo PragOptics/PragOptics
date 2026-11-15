@@ -67,10 +67,10 @@ export function variablesHtml() {
     key: 'variables', icon: 'key', title: 'Environment variables', summary, explain,
     body: `
       <p class="acct-card-note ev-note">A key you paste gets a name, lives in your environment's own vault, and your assistants, modules and site calls use it by that name. Only you see and use a name until you allow a role or a person.</p>
-      ${plan}
-      ${list}
       ${manage() ? formHtml(e) : '<p class="acct-card-note ev-note">Admins and the owner add variables; the owner decides who may use each.</p>'}
       <p class="acct-error" id="evVarError" hidden></p>
+      ${plan}
+      ${list}
       ${st.result ? `<p class="acct-card-note ev-note ev-conn-result" aria-live="polite">${e(st.result)}</p>` : ''}`
   });
 }
@@ -82,14 +82,16 @@ function rowHtml(v, isOwner, e) {
   const arm = st.arm === v.name;
   const controls = !isOwner ? '' : `
       <div class="ev-var-controls">
-        <span class="ev-var-allow" role="group" aria-label="Who may use ${e(v.name)}">${ALLOW_ROLES.map(([id, label]) => `<label class="acct-chip" data-tip="${e(label)} may use this name"><input type="checkbox" data-var-allow="${e(v.name)}" value="${e(id)}" ${(v.allow?.roles || []).includes(id) ? 'checked' : ''} />${e(label)}</label>`).join('')}</span>
-        <label class="acct-chip" data-tip="A member's first use in any one place waits for your yes"><input type="checkbox" data-var-approval="${e(v.name)}" ${v.requireApproval ? 'checked' : ''} />Approval on use</label>
+        <div class="ev-var-checks" role="group" aria-label="Who may use ${e(v.name)}"><span class="ev-var-checks-lead">Who may use it</span>${ALLOW_ROLES.map(([id, label]) => `<label class="ev-var-check"><input type="checkbox" data-var-allow="${e(v.name)}" value="${e(id)}" ${(v.allow?.roles || []).includes(id) ? 'checked' : ''} /> ${e(label)}</label>`).join('')}</div>
+        <div class="ev-var-checks"><label class="ev-var-check"><input type="checkbox" data-var-approval="${e(v.name)}" ${v.requireApproval ? 'checked' : ''} /> Require approval on use</label></div>
+        <div class="ev-key-row">
         ${st.renaming === v.name
           ? `<span class="ev-key-row ev-var-rename"><input class="acct-input" type="text" data-var-rename-input="${e(v.name)}" maxlength="64" value="${e(v.name)}" aria-label="New name" /><button type="button" class="btn btn-primary" data-env-action="var-rename-save" data-name="${e(v.name)}">Save</button><button type="button" class="btn" data-env-action="var-rename-cancel">Cancel</button></span>`
           : `<button type="button" class="btn" data-env-action="var-rename" data-name="${e(v.name)}">${ico('edit', 12)} Rename</button>`}
         ${arm
           ? `<span class="ev-key-row ev-var-del"><input class="acct-input ev-del-in" type="text" data-var-delete-input="${e(v.name)}" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="type DELETE" aria-label="Type DELETE to remove ${e(v.name)}" /><button type="button" class="btn btn-danger" data-env-action="var-remove-go" data-name="${e(v.name)}">Remove</button><button type="button" class="btn" data-env-action="var-remove-cancel">Cancel</button></span>`
           : `<button type="button" class="btn" data-env-action="var-remove" data-name="${e(v.name)}">${ico('trash', 12)} Remove</button>`}
+        </div>
       </div>`;
   return `<li class="ev-var-row" data-var="${e(v.name)}">
       <div class="ev-var-head"><code class="ev-code">${e(v.name)}</code><span class="ev-var-meta">${e(where)}${v.hint ? ` · …${e(v.hint)}` : ''}${v.requireApproval ? ' · approval on use' : ''}</span></div>
@@ -123,10 +125,8 @@ function formHtml(e) {
         </div>
         ${extra ? `<div class="ev-key-row">${extra}</div>` : ''}
         ${other ? `<div class="ev-key-row">${other}</div>` : ''}
-        <div class="ev-key-row ev-var-opts">
-          <span class="ev-var-allow" role="group" aria-label="Who may use it">${ALLOW_ROLES.map(([id, label]) => `<label class="acct-chip" data-tip="${e(label)} may use this name"><input type="checkbox" data-var-form-role="${e(id)}" ${f.roles.includes(id) ? 'checked' : ''} />${e(label)}</label>`).join('')}</span>
-          <label class="acct-chip" data-tip="A member's first use in any one place waits for your yes"><input type="checkbox" id="evVarApproval" ${f.approval ? 'checked' : ''} />Require approval on use</label>
-        </div>
+        <div class="ev-var-checks" role="group" aria-label="Who may use it"><span class="ev-var-checks-lead">Who may use it</span>${ALLOW_ROLES.map(([id, label]) => `<label class="ev-var-check"><input type="checkbox" data-var-form-role="${e(id)}" ${f.roles.includes(id) ? 'checked' : ''} /> ${e(label)}</label>`).join('')}</div>
+        <div class="ev-var-checks"><label class="ev-var-check"><input type="checkbox" id="evVarApproval" ${f.approval ? 'checked' : ''} /> Require approval on use</label></div>
         ${receives}
         <div class="ev-key-row">
           ${stateLead('var-save', 'key', 'Save to your vault', { out: st.saving, busyWord: picked.id === 'other' ? 'Saving…' : `Checking with ${picked.label}…` }, '', 'btn-primary')}

@@ -797,6 +797,11 @@ a.ev-more { text-decoration: none; white-space: nowrap; }
 .ev-var-meta { font-size: .85rem; opacity: .8; }
 .ev-var-controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 8px; }
 .ev-var-allow { display: inline-flex; gap: 6px; flex-wrap: wrap; }
+/* plain checkboxes, one line for the roles and one for approval (2026-11-15, his word: check boxes, split) */
+.ev-var-checks { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; margin: 6px 0; }
+.ev-var-checks-lead { font-size: .78rem; letter-spacing: .04em; text-transform: uppercase; color: var(--muted, #6b6b80); margin-right: 2px; }
+.ev-var-check { display: inline-flex; align-items: center; gap: 7px; font-size: .9rem; cursor: pointer; }
+.ev-var-check input[type="checkbox"] { width: 17px; height: 17px; margin: 0; accent-color: var(--brand-600); cursor: pointer; }
 .ev-var-add { margin-top: 12px; }
 .ev-var-opts { gap: 8px; }
 .ev-var-migrate { margin-top: 10px; padding: 10px 12px; border-radius: 10px; background: var(--card-tint, rgba(127,127,127,.08)); }
