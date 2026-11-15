@@ -218,8 +218,8 @@
 .cart-close,
 .pm-close,
 .vo-close{
-  width: 40px; height: 40px; min-width: 40px;
-  font-size: 1.25rem; line-height: 1;
+  width: 32px; height: 32px; min-width: 32px;   /* 2026-11-15, Cameron: "the X to close in the upper corner, its the same everywhere, its too large": 32 with a 16px glyph, 36 on a phone; supersedes the 40/44 of 2026-09-09 */
+  font-size: 1rem; line-height: 1;
   border-radius: var(--radius-btn-sm);
   border: 1px solid var(--border);
   background: color-mix(in srgb, var(--shade) 30%, transparent);
@@ -242,5 +242,5 @@
   .po-status-close,
   .cart-close,
   .pm-close,
-  .vo-close{ width: 44px; height: 44px; min-width: 44px; font-size: 1.35rem; }
+  .vo-close{ width: 36px; height: 36px; min-width: 36px; font-size: 1.1rem; }
 }
