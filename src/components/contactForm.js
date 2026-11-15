@@ -5,6 +5,11 @@
 // on the platform's Support desk beside the signed-in requests (POST v1/support/contact, functions/supportAnomaly.js, behind
 // the platform's own captcha: api/intakeDoor.js), the operators are mailed with Reply answering the writer, and the writer
 // gets a receipt with a CM- reference. Signed in or not. No account needed.
+//
+// THE LOOK (2026-11-15, Cameron: "the pop up on the pragoptics site is fucked up"): the first cut used class names no stylesheet
+// knew (acct-modal-head, acct-modal-x, acct-field) and the title landed on the note. The dialog now wears exactly what the
+// Report a site dialog wears (src/account/report.js): the mask, .acct-modal.acct-report, .acct-report-head with .acct-modal-h and
+// .acct-modal-note, .acct-label over .acct-input, .acct-modal-actions with the ghost Cancel and the cta. Nothing of its own.
 import { PRAG_API_BASE } from '../runtime/config.js';
 import { postWithProof, warmProof } from '../api/intakeDoor.js';
 import { openModal, busy } from '../account/cards.js';
@@ -29,35 +34,60 @@ export function contactFields({ name = '', email = '', message = '', page = '' }
   return out;
 }
 
-function formHtml({ email, name, about }) {
+// The honeypot hides by its own style, so it stays hidden on a page that loads no form stylesheet.
+const POT_STYLE = 'position:absolute;left:-10000px;top:auto;width:1px;height:1px;overflow:hidden';
+
+/** The form's markup, the Report a site dialog's classes; pure, exported for the tests and the pane. */
+export function formHtml({ email = '', name = '', about = '' } = {}) {
   return `
+    <div class="acct-modal-mask" data-cf-close></div>
     <div class="acct-modal acct-report" role="dialog" aria-modal="true" aria-label="Write to us">
-      <header class="acct-modal-head"><h2 class="acct-modal-title">Write to us</h2><button class="acct-modal-x" type="button" data-cf-close aria-label="Close">×</button></header>
-      <p class="acct-card-note">A person reads it and answers by email. ${about ? `About: <b>${escapeHtml(about)}</b>.` : 'No account needed.'}</p>
-      <div class="acct-field"><label for="cfName">Name <span class="muted">(optional)</span></label><input class="acct-input" id="cfName" type="text" autocomplete="name" value="${escapeHtml(name || '')}" /></div>
-      <div class="acct-field"><label for="cfEmail">Email</label><input class="acct-input" id="cfEmail" type="email" autocomplete="email" required value="${escapeHtml(email || '')}" placeholder="you@company.com" /></div>
-      <div class="acct-field"><label for="cfMessage">Your message</label><textarea class="acct-input" id="cfMessage" rows="5" required>${about ? escapeHtml(about + ': ') : ''}</textarea></div>
-      <div class="co-pot" aria-hidden="true"><label for="cfWebsite">Leave this field empty</label><input id="cfWebsite" type="text" tabindex="-1" autocomplete="off" /></div>
+      <div class="acct-report-head">
+        <div>
+          <h3 class="acct-modal-h">Write to us</h3>
+          <p class="acct-modal-note">A person reads it and answers by email. ${about ? `About: <strong>${escapeHtml(about)}</strong>.` : 'No account needed.'}</p>
+        </div>
+      </div>
+      <label class="acct-label" for="cfName">Name <span class="muted">(optional)</span></label>
+      <input class="acct-input" id="cfName" type="text" autocomplete="name" maxlength="120" value="${escapeHtml(name || '')}">
+      <label class="acct-label" for="cfEmail">Email</label>
+      <input class="acct-input" id="cfEmail" type="email" autocomplete="email" maxlength="200" required value="${escapeHtml(email || '')}" placeholder="you@company.com">
+      <label class="acct-label" for="cfMessage">Your message</label>
+      <textarea class="acct-input acct-textarea" id="cfMessage" rows="5" maxlength="4000" required>${about ? escapeHtml(about + ': ') : ''}</textarea>
+      <div style="${POT_STYLE}" aria-hidden="true"><label for="cfWebsite">Leave this field empty</label><input id="cfWebsite" type="text" tabindex="-1" autocomplete="off"></div>
       <p class="acct-error" id="cfError" hidden></p>
-      <div class="acct-actions-row"><button class="btn btn-primary" type="button" data-cf-send>Send</button><button class="btn" type="button" data-cf-close>Cancel</button></div>
-    </div>`;
-}
-function doneHtml(ref, email) {
-  return `
-    <div class="acct-modal acct-report" role="dialog" aria-modal="true" aria-label="Sent">
-      <header class="acct-modal-head"><h2 class="acct-modal-title">Sent</h2><button class="acct-modal-x" type="button" data-cf-close aria-label="Close">×</button></header>
-      <p>Thanks. Your reference is <code>${escapeHtml(ref)}</code>. A person answers at <b>${escapeHtml(email)}</b>; a receipt is on its way there now.</p>
-      <div class="acct-actions-row"><button class="btn btn-primary" type="button" data-cf-close>Done</button></div>
+      <div class="acct-modal-actions">
+        <button class="btn btn-ghost" type="button" data-cf-close>Cancel</button>
+        <button class="cta" type="button" data-cf-send>Send</button>
+      </div>
     </div>`;
 }
 
-function fallbackHtml(about) {
+/** The sent state: the reference and where the answer goes; pure. */
+export function doneHtml(ref, email) {
+  return `
+    <div class="acct-modal-mask" data-cf-close></div>
+    <div class="acct-modal acct-report" role="dialog" aria-modal="true" aria-label="Message sent">
+      <h3 class="acct-modal-h">Sent</h3>
+      <p class="acct-modal-note">Your reference, for any follow-up. A person answers at <strong>${escapeHtml(email)}</strong>; a receipt is on its way there now.</p>
+      <div class="acct-report-ref"><code class="acct-product-code">${escapeHtml(ref)}</code></div>
+      <div class="acct-modal-actions">
+        <button class="cta" type="button" data-cf-close>Done</button>
+      </div>
+    </div>`;
+}
+
+/** The door is not on this lane (a 404): the plain way, never a dead end; pure. */
+export function fallbackHtml(about) {
   const subject = encodeURIComponent(about ? `PragOptics: ${about}` : 'PragOptics');
   return `
+    <div class="acct-modal-mask" data-cf-close></div>
     <div class="acct-modal acct-report" role="dialog" aria-modal="true" aria-label="Write to us">
-      <header class="acct-modal-head"><h2 class="acct-modal-title">Write to us</h2><button class="acct-modal-x" type="button" data-cf-close aria-label="Close">×</button></header>
-      <p>This form is not open yet. Email <a class="acct-inline-link" href="mailto:support@bridgesindust.com?subject=${subject}">support@bridgesindust.com</a> and a person answers.</p>
-      <div class="acct-actions-row"><button class="btn" type="button" data-cf-close>Close</button></div>
+      <h3 class="acct-modal-h">Write to us</h3>
+      <p class="acct-modal-note">This form is not open yet. Email <a class="acct-inline-link" href="mailto:support@bridgesindust.com?subject=${subject}">support@bridgesindust.com</a> and a person answers.</p>
+      <div class="acct-modal-actions">
+        <button class="cta" type="button" data-cf-close>Close</button>
+      </div>
     </div>`;
 }
 
@@ -85,7 +115,6 @@ export function openContact({ email = '', name = '', about = '' } = {}) {
         m.host.innerHTML = doneHtml(result.ref, fields.email);
       } catch (ex) {
         sending = false; done();
-        // The door is not on this lane yet (a 404 from the challenge or the post): the plain way, never a dead end.
         if (ex && (ex.status === 404 || ex.status === 405)) { m.host.innerHTML = fallbackHtml(about); return; }
         say(failureWords(ex));
       }
