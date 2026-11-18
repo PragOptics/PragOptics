@@ -43,6 +43,7 @@
     import { initBuildsView, onBuildsEnter } from '../builds/builds.js';
     import { initAdminView, onAdminEnter, refreshAdminNav } from '../admin/admin.js';
     import { initAccountView, onAccountEnter, presetAccountSection } from '../account/account.js';
+    import { createIdleGate } from '../account/idleGate.js';
     import { busy } from '../account/cards.js';
     import { initJoinView, onJoinEnter } from '../team/join.js';
     import { PRAG_API_BASE, LANE, STUDIO_URL } from "./config.js";
@@ -528,6 +529,9 @@ function setToken(tokens) {
 
     // make it available to all view controllers
     window.isAccessTokenValid = isAccessTokenValid;
+    // Make a dormant session honest: after 30 min idle, a signed-in tab shows "Are you still there?" and resumes with a forced
+    // session refresh (window.pragRefreshSession) or sign-in — the front-end twin of the studio's idle gate (Cameron 2026-11-18).
+    try { createIdleGate().start(); } catch (e) { /* the gate is a convenience, never block boot on it */ }
     // The session's state is settled here: the account's theme and the footer
     // toggle's absence follow it (src/runtime/userTheme.js).
     syncUserTheme();

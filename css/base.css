@@ -1,6 +1,37 @@
 /* /css/base.css */
 *{box-sizing:border-box}
 
+/* ============================================================
+   IDLE GATE — "Are you still there?" overlay for a dormant signed-in session
+   (src/account/idleGate.js; the front-end twin of the studio's gate, Cameron 2026-11-18).
+   ============================================================ */
+.idle-gate{
+  position:fixed; inset:0; z-index:2147483000;
+  display:flex; align-items:center; justify-content:center; padding:24px;
+  background:color-mix(in srgb, var(--shade) 66%, transparent);
+  -webkit-backdrop-filter:blur(3px); backdrop-filter:blur(3px);
+}
+.idle-card{
+  width:min(440px, calc(100vw - 48px));
+  background:var(--menu); border:1px solid var(--border); border-radius:var(--radius);
+  box-shadow:var(--aura); color:var(--ink);
+  padding:26px 24px 22px; text-align:center;
+}
+.idle-card h3{ margin:12px 0 8px; color:var(--card-title); font-size:19px; font-weight:700; }
+.idle-card p{ margin:0 0 18px; color:var(--muted); font-size:14.5px; line-height:1.55; }
+.idle-dot{
+  display:inline-block; width:12px; height:12px; border-radius:50%;
+  background:var(--brand-600); box-shadow:0 0 0 6px var(--brandsoft);
+}
+.idle-go{
+  appearance:none; border:0; cursor:pointer;
+  background:var(--brand-600); color:var(--on-brand);
+  font:600 14px ui-sans-serif,system-ui,Segoe UI,Roboto,sans-serif;
+  padding:11px 22px; border-radius:var(--radius-btn);
+}
+.idle-go:hover{ filter:brightness(1.06); }
+.idle-go:disabled{ opacity:.7; cursor:default; }
+
 html,body{
   margin:0;
   padding:0;
