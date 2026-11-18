@@ -454,7 +454,7 @@ function paintArchive() { const h = document.getElementById('evArchive'); if (h)
 async function loadArchive() {
   try {
     ev.archive = await D.apiFetch(url(`${ENV_URL}/archive`));
-    ev.archiveNote = '';
+    ev.archiveNote = ''; ev.archivePick = '';
   } catch (ex) {
     ev.archive = null;
     if (ex?.status === 404) ev.archiveNote = 'The archive routes are not on this lane yet.';
@@ -463,6 +463,31 @@ async function loadArchive() {
     else ev.archiveNote = errText(ex, 'Could not read the archive settings.');
   }
   paintArchive();
+  try { maybeFetchRepos(document.getElementById('evArcConn')?.value || ''); } catch { /* fine */ }
+}
+
+/* THE REPOSITORIES THE APP CAN REACH (2026-11-18): one read of the managed GitHub connection, kept until Refresh, so the
+ * Archive card's Repository field resolves to the one repository, or lists the many. Only the PragOptics app lists; a pasted
+ * token keeps the free text. */
+async function fetchArchiveRepos(id, force) {
+  if (!id) return;
+  ev.archiveRepos = ev.archiveRepos || {};
+  const cur = ev.archiveRepos[id];
+  if (cur && !force && (cur.loading || cur.repos)) return;   // read once, kept until Refresh
+  ev.archiveRepos[id] = { loading: true };
+  paintArchive();
+  try {
+    const r = await post(`${ENV_URL}/connections/github-app/repositories`, { id });
+    const conn = (ev.archive?.connections || []).find(c => c.id === id) || null;
+    ev.archiveRepos[id] = { loading: false, repos: Array.isArray(r.repositories) ? r.repositories : [], selection: String(conn?.repositorySelection || ''), note: r.note || '' };
+  } catch (ex) {
+    ev.archiveRepos[id] = { loading: false, error: errText(ex, 'Could not read the repositories the app can reach.') };
+  }
+  paintArchive();
+}
+function maybeFetchRepos(id) {
+  const c = (ev.archive?.connections || []).find(x => x.id === id);
+  if (c && c.managed && c.status === 'ACTIVE') fetchArchiveRepos(id);
 }
 
 function emptyHtml(view) {
@@ -2568,8 +2593,48 @@ function archiveHtml() {
       body: ev.archiveNote ? `<p class="acct-card-note">${e(ev.archiveNote)}</p>` : '<p class="acct-loading">Loading the archive settings…</p>' });
   }
   const accounts = a.connections || [];
-  const picked = s?.connectionId || (accounts.find(c => c.status === 'ACTIVE') || accounts[0] || {}).id || '';
+  const picked = ev.archivePick || s?.connectionId || (accounts.find(c => c.status === 'ACTIVE') || accounts[0] || {}).id || '';
   const inc = s?.include || {};
+  // The Repository field knows what the app can reach (Cameron 2026-11-18): the PragOptics GitHub app reaching ONE repository
+  // resolves to it (no typing); reaching many, or every repository, lists them in a dropdown; "every repository" also offers a
+  // new one (GitHub makes it, then it appears here). A pasted token keeps the free text, since only the app can list.
+  const arcConn = accounts.find(c => c.id === picked) || null;
+  const arcManaged = !!arcConn?.managed && arcConn.status === 'ACTIVE';
+  const rs = (ev.archiveRepos || {})[picked] || null;
+  const curRepo = s?.repo || '';
+  const arcRefresh = iconBtn('archive-repos-refresh', 'refresh', 'Read the repositories the app can reach again', '');
+  let repoControl, repoExtra = '';
+  if (!arcManaged) {
+    repoControl = `<input class="acct-input" type="text" id="evArcRepo" maxlength="200" value="${e(curRepo)}" placeholder="a name, or owner/name" autocomplete="off" spellcheck="false" />`;
+  } else if (!rs || rs.loading) {
+    repoControl = `<input class="acct-input" type="text" id="evArcRepo" value="${e(curRepo)}" placeholder="Reading the repositories the app can reach…" autocomplete="off" spellcheck="false" readonly />`;
+  } else if (rs.error) {
+    repoControl = `<input class="acct-input" type="text" id="evArcRepo" maxlength="200" value="${e(curRepo)}" placeholder="a name, or owner/name" autocomplete="off" spellcheck="false" />`;
+    repoExtra = `<p class="acct-card-note acct-error-words">${e(rs.error)} ${arcRefresh}</p>`;
+  } else {
+    const repos = rs.repos || [];
+    const sel = rs.selection || arcConn.repositorySelection || '';
+    const canNew = sel === 'all';
+    if (!canNew && repos.length <= 1) {
+      if (repos.length === 1) {
+        repoControl = `<input class="acct-input" type="text" id="evArcRepo" value="${e(repos[0].fullName)}" readonly />`;
+        repoExtra = `<p class="acct-card-note">The PragOptics app reaches one repository; the archive goes there. ${arcRefresh}</p>`;
+      } else {
+        repoControl = `<input class="acct-input" type="text" id="evArcRepo" value="${e(curRepo)}" placeholder="no repository yet" autocomplete="off" spellcheck="false" readonly />`;
+        repoExtra = `<p class="acct-card-note">${e(rs.note || 'The app reaches no repository yet. Pick one at GitHub, then read again.')} ${arcRefresh}</p>`;
+      }
+    } else {
+      const isNew = canNew && !!curRepo && !repos.some(r => r.fullName === curRepo);
+      let chosen = isNew ? '__new__' : (curRepo || (repos[0] ? repos[0].fullName : ''));
+      if (canNew && !repos.length) chosen = '__new__';
+      const opts = repos.map(r => `<option value="${e(r.fullName)}" data-branch="${e(r.defaultBranch || 'main')}" ${r.fullName === chosen ? 'selected' : ''}>${e(r.fullName)}${r.private ? '' : ' (public)'}</option>`).join('');
+      const newOpt = canNew ? `<option value="__new__" ${chosen === '__new__' ? 'selected' : ''}>New repository…</option>` : '';
+      repoControl = `<select class="acct-input acct-select" id="evArcRepo">${opts}${newOpt}</select>`;
+      repoExtra = canNew
+        ? `<div id="evArcNewRow" class="ev-arc-newrow" ${chosen === '__new__' ? '' : 'hidden'}><input class="acct-input" type="text" id="evArcRepoNew" maxlength="200" value="${isNew ? e(curRepo) : ''}" placeholder="new repository name" autocomplete="off" spellcheck="false" /></div><p class="acct-card-note">A new repository is made at GitHub, then it appears here. ${iconBtn('open-url', 'external', 'Open GitHub to create a repository', 'data-url="https://github.com/new"')} ${arcRefresh}</p>`
+        : `<p class="acct-card-note">The archive goes to the repository you pick. ${arcRefresh}</p>`;
+    }
+  }
   const last = !a.last ? '' : a.last.ok
     ? `<p class="acct-card-note">Last archived ${e(D.fmtDate(a.lastAt))}: ${e(countWord(Number(a.last.counts?.projects || 0), 'project', 'projects'))}, ${e(countWord(Number(a.last.counts?.rows || 0), 'row', 'rows'))}, ${e(countWord(Number(a.last.counts?.files || 0), 'file', 'files'))}, to ${a.last.url ? `<a href="${e(a.last.url)}" target="_blank" rel="noopener">${e(a.last.repo)}@${e(a.last.branch)}</a>` : e(`${a.last.repo || ''}@${a.last.branch || ''}`)}${a.last.created ? ' (repository created)' : ''}.</p>`
     : `<p class="acct-card-note acct-error-words">Last run ${e(D.fmtDate(a.lastAt))} failed: ${e(a.last.error || 'no reason given')}</p>`;
@@ -2577,11 +2642,12 @@ function archiveHtml() {
       <div class="ev-conn-fields">
         <label class="ev-conn-field"><span class="ev-conn-field-label">GitHub account</span>
           <select class="acct-input acct-select" id="evArcConn">${accounts.length ? accounts.map(c => `<option value="${e(c.id)}" ${c.id === picked ? 'selected' : ''}>${e(c.label)}${c.login ? ` (${e(c.login)})` : ''}${c.status !== 'ACTIVE' ? ' · not active' : ''}</option>`).join('') : '<option value="">Connect a GitHub account first</option>'}</select></label>
-        <label class="ev-conn-field"><span class="ev-conn-field-label">Repository</span><input class="acct-input" type="text" id="evArcRepo" maxlength="200" value="${e(s?.repo || '')}" placeholder="a name, or owner/name" autocomplete="off" spellcheck="false" /></label>
+        <label class="ev-conn-field"><span class="ev-conn-field-label">Repository</span>${repoControl}</label>
         <label class="ev-conn-field"><span class="ev-conn-field-label">Branch</span><input class="acct-input" type="text" id="evArcBranch" maxlength="100" value="${e(s?.branch || 'main')}" placeholder="main" autocomplete="off" spellcheck="false" /></label>
         <label class="ev-conn-field"><span class="ev-conn-field-label">Schedule</span>
           <select class="acct-input acct-select" id="evArcSchedule">${[['off', 'Only when I press Archive now'], ['daily', 'Every night, and when I press'], ['weekly', 'Every week, and when I press']].map(([v, w]) => `<option value="${v}" ${(s?.schedule || 'off') === v ? 'selected' : ''}>${w}</option>`).join('')}</select></label>
       </div>
+      ${repoExtra}
       <div class="ev-scopes" role="group" aria-label="What the archive carries">
         ${ARCHIVE_PARTS.map(([k, icon, word, tip]) => `<label class="acct-chip" data-tip="${e(tip)}"><input type="checkbox" id="evArcInc-${k}" ${inc[k] === false ? '' : 'checked'} />${ico(icon, 14)}<span>${word}</span></label>`).join('')}
       </div>
@@ -2753,7 +2819,7 @@ async function saveArchive(btn) {
   D.showError('evArchiveError', '');
   const payload = {
     connectionId: document.getElementById('evArcConn')?.value || '',
-    repo: (document.getElementById('evArcRepo')?.value || '').trim(),
+    repo: (document.getElementById('evArcRepo')?.value === '__new__' ? (document.getElementById('evArcRepoNew')?.value || '') : (document.getElementById('evArcRepo')?.value || '')).trim(),
     branch: (document.getElementById('evArcBranch')?.value || '').trim() || 'main',
     schedule: document.getElementById('evArcSchedule')?.value || 'off',
     include: Object.fromEntries(ARCHIVE_PARTS.map(([k]) => [k, !!document.getElementById(`evArcInc-${k}`)?.checked]))
@@ -3742,6 +3808,7 @@ export function bindEnvironmentActions(deps) {
     if (a === 'conn-add') { if (!ev.connBusy) ev.connRow = ''; return void addConnection(btn); }
     if (a === 'archive-save') return void saveArchive(btn);
     if (a === 'archive-run') return void runArchive(btn);
+    if (a === 'archive-repos-refresh') { fetchArchiveRepos(document.getElementById('evArcConn')?.value || '', true); return; }
     if (a === 'conn-test') return void testConnection(btn.dataset.id || '');
     if (a === 'conn-remove') return void removeConnection(btn.dataset.id || '', btn.dataset.label || 'this connection', btn);
     if (a === 'conn-remove-cancel') { clearTimeout(connArmTimer); ev.connArm = ''; paintConnections(); return; }
@@ -3776,6 +3843,17 @@ export function bindEnvironmentActions(deps) {
     if (t) setRenewal(t.dataset.host || '', !!t.checked, t);
     // Picking a provider redraws the form with that provider's own fields.
     if (e.target.id === 'evConnProvider') { ev.connPick = e.target.value || ''; ev.connResult = ''; paintConnections(); document.querySelector('[data-conn-field]')?.focus(); }
+    // The archive's GitHub account: read the repositories it can reach and redraw the Repository field for that account.
+    if (e.target.id === 'evArcConn') { ev.archivePick = e.target.value || ''; maybeFetchRepos(ev.archivePick); paintArchive(); return; }
+    // The repository dropdown: "New repository…" reveals the name box; a repository sets the branch to its default.
+    if (e.target.id === 'evArcRepo') {
+      const sel = e.target;
+      const nr = document.getElementById('evArcNewRow');
+      if (nr) nr.hidden = (sel.value !== '__new__');
+      if (sel.value === '__new__') document.getElementById('evArcRepoNew')?.focus();
+      else { const b = sel.options?.[sel.selectedIndex]?.dataset?.branch; const bi = document.getElementById('evArcBranch'); if (b && bi && (!bi.value || bi.value === 'main')) bi.value = b; }
+      return;
+    }
   });
 
   document.addEventListener('keydown', (e) => {
