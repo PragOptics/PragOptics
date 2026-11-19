@@ -2742,8 +2742,23 @@ function madeKeyHtml(k) {
 // OAuth token), Shippo bills the customer, and the bought label's PDF is
 // stored by the platform so its link never expires on the customer (96h).
 function activeShippo() { return (ev.connections || []).find(c => isManagedShippo(c) && c.status === 'ACTIVE') || null; }
+/** The Ship-from default, taken from the billing profile the account already gave
+ *  (D.cachedPing().billingProfile) so a business never retypes its own address. It
+ *  seeds the form and stays editable — ship from elsewhere by changing it. A later
+ *  order fills Ship to the same way; for a one-off it is entered by hand. */
+function shipFromBilling() {
+  const b = (D.cachedPing?.() || {}).billingProfile || {};
+  return {
+    name: String(b.customerName || '').trim(),
+    street1: String(b.addressLine1 || '').trim(),
+    city: String(b.city || '').trim(),
+    state: String(b.state || '').trim(),
+    zip: String(b.postalCode || '').trim(),
+    phone: String(b.phone || '').trim()
+  };
+}
 function shipState() {
-  if (!ev.ship) ev.ship = { fromV: {}, toV: {}, parcel: { length: '', width: '', height: '', weight: '' }, rates: null, shipmentId: '', picked: '', labels: null, busy: '', note: '', noteErr: false };
+  if (!ev.ship) ev.ship = { fromV: shipFromBilling(), toV: {}, parcel: { length: '', width: '', height: '', weight: '' }, rates: null, shipmentId: '', picked: '', labels: null, busy: '', note: '', noteErr: false };
   return ev.ship;
 }
 function shipInput(id, label, val, ph, extra = '') {
@@ -2804,12 +2819,14 @@ function shippingHtml() {
         ${shipInput('shipFromStreet', 'Street', f.street1, '')}
         <div class="ev-ship-row">${shipInput('shipFromCity', 'City', f.city, '')}${shipInput('shipFromState', 'State', f.state, 'CA', 'maxlength="2"')}${shipInput('shipFromZip', 'ZIP', f.zip, '')}</div>
         ${shipInput('shipFromPhone', 'Phone', f.phone, '')}
+        ${shipFromBilling().street1 ? `<p class="acct-card-note ev-ship-hint">From your billing address. Edit if you ship from elsewhere.</p>` : ''}
       </fieldset>
       <fieldset class="ev-ship-col"><legend>Ship to</legend>
         ${shipInput('shipToName', 'Name', t.name, 'Customer')}
         ${shipInput('shipToStreet', 'Street', t.street1, '')}
         <div class="ev-ship-row">${shipInput('shipToCity', 'City', t.city, '')}${shipInput('shipToState', 'State', t.state, '', 'maxlength="2"')}${shipInput('shipToZip', 'ZIP', t.zip, '')}</div>
         ${shipInput('shipToPhone', 'Phone', t.phone, '')}
+        <p class="acct-card-note ev-ship-hint">An order will fill this in. For a one-off, enter it.</p>
       </fieldset>
     </div>
     <fieldset class="ev-ship-parcel"><legend>Parcel</legend>
@@ -2821,7 +2838,7 @@ function shippingHtml() {
     <p class="acct-error" id="evShipError" hidden></p>
     <h4 class="ev-ship-h">Labels</h4>
     ${labelsHtml}
-    <div class="ev-key-row ev-ship-test">${stateLead('ship-test', 'check', 'Run a test shipment (not billed)', { out: s.busy === 'test', busyWord: 'Walking a test label…' }, '', '')}</div>`;
+    <div class="ev-key-row ev-ship-test">${stateLead('ship-test', 'check', 'Test this connection (not billed)', { out: s.busy === 'test', busyWord: 'Checking the connection…' }, '', '')}</div>`;
 
   return cardHtml({ key: 'shipping', icon: 'send', title: 'Shipping', summary, explain: explainLink('connections', 'How connections work'), body });
 }
@@ -2883,7 +2900,7 @@ async function runShippingTest() {
   const c = activeShippo(); if (!c) return;
   const s = shipState();
   s.busy = 'test'; shipNote(''); paintShipping();
-  try { const d = await post(`${ENV_URL}/shipping/test`, { connectionId: c.id }); const cs = Array.isArray(d.carriers) ? d.carriers : []; const extra = (!d.ok && cs.length) ? ' Carriers Shippo returned: ' + cs.map(x => `${x.carrier || '?'}${x.test ? ' test' : ''}${x.active ? '' : ' off'}`).join(', ') + '.' : ''; shipNote(d.ok ? 'Test shipment walked: label, tracking and refund, all on your account, nothing billed.' : ((d.error || 'The test did not finish.') + extra), !d.ok); }
+  try { const d = await post(`${ENV_URL}/shipping/test`, { connectionId: c.id }); const cs = Array.isArray(d.carriers) ? d.carriers : []; const extra = (!d.ok && cs.length) ? ' Carriers Shippo returned: ' + cs.map(x => `${x.carrier || '?'}${x.test ? ' test' : ''}${x.active ? '' : ' off'}`).join(', ') + '.' : ''; shipNote(d.ok ? (d.note || 'The connection is verified. Nothing was billed.') : ((d.error || 'The test did not finish.') + extra), !d.ok); }
   catch (ex) { shipNote(errText(ex, 'The test shipment did not finish.'), true); }
   s.busy = ''; paintShipping();
   loadShippingLabels();
