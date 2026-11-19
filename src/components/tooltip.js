@@ -42,6 +42,20 @@ function ensure() {
   return tip;
 }
 
+// A plain `title` attribute shows the browser's own grey box, not our styled
+// bubble. The first time such an element is hovered or focused, move its title
+// to data-tip (and to aria-label for assistive tech when it has none) and drop
+// the title, so every tip on the site is the one styled bubble and the native
+// box never appears. Survives re-renders: a re-created element is re-adopted.
+function adopt(el) {
+  if (el && !el.hasAttribute('data-tip') && el.hasAttribute('title')) {
+    const v = el.getAttribute('title') || '';
+    el.setAttribute('data-tip', v);
+    if (!el.hasAttribute('aria-label')) el.setAttribute('aria-label', v);
+    el.removeAttribute('title');
+  }
+  return el;
+}
 function labelFor(el) {
   return (el.getAttribute('data-tip') || el.getAttribute('aria-label') || '').trim();
 }
@@ -104,7 +118,7 @@ export function initTooltips() {
   // every current and future [data-tip] without re-binding on re-render.
   document.addEventListener('pointerover', (e) => {
     if (e.pointerType === 'touch') return;   // touch has no hover; skip the bubble
-    const el = e.target.closest?.('[data-tip]');
+    const el = adopt(e.target.closest?.('[data-tip], [title]'));
     if (el && el !== current) show(el);
   });
   document.addEventListener('pointerout', (e) => {
@@ -123,7 +137,7 @@ export function initTooltips() {
   document.addEventListener('pointerdown', (e) => {
     if (e.pointerType !== 'touch') return;
     swallowEl = null;
-    const el = e.target.closest?.('[data-tip]');
+    const el = adopt(e.target.closest?.('[data-tip], [title]'));
     if (!el) return;
     endHold();
     holdEl = el; holdX = e.clientX; holdY = e.clientY;
@@ -150,7 +164,7 @@ export function initTooltips() {
 
   // Keyboard focus.
   document.addEventListener('focusin', (e) => {
-    const el = e.target.closest?.('[data-tip]');
+    const el = adopt(e.target.closest?.('[data-tip], [title]'));
     if (el) show(el);
   });
   document.addEventListener('focusout', () => hide());
