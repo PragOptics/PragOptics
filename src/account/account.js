@@ -366,12 +366,12 @@ const INTERNAL_SECTIONS = [
   { id: 'attention',  label: 'Needs attention' },
   { id: 'users',      label: 'Users' },
   { id: 'tenants',    label: 'Tenants' },
-  { id: 'agentdesk',  label: 'Agents' },
-  { id: 'buildsqueue', label: 'Builds' },
+  { id: 'agentdesk',  label: 'Live Agent desk' },
+  { id: 'buildsqueue', label: 'Builds queue' },
   { id: 'notify',     label: 'Notifications' },
   { id: 'reports',    label: 'Anomalies' },
   { id: 'support',    label: 'Support' },
-  { id: 'shiporders', label: 'Orders' },
+  { id: 'shiporders', label: 'Shop orders' },
   { id: 'payments',   label: 'Payments' },
   { id: 'warranty',   label: 'Warranty' },
   { id: 'inventory',  label: 'Inventory' },
@@ -4094,7 +4094,7 @@ const OD_PAID_LIKE = new Set(['PAID', 'LABEL_PURCHASED', 'SHIPPED', 'DELIVERED',
 async function renderAdminOrders(main) {
   main.innerHTML = `
     <header class="adm-sec-head">
-      <h2 class="adm-sec-title">Orders</h2>
+      <h2 class="adm-sec-title">Shop orders</h2>
       <div class="adm-tabs" role="tablist">
         <button class="adm-tab is-active" type="button" role="tab" aria-selected="true" data-adm-orders="">All</button>
         <button class="adm-tab" type="button" role="tab" aria-selected="false" data-adm-orders="PAID">Paid</button>

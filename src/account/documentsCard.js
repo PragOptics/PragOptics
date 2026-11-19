@@ -72,7 +72,7 @@ export function documentsHtml() {
       ${note}
       ${list}
       ${form}
-      ${can && !st.edit ? `<div class="ev-key-row">${profiles.length < Number(d.caps?.profiles || 20) ? leadBtn('docs-new', 'plus', 'New profile', '', profiles.length ? '' : 'btn-primary') : ''}</div>` : ''}
+      ${can && !st.edit ? `<div class="ev-key-row">${profiles.length < Number(d.caps?.profiles || 20) ? leadBtn('docs-new', 'plus', 'New document profile', '', profiles.length ? '' : 'btn-primary') : ''}</div>` : ''}
       ${reader}
       ${searchBox}
       <p class="acct-error" id="evDocsError" hidden></p>`
