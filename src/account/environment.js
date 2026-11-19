@@ -2883,7 +2883,7 @@ async function runShippingTest() {
   const c = activeShippo(); if (!c) return;
   const s = shipState();
   s.busy = 'test'; shipNote(''); paintShipping();
-  try { const d = await post(`${ENV_URL}/shipping/test`, { connectionId: c.id }); shipNote(d.ok ? 'Test shipment walked: label, tracking and refund, all on your account, nothing billed.' : (d.error || 'The test did not finish.'), !d.ok); }
+  try { const d = await post(`${ENV_URL}/shipping/test`, { connectionId: c.id }); const cs = Array.isArray(d.carriers) ? d.carriers : []; const extra = (!d.ok && cs.length) ? ' Carriers Shippo returned: ' + cs.map(x => `${x.carrier || '?'}${x.test ? ' test' : ''}${x.active ? '' : ' off'}`).join(', ') + '.' : ''; shipNote(d.ok ? 'Test shipment walked: label, tracking and refund, all on your account, nothing billed.' : ((d.error || 'The test did not finish.') + extra), !d.ok); }
   catch (ex) { shipNote(errText(ex, 'The test shipment did not finish.'), true); }
   s.busy = ''; paintShipping();
   loadShippingLabels();
