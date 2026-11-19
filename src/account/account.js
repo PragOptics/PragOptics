@@ -678,7 +678,7 @@ function shellHtml() {
           <span class="adm-side-avatar">${avatarHtml(cachedPing()?.user, 44)}</span>
           <div class="adm-side-brand-text">
             <span class="adm-side-kicker">Account</span>
-            <span class="adm-side-title">${escapeHtml(currentEmail() || 'You')}</span>
+            <span class="adm-side-title" title="${escapeHtml(currentEmail() || '')}">${escapeHtml(currentEmail() || 'You')}</span>
           </div>
         </div>
         <ul class="adm-nav">
@@ -719,7 +719,7 @@ function agentShellHtml() {
       <nav class="adm-side" aria-label="Agent portal">
         <div class="adm-side-brand adm-side-brand--agent">
           <span class="adm-side-kicker">${escapeHtml(who)} , in their environment</span>
-          <span class="adm-side-title">${escapeHtml(label)}</span>
+          <span class="adm-side-title" title="${escapeHtml(label)}">${escapeHtml(label)}</span>
         </div>
         <ul class="adm-nav">
           <li class="adm-nav-div" aria-hidden="true">${escapeHtml(label)}</li>
@@ -1681,7 +1681,7 @@ async function makePrimary(aliasId, btn = null) {
     // so the new primary survives a page reload, not just this session.
     await refreshCachedPing();
     // Primary drives the sidebar title; re-render the shell brand.
-    const t = document.querySelector('.adm-side-title'); if (t) t.textContent = currentEmail();
+    const t = document.querySelector('.adm-side-title'); if (t) { t.textContent = currentEmail(); t.title = currentEmail(); }
   } catch (ex) { showError('acctProfileError', friendlyError(ex, 'Could not change your primary address.', { passwordFlow: true })); }
   finally { done(); }
 }

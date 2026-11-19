@@ -336,11 +336,11 @@ th.adm-num { text-align: right; }
   font-weight: 700;
   color: var(--ink);
   letter-spacing: -.01em;
-  /* Always show the whole address in full — it is the account you are in, never
-     truncate an identity. Wrap it; overflow-wrap breaks only where it must. */
-  white-space: normal;
-  overflow-wrap: anywhere;
-  line-height: 1.25;
+  /* One line, truncated; the whole address rides on the element's title tooltip,
+     so the identity is never lost — hover shows it in full. */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .adm-nav { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
 .adm-nav-item {
