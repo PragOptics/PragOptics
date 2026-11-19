@@ -332,6 +332,8 @@ async function loadConnections() {
     else ev.connNote = errText(ex, 'Could not list the connected accounts.');
   }
   paintConnections();
+  paintShipping();
+  loadShippingLabels();
   paintDomains();
 }
 
@@ -343,8 +345,8 @@ function paint() {
   // On the sandbox lane the cards appear only once the sandbox is READY;
   // until then the section explains and (for the owner) offers to set it up.
   const cards = ev.lane === 'sandbox'
-    ? (laneReady(ev.view.tenant) ? `<div id="evFiles">${filesHtml()}</div><div id="evDocuments">${documentsHtml()}</div><div id="evImport">${importHtml()}</div><div id="evData">${dataHtml()}</div><div id="evMail">${mailHtml()}</div><div id="evConnections">${connectionsHtml()}</div><div id="evVariables">${variablesHtml()}</div><div id="evArchive">${archiveHtml()}</div><div id="evKeys">${keysHtml()}</div>` : sandboxSetupHtml(ev.view))
-    : `<div id="evFiles">${filesHtml()}</div><div id="evDocuments">${documentsHtml()}</div><div id="evImport">${importHtml()}</div><div id="evData">${dataHtml()}</div><div id="evMail">${mailHtml()}</div><div id="evConnections">${connectionsHtml()}</div><div id="evVariables">${variablesHtml()}</div><div id="evArchive">${archiveHtml()}</div><div id="evDomains">${domainsHtml()}</div><div id="evKeys">${keysHtml()}</div>`;
+    ? (laneReady(ev.view.tenant) ? `<div id="evFiles">${filesHtml()}</div><div id="evDocuments">${documentsHtml()}</div><div id="evImport">${importHtml()}</div><div id="evData">${dataHtml()}</div><div id="evMail">${mailHtml()}</div><div id="evConnections">${connectionsHtml()}</div><div id="evShipping">${shippingHtml()}</div><div id="evVariables">${variablesHtml()}</div><div id="evArchive">${archiveHtml()}</div><div id="evKeys">${keysHtml()}</div>` : sandboxSetupHtml(ev.view))
+    : `<div id="evFiles">${filesHtml()}</div><div id="evDocuments">${documentsHtml()}</div><div id="evImport">${importHtml()}</div><div id="evData">${dataHtml()}</div><div id="evMail">${mailHtml()}</div><div id="evConnections">${connectionsHtml()}</div><div id="evShipping">${shippingHtml()}</div><div id="evVariables">${variablesHtml()}</div><div id="evArchive">${archiveHtml()}</div><div id="evDomains">${domainsHtml()}</div><div id="evKeys">${keysHtml()}</div>`;
   host.innerHTML = `
     ${summaryHtml(ev.view)}
     ${ready ? `<div class="ev-cards">${cards}</div>` : ''}
@@ -2733,6 +2735,160 @@ function madeKeyHtml(k) {
     </div>`;
 }
 
+/* ---------- shipping (on the customer's connected Shippo) ---------- */
+
+// Cameron 2026-11-19: the Shipping card appears ONLY once a Shippo account is
+// connected. It acts through that connection (the backend uses the vaulted
+// OAuth token), Shippo bills the customer, and the bought label's PDF is
+// stored by the platform so its link never expires on the customer (96h).
+function activeShippo() { return (ev.connections || []).find(c => isManagedShippo(c) && c.status === 'ACTIVE') || null; }
+function shipState() {
+  if (!ev.ship) ev.ship = { fromV: {}, toV: {}, parcel: { length: '', width: '', height: '', weight: '' }, rates: null, shipmentId: '', picked: '', labels: null, busy: '', note: '', noteErr: false };
+  return ev.ship;
+}
+function shipInput(id, label, val, ph, extra = '') {
+  const e = D.escapeHtml;
+  return `<label class="ev-ship-field"><span>${e(label)}</span><input class="acct-input" id="${id}" autocomplete="off" spellcheck="false" placeholder="${e(ph || '')}" value="${e(val || '')}" ${extra}></label>`;
+}
+function readShipForm() {
+  const g = (id) => (document.getElementById(id)?.value || '').trim();
+  const s = shipState();
+  s.fromV = { name: g('shipFromName'), street1: g('shipFromStreet'), city: g('shipFromCity'), state: g('shipFromState'), zip: g('shipFromZip'), phone: g('shipFromPhone') };
+  s.toV = { name: g('shipToName'), street1: g('shipToStreet'), city: g('shipToCity'), state: g('shipToState'), zip: g('shipToZip'), phone: g('shipToPhone') };
+  s.parcel = { length: g('shipLen'), width: g('shipWid'), height: g('shipHgt'), weight: g('shipWt') };
+  return s;
+}
+function shippingHtml() {
+  const c = activeShippo();
+  if (!c) return '';
+  const e = D.escapeHtml;
+  const s = shipState();
+  const manage = canManageConnections();
+  const d = c.detail || {};
+  const summary = `${d.carrierAccounts || 0} carrier ${d.carrierAccounts === 1 ? 'account' : 'accounts'} on your Shippo`;
+  const f = s.fromV || {}, t = s.toV || {}, p = s.parcel || {};
+  const rates = s.rates;
+  const ratesHtml = rates == null ? '' : !rates.length ? `<p class="acct-card-note">No rates came back for that shipment.</p>` : `
+    <div class="ev-ship-rates" role="radiogroup" aria-label="Shipping rates">
+      ${rates.map(r => `
+        <button type="button" class="ev-ship-rate ${s.picked === r.id ? 'is-on' : ''}" data-env-action="ship-rate-pick" data-id="${e(r.id)}" role="radio" aria-checked="${s.picked === r.id}">
+          <span class="ev-ship-rate-car">${e(r.carrier)} ${e(r.service)}</span>
+          <span class="ev-ship-rate-amt">$${e(Number(r.amount).toFixed(2))}${r.estDays ? ` · ${e(r.estDays)} day${r.estDays === 1 ? '' : 's'}` : ''}${r.test ? ' · test' : ''}</span>
+        </button>`).join('')}
+    </div>
+    <div class="ev-key-row">${stateLead('ship-buy', 'check', 'Buy this label', { out: s.busy === 'buy', busyWord: 'Buying…', waiting: s.picked ? '' : 'Pick a rate first' }, '', 'btn-primary')}</div>`;
+
+  const labels = s.labels;
+  const labelsHtml = labels == null ? '<p class="acct-loading">Loading labels…</p>' : !labels.length ? '<p class="acct-empty">No labels bought yet.</p>' : `
+    <div class="adm-table-scroll"><table class="adm-table adm-table--wrap ev-table">
+      <thead><tr><th>Tracking</th><th>Status</th><th>When</th><th></th></tr></thead>
+      <tbody>${labels.map(l => `
+        <tr>
+          <td data-th="Tracking" class="cell-ellip">${l.trackingNumber ? e(l.trackingNumber) : '—'}${l.test ? ' <span class="acct-tag">test</span>' : ''}</td>
+          <td data-th="Status" class="cell-tight"><span class="acct-tag ${l.status === 'SUCCESS' ? 'is-verified' : l.status === 'REFUNDED' ? 'is-quiet' : ''}">${e(String(l.status || '').toLowerCase() || '—')}</span></td>
+          <td data-th="When" class="cell-tight adm-muted">${l.createdAt ? e(D.fmtDate(l.createdAt)) : ''}</td>
+          <td class="cell-tight ev-actions-cell"><span class="act-row">
+            ${l.status === 'SUCCESS' ? iconBtn('ship-label-open', 'external', 'Open the label PDF', `data-id="${e(l.transactionId)}"`) : ''}
+            ${l.status === 'SUCCESS' ? iconBtn('ship-refund', 'trash', 'Refund this label', `data-id="${e(l.transactionId)}"`, 'is-risky') : ''}
+          </span></td>
+        </tr>`).join('')}</tbody>
+    </table></div>`;
+
+  const note = s.note ? `<p class="${s.noteErr ? 'acct-error' : 'acct-card-note'} ev-row-note" aria-live="polite">${e(s.note)}</p>` : '';
+
+  const body = !manage ? `<p class="acct-card-note">The owner or an admin buys shipping labels.</p><h4 class="ev-ship-h">Labels</h4>${labelsHtml}` : `
+    <p class="acct-card-note ev-dom-door">Buy a shipping label on your own Shippo account. Shippo bills you directly, and the label is stored here so its link never expires on you.</p>
+    <div class="ev-ship-grid">
+      <fieldset class="ev-ship-col"><legend>Ship from</legend>
+        ${shipInput('shipFromName', 'Name', f.name, 'Your business')}
+        ${shipInput('shipFromStreet', 'Street', f.street1, '')}
+        <div class="ev-ship-row">${shipInput('shipFromCity', 'City', f.city, '')}${shipInput('shipFromState', 'State', f.state, 'CA', 'maxlength="2"')}${shipInput('shipFromZip', 'ZIP', f.zip, '')}</div>
+        ${shipInput('shipFromPhone', 'Phone', f.phone, '')}
+      </fieldset>
+      <fieldset class="ev-ship-col"><legend>Ship to</legend>
+        ${shipInput('shipToName', 'Name', t.name, 'Customer')}
+        ${shipInput('shipToStreet', 'Street', t.street1, '')}
+        <div class="ev-ship-row">${shipInput('shipToCity', 'City', t.city, '')}${shipInput('shipToState', 'State', t.state, '', 'maxlength="2"')}${shipInput('shipToZip', 'ZIP', t.zip, '')}</div>
+        ${shipInput('shipToPhone', 'Phone', t.phone, '')}
+      </fieldset>
+    </div>
+    <fieldset class="ev-ship-parcel"><legend>Parcel</legend>
+      <div class="ev-ship-row">${shipInput('shipLen', 'Length (in)', p.length, '', 'inputmode="decimal"')}${shipInput('shipWid', 'Width (in)', p.width, '', 'inputmode="decimal"')}${shipInput('shipHgt', 'Height (in)', p.height, '', 'inputmode="decimal"')}${shipInput('shipWt', 'Weight (lb)', p.weight, '', 'inputmode="decimal"')}</div>
+    </fieldset>
+    <div class="ev-key-row">${stateLead('ship-rates', 'refresh', 'Get rates', { out: s.busy === 'rates', busyWord: 'Getting rates…' }, '', '')}</div>
+    ${ratesHtml}
+    ${note}
+    <p class="acct-error" id="evShipError" hidden></p>
+    <h4 class="ev-ship-h">Labels</h4>
+    ${labelsHtml}
+    <div class="ev-key-row ev-ship-test">${stateLead('ship-test', 'check', 'Run a test shipment (not billed)', { out: s.busy === 'test', busyWord: 'Walking a test label…' }, '', '')}</div>`;
+
+  return cardHtml({ key: 'shipping', icon: 'send', title: 'Shipping', summary, explain: explainLink('connections', 'How connections work'), body });
+}
+function paintShipping() { const h = document.getElementById('evShipping'); if (h) h.innerHTML = shippingHtml(); }
+function shipNote(text, err = false) { const s = shipState(); s.note = text || ''; s.noteErr = !!err; }
+
+async function loadShippingLabels() {
+  const c = activeShippo();
+  if (!c) return;
+  const s = shipState();
+  try { const d = await D.apiFetch(url(`${ENV_URL}/shipping/labels`, { connectionId: c.id })); s.labels = d.labels || []; }
+  catch { s.labels = []; }
+  paintShipping();
+}
+async function getShippingRates() {
+  const c = activeShippo(); if (!c) return;
+  const s = readShipForm();
+  if (!s.fromV.street1 || !s.fromV.zip || !s.toV.street1 || !s.toV.zip || !s.parcel.weight) { shipNote('A from and to address and a weight are needed for rates.', true); paintShipping(); return; }
+  s.busy = 'rates'; s.rates = null; s.picked = ''; shipNote(''); paintShipping();
+  try {
+    const d = await post(`${ENV_URL}/shipping/rates`, {
+      connectionId: c.id,
+      from: { ...s.fromV, country: 'US' }, to: { ...s.toV, country: 'US' },
+      parcel: { length: s.parcel.length || '1', width: s.parcel.width || '1', height: s.parcel.height || '1', distance_unit: 'in', weight: s.parcel.weight, mass_unit: 'lb' }
+    });
+    s.rates = d.rates || []; s.shipmentId = d.shipmentId || '';
+    if (s.rates.length) s.picked = s.rates[0].id;
+  } catch (ex) { s.rates = []; shipNote(errText(ex, 'Could not get rates.'), true); }
+  s.busy = ''; paintShipping();
+}
+async function buyShippingLabel() {
+  const c = activeShippo(); if (!c) return;
+  const s = shipState();
+  if (!s.picked) { shipNote('Pick a rate first.', true); paintShipping(); return; }
+  s.busy = 'buy'; shipNote(''); paintShipping();
+  try {
+    const d = await post(`${ENV_URL}/shipping/label`, { connectionId: c.id, rateId: s.picked });
+    shipNote(d.pending ? 'Shippo is finishing the label; it appears below in a moment.' : `Label bought. Tracking ${d.trackingNumber || 'pending'}.`);
+    s.rates = null; s.picked = '';
+  } catch (ex) { shipNote(errText(ex, 'Could not buy the label.'), true); }
+  s.busy = ''; paintShipping();
+  loadShippingLabels();
+}
+async function openShippingLabel(transactionId) {
+  const c = activeShippo(); if (!c) return;
+  try { const d = await D.apiFetch(url(`${ENV_URL}/shipping/label/file`, { connectionId: c.id, transactionId })); if (d.url) window.open(d.url, '_blank', 'noopener'); }
+  catch (ex) { shipNote(errText(ex, 'Could not open that label.'), true); paintShipping(); }
+}
+async function refundShippingLabel(transactionId) {
+  const c = activeShippo(); if (!c) return;
+  const s = shipState();
+  s.busy = 'refund'; shipNote(''); paintShipping();
+  try { const d = await post(`${ENV_URL}/shipping/refund`, { connectionId: c.id, transactionId }); shipNote(`Refund ${String(d.status || '').toLowerCase() || 'requested'}.`); }
+  catch (ex) { shipNote(errText(ex, 'Could not refund that label.'), true); }
+  s.busy = ''; paintShipping();
+  loadShippingLabels();
+}
+async function runShippingTest() {
+  const c = activeShippo(); if (!c) return;
+  const s = shipState();
+  s.busy = 'test'; shipNote(''); paintShipping();
+  try { const d = await post(`${ENV_URL}/shipping/test`, { connectionId: c.id }); shipNote(d.ok ? 'Test shipment walked: label, tracking and refund, all on your account, nothing billed.' : (d.error || 'The test did not finish.'), !d.ok); }
+  catch (ex) { shipNote(errText(ex, 'The test shipment did not finish.'), true); }
+  s.busy = ''; paintShipping();
+  loadShippingLabels();
+}
+
 /* ================================================================
    actions
    ================================================================ */
@@ -3821,6 +3977,12 @@ export function bindEnvironmentActions(deps) {
     if (a === 'conn-twilio-refresh') return void refreshTwilioConnect(btn.dataset.id || '');
     if (a === 'conn-shippo-start') return void startShippoConnect();
     if (a === 'conn-shippo-refresh') return void refreshShippoConnect(btn.dataset.id || '');
+    if (a === 'ship-rates') return void getShippingRates();
+    if (a === 'ship-rate-pick') { shipState().picked = btn.dataset.id || ''; paintShipping(); return; }
+    if (a === 'ship-buy') return void buyShippingLabel();
+    if (a === 'ship-label-open') return void openShippingLabel(btn.dataset.id || '');
+    if (a === 'ship-refund') return void refundShippingLabel(btn.dataset.id || '');
+    if (a === 'ship-test') return void runShippingTest();
     if (a === 'conn-shopify-start') return void startShopifyConnect();
     if (a === 'conn-shopify-link') return void startShopifyConnect(btn.dataset.id || '', btn.dataset.shop || '');
     if (a === 'conn-shopify-refresh') return void refreshShopifyConnect(btn.dataset.id || '');

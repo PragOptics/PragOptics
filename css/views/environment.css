@@ -51,6 +51,25 @@
 .ev-import-bar { height: 6px; border-radius: 999px; background: color-mix(in srgb, var(--ink) 8%, transparent); overflow: hidden; margin-top: 8px; }
 .ev-import-bar span { display: block; height: 100%; background: var(--brand-600); transition: width 400ms ease; }
 .ev-import-size { margin-top: 8px; }
+/* shipping (2026-11-19): the card shown once Shippo is connected — buy a label on the customer's own account */
+.ev-ship-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 12px; }
+@media (max-width: 640px) { .ev-ship-grid { grid-template-columns: 1fr; } }
+.ev-ship-col, .ev-ship-parcel { border: 1px solid var(--border); border-radius: var(--radius-ctl); padding: 12px; min-width: 0; }
+.ev-ship-parcel { margin-top: 12px; }
+.ev-ship-col legend, .ev-ship-parcel legend { font-weight: 700; font-size: .8rem; color: var(--card-title); padding: 0 6px; }
+.ev-ship-field { display: grid; gap: 4px; margin-top: 8px; min-width: 0; }
+.ev-ship-field > span { font-size: .78rem; color: var(--muted); }
+.ev-ship-field .acct-input { width: 100%; min-width: 0; }
+.ev-ship-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.ev-ship-row .ev-ship-field { flex: 1 1 90px; }
+.ev-ship-rates { display: grid; gap: 8px; margin-top: 12px; }
+.ev-ship-rate { display: flex; justify-content: space-between; align-items: center; gap: 12px; width: 100%; text-align: left; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius-ctl); background: var(--surface-deep); color: var(--ink); cursor: pointer; font: inherit; }
+.ev-ship-rate:hover { border-color: color-mix(in srgb, var(--brand-600) 55%, transparent); }
+.ev-ship-rate.is-on { border-color: var(--brand-600); box-shadow: inset 0 0 0 1px var(--brand-600); }
+.ev-ship-rate-car { font-weight: 600; min-width: 0; }
+.ev-ship-rate-amt { color: var(--muted); white-space: nowrap; }
+.ev-ship-h { margin: 18px 0 6px; font-size: .92rem; color: var(--card-title); }
+.ev-ship-test { margin-top: 12px; }
 .acct-chip input[type="radio"] { position: absolute; opacity: 0; width: 0; height: 0; margin: 0; }
 /* THE BRAND-TINTED NOTE BOX (2026-10-05): one tint for a result, a status line, a flash and the test-lane banner, here, in
    team.css and in admin.css; each keeps its own margin, padding and type. */
