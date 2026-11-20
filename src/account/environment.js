@@ -2803,6 +2803,7 @@ function shippingHtml() {
           <td data-th="Status" class="cell-tight"><span class="acct-tag ${l.status === 'SUCCESS' ? 'is-verified' : l.status === 'REFUNDED' ? 'is-quiet' : ''}">${e(String(l.status || '').toLowerCase() || '—')}</span></td>
           <td data-th="When" class="cell-tight adm-muted">${l.createdAt ? e(D.fmtDate(l.createdAt)) : ''}</td>
           <td class="cell-tight ev-actions-cell"><span class="act-row">
+            ${l.status === 'SUCCESS' && l.trackingNumber ? iconBtn('ship-track', 'search', 'Check tracking', `data-id="${e(l.transactionId)}"`) : ''}
             ${l.status === 'SUCCESS' ? iconBtn('ship-label-open', 'external', 'Open the label PDF', `data-id="${e(l.transactionId)}"`) : ''}
             ${l.status === 'SUCCESS' ? iconBtn('ship-refund', 'trash', 'Refund this label', `data-id="${e(l.transactionId)}"`, 'is-risky') : ''}
           </span></td>
@@ -2886,6 +2887,14 @@ async function openShippingLabel(transactionId) {
   const c = activeShippo(); if (!c) return;
   try { const d = await D.apiFetch(url(`${ENV_URL}/shipping/label/file`, { connectionId: c.id, transactionId })); if (d.url) window.open(d.url, '_blank', 'noopener'); }
   catch (ex) { shipNote(errText(ex, 'Could not open that label.'), true); paintShipping(); }
+}
+async function trackShippingLabel(transactionId) {
+  const c = activeShippo(); if (!c) return;
+  const s = shipState();
+  s.busy = 'track'; shipNote(''); paintShipping();
+  try { const d = await post(`${ENV_URL}/shipping/track`, { connectionId: c.id, transactionId }); const st = String(d.status || '').toLowerCase() || 'no status yet'; shipNote(`Tracking ${d.trackingNumber || ''}: ${st}${d.detail ? ' — ' + d.detail : ''}.`); }
+  catch (ex) { shipNote(errText(ex, 'Could not get the tracking status.'), true); }
+  s.busy = ''; paintShipping();
 }
 async function refundShippingLabel(transactionId) {
   const c = activeShippo(); if (!c) return;
@@ -3998,6 +4007,7 @@ export function bindEnvironmentActions(deps) {
     if (a === 'ship-rate-pick') { shipState().picked = btn.dataset.id || ''; paintShipping(); return; }
     if (a === 'ship-buy') return void buyShippingLabel();
     if (a === 'ship-label-open') return void openShippingLabel(btn.dataset.id || '');
+    if (a === 'ship-track') return void trackShippingLabel(btn.dataset.id || '');
     if (a === 'ship-refund') return void refundShippingLabel(btn.dataset.id || '');
     if (a === 'ship-test') return void runShippingTest();
     if (a === 'conn-shopify-start') return void startShopifyConnect();
