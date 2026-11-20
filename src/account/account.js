@@ -217,6 +217,13 @@ async function apiFetch(url, options = {}) {
       ...(options.headers || {})
     }
   });
+  // raw: hand back the Response untouched (a PDF/blob the caller reads itself),
+  // instead of parsing JSON. The caller checks the body; only transport/auth
+  // failures throw here.
+  if (options.raw) {
+    if (!res.ok) { const err = new Error(`Request failed (${res.status})`); err.status = res.status; throw err; }
+    return res;
+  }
   let data = null;
   try { data = await res.json(); } catch { /* empty or non-JSON */ }
   if (!res.ok) {

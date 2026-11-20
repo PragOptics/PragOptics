@@ -2812,6 +2812,20 @@ function shippingHtml() {
         </tr>`).join('')}</tbody>
     </table></div>`;
 
+  const lv = s.labelView;
+  const labelViewHtml = !lv ? '' : `
+    <div class="ev-labelview" style="margin-top:12px;border:1px solid rgba(130,130,160,.28);border-radius:10px;overflow:hidden">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 12px">
+        <strong>Shipping label</strong>
+        <span class="act-row">
+          ${lv.url ? `<a class="btn" href="${e(lv.url)}" download="label-${e(lv.transactionId)}.pdf">Save</a>` : ''}
+          ${lv.url ? `<button type="button" class="btn" data-env-action="ship-label-print">Print</button>` : ''}
+          <button type="button" class="btn" data-env-action="ship-label-close">Close</button>
+        </span>
+      </div>
+      ${lv.busy ? '<p class="acct-loading" style="padding:16px">Loading the label…</p>' : `<iframe id="evLabelFrame" src="${e(lv.url)}" title="Shipping label" style="width:100%;height:520px;border:0;background:#fff;display:block"></iframe>`}
+    </div>`;
+
   const note = s.note ? `<p class="${s.noteErr ? 'acct-error' : 'acct-card-note'} ev-row-note" aria-live="polite">${e(s.note)}</p>` : '';
 
   const body = !manage ? `<p class="acct-card-note">The owner or an admin buys shipping labels.</p><h4 class="ev-ship-h">Labels</h4>${labelsHtml}` : `
@@ -2841,6 +2855,7 @@ function shippingHtml() {
     <p class="acct-error" id="evShipError" hidden></p>
     <h4 class="ev-ship-h">Labels</h4>
     ${labelsHtml}
+    ${labelViewHtml}
     <div class="ev-key-row ev-ship-test">${stateLead('ship-test', 'check', 'Test this connection (not billed)', { out: s.busy === 'test', busyWord: 'Checking the connection…' }, '', '')}</div>`;
 
   return cardHtml({ key: 'shipping', icon: 'send', title: 'Shipping', summary, explain: explainLink('connections', 'How connections work'), body });
@@ -2892,8 +2907,26 @@ async function buyShippingLabel() {
 }
 async function openShippingLabel(transactionId) {
   const c = activeShippo(); if (!c) return;
-  try { const d = await D.apiFetch(url(`${ENV_URL}/shipping/label/file`, { connectionId: c.id, transactionId })); if (d.url) window.open(d.url, '_blank', 'noopener'); }
-  catch (ex) { shipNote(errText(ex, 'Could not open that label.'), true); paintShipping(); }
+  const s = shipState();
+  if (s.labelView && s.labelView.url) { try { URL.revokeObjectURL(s.labelView.url); } catch { /* fine */ } }
+  s.labelView = { transactionId, url: '', busy: true }; paintShipping();
+  try {
+    // The PDF bytes come back same-origin and authorized, so we render, save and
+    // print the label from our own UI instead of a cross-origin popup.
+    const res = await D.apiFetch(url(`${ENV_URL}/shipping/label/file`, { connectionId: c.id, transactionId, bytes: 1 }), { raw: true });
+    const blob = await res.blob();
+    s.labelView = { transactionId, url: URL.createObjectURL(blob), busy: false };
+  } catch (ex) { s.labelView = null; shipNote(errText(ex, 'Could not open that label.'), true); }
+  paintShipping();
+}
+function closeShippingLabelView() {
+  const s = shipState();
+  if (s.labelView && s.labelView.url) { try { URL.revokeObjectURL(s.labelView.url); } catch { /* fine */ } }
+  s.labelView = null; paintShipping();
+}
+function printShippingLabelView() {
+  const fr = document.getElementById('evLabelFrame');
+  try { fr.contentWindow.focus(); fr.contentWindow.print(); } catch (ex) { shipNote('Could not start print; use Save and print the file.', true); paintShipping(); }
 }
 async function trackShippingLabel(transactionId) {
   const c = activeShippo(); if (!c) return;
@@ -4015,6 +4048,8 @@ export function bindEnvironmentActions(deps) {
     if (a === 'ship-buy') return void buyShippingLabel();
     if (a === 'ship-label-open') return void openShippingLabel(btn.dataset.id || '');
     if (a === 'ship-track') return void trackShippingLabel(btn.dataset.id || '');
+    if (a === 'ship-label-print') return void printShippingLabelView();
+    if (a === 'ship-label-close') return void closeShippingLabelView();
     if (a === 'ship-refund') return void refundShippingLabel(btn.dataset.id || '');
     if (a === 'ship-test') return void runShippingTest();
     if (a === 'conn-shopify-start') return void startShopifyConnect();
