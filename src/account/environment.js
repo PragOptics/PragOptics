@@ -2859,10 +2859,15 @@ async function getShippingRates() {
   const s = readShipForm();
   if (!s.fromV.street1 || !s.fromV.zip || !s.toV.street1 || !s.toV.zip || !s.parcel.weight) { shipNote('A from and to address and a weight are needed for rates.', true); paintShipping(); return; }
   s.busy = 'rates'; s.rates = null; s.picked = ''; shipNote(''); paintShipping();
+  // Shippo requires a sender email on the bought label, so supply the account's
+  // own email (the sender is the account owner); the recipient falls back to it
+  // until an order carries the customer's email. Nobody has to type it.
+  const _p = D.cachedPing?.() || {};
+  const acctEmail = String((_p.billingProfile || {}).primaryEmail || (_p.user || {}).email || 'shipping@pragoptics.com');
   try {
     const d = await post(`${ENV_URL}/shipping/rates`, {
       connectionId: c.id,
-      from: { ...s.fromV, country: 'US' }, to: { ...s.toV, country: 'US' },
+      from: { ...s.fromV, country: 'US', email: s.fromV.email || acctEmail }, to: { ...s.toV, country: 'US', email: s.toV.email || acctEmail },
       parcel: { length: s.parcel.length || '1', width: s.parcel.width || '1', height: s.parcel.height || '1', distance_unit: 'in', weight: s.parcel.weight, mass_unit: 'lb' }
     });
     s.rates = d.rates || []; s.shipmentId = d.shipmentId || '';
