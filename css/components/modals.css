@@ -244,3 +244,40 @@
   .pm-close,
   .vo-close{ width: 36px; height: 36px; min-width: 36px; font-size: 1.1rem; }
 }
+
+/* ====== SHIPPING LABEL VIEWER (2026-11-20) ====== */
+/* Opened as a modal (the .acct-modal scrim + card, same as the other account prompts). The label is
+   rasterized to <canvas> because the site CSP blocks a PDF <iframe> (frame-src) and <embed>/<object>
+   (object-src 'none'), and the app's browser pane has no PDF plugin. The body scrolls; the page(s) sit
+   on white so a label reads true in either theme. */
+/* The label viewer reuses the classic modal chrome (.modal-card: head with the corner close, a scrolling
+   body, a foot). Only the width changes, to a portrait 4x6 label; the body sits on white so the label
+   reads true in either theme, and Print is the .cta primary in the foot. */
+.modal-card.ev-label-card{
+  width:min(480px,94vw);
+}
+.ev-label-body{
+  background:#fff;
+  padding:14px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:12px;
+}
+.ev-label-canvas{
+  display:block;
+  width:100%;
+  height:auto;
+  box-shadow:0 1px 6px rgba(0,0,0,.18);
+}
+.ev-label-body .acct-loading,
+.ev-label-body .acct-error{ color:#333; }
+
+/* Print just the label image(s), nothing else of the page. */
+#evLabelPrintArea{ display:none; }
+.ev-label-print-img{ display:block; width:100%; }
+@media print{
+  body.ev-printing-label > *:not(#evLabelPrintArea){ display:none !important; }
+  body.ev-printing-label #evLabelPrintArea{ display:block; }
+  body.ev-printing-label .ev-label-print-img{ width:100%; page-break-after:always; }
+}
