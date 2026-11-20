@@ -112,7 +112,10 @@ const KIND_LABEL = {
   'builds.secret-sweep': 'Build keys not swept',
   // the platform's one-time pass over every environment's stored studio drafts (auth/projectSecretSweep.js), not
   // finished after a day of hourly runs; Try again runs the pass now
-  'projects.secret-sweep': 'Draft keys not swept'
+  'projects.secret-sweep': 'Draft keys not swept',
+  // a customer's grey-label shipping flow failed on their own connected Shippo (auth/shippingAttention.js): a label would
+  // not buy, a refund did not go through, or Shippo stopped accepting the connection; the title and environment name it
+  'shipping': 'Shipping'
 };
 // The icon beside each action's word, and the word it shows while its request is out.
 const ACTION_ICON = { attach: 'link', refused: 'xCircle', check: 'search', ack: 'check', retry: 'refresh', done: 'checkCircle', approve: 'external', connect: 'external', takedown: 'stop', suspend: 'pause', close: 'power', 'mailbox-yes': 'check', 'mailbox-no': 'x', charge: 'card', paid: 'checkCircle', reorder: 'send', refund: 'undo', approved: 'checkCircle', denied: 'xCircle' };
