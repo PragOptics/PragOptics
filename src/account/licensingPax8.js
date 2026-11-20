@@ -31,6 +31,7 @@
 
 import { PRAG_API_BASE } from '../runtime/config.js';
 import { lc, st, cardHtml, countWord, isOperator, send, reqLead, reqIcon, errHtml, noteHtml, setNote, kept, cents } from './licensingShared.js';
+import { explainLink } from '../components/explainer.js';
 
 const P8 = `${PRAG_API_BASE}/admin/licensing/pax8`;
 const ADM = `${PRAG_API_BASE}/admin/licensing`;
@@ -141,9 +142,8 @@ export function pax8Html() {
   const topics = hook ? hook.topics.map(t => t.topic) : [];
   const events = p.events;
   return cardHtml({
-    key: 'pax8', icon: 'zap', title: 'Pax8', summary: e(summary),
+    key: 'pax8', icon: 'zap', title: 'Pax8', summary: e(summary), explain: explainLink('lic-pax8', 'How this works'),
     body: `
-      <p class="acct-card-note">Operator only. The daily check compares every license line with its Pax8 subscription and finds what Pax8 bills with no line behind it. The webhook tells the platform the moment Pax8 changes something.</p>
       ${noteHtml('pax8')}${errHtml('pax8')}
       <div class="acct-actions-row act-row">
         ${reqLead('p8-check', { lic: 'p8-check' }, 'search', 'Check against Pax8', 'Checking…', '', 'btn-primary')}

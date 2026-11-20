@@ -3042,7 +3042,7 @@ async function loadAdminUsage() {
       </div>
       ${(d.top || []).length ? `
         <div class="adm-card">
-          <h3 class="adm-card-h">Top consumers (${escapeHtml(d.month)})</h3>
+          <h3 class="adm-card-h">Top consumers (${escapeHtml(d.month)}) ${explainLink('top-consumers', 'How this works')}</h3>
           <div class="adm-table-scroll">
             <table class="adm-table">
               <thead><tr><th>Account</th><th>Tier</th><th class="adm-num">API calls</th><th class="adm-num">% of base</th></tr></thead>
@@ -3058,8 +3058,6 @@ async function loadAdminUsage() {
               </tbody>
             </table>
           </div>
-          <p class="adm-note">Accounts pressing base allowances are the add-on demand signal. Allowances
-          are enforced: a customer is refused at 1.1x the base until capacity is added or the month resets; operators are never capped.</p>
         </div>
       ` : ''}
     `;
@@ -3144,8 +3142,7 @@ function renderCostAlert(host, a) {
   const budgetShown = amount > 0 ? '$' + amount.toLocaleString('en-US', { maximumFractionDigits: 2 }) : 'Not set';
   host.innerHTML = `
     <div class="adm-card" style="margin-top:12px;">
-      <h3 class="adm-card-h">Cost alert</h3>
-      <p class="adm-note">The platform's own alert, on top of the Azure budget. It reads this month's Azure spend once a day and emails you when it reaches a share of your budget. The Azure budget alert is the independent backstop that fires even if the platform is down; this one you set here.</p>
+      <h3 class="adm-card-h">Cost alert ${explainLink('cost-alert', 'How this works')}</h3>
 
       <div class="adm-budget-card${a.enabled ? '' : ' is-off'}">
         <div class="adm-budget-main">
@@ -4763,15 +4760,12 @@ function renderCatalog(main) {
     </div>
 
     <div class="adm-card">
-      <h3 class="adm-card-h">Physical goods</h3>
-      <p class="adm-note">The products the shop sells, as the last sync bound them to Stripe. Checkout charges these prices and
-        Stripe Tax uses these tax codes; the unit cost feeds the Orders desk. The plan table above is the subscription side.</p>
+      <h3 class="adm-card-h">Physical goods ${explainLink('shop-goods', 'How this works')}</h3>
       <div id="admCatalogGoods"><p class="adm-note">Loading…</p></div>
     </div>
 
     <div class="adm-card">
-      <h3 class="adm-card-h">Launch interest</h3>
-      <p class="adm-note">Everyone who pressed Notify me at launch on a product that is not shipping yet, by product, newest first. Each one also reached you by mail when it was filed (Launch interest under Commerce in Notifications). Write to them from the email link when the product ships.</p>
+      <h3 class="adm-card-h">Launch interest ${explainLink('launch-interest', 'How this works')}</h3>
       <div id="admLaunchInterest"><p class="adm-note">Loading…</p></div>
     </div>
 

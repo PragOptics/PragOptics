@@ -19,6 +19,7 @@
 import { PRAG_API_BASE } from '../runtime/config.js';
 import { lc, st, url, call, cardHtml, money, isOperator, send, reqLead, reqIcon, errHtml, noteHtml, setNote } from './licensingShared.js';
 import { armed } from './cards.js';
+import { explainLink } from '../components/explainer.js';
 
 const BILL_URL = `${PRAG_API_BASE}/admin/licensing/billing`;
 
@@ -35,8 +36,8 @@ export function billingHtml() {
   else inner = `<div class="lic-bill">${b.subs.map(s => subHtml(s, e)).join('')}</div>
     <div class="acct-actions-row">${reqIcon('bill-read', { lic: 'bill-read' }, 'refresh', 'Read Stripe again', 'Reading Stripe…')}</div>`;
   return cardHtml({
-    key: 'billing', icon: 'card', title: 'Licensing charges', summary: e(summary),
-    body: `<p class="acct-card-note">Operator only. Every licensing charge this environment has in Stripe, and the license that owns it; since 2026-09-24 each license is a subscription of its own. A charge with no license is billing for nothing; stop it here.</p>${noteHtml('billing')}${errHtml('billing')}${inner}`
+    key: 'billing', icon: 'card', title: 'Licensing charges', summary: e(summary), explain: explainLink('lic-billing', 'How this works'),
+    body: `${noteHtml('billing')}${errHtml('billing')}${inner}`
   });
 }
 

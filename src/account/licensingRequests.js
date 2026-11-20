@@ -18,6 +18,7 @@
 import { REQ_URL, lc, st, url, cardHtml, countWord, cents, dayWord, sentence, perms, call, send, reqLead, errHtml, noteHtml, setNote, kept, forget, showsLicensing, forgetMarks } from './licensingShared.js';
 import { iconBtn, armed } from './cards.js';
 import { quoteRequest, fresh, moved, amountWords, moneyCodes } from './licensingMoney.js';
+import { explainLink } from '../components/explainer.js';
 
 const KIND_WORDS = { 'license.add': 'Buy a license', 'license.seats': 'Change license seats', 'license.end': 'End a license', 'mailbox.request': 'A mailbox' };
 const PER = { Monthly: 'a month', Annual: 'a year', '2-Year': 'every two years', '3-Year': 'every three years' };
@@ -171,14 +172,11 @@ export function requestsHtml() {
   // the owner's waiting money requests read their exact charge once the card is on screen
   if (owner && !v.readOnly && open.some(chargesNow)) queueMicrotask(readQuotes);
   const summary = open.length ? `${countWord(open.length, 'request', 'requests')} waiting${owner ? '' : ' for the owner'}` : owner ? 'nothing waiting' : `${countWord(all.length, 'request', 'requests')}, all answered`;
-  const intro = owner
-    ? '<p class="acct-card-note">When someone on your team asks to buy a license, change license seats, end a license or have their mailbox, it waits here for you. Nothing is bought or changed until you approve it; they are emailed your answer.</p>'
-    : '<p class="acct-card-note">What you asked the owner for, and where each one stands. You are emailed the owner\'s answer.</p>';
   const list = open.length ? `<ul class="lic-reqs">${open.map(r => itemHtml(r, owner)).join('')}</ul>` : owner ? '<p class="acct-empty">Nothing is waiting for you.</p>' : '';
   const history = done.length ? `<details class="lic-past"><summary>${e(countWord(done.length, 'decided request', 'decided requests'))}</summary><ul class="lic-reqs">${done.slice(0, 20).map(r => itemHtml(r, owner)).join('')}</ul></details>` : '';
   return cardHtml({
-    key: 'requests', icon: owner ? 'bell' : 'send', title: owner ? 'Requests for you' : 'Your requests', summary: e(summary),
-    body: `${intro}${errHtml('requests')}${noteHtml('requests')}${list}${history}`
+    key: 'requests', icon: owner ? 'bell' : 'send', title: owner ? 'Requests for you' : 'Your requests', summary: e(summary), explain: explainLink('lic-requests', 'How this works'),
+    body: `${errHtml('requests')}${noteHtml('requests')}${list}${history}`
   });
 }
 

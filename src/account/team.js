@@ -319,7 +319,6 @@ function emptyHtml(view) {
     return `
       <section class="acct-card">
         <h3 class="acct-card-h">Your team starts with a plan.</h3>
-        <p class="acct-card-note">User is one seat, yours. Partner includes five seats and Super forty-five, with more available. Add the platform and your team comes with it; the people you invite sign in with their own login and see only your team.</p>
         <div class="acct-actions-row"><button class="btn btn-sm btn-lead btn-primary" type="button" data-acct-action="subscribe">${ico('layers')}<span>See plans</span></button></div>
       </section>`;
   }
@@ -1243,7 +1242,7 @@ export async function renderTenants(main, deps) {
   const e = D.escapeHtml;
   main.innerHTML = `
     <header class="adm-sec-head">
-      <h2 class="adm-sec-title">Tenants</h2>
+      <h2 class="adm-sec-title">Tenants ${explainLink('tenants', 'How this desk works')}</h2>
       <div class="adm-toolbar">
         <select class="adm-select" id="tnStatus" aria-label="Which environments to show" title="A closed account's environment stays paused for the retention window, then the nightly purge removes it">
           <option value="">Open environments</option>
@@ -1252,7 +1251,6 @@ export async function renderTenants(main, deps) {
         </select>
       </div>
     </header>
-    <p class="adm-note">Every team on the platform: who owns it, its plan, its storage against the allowance, seats in use. Counts and names only; tenant data never renders here. Repair runs the one-pass provisioning for an environment that stalled: it creates what is missing and changes nothing that exists. A closed account's environment is kept paused for the retention window and listed under Closed until the purge removes it.</p>
     <p class="adm-error" id="tnError" hidden></p>
     <p class="na-flash" id="tnFlash" role="status" aria-live="polite" hidden></p>
     <div id="tnBody"><p class="adm-note">Loading…</p></div>

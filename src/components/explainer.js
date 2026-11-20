@@ -49,7 +49,15 @@ const DOCS = {
   'builds-review': { title: 'The builds board' },
   'team-roles': { title: 'Team roles' },
   'notify-routing': { title: 'Who hears about what' },
-  broadcast:   { title: 'Send a notice' }
+  broadcast:   { title: 'Send a notice' },
+  'top-consumers': { title: 'Top consumers' },
+  'cost-alert': { title: 'Cost alert' },
+  'shop-goods': { title: 'Physical goods' },
+  'launch-interest': { title: 'Launch interest' },
+  tenants:     { title: 'The Tenants desk' },
+  'lic-billing': { title: 'Licensing charges' },
+  'lic-pax8':  { title: 'Pax8' },
+  'lic-requests': { title: 'License requests' }
 };
 const KICKER = 'How it works';
 const COPY_SVG = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
