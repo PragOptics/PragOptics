@@ -49,6 +49,7 @@ import { PRAG_API_BASE } from '../runtime/config.js';
 import { iconBtn, leadBtn, armed, ico, busy, hold, stateLead, copyButton } from './cards.js';
 import { cents as dollars } from '../ui/words.js';
 import { categoryOptionsHtml } from './conductWords.js';
+import { explainLink } from '../components/explainer.js';
 
 const NA_URL = `${PRAG_API_BASE}/admin/needs-attention`;
 
@@ -688,13 +689,12 @@ export async function renderNeedsAttention(main, deps) {
   main.innerHTML = `
     <div class="na-desk">
       <header class="adm-sec-head">
-        <h2 class="adm-sec-title">Needs attention</h2>
+        <h2 class="adm-sec-title">Needs attention ${explainLink('needs-attention', 'How this desk works')}</h2>
         <div class="ev-actions na-tools">
           <div class="adm-tabs" id="naTabs" role="tablist" aria-label="Which items">${tab('OPEN', 'Open')}${tab('RESOLVED', 'Resolved')}</div>
           ${iconBtn({ na: 'refresh' }, 'refresh', 'Refresh', 'id="naRefresh"')}
         </div>
       </header>
-      <p class="adm-note">What the platform could not settle by itself, across every customer: orders, companies, tenants, subscriptions, endings, pauses and Microsoft 365 approvals, and what people report or ask for: a site or an account reported for the community standards, an owner's ask for an administrator account. Closings put here an amount still owed after a closure for cause and published files a closing could not delete; an agreement notice puts here the owners it could not reach. Each item offers what can be done about it; an action the platform finishes resolves the item, and one it cannot finish leaves the item here with the answer it came back with. Approve at Microsoft opens Microsoft's approval page in this tab: sign in there with that tenant's administrator account, and Microsoft sends you back here. You get one email when an item is new or comes back, not one per repeat.</p>
       <p class="adm-error" id="naError" hidden></p>
       <p class="na-flash" id="naFlash" role="status" aria-live="polite" hidden></p>
       <div id="naBody"><p class="adm-note">Loading…</p></div>

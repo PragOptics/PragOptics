@@ -39,7 +39,17 @@ const DOCS = {
   'agent-desk': { title: 'Being a live agent' },
   'agent-admin': { title: 'Running live agents' },
   'agent-pay': { title: 'How you get paid' },
-  ai:          { title: 'AI and its credit' }
+  ai:          { title: 'AI and its credit' },
+  home:        { title: 'Your environment home' },
+  'my-builds': { title: 'My builds' },
+  // Internal / operator-only desks -- a customer never meets these links.
+  'needs-attention': { title: 'The Needs attention desk' },
+  arrivals:    { title: 'Not yet acknowledged' },
+  'agreement-notice': { title: 'Telling owners about a new agreement' },
+  'builds-review': { title: 'The builds board' },
+  'team-roles': { title: 'Team roles' },
+  'notify-routing': { title: 'Who hears about what' },
+  broadcast:   { title: 'Send a notice' }
 };
 const KICKER = 'How it works';
 const COPY_SVG = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';

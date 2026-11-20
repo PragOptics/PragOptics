@@ -14,6 +14,7 @@
 
 import { PRAG_API_BASE } from '../runtime/config.js';
 import { iconBtn, leadBtn, armed, busy } from './cards.js';
+import { explainLink } from '../components/explainer.js';
 
 const BUILDS_URL = `${PRAG_API_BASE}/builds`;
 const ADMIN_BUILDS_URL = `${PRAG_API_BASE}/admin/builds`;
@@ -117,8 +118,7 @@ async function toggleDiff(btn, host) {
 export async function renderBuildsQueue(main, deps) {
   D = deps;
   main.innerHTML = `
-    <header class="adm-sec-head"><h2 class="adm-sec-title">Builds</h2><div class="ev-actions">${iconBtn({ builds: 'refresh' }, 'refresh', 'Refresh', 'id="bqRefresh"')}</div></header>
-    <p class="adm-note">Everything published to the board from the Studio. A build waits here until it is approved; its builder can already use it in their own environment. Approve lists it for everyone; Reject keeps it off with a reason the builder sees.</p>
+    <header class="adm-sec-head"><h2 class="adm-sec-title">Builds ${explainLink('builds-review', 'How the board works')}</h2><div class="ev-actions">${iconBtn({ builds: 'refresh' }, 'refresh', 'Refresh', 'id="bqRefresh"')}</div></header>
     <p class="adm-error" id="bqError" hidden></p>
     <div id="bqBody"><p class="adm-note">Loading…</p></div>
   `;
@@ -173,8 +173,7 @@ export async function renderBuildsQueue(main, deps) {
 export async function renderMyBuilds(main, deps) {
   D = deps;
   main.innerHTML = `
-    <header class="acct-sec-head"><h2 class="acct-sec-title">My Builds</h2><div class="ev-actions">${iconBtn({ builds: 'refresh' }, 'refresh', 'Refresh', 'id="mbRefresh"')}</div></header>
-    <p class="acct-card-note ev-note">What you published to the board from the Studio (Export, Publish as a module). A finished build is a draft only you see: install it in your own environment to prove it, then submit it for review; you can retract it until an operator decides. A new version of the same module replaces the old one on the board once approved. It waits for review before others see it; you can install it in your own environment right away.</p>
+    <header class="acct-sec-head"><h2 class="acct-sec-title">My Builds ${explainLink('my-builds', 'How this works')}</h2><div class="ev-actions">${iconBtn({ builds: 'refresh' }, 'refresh', 'Refresh', 'id="mbRefresh"')}</div></header>
     <p class="acct-error" id="mbError" hidden></p>
     <div id="mbBody"><p class="acct-loading">Loading…</p></div>
   `;

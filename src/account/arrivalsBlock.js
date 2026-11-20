@@ -9,6 +9,7 @@
 // never shows here. The same row shape as the environment's Home card (his rule of the day: clean, one shape, nothing to scroll
 // sideways), the newest five shown with the rest behind one press. On a lane without the route the block stays empty and silent.
 import { PRAG_API_BASE } from '../runtime/config.js';
+import { explainLink } from '../components/explainer.js';
 
 const URL = `${PRAG_API_BASE}/admin/arrivals`;
 const FIRST = 5;
@@ -61,8 +62,7 @@ export async function renderArrivalsBlock(host, deps) {
     const shown = visibleOf(items, all), rest = items.length - shown.length;
     host.innerHTML = `
       <div class="adm-card" style="margin-top:12px;">
-        <h3 class="adm-card-h">Not yet acknowledged</h3>
-        <p class="adm-note">Every message, request, report and launch sign-up you have not acted on, newest first. Acknowledge marks it as seen by you (nobody is mailed); closing one on its desk counts too.</p>
+        <h3 class="adm-card-h">Not yet acknowledged ${explainLink('arrivals', 'How this works')}</h3>
         ${items.length ? `
           <div class="acct-actions-row act-row">
             <span class="adm-note" id="admArrivalsCount">${e(note || countWords(items.length))}</span>

@@ -3648,10 +3648,7 @@ function ntRolesCardHtml() {
   if (!Array.isArray(ntState.customRoles)) return '';
   return `
     <div class="adm-card">
-      <h3 class="adm-card-h">Team roles</h3>
-      <p class="adm-note">Admin and Developer are built in. Add your own, such as Shipping, then give it to an account from
-        Users, Manage account. Every role here is an audience in the routing below. A role is a notification audience and
-        nothing more; access still comes from the admin flag.</p>
+      <h3 class="adm-card-h">Team roles ${explainLink('team-roles', 'How this works')}</h3>
       <div class="nt-chips">
         <span class="adm-pill nt-role">Admin</span>
         <span class="adm-pill nt-role">Developer</span>
@@ -3670,12 +3667,7 @@ function ntBodyHtml() {
   return `
     ${ntRolesCardHtml()}
     <div class="adm-card">
-      <h3 class="adm-card-h">Who hears about what</h3>
-      <p class="adm-note">Each row is one platform event. Pick the team roles that hear about it and choose email, text, or both.
-        Admin covers the admin role and every account carrying the admin flag; the roles you add above appear here too.
-        Customers are never routed team events. Texts reach only accounts with a verified mobile number. An event with
-        nothing chosen falls back to Admin by email, so nothing is ever unrouted. The Test button uses what is saved, not
-        what is on screen.</p>
+      <h3 class="adm-card-h">Who hears about what ${explainLink('notify-routing', 'How this works')}</h3>
       <div class="adm-table-scroll">
         <table class="adm-table adm-table--wrap nt-table">
           <thead><tr><th>Event</th><th>Roles</th><th>Channels</th><th></th></tr></thead>
@@ -3689,10 +3681,7 @@ function ntBodyHtml() {
       <p class="muted nt-result" id="ntTestResult" hidden></p>
     </div>
     <div class="adm-card">
-      <h3 class="adm-card-h">Send a notice</h3>
-      <p class="adm-note">A message from you to an audience, by role. Separate from the routing above. Team roles (Admin,
-        Developer, and the roles you add) receive it as written. Customer roles (Member, Viewer) receive it only if their
-        account has news turned on.</p>
+      <h3 class="adm-card-h">Send a notice ${explainLink('broadcast', 'How this works')}</h3>
       ${ntAudienceChecks('data-nt-notice-role', 'notice', ntNotice.roles, ntNoticeAudiences())}
       <input class="adm-input" id="ntSubject" type="text" maxlength="120" placeholder="Subject" autocomplete="off">
       <textarea class="adm-input nt-message" id="ntMessage" rows="5" maxlength="4000" placeholder="The message. Plain text; paragraphs are kept."></textarea>

@@ -19,6 +19,7 @@ import { PRAG_API_BASE } from '../runtime/config.js';
 import { leadBtn, armed, busy, btnLabel } from './cards.js';
 import { countWord, dayWord } from '../ui/words.js';
 import { agreementVersionOf } from '../components/agreementVersion.js';
+import { explainLink } from '../components/explainer.js';
 
 const URL_BASE = `${PRAG_API_BASE}/admin/agreement-notice`;
 const AGREEMENT_MD = '/docs/PragOptics-Subscriber-Agreement.md';
@@ -54,8 +55,7 @@ function cardHtml() {
   const words = locked ? c.summary : ag.summary;
   return `
     <div class="adm-card" id="agCard">
-      <h3 class="adm-card-h">Tell every owner about the new agreement</h3>
-      <p class="adm-note">For a material change to the Platform Agreement (section 14.2): one email to the owner of every environment, whatever their news setting, once per version. Name the version, count the owners, then send. Nobody is emailed twice for the same version.</p>
+      <h3 class="adm-card-h">Tell every owner about the new agreement ${explainLink('agreement-notice', 'How this works')}</h3>
       <label class="nt-ag-field"><span class="na-k">Version</span>
         <input class="adm-input" id="agVersion" type="text" maxlength="20" value="${e(ag.version)}" placeholder="2026-09.11" autocomplete="off" spellcheck="false"></label>
       <label class="nt-ag-field"><span class="na-k">What changed (optional)</span>

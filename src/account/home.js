@@ -14,6 +14,7 @@
 
 import { PRAG_API_BASE } from '../runtime/config.js';
 import { cardHtml as sharedCard, ico, leadBtn, initCards } from './cards.js';
+import { explainLink } from '../components/explainer.js';
 import { groupsOf, countsLine } from './approvalGroups.js';
 import { renderWaitingCard } from './envArrivalsBlock.js';   // Waiting on you: the decisions and the submissions nobody acted on, one card (2026-11-15)
 
@@ -43,8 +44,7 @@ export async function renderHome(main, deps) {
   D = deps;
   initCards();
   main.innerHTML = `
-    <header class="acct-sec-head"><h2 class="acct-sec-title">Home</h2></header>
-    <p class="acct-card-note">Everything this environment holds, and the way into each. Switch environments above and this page follows.</p>
+    <header class="acct-sec-head"><h2 class="acct-sec-title">Home ${explainLink('home', 'How the Home page works')}</h2></header>
     <div id="hmBody"><p class="acct-loading">Loading…</p></div>`;
   await load();
 }
@@ -223,7 +223,6 @@ function projectsCard() {
     <button class="hm-older-toggle${hm.showOlder ? ' is-open' : ''}" type="button" data-home-action="toggle-older" aria-expanded="${hm.showOlder ? 'true' : 'false'}">${ico('chevron', 14)} ${older.length} older ${older.length === 1 ? 'copy' : 'copies'}</button>
     ${hm.showOlder ? `<div class="hm-parts hm-older">${older.map(p => `<div class="hm-part hm-row-sub"><span class="hm-part-n">${e(p.name || p.id)} <span class="adm-muted">${e(kindWord(p.kind))}${p.version != null ? ` · v${p.version}` : ''}${p.updatedAt ? ` · ${when(p.updatedAt)}` : ''}</span></span>${openIcon(p)}</div>`).join('')}</div>` : ''}` : '';
   const body = `
-    <p class="acct-card-note">Your website and the reusable parts it is built from. A project has one home; this is it.</p>
     ${errLine('projects')}
     ${hm.projects === null && !hm.errs.projects ? '' : (list.length ? `${tree}${olderBlock}` : '<p class="acct-empty">No projects yet. Open the studio and the first one you save lands here.</p>')}
     <p class="acct-card-note hm-start">Start a website: open the Studio to build from scratch, from a template, or import a site you already have.</p>
@@ -247,7 +246,6 @@ function sitesCard() {
       </div>
     </div>`).join('');
   const body = `
-    <p class="acct-card-note">What this environment has published, at its own address. A site from one of your projects shows on that project above; anything here is published but has no project.</p>
     ${errLine('sites')}
     ${hm.sites === null && !hm.errs.sites
       ? ''
@@ -266,7 +264,6 @@ function dataCard() {
   const rows = list.map(t => `
     <div class="hm-row"><div class="hm-row-main"><p class="hm-row-t">${e(nameOf(t))}</p>${t && t.count != null ? `<p class="hm-row-s">${e(count(t.count, 'row', 'rows'))}</p>` : ''}</div></div>`).join('');
   const body = `
-    <p class="acct-card-note">The tables of data this environment holds. The Studio, your site and your API keys read and write them.</p>
     ${errLine('data')}
     ${hm.data === null && !hm.errs.data ? '' : (list.length ? `<div class="hm-list">${rows}</div>` : '<p class="acct-empty">No tables yet. A table you build in the Studio, or a connected supplier’s products, lands here.</p>')}
     <div class="acct-actions-row act-row">${goBtn('environment', 'Open Data', 'data')}</div>`;
