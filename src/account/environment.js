@@ -181,7 +181,7 @@ function canUseSandbox() { return BUILD_ROLES.has(myRole()); }
 export async function renderEnvironment(main, deps) {
   D = deps;
   ev.madeKey = null; ev.filesNote = ''; ev.files = null; ev.keys = null; ev.domains = null; ev.domainNote = ''; ev.linkNote = ''; ev.domArm = ''; ev.keyArm = ''; ev.checking = ''; ev.registrations = []; ev.reg = freshReg();
-  ev.connections = null; ev.connProviders = []; ev.connNote = ''; ev.connPick = ''; ev.connBusy = false; ev.connResult = ''; ev.connTesting = ''; ev.connDraft = {}; ev.connArm = ''; ev.rowNote = null; ev.shopifyShop = ''; ev.shopifyLink = ''; ev.shopifyLinkId = ''; ev.connSyncing = ''; ev.rowNote = null;
+  ev.connections = null; ev.connProviders = []; ev.connNote = ''; ev.connPick = ''; ev.connBusy = false; ev.connResult = ''; ev.connTesting = ''; ev.connDraft = {}; ev.connArm = ''; ev.shipArm = ''; ev.rowNote = null; ev.shopifyShop = ''; ev.shopifyLink = ''; ev.shopifyLinkId = ''; ev.connSyncing = ''; ev.rowNote = null;
   ev.tables = null; ev.tablesNote = ''; ev.table = ''; ev.rows = null; ev.rowsAfter = ''; ev.rowsNote = ''; ev.openRow = ''; ev.rowsLoading = false; ev.rowsFailed = false; ev.moderating = ''; ev.moderatingTo = '';
   ev.decisions = null;
   ev.ai = null; ev.aiNote = ''; ev.aiBusy = false; ev.aiBudget = null; ev.budgetBusy = false; ev.archive = null; ev.archiveNote = ''; ev.archiveStatus = '';
@@ -2807,7 +2807,9 @@ function shippingHtml() {
           <td class="cell-tight ev-actions-cell"><span class="act-row">
             ${l.trackingNumber ? iconBtn('ship-track', 'search', 'Check tracking', `data-id="${e(l.transactionId)}"`) : ''}
             ${l.transactionId ? iconBtn('ship-label-open', 'external', 'Open the label PDF', `data-id="${e(l.transactionId)}"`) : ''}
-            ${l.status === 'SUCCESS' ? iconBtn('ship-refund', 'trash', 'Refund this label', `data-id="${e(l.transactionId)}"`, 'is-risky') : ''}
+            ${l.status === 'SUCCESS' ? (ev.shipArm === l.transactionId
+              ? `<button class="btn btn-sm btn-ico is-armed" type="button" data-env-action="ship-refund" data-id="${e(l.transactionId)}" aria-label="Refund? Press again to confirm." data-tip="Press again to confirm">${ico('trash')}<span>Refund?</span></button>${iconBtn('ship-refund-cancel', 'x', 'Keep it', '', 'btn-arm-cancel')}`
+              : iconBtn('ship-refund', 'trash', 'Refund this label', `data-id="${e(l.transactionId)}"`, 'is-risky')) : ''}
           </span></td>
         </tr>`).join('')}</tbody>
     </table></div>`;
@@ -2980,8 +2982,20 @@ async function trackShippingLabel(transactionId) {
   catch (ex) { shipNote(errText(ex, 'Could not get the tracking status.'), true); }
   s.busy = ''; paintShipping();
 }
+// Refund asks once before it acts, the panel's armed pattern (like removing a connection or a domain): the
+// first press arms the trash into a red "Refund?" for six seconds, the second press within that refunds. It
+// stops the accidental double-click that fired two refunds -- the second hitting an already-refunding label,
+// which Shippo rejects -- so a label would refund yet the row read "could not refund" and raised an attention.
+let shipArmTimer = null;
+function armShipRefund(transactionId) {
+  ev.shipArm = transactionId; shipNote(''); paintShipping();
+  clearTimeout(shipArmTimer);
+  shipArmTimer = setTimeout(() => { if (ev.shipArm === transactionId) { ev.shipArm = ''; paintShipping(); } }, 6000);
+}
 async function refundShippingLabel(transactionId) {
   const c = activeShippo(); if (!c) return;
+  if (ev.shipArm !== transactionId) return armShipRefund(transactionId);   // first press arms; the second refunds
+  ev.shipArm = ''; clearTimeout(shipArmTimer);
   const s = shipState();
   s.busy = 'refund'; shipNote(''); paintShipping();
   try { const d = await post(`${ENV_URL}/shipping/refund`, { connectionId: c.id, transactionId }); shipNote(`Refund ${String(d.status || '').toLowerCase() || 'requested'}.`); }
@@ -4093,6 +4107,7 @@ export function bindEnvironmentActions(deps) {
     if (a === 'ship-label-open') return void openShippingLabel(btn.dataset.id || '');
     if (a === 'ship-track') return void trackShippingLabel(btn.dataset.id || '');
     if (a === 'ship-refund') return void refundShippingLabel(btn.dataset.id || '');
+    if (a === 'ship-refund-cancel') { clearTimeout(shipArmTimer); ev.shipArm = ''; paintShipping(); return; }
     if (a === 'ship-test') return void runShippingTest();
     if (a === 'conn-shopify-start') return void startShopifyConnect();
     if (a === 'conn-shopify-link') return void startShopifyConnect(btn.dataset.id || '', btn.dataset.shop || '');
