@@ -318,7 +318,10 @@ async function loadKeys() {
 
 async function loadConnections() {
   try {
-    const d = await D.apiFetch(url(`${ENV_URL}/connections`));
+    // Always read the CURRENT status. A supplier's Shopify approval (and GitHub/Microsoft OAuth returns) flip a
+    // row ACTIVE out-of-band, so a cached list read keeps showing the old "pending" and overwrites every refresh --
+    // the row reads "waiting for the supplier" forever though it is connected. The unique param defeats the cache.
+    const d = await D.apiFetch(url(`${ENV_URL}/connections`, { _: Date.now() }));
     ev.connections = d.connections || [];
     ev.connProviders = d.providers || [];
     ev.connLimit = Number(d.limit || 0);
