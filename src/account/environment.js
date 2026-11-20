@@ -2793,18 +2793,20 @@ function shippingHtml() {
     </div>
     <div class="ev-key-row">${stateLead('ship-buy', 'check', 'Buy this label', { out: s.busy === 'buy', busyWord: 'Buying…', waiting: s.picked ? '' : 'Pick a rate first' }, '', 'btn-primary')}</div>`;
 
-  const labels = s.labels;
-  const labelsHtml = labels == null ? '<p class="acct-loading">Loading labels…</p>' : !labels.length ? '<p class="acct-empty">No labels bought yet.</p>' : `
+  // Real bought labels only — a failed buy (ERROR) is not a label and never sits in the list.
+  const labels = (s.labels || []).filter(l => String(l.status || '').toUpperCase() !== 'ERROR');
+  const shipStatusWord = (st) => ({ SUCCESS: 'bought', REFUNDPENDING: 'refund pending', REFUNDED: 'refunded', QUEUED: 'finishing', WAITING: 'finishing' }[String(st || '').toUpperCase()] || String(st || '').toLowerCase() || '—');
+  const labelsHtml = s.labels == null ? '<p class="acct-loading">Loading labels…</p>' : !labels.length ? '<p class="acct-empty">No labels bought yet.</p>' : `
     <div class="adm-table-scroll"><table class="adm-table adm-table--wrap ev-table">
       <thead><tr><th>Tracking</th><th>Status</th><th>When</th><th></th></tr></thead>
       <tbody>${labels.map(l => `
         <tr>
           <td data-th="Tracking" class="cell-ellip">${l.trackingNumber ? e(l.trackingNumber) : '—'}${l.test ? ' <span class="acct-tag">test</span>' : ''}</td>
-          <td data-th="Status" class="cell-tight"><span class="acct-tag ${l.status === 'SUCCESS' ? 'is-verified' : l.status === 'REFUNDED' ? 'is-quiet' : ''}">${e(String(l.status || '').toLowerCase() || '—')}</span></td>
+          <td data-th="Status" class="cell-tight"><span class="acct-tag ${l.status === 'SUCCESS' ? 'is-verified' : (l.status === 'REFUNDED' || l.status === 'REFUNDPENDING') ? 'is-quiet' : ''}">${e(shipStatusWord(l.status))}</span></td>
           <td data-th="When" class="cell-tight adm-muted">${l.createdAt ? e(D.fmtDate(l.createdAt)) : ''}</td>
           <td class="cell-tight ev-actions-cell"><span class="act-row">
-            ${l.status === 'SUCCESS' && l.trackingNumber ? iconBtn('ship-track', 'search', 'Check tracking', `data-id="${e(l.transactionId)}"`) : ''}
-            ${l.status === 'SUCCESS' ? iconBtn('ship-label-open', 'external', 'Open the label PDF', `data-id="${e(l.transactionId)}"`) : ''}
+            ${l.trackingNumber ? iconBtn('ship-track', 'search', 'Check tracking', `data-id="${e(l.transactionId)}"`) : ''}
+            ${l.transactionId ? iconBtn('ship-label-open', 'external', 'Open the label PDF', `data-id="${e(l.transactionId)}"`) : ''}
             ${l.status === 'SUCCESS' ? iconBtn('ship-refund', 'trash', 'Refund this label', `data-id="${e(l.transactionId)}"`, 'is-risky') : ''}
           </span></td>
         </tr>`).join('')}</tbody>
