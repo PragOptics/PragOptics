@@ -2,24 +2,23 @@
 //
 // LUMEN — the platform's front-end assistant (2026-11-21).
 //
-// What it is: one assistant the person just talks to. On the HOME page it is a chat, front and
-// centre. On every other page it is an orb in the corner that opens the same chat. It knows the
-// platform because it reads the platform's own self-description (GET v1/assistant/knowledge, the
-// awareness endpoint), it holds the order a launch actually happens in, it does the machine parts
-// (it navigates you to the exact place), and it tells you only the clicks that are yours.
+// What it is: one assistant the person just talks to. On a HOME surface it is a chat, front and
+// centre (the site landing, and the account's own Home section). On every other surface it is a
+// living orb in the corner that opens the same chat. The orb is a small galaxy: a nebula core with
+// tilted orbit rings and points of light going round it, on-theme with the site's starfield and
+// helix. When the chat opens the orb steps aside, so the two never sit misaligned at any size.
 //
-// The goal is Shopify-grade ease on a platform that does far more: fewer decisions, plainer words,
-// one next thing at a time, and never a step you cannot do yet or a wall you did not know was coming.
+// It knows the platform because it reads the platform's own self-description
+// (GET v1/assistant/knowledge, the awareness endpoint), it holds the order a launch actually
+// happens in, it does the machine parts (it navigates you to the exact place), and it hands you only
+// the clicks that are yours.
 //
-// The brain: today Lumen answers from the capability knowledge and a built-in guided launch flow —
-// deterministic, so it works with no model wired in and nothing can go wrong. When a platform
-// assistant model is connected, `ask()` is the one place it plugs in (see the note there); the UI,
-// the knowledge, the navigation and the instructions (src/assistant/lumen.instructions.md) all stay.
-//
-// No secrets live here. Knowledge is public platform description; the session is read the same way
-// the rest of the app reads it (sessionStorage), never written.
+// The brain is deterministic today — the capability knowledge plus a built-in guided launch — so it
+// works and cannot go wrong with no model wired in. `ask()` is the one place a model plugs in (see
+// the note there); src/assistant/lumen.instructions.md is its brief. No secrets live here.
 
 import { PRAG_API_BASE } from '../runtime/config.js';
+import { mountDnaSwirl } from '../components/dna_swirl.js';
 
 const KNOWLEDGE_URL = `${PRAG_API_BASE}/assistant/knowledge`;
 const SETUP_URL = `${PRAG_API_BASE}/environment/setup`;
@@ -56,7 +55,6 @@ async function knowledge() {
   return _knowledgeRead;
 }
 
-// The signed-in person's real place in setup, when the lane and session allow it.
 async function setupState() {
   if (!signedIn()) return null;
   try {
@@ -72,8 +70,6 @@ async function setupState() {
 
 /* ----------------------------------------------------------------- the launch path (plain words) */
 
-// The order a human launch actually happens in. Each step: the outcome in plain words, one line of
-// why, the button label, and where Lumen takes you. `to` is a destination go() understands.
 const LAUNCH = [
   { key: 'address', label: 'Claim your web address', why: 'Your site needs a name people can type. Pick one and I set it up.', cta: 'Find my address', to: 'environment' },
   { key: 'verify',  label: 'Prove the address is yours', why: 'A quick ownership check so your mail and your live site can use the name.', cta: 'Start the check', to: 'environment' },
@@ -90,7 +86,6 @@ function go(dest) {
   closeDrawer();
   if (dest === 'studio') { try { (window.pragOpenStudio || (() => {}))(); } catch { /* ignore */ } return; }
   if (top.includes(dest)) { try { window.setAppMode?.(dest); } catch { /* ignore */ } return; }
-  // account sections: profile, subscription, environment, licensing, team, orders, builds
   if (signedIn()) {
     try { window.presetAccountSection?.(dest); window.setAppMode?.('account'); } catch { /* ignore */ }
   } else {
@@ -99,13 +94,20 @@ function go(dest) {
   }
 }
 
+/* ----------------------------------------------------------------- Lumen's mark = the brand engine */
+
+// Lumen wears PragOptics' own living mark instead of an invented orb: the DNA-swirl engine
+// (src/components/dna_swirl.js) that builds the helix and settles into the logo with a heartbeat. A
+// compact instance is the corner presence; the chat header and the message avatars use the logo.
+
 /* ----------------------------------------------------------------- DOM */
 
-const el = {};           // orb, drawer, dock(home host), chat, log, input
+const el = {};
 let built = false;
-let docked = false;      // chat currently inline on the home page
+let docked = false;
 let drawerOpen = false;
 let greeted = false;
+let curMode = 'landing';
 
 function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 
@@ -113,25 +115,29 @@ function build() {
   if (built) return;
   built = true;
 
-  // The orb: present on every page but the home page, bottom-right, opens the chat.
   const orb = document.createElement('button');
   orb.type = 'button';
   orb.id = 'lumenOrb';
   orb.className = 'lumen-orb';
   orb.setAttribute('aria-label', `Ask ${NAME}`);
-  orb.innerHTML = `<span class="lumen-orb-core" aria-hidden="true"></span><span class="lumen-orb-ring" aria-hidden="true"></span>`;
+  orb.title = `Ask ${NAME}`;
+  const orbMark = document.createElement('div');
+  orbMark.className = 'lumen-mark-host';
+  orb.appendChild(orbMark);
   orb.addEventListener('click', () => toggleDrawer());
   document.body.appendChild(orb);
   el.orb = orb;
+  // Lumen's living presence is the platform's own DNA-swirl mark.
+  try { mountDnaSwirl(orbMark, { height: 52 }); } catch { /* CSS keeps a static logo fallback */ }
 
-  // The chat itself — one element, re-parented between the home dock and the corner drawer.
   const chat = document.createElement('section');
   chat.id = 'lumenChat';
   chat.className = 'lumen-chat';
   chat.setAttribute('aria-label', `${NAME}, the PragOptics assistant`);
   chat.innerHTML = `
     <header class="lumen-head">
-      <span class="lumen-id"><span class="lumen-mark" aria-hidden="true"></span><span class="lumen-name">${NAME}</span><span class="lumen-sub">your guide to the platform</span></span>
+      <span class="lumen-mark" aria-hidden="true"></span>
+      <span class="lumen-id"><span class="lumen-name">${NAME}</span><span class="lumen-sub">your guide to the platform</span></span>
       <button type="button" class="lumen-close" aria-label="Close ${NAME}" data-lumen="close">&times;</button>
     </header>
     <div class="lumen-log" id="lumenLog" role="log" aria-live="polite"></div>
@@ -161,7 +167,6 @@ function build() {
     if (act === 'step') { guideStep(Number(b.dataset.i) || 0); return; }
   });
 
-  // A hidden corner drawer that the chat lives in when it is not docked on the home page.
   const drawer = document.createElement('div');
   drawer.id = 'lumenDrawer';
   drawer.className = 'lumen-drawer';
@@ -169,7 +174,6 @@ function build() {
   document.body.appendChild(drawer);
   el.drawer = drawer;
 
-  // Keyboard: Escape closes the drawer.
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && drawerOpen) closeDrawer(); });
 }
 
@@ -190,7 +194,6 @@ function bubble(role, html) {
 function sayYou(text) { bubble('you', esc(text)); }
 function sayLumen(html) { return bubble('lumen', html); }
 
-// A short "thinking" beat, then the real reply — so it reads like someone answering, not a form.
 function think(render) {
   const row = sayLumen('<span class="lumen-typing"><i></i><i></i><i></i></span>');
   setTimeout(() => { row.querySelector('.lumen-body').innerHTML = render(); scrollLog(); }, 380);
@@ -200,7 +203,7 @@ function chips(list) {
   return `<div class="lumen-chips">${list.map((c) => `<button type="button" class="lumen-chip" data-lumen="chip" data-text="${esc(c.text || c)}">${esc(c.label || c)}</button>`).join('')}</div>`;
 }
 
-/* ----------------------------------------------------------------- the launch guide (rich cards) */
+/* ----------------------------------------------------------------- the launch guide */
 
 let launchStarted = false;
 // Steps the person's account has ACTUALLY completed (from their setup state). Never the preview
@@ -214,7 +217,7 @@ function trackerHtml(cur) {
   }).join('')}</div>`;
 }
 function short(label) {
-  return label.replace(/^Claim your /, '').replace(/^Prove the address is yours/, 'Verify').replace(/^Build your /, 'Build ').replace(/^Turn on /, 'Pay + email').replace(/^Go live/, 'Publish').replace(/^Help people find you/, 'Be found').replace(/^web address/, 'Address').replace(/^pages/, 'Build');
+  return label.replace(/^Claim your web address/, 'Address').replace(/^Prove the address is yours/, 'Verify').replace(/^Build your pages/, 'Build').replace(/^Turn on payments and email/, 'Pay + email').replace(/^Go live/, 'Publish').replace(/^Help people find you/, 'Be found');
 }
 
 function stepCardHtml(i) {
@@ -242,12 +245,10 @@ function guideStep(i) {
 async function startLaunch(thing) {
   launchStarted = true;
   const name = thing ? ` for ${esc(thing)}` : '';
-  // If signed in, meet them where they actually are.
   const st = await setupState();
   if (st) {
     const steps = (st.groups || []).flatMap((g) => g.steps || []);
     const next = steps.find((s) => s.state === 'next') || steps.find((s) => s.state === 'open');
-    // Everything before the next thing that is actually theirs to do is done; that step is "now".
     doneSteps = Math.max(0, Math.min(mapSetupToLaunch(next), LAUNCH.length - 1));
     think(() => `Here is the whole path, and I start you on the next thing that is actually yours.${stepCardHtml(doneSteps)}`);
     return;
@@ -256,13 +257,11 @@ async function startLaunch(thing) {
   think(() => `Good${name}. Here is the whole path, start to finish. One thing at a time, in the right order, and I take you to each place.${stepCardHtml(0)}`);
 }
 
-// Best-effort map from the server's setup step id to our plain launch index, so a signed-in person
-// lands on the right card. Falls back to the start.
 function mapSetupToLaunch(step) {
   const id = String(step?.id || step?.link?.card || '').toLowerCase();
   if (/domain|address/.test(id)) return 0;
   if (/verif/.test(id)) return 1;
-  if (/site|build|studio|publish/.test(id)) return 2;
+  if (/site|build|studio/.test(id)) return 2;
   if (/stripe|pay|mail|licens/.test(id)) return 3;
   if (/live|publish/.test(id)) return 4;
   return 0;
@@ -274,47 +273,36 @@ function mapSetupToLaunch(step) {
 // POST { text, history } to a platform assistant endpoint with the instructions
 // (src/assistant/lumen.instructions.md) as the system prompt and the knowledge() list as grounding,
 // and render the streamed reply through sayLumen(). Until then Lumen answers from the knowledge and
-// the guided launch flow below, so it is useful and correct with no model at all.
+// the guided launch below, so it is useful and correct with no model at all.
 async function respond(text) {
   const t = text.toLowerCase();
 
-  // Launch intent — the thing most people are here for.
   if (/\b(launch|website|web site|site|store|shop|sell|online|landing|page|get started|set up|setup|go live)\b/.test(t)) {
     const thing = text.replace(/.*\b(for|a|an)\b/i, '').trim();
     startLaunch(thing && thing.length < 40 ? thing : '');
     return;
   }
-
-  // "What can it do" — read the platform's own description back in plain words.
   if (/\b(what|which|everything|capab|can (you|this|it)|do here|features?)\b/.test(t)) {
     const caps = await knowledge();
     think(() => capabilitiesHtml(caps));
     return;
   }
-
-  // "How do I connect / set up X" — look the capability up in the knowledge, give the plain steps.
   if (/\b(connect|hook up|integrat|shopify|stripe|shippo|twilio|github|microsoft|google|supplier|payment|mail|domain)\b/.test(t)) {
     const caps = await knowledge();
     think(() => howToHtml(caps, t));
     return;
   }
-
   if (/\b(hi|hey|hello|yo|sup)\b/.test(t) && t.length < 12) { think(() => greetingHtml()); return; }
 
-  // Fallback: offer the real doors.
   think(() => `I can take you the whole way to a live site, connect your tools like Shopify or Stripe, or explain anything on the platform. What do you want to do?${chips([{ label: 'Launch a website', text: 'I want to launch a website' }, { label: 'What can this do', text: 'What can this platform do' }, { label: 'Connect a tool', text: 'How do I connect a tool' }])}`);
 }
 
 function capabilitiesHtml(caps) {
   if (!caps || !caps.length) {
-    return `Here is what the platform does, in short: claim and verify a web address, build and publish a site in the studio, connect your own tools (Shopify, Stripe, Shippo, email and more), take payments, send mail from your address, publish your own API, and manage your team and data in one environment. Want me to launch you through it?${chips([{ label: 'Launch me through it', text: 'I want to launch a website' }])}`;
+    return `In short: claim and verify a web address, build and publish a site in the studio, connect your own tools (Shopify, Stripe, Shippo, email and more), take payments, send mail from your address, publish your own API, and manage your team and data in one environment. Want me to launch you through it?${chips([{ label: 'Launch me through it', text: 'I want to launch a website' }])}`;
   }
-  // Group by the family in the capability id (connections.*, domains-licensing.*, ...).
   const fam = {};
-  for (const c of caps) {
-    const key = String(c.id || '').split('.')[0] || 'platform';
-    (fam[key] = fam[key] || []).push(c);
-  }
+  for (const c of caps) { const key = String(c.id || '').split('.')[0] || 'platform'; (fam[key] = fam[key] || []).push(c); }
   const titleOf = (k) => ({
     connections: 'Connect your own tools', 'domains-licensing': 'Web address, mail and licensing', 'auth-identity': 'Accounts and sign-in',
     'billing-commerce': 'Payments and billing', 'studio-projects': 'Build and publish', 'imports-data': 'Your data and imports',
@@ -324,7 +312,7 @@ function capabilitiesHtml(caps) {
     const items = fam[k].slice(0, 3).map((c) => `<li>${esc(plain(c.what))}</li>`).join('');
     return `<div class="lumen-cap"><b>${esc(titleOf(k))}</b><ul>${items}</ul></div>`;
   }).join('');
-  return `Here is what the platform can do, read straight from its own record of itself — ${caps.length} capabilities in all:${rows}<div class="lumen-note">Tell me which one you want and I will take you there.</div>${chips([{ label: 'Launch a website', text: 'I want to launch a website' }, { label: 'Connect Shopify', text: 'How do I connect Shopify' }])}`;
+  return `Read straight from the platform's own record of itself — ${caps.length} capabilities in all:${rows}<div class="lumen-note">Tell me which one you want and I will take you there.</div>${chips([{ label: 'Launch a website', text: 'I want to launch a website' }, { label: 'Connect Shopify', text: 'How do I connect Shopify' }])}`;
 }
 function plain(what) { return String(what || '').replace(/\s+/g, ' ').trim(); }
 
@@ -332,12 +320,11 @@ function howToHtml(caps, t) {
   const want = ['shopify', 'stripe', 'shippo', 'twilio', 'github', 'microsoft', 'google', 'domain', 'mail', 'payment'].find((w) => t.includes(w)) || 'shopify';
   let cap = null;
   if (caps && caps.length) cap = caps.find((c) => (String(c.id || '') + ' ' + String(c.what || '')).toLowerCase().includes(want));
-  const dest = /domain|mail|address/.test(want) ? 'environment' : /payment|stripe|shippo|twilio|github|microsoft|google|shopify/.test(want) ? 'environment' : 'environment';
   const steps = cap && Array.isArray(cap.how) && cap.how.length
     ? `<ol class="lumen-steps">${cap.how.slice(0, 4).map((h) => `<li>${esc(plain(h))}</li>`).join('')}</ol>`
     : `<ol class="lumen-steps"><li>Open your environment and its Connected accounts.</li><li>Pick ${esc(cap0(want))} and follow the one short flow.</li><li>Approve it on the provider, and it connects straight back.</li></ol>`;
   const note = cap?.doneState ? `<div class="lumen-note">Done when: ${esc(plain(cap.doneState))}</div>` : '';
-  return `Here is how to connect ${esc(cap0(want))}:${steps}${note}I can take you right to it.${`<div class="lumen-card-actions"><button type="button" class="lumen-btn lumen-primary" data-lumen="go" data-to="${esc(dest)}">Take me there</button></div>`}`;
+  return `Here is how to connect ${esc(cap0(want))}:${steps}${note}<div class="lumen-card-actions"><button type="button" class="lumen-btn lumen-primary" data-lumen="go" data-to="environment">Take me there</button></div>`;
 }
 function cap0(w) { return w.charAt(0).toUpperCase() + w.slice(1); }
 
@@ -356,10 +343,54 @@ function greetOnce() {
   sayLumen(greetingHtml());
 }
 
-/* ----------------------------------------------------------------- docking + drawer + modes */
+/* ----------------------------------------------------------------- placement: home vs orb */
+
+function sectionIsHome() {
+  try { const q = new URLSearchParams(String(location.hash || '').split('?')[1] || ''); return (q.get('section') || '') === 'home'; } catch { return false; }
+}
+// Derive the live surface from the DOM (which view is shown), not from the onEnterMode hook, which
+// fires several times during boot in a racing order. The visible view is the settled, authoritative state.
+function visibleView() {
+  for (const id of ['landing', 'account', 'shop', 'software', 'checkout', 'warranty', 'builds', 'admin', 'console', 'wizard', 'join']) {
+    const v = document.getElementById(id + 'View');
+    if (v && !v.classList.contains('hidden')) return id;
+  }
+  return 'landing';
+}
+function isHomeSurface() {
+  const v = visibleView();
+  if (v === 'landing') return true;
+  if (v === 'account' && sectionIsHome()) return true;
+  return false;
+}
+
+// The element to dock the chat into on the current home surface, created/placed as needed.
+function homeHost() {
+  if (visibleView() === 'landing') {
+    const landing = document.getElementById('landingView');
+    if (!landing) return null;
+    let h = document.getElementById('lumenHome');
+    if (!h || h.dataset.home !== 'landing') {
+      if (h && h.parentElement) h.parentElement.removeChild(h);
+      h = document.createElement('div'); h.id = 'lumenHome'; h.className = 'lumen-home'; h.dataset.home = 'landing';
+      landing.insertBefore(h, landing.firstChild);
+    }
+    return h;
+  }
+  // account Home: a host directly above the section content (#acctMain), inside the stable panel main.
+  const am = document.getElementById('acctMain');
+  if (!am || !am.parentElement) return null;
+  let h = document.getElementById('lumenHome');
+  if (!h || h.dataset.home !== 'acct') {
+    if (h && h.parentElement) h.parentElement.removeChild(h);
+    h = document.createElement('div'); h.id = 'lumenHome'; h.className = 'lumen-home lumen-home-acct'; h.dataset.home = 'acct';
+  }
+  if (h.parentElement !== am.parentElement || h.nextElementSibling !== am) am.parentElement.insertBefore(h, am);
+  return h;
+}
 
 function dockHome() {
-  const host = document.getElementById('lumenHome');
+  const host = homeHost();
   if (!host) return false;
   el.chat.classList.add('lumen-docked');
   el.chat.classList.remove('lumen-in-drawer');
@@ -370,76 +401,67 @@ function dockHome() {
   return true;
 }
 
-function ensureHomeHost() {
-  // The home page is the landing view. Put a host at the very top of it so the chat is the first
-  // thing on the page. Built once; re-dock if the landing view was re-rendered.
-  const landing = document.getElementById('landingView');
-  if (!landing) return false;
-  let host = document.getElementById('lumenHome');
-  if (!host) {
-    host = document.createElement('div');
-    host.id = 'lumenHome';
-    host.className = 'lumen-home';
-    landing.insertBefore(host, landing.firstChild);
-  }
-  return true;
-}
-
 function undockToDrawer() {
   el.chat.classList.remove('lumen-docked');
   el.chat.classList.add('lumen-in-drawer');
   if (el.chat.parentElement !== el.drawer) el.drawer.appendChild(el.chat);
   docked = false;
-  el.orb?.classList.remove('lumen-hidden');
+  const h = document.getElementById('lumenHome');
+  if (h && h.parentElement && el.chat.parentElement !== h) h.parentElement.removeChild(h);
 }
+
+let homeRetry = 0;
+function placeLumen() {
+  if (!built) return;
+  if (isHomeSurface()) {
+    if (dockHome()) { homeRetry = 0; return; }
+    if (homeRetry++ < 20) setTimeout(placeLumen, 150);   // the account Home content may still be rendering
+    return;
+  }
+  homeRetry = 0;
+  if (docked || el.chat.parentElement !== el.drawer) undockToDrawer();
+  if (drawerOpen) closeDrawer();
+  else el.orb?.classList.remove('lumen-hidden');
+}
+
+/* ----------------------------------------------------------------- drawer */
 
 function openDrawer() {
   if (docked) return;
   el.drawer.hidden = false;
   requestAnimationFrame(() => el.drawer.classList.add('is-open'));
   drawerOpen = true;
-  el.orb?.classList.add('is-open');
+  el.orb?.classList.add('lumen-hidden');
   greetOnce();
-  setTimeout(() => el.input?.focus(), 120);
+  setTimeout(() => el.input?.focus(), 140);
 }
 function closeDrawer() {
   if (!drawerOpen) return;
   el.drawer.classList.remove('is-open');
   drawerOpen = false;
-  el.orb?.classList.remove('is-open');
-  setTimeout(() => { if (!drawerOpen) el.drawer.hidden = true; }, 220);
+  setTimeout(() => { if (!drawerOpen) el.drawer.hidden = true; }, 240);
+  if (!isHomeSurface()) el.orb?.classList.remove('lumen-hidden');
 }
 function toggleDrawer() { drawerOpen ? closeDrawer() : openDrawer(); }
-
-// Called on every app mode change. Home → docked chat, no orb. Elsewhere → orb, chat in the drawer.
-function onMode(mode) {
-  if (mode === 'landing') {
-    if (ensureHomeHost()) dockHome();
-  } else {
-    if (docked || el.chat.parentElement !== el.drawer) undockToDrawer();
-    if (drawerOpen) closeDrawer();
-  }
-}
 
 /* ----------------------------------------------------------------- init */
 
 export function initLumen() {
   if (built) return;
   build();
+  knowledge();   // warm the read; never blocks
 
-  // Warm the knowledge read so the first "what can this do" is instant; never blocks boot.
-  knowledge();
-
-  // Chain onto the app's mode hook without clobbering it.
+  // Place now and again once the view/section has settled (boot fires several mode changes in a row,
+  // and the account section content renders a beat later).
+  const replace = () => { try { placeLumen(); } catch { /* isolate */ } setTimeout(() => { try { placeLumen(); } catch { /* isolate */ } }, 180); };
   const prev = (typeof window.onEnterMode === 'function') ? window.onEnterMode : null;
   window.onEnterMode = (m) => {
     try { prev && prev(m); } catch { /* isolate the app's own hook */ }
-    try { onMode(m); } catch { /* isolate Lumen */ }
+    replace();
   };
-
-  // The app sets landing at boot before this hook is attached, so place Lumen for the current view now.
-  const current = !document.getElementById('landingView')?.classList.contains('hidden') ? 'landing' : 'other';
-  onMode(current === 'landing' ? 'landing' : 'account');
+  // Account section changes rewrite the hash (#account?section=home); re-place on those too.
+  window.addEventListener('hashchange', replace);
+  replace();
 
   window.pragLumen = { open: openDrawer, ask: (t) => { sayYou(t); respond(t); } };
 }
