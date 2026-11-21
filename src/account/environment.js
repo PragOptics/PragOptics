@@ -2488,6 +2488,7 @@ function connectionsHtml() {
                     : doorBtn('conn-microsoft-start', 'external', c.status === 'REJECTED' || c.detail?.declined || c.detail?.failed || msAwaiting(c) ? 'Connect again' : msApproved(c) ? 'Connect' : 'Sign in at Microsoft', 'Opening with Microsoft…', "Microsoft's sign-in page, for a work or school account in your organization", '', 'btn-primary')) : ''}
                   ${isManagedShopify(c) && c.status !== 'ACTIVE' ? doorBtn('conn-shopify-link', 'send', 'Supplier link', 'Making the link…', 'A fresh link for your supplier; the old one stops working', `data-shop="${e(c.detail?.shop || '')}"`) : ''}
                   ${isManagedShopify(c) && c.status === 'ACTIVE' ? stateLead('conn-shopify-sync', 'refresh', 'Sync products', { out: ev.connSyncing === c.id, busyWord: 'Syncing…' }, `data-id="${e(c.id)}" data-tip="Copy the store's products into this environment's data, table supplier_products"`) : ''}
+                  ${isManagedShopify(c) && c.status === 'ACTIVE' ? stateLead('conn-shopify-testorder', 'send', 'Dropship a test order', { out: ev.connBusy && ev.connRow === c.id, busyWord: 'Placing…' }, `data-id="${e(c.id)}" data-tip="Place a one-item order on the supplier's store, shipped to your billing address, to prove the dropship loop"`) : ''}
                   ${stateIcon(refreshAction, 'check', isManaged(c) ? 'Check status' : 'Test the credential', { out: !!testing, busyWord: 'Checking…', waiting: confirming ? MS_CONFIRM_WAIT : ev.connTesting && !testing ? 'Wait for the check being made' : '' }, `data-id="${e(c.id)}"`)}
                   ${confirming ? stateIcon('conn-remove', 'trash', 'Remove this connection', { waiting: MS_CONFIRM_WAIT }, `data-id="${e(c.id)}" data-label="${e(c.label)}"`, 'is-risky')
                     : iconBtn('conn-remove', 'trash', 'Remove this connection', `data-id="${e(c.id)}" data-label="${e(c.label)}"`, 'is-risky')}</span>`) : ''}</td>
@@ -2498,8 +2499,9 @@ function connectionsHtml() {
               </tr>` : ''}${isManagedShopify(c) && ev.shopifyLink && ev.shopifyLinkId === c.id ? `
               <tr class="ev-link-row" data-row="shopify-link">
                 <td colspan="5" data-th="Supplier link">
-                  <div class="ev-link-box"><code class="ev-code">${e(ev.shopifyLink)}</code>${iconBtn('domain-copy', 'copy', 'Copy the link', `data-text="${e(ev.shopifyLink)}"`)}${iconBtn('open-url', 'external', 'Open the link in a new tab', `data-url="${e(ev.shopifyLink)}"`)}</div>
-                  <p class="acct-card-note ev-note">Send this to your supplier. They open it on their Shopify store, see what PragOptics asks for, and approve; this row reads connected when they have.</p>
+                  <div class="ev-link-box"><code class="ev-code">${e(ev.shopifyLink)}</code>${iconBtn('domain-copy', 'copy', 'Copy the link', `data-text="${e(ev.shopifyLink)}"`)}</div>
+                  <div class="ev-key-row ev-invite-row"><input class="acct-input" type="email" inputmode="email" autocomplete="off" placeholder="supplier@email.com" aria-label="Your supplier's email address" id="evShopInvite-${e(c.id)}">${doorBtn('conn-shopify-email', 'send', 'Email it to them', 'Sending…', 'We email this link to your supplier from your own mailer', `data-id="${e(c.id)}" data-shop="${e(c.detail?.shop || '')}"`)}</div>
+                  <p class="acct-card-note ev-note">Copy the link and send it, or enter your supplier's email and we send it from your own mailer. They open it on their Shopify store, see what PragOptics asks for, and approve; this row reads connected when they have.</p>
                 </td>
               </tr>` : ''}`; }).join('')}
           </tbody>
@@ -2570,7 +2572,7 @@ function connectionsHtml() {
       ${form}
       <p class="acct-error" id="evConnError" hidden></p>
       ${ev.connResult ? `<p class="acct-card-note ev-note ev-conn-result" aria-live="polite">${e(ev.connResult)}</p>` : ''}
-      ${ev.shopifyLink && !(ev.connections || []).some(c => c.id === ev.shopifyLinkId) ? `<div class="ev-link-box"><code class="ev-code">${e(ev.shopifyLink)}</code>${iconBtn('domain-copy', 'copy', 'Copy the link', `data-text="${e(ev.shopifyLink)}"`)}${iconBtn('open-url', 'external', 'Open the link in a new tab', `data-url="${e(ev.shopifyLink)}"`)}</div>` : ''}
+      ${ev.shopifyLink && !(ev.connections || []).some(c => c.id === ev.shopifyLinkId) ? `<div class="ev-link-box"><code class="ev-code">${e(ev.shopifyLink)}</code>${iconBtn('domain-copy', 'copy', 'Copy the link', `data-text="${e(ev.shopifyLink)}"`)}</div>` : ''}
       ${list}`
   });
 }
@@ -3588,6 +3590,49 @@ async function shopifyRelink(id, shopFromRow) {
     D.showError('evConnError', errText(ex, 'Could not create a fresh link right now.'));
   }
 }
+/** A one-click dropship proof: place a one-item order on the connected supplier store, shipped to the
+ *  environment's billing address, so the whole loop is demonstrable without a storefront yet. */
+async function placeTestSupplierOrder(id) {
+  if (ev.connBusy || !id) return;
+  D.showError('evConnError', '');
+  ev.connBusy = true; ev.connRow = id; paintConnections();
+  try {
+    const bp = (D.cachedPing?.() || {}).billingProfile || {};
+    const shipTo = { name: bp.customerName || bp.name || '', street1: bp.addressLine1 || '', street2: bp.addressLine2 || '', city: bp.city || '', state: bp.state || '', zip: bp.postalCode || '', country: bp.country || 'US', phone: bp.phone || '' };
+    const d = await post(`${ENV_URL}/connections/shopify/order`, { id, test: true, shipTo });
+    const o = d.order || {};
+    ev.connResult = `Test dropship order ${o.name || o.supplierOrderId || ''} placed on the supplier store (status ${o.status || 'UNFULFILLED'}), recorded in your data table supplier_orders. The supplier fulfils it and bills you the way they always have.`;
+    ev.connBusy = false; ev.connRow = '';
+    await loadConnections();
+  } catch (ex) {
+    ev.connBusy = false; ev.connRow = ''; paintConnections();
+    D.showError('evConnError', errText(ex, 'Could not place a test order right now.'));
+  }
+}
+/** Email the supplier the invite link from this environment's own mailer. Re-mints so the link sent is fresh;
+ *  a missing mailer never loses the link (the backend still returns it to copy). */
+async function shopifyEmailInvite(id, shopFromRow) {
+  if (ev.connBusy || !id) return;
+  const shop = String(shopFromRow || '').trim();
+  const input = document.getElementById(`evShopInvite-${id}`);
+  const sendTo = String((input && input.value) || '').trim();
+  if (!sendTo) { D.showError('evConnError', "Type your supplier's email to send them the link, or use Copy."); return; }
+  if (!shop) { D.showError('evConnError', 'This row has no store address to send a link for.'); return; }
+  D.showError('evConnError', '');
+  ev.connBusy = true; ev.connRow = id; paintConnections();
+  try {
+    const d = await post(`${ENV_URL}/connections/shopify/start`, { shop, sendTo });
+    ev.shopifyLink = d.url; ev.shopifyLinkId = String(d.connection?.id || id || '');
+    ev.connResult = d.emailed
+      ? (d.emailNote || `The link was emailed to ${sendTo}.`)
+      : `The link was not emailed (${d.emailNote || 'no mailer set up for this environment'}). Copy it and send it yourself, or set up a mailer on the Licensing tab.`;
+    ev.connBusy = false; ev.connRow = '';
+    await loadConnections();
+  } catch (ex) {
+    ev.connBusy = false; ev.connRow = ''; paintConnections();
+    D.showError('evConnError', errText(ex, 'Could not email the link right now.'));
+  }
+}
 async function refreshShopifyConnect(id, quiet = false) {
   if (!id || ev.connTesting) return;
   if (!quiet) D.showError('evConnError', '');
@@ -4191,6 +4236,8 @@ export function bindEnvironmentActions(deps) {
     if (a === 'conn-shopify-self') return void shopifyConnectSelf();
     if (a === 'conn-shopify-supplier') return void shopifyConnectSupplier();
     if (a === 'conn-shopify-link') return void shopifyRelink(btn.dataset.id || '', btn.dataset.shop || '');
+    if (a === 'conn-shopify-email') return void shopifyEmailInvite(btn.dataset.id || '', btn.dataset.shop || '');
+    if (a === 'conn-shopify-testorder') return void placeTestSupplierOrder(btn.dataset.id || '');
     if (a === 'conn-shopify-refresh') return void refreshShopifyConnect(btn.dataset.id || '');
     if (a === 'conn-shopify-sync') return void syncShopifyProducts(btn.dataset.id || '');
     if (a === 'conn-microsoft-start') return void startMicrosoftConnect('connect');
