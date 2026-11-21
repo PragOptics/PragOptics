@@ -2550,10 +2550,10 @@ function connectionsHtml() {
         <p class="acct-card-note ev-dom-door">Sign in with your Google account and approve PragOptics, then pick the Google Cloud project that pays for the answers. The project needs the Generative Language API enabled and billing set up in Google AI Studio; Google asks that of every project. Your assistants then run on your Google account and bill, with no key to make.</p>`;
     else if (pick === 'm:shopify') door = `
         <div class="ev-key-row">
-          <input class="acct-input" id="evShopifyShop" type="text" inputmode="url" autocomplete="off" placeholder="supplier-name.myshopify.com" aria-label="Your supplier's Shopify store address" value="${e(ev.shopifyShop || '')}">
-          ${stateLead('conn-shopify-start', 'link', 'Make the link', { out: ev.connBusy && !ev.connRow, busyWord: 'Making the link…', waiting: pickWait }, '', 'btn-primary')}
+          <input class="acct-input" id="evShopifyShop" type="text" inputmode="url" autocomplete="off" placeholder="store-name.myshopify.com" aria-label="The Shopify store address to connect" value="${e(ev.shopifyShop || '')}">
+          ${stateLead('conn-shopify-start', 'external', 'Connect', { out: ev.connBusy && !ev.connRow, busyWord: 'Opening with Shopify…', waiting: pickWait }, '', 'btn-primary')}
         </div>
-        <p class="acct-card-note ev-dom-door">Your supplier's store address. You send them the link, they approve, and their products land here for your site. They bill you as they always have.</p>`;
+        <p class="acct-card-note ev-dom-door">The Shopify store to connect, yours or your supplier's. Press Connect, approve PragOptics on the store, and its products land here; it bills you the way it always has.</p>`;
     else if (picked) door = `${connFieldsHtml(picked)}<div class="ev-key-row">${stateLead('conn-add', 'plug', 'Connect', { out: ev.connBusy && !ev.connRow, busyWord: `Checking with ${picked.label}…`, waiting: pickWait }, '', 'btn-primary')}</div>`;
     form = `
       <div class="ev-conn-add">
@@ -3501,17 +3501,27 @@ async function startShopifyConnect(id = '', shopFromRow = '') {
   if (ev.connBusy) return;
   D.showError('evConnError', '');
   const shop = String(shopFromRow || document.getElementById('evShopifyShop')?.value || '').trim();
-  if (!shop) { D.showError('evConnError', 'Type your supplier\'s Shopify store address first, like supplier-name.myshopify.com.'); return; }
+  if (!shop) { D.showError('evConnError', 'Type the Shopify store address first, like store-name.myshopify.com.'); return; }
   ev.shopifyShop = shop; ev.connBusy = true; ev.connResult = ''; paintConnections();
   try {
     const d = await post(`${ENV_URL}/connections/shopify/start`, { shop });
-    if (!d?.url) throw new Error('The platform did not answer with a link.');
-    ev.shopifyLink = d.url; ev.shopifyLinkId = String(d.connection?.id || id || ''); ev.shopifyShop = ''; ev.connResult = ev.shopifyLinkId ? '' : (d.note || 'Send the link to your supplier.');
-    ev.connBusy = false;
-    await loadConnections();
+    // From a pending row's "Supplier link": the supplier runs a store you do not, so hand back the invite link to send them.
+    if (id) {
+      ev.shopifyLink = d.url; ev.shopifyLinkId = String(d.connection?.id || id || ''); ev.shopifyShop = '';
+      ev.connResult = d.note || 'Send this link to your supplier.';
+      ev.connBusy = false; await loadConnections(); return;
+    }
+    // New connect: one click straight to the store's own Shopify approve page, the same path Shippo/Microsoft/GitHub
+    // take (window.location.assign to the provider). Approve there and Shopify returns you here with it connected --
+    // nothing to copy or send. The return marker lets the page settle on this connection when you come back.
+    const go = d.directUrl || d.url;
+    if (!go) throw new Error('Shopify did not answer with an authorization link.');
+    try { sessionStorage.setItem('pragoptics_connect_return', JSON.stringify({ provider: 'shopify', id: String(d.connection?.id || '') })); } catch { /* the return still carries the id */ }
+    window.location.assign(go);
+    return;
   } catch (ex) {
     ev.connBusy = false; paintConnections();
-    D.showError('evConnError', errText(ex, 'Could not make the link right now.'));
+    D.showError('evConnError', errText(ex, 'Could not start the Shopify connection right now.'));
   }
 }
 async function refreshShopifyConnect(id, quiet = false) {
