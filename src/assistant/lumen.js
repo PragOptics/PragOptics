@@ -21,7 +21,7 @@ import { PRAG_API_BASE } from '../runtime/config.js';
 
 const KNOWLEDGE_URL = `${PRAG_API_BASE}/assistant/knowledge`;
 const SETUP_URL = `${PRAG_API_BASE}/environment/setup`;
-const NAME = 'Lumen';
+const NAME = 'Quark';
 
 /* ----------------------------------------------------------------- session (read-only) */
 
