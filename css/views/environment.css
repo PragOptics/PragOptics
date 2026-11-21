@@ -250,6 +250,16 @@
 .ev-conn-kind { display: block; font-size: .78rem; }
 .ev-link-box { display: flex; gap: 8px; align-items: flex-start; margin-top: 10px; padding: 8px 10px; border-radius: var(--radius-ctl); border: 1px solid var(--border); background: var(--surface-3); }
 .ev-link-box .ev-code { flex: 1 1 auto; font-size: .8rem; }
+/* Shopify connect: the guided "who approves?" step (2026-11-20). Choice cards modeled on .ev-agent. */
+.ev-choice-row { display: grid; gap: 10px; margin-top: 12px; }
+.ev-choice { display: grid; gap: 4px; text-align: left; padding: 12px 14px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface-3); color: var(--ink); font: inherit; cursor: pointer; transition: border-color 160ms ease, background 160ms ease; }
+.ev-choice:hover:not(:disabled) { border-color: var(--brand-600); background: color-mix(in srgb, var(--brand-600) 6%, var(--surface-3)); }
+.ev-choice:disabled { opacity: .6; cursor: default; }
+.ev-choice b { font-size: .98rem; }
+.ev-choice span { font-size: .85rem; color: var(--muted); line-height: 1.45; }
+.ev-back { margin-top: 10px; padding: 2px 0; border: 0; background: transparent; color: var(--muted); font: inherit; cursor: pointer; text-decoration: underline; }
+.ev-back:hover { color: var(--ink); }
+@container (min-width: 560px) { .ev-choice-row { grid-template-columns: 1fr 1fr; } }
 /* A card never grows past its column: the tables inside scroll, the card does not. */
 .ev-cards > * { min-width: 0; }
 .ev-card, .ev-card-body { min-width: 0; max-width: 100%; }

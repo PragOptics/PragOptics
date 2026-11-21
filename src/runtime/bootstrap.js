@@ -46,6 +46,7 @@
     import { createIdleGate } from '../account/idleGate.js';
     import { busy } from '../account/cards.js';
     import { initJoinView, onJoinEnter } from '../team/join.js';
+    import initLumen from '../assistant/lumen.js';
     import { PRAG_API_BASE, LANE, STUDIO_URL } from "./config.js";
     import { consumeLaneSigninFlag, consumeLaneVerifier, consumeLaneHandoff } from './lane.js';
 
@@ -142,6 +143,11 @@
       if (mode === 'account') onAccountEnter();
       if (mode === 'join') onJoinEnter();
     };
+
+    // Lumen — the front-end assistant: a chat on the home page, an orb on every other page. It wraps
+    // the onEnterMode hook just above (chaining, never replacing it) and places itself for the view
+    // showing now. It reads the platform's own capability knowledge to guide a launch in plain words.
+    initLumen();
 
     const _mountSwirl = () => {
       // one frame later ensures layout metrics exist

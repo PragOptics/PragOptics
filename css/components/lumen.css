@@ -1,0 +1,147 @@
+/* css/components/lumen.css
+   LUMEN — the platform's front-end assistant. Home page: a chat, docked at the top of the landing.
+   Everywhere else: an orb in the corner that opens the same chat in a drawer. Reads the design
+   tokens, so it follows light/dark with the rest of the site. No pills over --radius-pill; chips and
+   controls use the tight control radius, per the house rule. */
+
+:root {
+  --lumen-grad: linear-gradient(135deg, var(--brand-600) 0%, var(--brand-purp-solid) 100%);
+  --lumen-glass: color-mix(in srgb, var(--menu) 86%, transparent);
+  --lumen-panel-border: color-mix(in srgb, var(--brand-600) 24%, var(--border));
+}
+
+/* ---------------------------------------------------------------- the orb */
+
+.lumen-orb {
+  position: fixed; right: 22px; bottom: 22px; z-index: 1400;
+  width: 58px; height: 58px; padding: 0; border: 0; border-radius: 50%;
+  background: transparent; cursor: pointer; display: grid; place-items: center;
+  filter: drop-shadow(0 8px 22px color-mix(in srgb, var(--brand-purp-solid) 40%, transparent));
+  transition: transform 180ms cubic-bezier(.22,.61,.36,1);
+}
+.lumen-orb:hover { transform: translateY(-2px) scale(1.04); }
+.lumen-orb:active { transform: scale(.97); }
+.lumen-orb.lumen-hidden { display: none; }
+.lumen-orb-core {
+  position: absolute; inset: 9px; border-radius: 50%; background: var(--lumen-grad);
+  box-shadow: inset 0 0 12px color-mix(in srgb, #fff 45%, transparent), inset 0 -6px 14px color-mix(in srgb, var(--brand-purp-solid) 55%, transparent);
+  animation: lumenBreathe 4.2s ease-in-out infinite;
+}
+.lumen-orb-ring {
+  position: absolute; inset: 0; border-radius: 50%;
+  background: conic-gradient(from 0deg, transparent 0 60%, color-mix(in srgb, var(--brand-600) 85%, transparent) 78%, color-mix(in srgb, var(--brand-purp-solid) 85%, transparent) 92%, transparent 100%);
+  -webkit-mask: radial-gradient(circle, transparent 60%, #000 62%);
+          mask: radial-gradient(circle, transparent 60%, #000 62%);
+  animation: lumenSpin 7s linear infinite; opacity: .9;
+}
+.lumen-orb.is-open .lumen-orb-core { animation-play-state: paused; }
+@keyframes lumenBreathe { 0%,100% { transform: scale(1); filter: brightness(1); } 50% { transform: scale(.93); filter: brightness(1.15); } }
+@keyframes lumenSpin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .lumen-orb-core, .lumen-orb-ring { animation: none; } }
+
+/* ---------------------------------------------------------------- the chat shell */
+
+.lumen-chat { display: flex; flex-direction: column; min-height: 0; color: var(--ink); font: 400 15px/1.5 system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+
+.lumen-head { display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-bottom: 1px solid var(--border); }
+.lumen-id { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.lumen-mark { width: 26px; height: 26px; border-radius: 50%; background: var(--lumen-grad); box-shadow: 0 0 14px color-mix(in srgb, var(--brand-600) 55%, transparent); flex: 0 0 auto; }
+.lumen-name { font-weight: 500; font-size: 1.02rem; background: linear-gradient(100deg, var(--brand-600), var(--purp-bright)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.lumen-sub { font-size: .8rem; color: var(--muted); }
+.lumen-close { margin-left: auto; width: 30px; height: 30px; border: 0; background: transparent; color: var(--muted); font-size: 1.3rem; line-height: 1; border-radius: var(--radius-ctl); cursor: pointer; }
+.lumen-close:hover { color: var(--ink); background: var(--surface-3); }
+
+.lumen-log { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+.lumen-log::-webkit-scrollbar { width: 8px; }
+.lumen-log::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--ink) 18%, transparent); border-radius: 8px; }
+
+.lumen-msg { display: flex; gap: 10px; max-width: 100%; }
+.lumen-msg .lumen-body { padding: 10px 13px; border-radius: 13px; }
+.lumen-lumen .lumen-avatar { width: 24px; height: 24px; border-radius: 50%; background: var(--lumen-grad); flex: 0 0 auto; margin-top: 2px; box-shadow: 0 0 10px color-mix(in srgb, var(--brand-purp-solid) 45%, transparent); }
+.lumen-lumen .lumen-body { background: var(--surface-2); border: 1px solid var(--border); border-top-left-radius: 4px; color: var(--ink); }
+.lumen-you { justify-content: flex-end; }
+.lumen-you .lumen-body { background: color-mix(in srgb, var(--brand-600) 20%, transparent); border: 1px solid color-mix(in srgb, var(--brand-600) 40%, transparent); border-top-right-radius: 4px; color: var(--ink); max-width: 85%; }
+.lumen-body p { margin: 0 0 8px; }
+.lumen-body > :last-child { margin-bottom: 0; }
+
+/* typing */
+.lumen-typing { display: inline-flex; gap: 4px; padding: 2px 0; }
+.lumen-typing i { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); animation: lumenDot 1.1s ease-in-out infinite; }
+.lumen-typing i:nth-child(2) { animation-delay: .18s; }
+.lumen-typing i:nth-child(3) { animation-delay: .36s; }
+@keyframes lumenDot { 0%,100% { opacity: .3; transform: translateY(0); } 50% { opacity: 1; transform: translateY(-3px); } }
+
+/* chips */
+.lumen-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.lumen-chip { font-size: .85rem; padding: 7px 12px; border-radius: var(--radius-ctl); border: 1px solid color-mix(in srgb, var(--brand-600) 35%, var(--border)); background: color-mix(in srgb, var(--brand-600) 8%, transparent); color: var(--ink); cursor: pointer; transition: background 140ms, border-color 140ms; }
+.lumen-chip:hover { background: color-mix(in srgb, var(--brand-600) 18%, transparent); border-color: var(--brand-600); }
+
+/* capability + how-to lists */
+.lumen-cap { margin-top: 10px; }
+.lumen-cap b { color: var(--card-title); font-weight: 500; }
+.lumen-cap ul, .lumen-steps { margin: 4px 0 0; padding-left: 18px; color: var(--muted); }
+.lumen-cap li, .lumen-steps li { margin: 2px 0; }
+.lumen-steps { counter-reset: none; }
+.lumen-note { margin-top: 10px; font-size: .85rem; color: var(--muted); }
+
+/* the next-thing card */
+.lumen-card { margin-top: 12px; padding: 15px; border: 1px solid var(--lumen-panel-border); border-radius: 14px; background: var(--surface-2); }
+.lumen-card-k { font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.lumen-card-t { font-size: 1.1rem; font-weight: 500; color: var(--card-title); margin: 5px 0 4px; }
+.lumen-card-b { color: var(--muted); font-size: .92rem; line-height: 1.5; }
+.lumen-card-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 13px; }
+.lumen-btn { font: inherit; font-size: .9rem; padding: 9px 15px; border-radius: var(--radius-btn); cursor: pointer; border: 1px solid transparent; }
+.lumen-primary { background: var(--brand-600); color: var(--on-brand); font-weight: 500; }
+.lumen-primary:hover { filter: brightness(1.08); }
+.lumen-ghost { background: transparent; border-color: color-mix(in srgb, var(--ink) 24%, transparent); color: var(--ink); }
+.lumen-ghost:hover { border-color: var(--brand-600); color: var(--brand-600); }
+
+/* the order-of-operations tracker */
+.lumen-track { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.lumen-trk { display: inline-flex; align-items: center; gap: 6px; font-size: .78rem; padding: 5px 9px; border-radius: var(--radius-ctl); border: 1px solid var(--border); color: var(--muted); background: var(--surface-3); }
+.lumen-trk b { display: grid; place-items: center; width: 17px; height: 17px; border-radius: 50%; font-size: .72rem; border: 1px solid currentColor; }
+.lumen-trk.is-now { border-color: var(--brand-600); background: color-mix(in srgb, var(--brand-600) 14%, transparent); color: var(--ink); }
+.lumen-trk.is-now b { color: var(--brand-600); border-color: var(--brand-600); }
+.lumen-trk.is-done { color: color-mix(in srgb, var(--ok) 90%, var(--ink)); }
+.lumen-trk.is-done b { color: var(--ok); border-color: var(--ok); }
+
+/* ---------------------------------------------------------------- the ask bar */
+
+.lumen-ask { display: flex; gap: 8px; align-items: center; padding: 12px 14px; border-top: 1px solid var(--border); }
+.lumen-input { flex: 1 1 auto; min-width: 0; height: 42px; padding: 0 14px; border-radius: var(--radius-btn); border: 1px solid var(--border); background: var(--surface-3); color: var(--ink); font: inherit; }
+.lumen-input:focus { outline: none; border-color: var(--brand-600); box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand-600) 22%, transparent); }
+.lumen-input::placeholder { color: var(--muted); }
+.lumen-send { flex: 0 0 auto; width: 42px; height: 42px; border: 0; border-radius: 50%; background: var(--lumen-grad); color: #fff; font-size: 1.15rem; cursor: pointer; display: grid; place-items: center; }
+.lumen-send:hover { filter: brightness(1.08); }
+
+/* ---------------------------------------------------------------- docked on the home page */
+
+.lumen-home { width: 100%; display: flex; justify-content: center; margin: 0 0 8px; }
+.lumen-chat.lumen-docked {
+  width: 100%; max-width: 760px; height: min(62vh, 560px);
+  background: var(--lumen-glass); border: 1px solid var(--lumen-panel-border); border-radius: var(--radius);
+  box-shadow: var(--aura); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); overflow: hidden;
+}
+.lumen-chat.lumen-docked .lumen-close { display: none; }
+
+/* ---------------------------------------------------------------- the corner drawer */
+
+.lumen-drawer {
+  position: fixed; right: 20px; bottom: 20px; z-index: 1399;
+  width: min(390px, calc(100vw - 32px)); height: min(600px, calc(100vh - 110px));
+  background: var(--lumen-glass); border: 1px solid var(--lumen-panel-border); border-radius: var(--radius);
+  box-shadow: var(--aura); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); overflow: hidden;
+  opacity: 0; transform: translateY(16px) scale(.98); transform-origin: bottom right;
+  transition: opacity 200ms ease, transform 220ms cubic-bezier(.22,.61,.36,1);
+  pointer-events: none;
+}
+.lumen-drawer.is-open { opacity: 1; transform: translateY(0) scale(1); pointer-events: auto; }
+.lumen-chat.lumen-in-drawer { height: 100%; }
+
+/* ---------------------------------------------------------------- mobile */
+
+@media (max-width: 640px) {
+  .lumen-chat.lumen-docked { height: min(66vh, 520px); border-radius: var(--radius-sm); }
+  .lumen-orb { right: 16px; bottom: 16px; }
+  .lumen-drawer { right: 0; left: 0; bottom: 0; width: 100vw; height: 82vh; border-radius: var(--radius) var(--radius) 0 0; transform-origin: bottom center; }
+}

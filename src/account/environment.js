@@ -181,7 +181,7 @@ function canUseSandbox() { return BUILD_ROLES.has(myRole()); }
 export async function renderEnvironment(main, deps) {
   D = deps;
   ev.madeKey = null; ev.filesNote = ''; ev.files = null; ev.keys = null; ev.domains = null; ev.domainNote = ''; ev.linkNote = ''; ev.domArm = ''; ev.keyArm = ''; ev.checking = ''; ev.registrations = []; ev.reg = freshReg();
-  ev.connections = null; ev.connProviders = []; ev.connNote = ''; ev.connPick = ''; ev.connBusy = false; ev.connResult = ''; ev.connTesting = ''; ev.connDraft = {}; ev.connArm = ''; ev.shipArm = ''; ev.rowNote = null; ev.shopifyShop = ''; ev.shopifyLink = ''; ev.shopifyLinkId = ''; ev.connSyncing = ''; ev.rowNote = null;
+  ev.connections = null; ev.connProviders = []; ev.connNote = ''; ev.connPick = ''; ev.connBusy = false; ev.connResult = ''; ev.connTesting = ''; ev.connDraft = {}; ev.connArm = ''; ev.shipArm = ''; ev.rowNote = null; ev.shopifyShop = ''; ev.shopifyStep = ''; ev.shopifyLink = ''; ev.shopifyLinkId = ''; ev.connSyncing = ''; ev.rowNote = null;
   ev.tables = null; ev.tablesNote = ''; ev.table = ''; ev.rows = null; ev.rowsAfter = ''; ev.rowsNote = ''; ev.openRow = ''; ev.rowsLoading = false; ev.rowsFailed = false; ev.moderating = ''; ev.moderatingTo = '';
   ev.decisions = null;
   ev.ai = null; ev.aiNote = ''; ev.aiBusy = false; ev.aiBudget = null; ev.budgetBusy = false; ev.archive = null; ev.archiveNote = ''; ev.archiveStatus = '';
@@ -2548,12 +2548,7 @@ function connectionsHtml() {
     else if (pick === 'm:google') door = `
         <div class="ev-key-row">${stateLead('conn-google-start', 'external', 'Sign in at Google', { out: ev.connBusy && !ev.connRow, busyWord: 'Opening with Google…', waiting: pickWait }, '', 'btn-primary')}</div>
         <p class="acct-card-note ev-dom-door">Sign in with your Google account and approve PragOptics, then pick the Google Cloud project that pays for the answers. The project needs the Generative Language API enabled and billing set up in Google AI Studio; Google asks that of every project. Your assistants then run on your Google account and bill, with no key to make.</p>`;
-    else if (pick === 'm:shopify') door = `
-        <div class="ev-key-row">
-          <input class="acct-input" id="evShopifyShop" type="text" inputmode="url" autocomplete="off" placeholder="store-name.myshopify.com" aria-label="The Shopify store address to connect" value="${e(ev.shopifyShop || '')}">
-          ${stateLead('conn-shopify-start', 'external', 'Connect', { out: ev.connBusy && !ev.connRow, busyWord: 'Opening with Shopify…', waiting: pickWait }, '', 'btn-primary')}
-        </div>
-        <p class="acct-card-note ev-dom-door">The Shopify store to connect, yours or your supplier's. Press Connect, approve PragOptics on the store, and its products land here; it bills you the way it always has.</p>`;
+    else if (pick === 'm:shopify') door = shopifyDoorHtml(e, pickWait);
     else if (picked) door = `${connFieldsHtml(picked)}<div class="ev-key-row">${stateLead('conn-add', 'plug', 'Connect', { out: ev.connBusy && !ev.connRow, busyWord: `Checking with ${picked.label}…`, waiting: pickWait }, '', 'btn-primary')}</div>`;
     form = `
       <div class="ev-conn-add">
@@ -3496,24 +3491,58 @@ async function refreshShippoConnect(id, quiet = false) {
   await loadConnections();
 }
 
-/** A Shopify supplier (2026-09-16): the platform opens a pending row for the supplier's store and hands back the invite link the customer sends them. */
-async function startShopifyConnect(id = '', shopFromRow = '') {
-  if (ev.connBusy) return;
+/* The Shopify connect door is a short guided flow, not one deterministic form. Shopify's docs leave exactly one way in
+ * for an app that runs outside the admin (a standalone app, which PragOptics is): the OAuth authorization code grant,
+ * where a person who can sign into that store's admin approves PragOptics on Shopify's own grant screen. No API connects
+ * a store without that approval, and none reads the store's email before it is installed. So the only thing the flow has
+ * to ask is who that person is: the customer (approve now, one click) or their supplier (a link to send). Both paths end
+ * on the same Shopify approve page; the backend start route opens a pending row and returns both the direct URL and the
+ * sendable link. */
+function shopifyDoorHtml(e, pickWait) {
+  if (ev.shopifyStep === 'who') {
+    const busy = ev.connBusy && !ev.connRow;
+    return `
+        <p class="acct-card-note ev-dom-door">Connecting <b>${e(ev.shopifyShop || 'this store')}</b>. Who can approve PragOptics on it?</p>
+        <div class="ev-choice-row">
+          <button type="button" class="ev-choice" data-env-action="conn-shopify-self" ${busy ? 'disabled' : ''}>
+            <b>I manage this store</b>
+            <span>Approve it now. Shopify opens, you say yes, and you come straight back connected.</span>
+          </button>
+          <button type="button" class="ev-choice" data-env-action="conn-shopify-supplier" ${busy ? 'disabled' : ''}>
+            <b>My supplier manages it</b>
+            <span>Get a secure link to send them. They approve on their own store, and this connects the moment they do.</span>
+          </button>
+        </div>
+        ${busy ? '<p class="acct-card-note ev-note" aria-live="polite">Opening with Shopify…</p>' : '<button type="button" class="ev-back" data-env-action="conn-shopify-back">Back</button>'}`;
+  }
+  return `
+        <div class="ev-key-row">
+          <input class="acct-input" id="evShopifyShop" type="text" inputmode="url" autocomplete="off" placeholder="store-name.myshopify.com" aria-label="The Shopify store address to connect" value="${e(ev.shopifyShop || '')}">
+          ${stateLead('conn-shopify-continue', 'external', 'Continue', { out: false, waiting: pickWait }, '', 'btn-primary')}
+        </div>
+        <p class="acct-card-note ev-dom-door">Connect a Shopify store so its products flow into this environment and orders can be fulfilled through it. Enter the store's address to begin, like store-name.myshopify.com.</p>`;
+}
+
+/** Step 1 -> 2: take the store address and ask who approves. No backend call yet; nothing is created until a path is picked. */
+function shopifyContinue() {
   D.showError('evConnError', '');
-  const shop = String(shopFromRow || document.getElementById('evShopifyShop')?.value || '').trim();
+  const shop = String(document.getElementById('evShopifyShop')?.value || '').trim();
   if (!shop) { D.showError('evConnError', 'Type the Shopify store address first, like store-name.myshopify.com.'); return; }
-  ev.shopifyShop = shop; ev.connBusy = true; ev.connResult = ''; paintConnections();
+  ev.shopifyShop = shop; ev.shopifyStep = 'who'; paintConnections();
+}
+/** Back to the store step. */
+function shopifyBack() { ev.shopifyStep = ''; D.showError('evConnError', ''); paintConnections(); }
+
+/** Path 1 - the customer manages the store: open a pending row, then send them straight to Shopify's approve page
+ *  (the same window.location.assign the other OAuth providers use). Approve there and Shopify returns to the callback
+ *  connected; the return marker settles the card on this connection. */
+async function shopifyConnectSelf() {
+  if (ev.connBusy) return;
+  const shop = ev.shopifyShop;
+  if (!shop) { ev.shopifyStep = ''; paintConnections(); return; }
+  ev.connRow = ''; ev.connBusy = true; ev.connResult = ''; D.showError('evConnError', ''); paintConnections();
   try {
     const d = await post(`${ENV_URL}/connections/shopify/start`, { shop });
-    // From a pending row's "Supplier link": the supplier runs a store you do not, so hand back the invite link to send them.
-    if (id) {
-      ev.shopifyLink = d.url; ev.shopifyLinkId = String(d.connection?.id || id || ''); ev.shopifyShop = '';
-      ev.connResult = d.note || 'Send this link to your supplier.';
-      ev.connBusy = false; await loadConnections(); return;
-    }
-    // New connect: one click straight to the store's own Shopify approve page, the same path Shippo/Microsoft/GitHub
-    // take (window.location.assign to the provider). Approve there and Shopify returns you here with it connected --
-    // nothing to copy or send. The return marker lets the page settle on this connection when you come back.
     const go = d.directUrl || d.url;
     if (!go) throw new Error('Shopify did not answer with an authorization link.');
     try { sessionStorage.setItem('pragoptics_connect_return', JSON.stringify({ provider: 'shopify', id: String(d.connection?.id || '') })); } catch { /* the return still carries the id */ }
@@ -3521,7 +3550,42 @@ async function startShopifyConnect(id = '', shopFromRow = '') {
     return;
   } catch (ex) {
     ev.connBusy = false; paintConnections();
-    D.showError('evConnError', errText(ex, 'Could not start the Shopify connection right now.'));
+    D.showError('evConnError', errText(ex, 'Could not open the Shopify approval right now.'));
+  }
+}
+/** Path 2 - the supplier manages the store: open a pending row and hand back the secure link to send them. They open it,
+ *  see what PragOptics asks for, and approve; this row flips to connected on its own (loadConnections reads it fresh). */
+async function shopifyConnectSupplier() {
+  if (ev.connBusy) return;
+  const shop = ev.shopifyShop;
+  if (!shop) { ev.shopifyStep = ''; paintConnections(); return; }
+  ev.connRow = ''; ev.connBusy = true; ev.connResult = ''; D.showError('evConnError', ''); paintConnections();
+  try {
+    const d = await post(`${ENV_URL}/connections/shopify/start`, { shop });
+    ev.shopifyLink = d.url; ev.shopifyLinkId = String(d.connection?.id || '');
+    ev.shopifyShop = ''; ev.shopifyStep = ''; ev.connBusy = false;
+    ev.connResult = 'Send this link to whoever manages the store. It connects the moment they approve.';
+    await loadConnections();
+  } catch (ex) {
+    ev.connBusy = false; paintConnections();
+    D.showError('evConnError', errText(ex, 'Could not create the supplier link right now.'));
+  }
+}
+/** A pending supplier row's "New link": mint a fresh link for that store; the old one stops working. */
+async function shopifyRelink(id, shopFromRow) {
+  if (ev.connBusy || !id) return;
+  const shop = String(shopFromRow || '').trim();
+  if (!shop) { D.showError('evConnError', 'This row has no store address to relink.'); return; }
+  D.showError('evConnError', '');
+  ev.connBusy = true; paintConnections();
+  try {
+    const d = await post(`${ENV_URL}/connections/shopify/start`, { shop });
+    ev.shopifyLink = d.url; ev.shopifyLinkId = String(d.connection?.id || id || '');
+    ev.connResult = 'A fresh link; the old one no longer works.'; ev.connBusy = false;
+    await loadConnections();
+  } catch (ex) {
+    ev.connBusy = false; paintConnections();
+    D.showError('evConnError', errText(ex, 'Could not create a fresh link right now.'));
   }
 }
 async function refreshShopifyConnect(id, quiet = false) {
@@ -4122,8 +4186,11 @@ export function bindEnvironmentActions(deps) {
     if (a === 'ship-refund') return void refundShippingLabel(btn.dataset.id || '');
     if (a === 'ship-refund-cancel') { clearTimeout(shipArmTimer); ev.shipArm = ''; paintShipping(); return; }
     if (a === 'ship-test') return void runShippingTest();
-    if (a === 'conn-shopify-start') return void startShopifyConnect();
-    if (a === 'conn-shopify-link') return void startShopifyConnect(btn.dataset.id || '', btn.dataset.shop || '');
+    if (a === 'conn-shopify-continue') return void shopifyContinue();
+    if (a === 'conn-shopify-back') return void shopifyBack();
+    if (a === 'conn-shopify-self') return void shopifyConnectSelf();
+    if (a === 'conn-shopify-supplier') return void shopifyConnectSupplier();
+    if (a === 'conn-shopify-link') return void shopifyRelink(btn.dataset.id || '', btn.dataset.shop || '');
     if (a === 'conn-shopify-refresh') return void refreshShopifyConnect(btn.dataset.id || '');
     if (a === 'conn-shopify-sync') return void syncShopifyProducts(btn.dataset.id || '');
     if (a === 'conn-microsoft-start') return void startMicrosoftConnect('connect');
