@@ -18,7 +18,6 @@
 // the note there); src/assistant/lumen.instructions.md is its brief. No secrets live here.
 
 import { PRAG_API_BASE } from '../runtime/config.js';
-import { mountDnaSwirl } from '../components/dna_swirl.js';
 
 const KNOWLEDGE_URL = `${PRAG_API_BASE}/assistant/knowledge`;
 const SETUP_URL = `${PRAG_API_BASE}/environment/setup`;
@@ -121,14 +120,9 @@ function build() {
   orb.className = 'lumen-orb';
   orb.setAttribute('aria-label', `Ask ${NAME}`);
   orb.title = `Ask ${NAME}`;
-  const orbMark = document.createElement('div');
-  orbMark.className = 'lumen-mark-host';
-  orb.appendChild(orbMark);
   orb.addEventListener('click', () => toggleDrawer());
   document.body.appendChild(orb);
   el.orb = orb;
-  // Lumen's living presence is the platform's own DNA-swirl mark.
-  try { mountDnaSwirl(orbMark, { height: 52 }); } catch { /* CSS keeps a static logo fallback */ }
 
   const chat = document.createElement('section');
   chat.id = 'lumenChat';
