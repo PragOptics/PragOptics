@@ -482,6 +482,17 @@ export function initQuark() {
   };
   // Account section changes rewrite the hash (#account?section=home); re-place on those too.
   window.addEventListener('hashchange', replace);
+  // The account Home content (#acctMain) renders asynchronously after sign-in and re-renders on every
+  // section change. Watch it so the chat docks the moment that content appears, instead of being left
+  // as the corner character when the first placement runs before the content exists (the timed retry
+  // alone can lapse during a slow sign-in).
+  try {
+    const acctView = document.getElementById('accountView');
+    if (acctView && 'MutationObserver' in window) {
+      let moT = 0;
+      new MutationObserver(() => { clearTimeout(moT); moT = setTimeout(() => { try { placeQuark(); } catch { /* isolate */ } }, 80); }).observe(acctView, { childList: true, subtree: true });
+    }
+  } catch { /* no observer: the timed retry still covers the common case */ }
   replace();
 
   window.pragQuark = { open: openDrawer, ask: (t) => { sayYou(t); respond(t); } };
