@@ -203,11 +203,14 @@ function chips(list) {
 /* ----------------------------------------------------------------- the launch guide (rich cards) */
 
 let launchStarted = false;
+// Steps the person's account has ACTUALLY completed (from their setup state). Never the preview
+// position: clicking "Next step" to read ahead must never mark a step done that isn't.
+let doneSteps = 0;
 
 function trackerHtml(cur) {
   return `<div class="lumen-track">${LAUNCH.map((s, i) => {
-    const state = i < cur ? 'done' : i === cur ? 'now' : 'next';
-    return `<span class="lumen-trk is-${state}"><b>${i < cur ? '&#10003;' : (i + 1)}</b>${esc(short(s.label))}</span>`;
+    const state = i === cur ? 'now' : i < doneSteps ? 'done' : 'next';
+    return `<span class="lumen-trk is-${state}"><b>${i < doneSteps ? '&#10003;' : (i + 1)}</b>${esc(short(s.label))}</span>`;
   }).join('')}</div>`;
 }
 function short(label) {
@@ -242,12 +245,14 @@ async function startLaunch(thing) {
   // If signed in, meet them where they actually are.
   const st = await setupState();
   if (st) {
-    const next = (st.groups || []).flatMap((g) => g.steps || []).find((s) => s.state === 'next')
-      || (st.groups || []).flatMap((g) => g.steps || []).find((s) => s.state === 'open');
-    const done = (st.groups || []).flatMap((g) => g.steps || []).filter((s) => s.state === 'done').length;
-    think(() => `You are already set up through ${done} step${done === 1 ? '' : 's'}. Here is the whole path, and I will start you on the next thing that is actually yours to do.${trackerHtml(Math.min(done, LAUNCH.length - 1))}${stepCardHtml(mapSetupToLaunch(next))}`);
+    const steps = (st.groups || []).flatMap((g) => g.steps || []);
+    const next = steps.find((s) => s.state === 'next') || steps.find((s) => s.state === 'open');
+    // Everything before the next thing that is actually theirs to do is done; that step is "now".
+    doneSteps = Math.max(0, Math.min(mapSetupToLaunch(next), LAUNCH.length - 1));
+    think(() => `Here is the whole path, and I start you on the next thing that is actually yours.${stepCardHtml(doneSteps)}`);
     return;
   }
+  doneSteps = 0;
   think(() => `Good${name}. Here is the whole path, start to finish. One thing at a time, in the right order, and I take you to each place.${stepCardHtml(0)}`);
 }
 
