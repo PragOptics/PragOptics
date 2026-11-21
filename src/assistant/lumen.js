@@ -124,16 +124,16 @@ function build() {
   document.body.appendChild(orb);
   el.orb = orb;
 
-  const chat = document.createElement('section');
+  const chat = document.createElement('div');
   chat.id = 'lumenChat';
   chat.className = 'lumen-chat';
   chat.setAttribute('aria-label', `${NAME}, the PragOptics assistant`);
   chat.innerHTML = `
-    <header class="lumen-head">
+    <div class="lumen-head">
       <span class="lumen-mark" aria-hidden="true"></span>
       <span class="lumen-id"><span class="lumen-name">${NAME}</span><span class="lumen-sub">your guide to the platform</span></span>
       <button type="button" class="lumen-close" aria-label="Close ${NAME}" data-lumen="close">&times;</button>
-    </header>
+    </div>
     <div class="lumen-log" id="lumenLog" role="log" aria-live="polite"></div>
     <form class="lumen-ask" id="lumenForm" autocomplete="off">
       <input class="lumen-input" id="lumenInput" type="text" placeholder="Tell me what you want to do" aria-label="Ask ${NAME}">
@@ -335,6 +335,8 @@ function greetOnce() {
   if (greeted) return;
   greeted = true;
   sayLumen(greetingHtml());
+  // Show the greeting from its top, never scrolled up behind the header.
+  requestAnimationFrame(() => { try { if (el.log) el.log.scrollTop = 0; } catch { /* ignore */ } });
 }
 
 /* ----------------------------------------------------------------- placement: home vs orb */
@@ -414,14 +416,22 @@ function placeLumen() {
   }
   homeRetry = 0;
   if (docked || el.chat.parentElement !== el.drawer) undockToDrawer();
-  if (drawerOpen) closeDrawer();
+  // Keep an open chat open across re-checks (a section change must not close it); otherwise show the orb.
+  if (drawerOpen) el.orb?.classList.add('lumen-hidden');
   else el.orb?.classList.remove('lumen-hidden');
 }
 
 /* ----------------------------------------------------------------- drawer */
 
 function openDrawer() {
-  if (docked) return;
+  // The orb only shows off a home surface, so opening always means the corner drawer. Make sure the
+  // chat is actually in the drawer (never left docked), whatever the placement state was.
+  if (el.chat.parentElement !== el.drawer) {
+    el.chat.classList.remove('lumen-docked');
+    el.chat.classList.add('lumen-in-drawer');
+    el.drawer.appendChild(el.chat);
+  }
+  docked = false;
   el.drawer.hidden = false;
   requestAnimationFrame(() => el.drawer.classList.add('is-open'));
   drawerOpen = true;
