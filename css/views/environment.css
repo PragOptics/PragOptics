@@ -260,6 +260,11 @@
 .ev-back { margin-top: 10px; padding: 2px 0; border: 0; background: transparent; color: var(--muted); font: inherit; cursor: pointer; text-decoration: underline; }
 .ev-back:hover { color: var(--ink); }
 @container (min-width: 560px) { .ev-choice-row { grid-template-columns: 1fr 1fr; } }
+.ev-supplier-results { list-style: none; padding: 0; margin: 12px 0; display: grid; gap: 8px; }
+.ev-supplier-results li { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px 16px; padding: 12px 14px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface-3); }
+.ev-supplier-offer { display: grid; gap: 3px; min-width: 0; flex: 1 1 12rem; overflow-wrap: anywhere; }
+.ev-supplier-offer a:last-child { font-size: .82rem; color: var(--muted); }
+.ev-supplier-details { min-width: 0; overflow-wrap: anywhere; }
 /* A card never grows past its column: the tables inside scroll, the card does not. */
 .ev-cards > * { min-width: 0; }
 .ev-card, .ev-card-body { min-width: 0; max-width: 100%; }

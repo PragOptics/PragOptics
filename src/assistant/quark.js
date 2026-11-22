@@ -19,6 +19,7 @@
 // the note there); src/assistant/quark.instructions.md is its brief. No secrets live here.
 
 import { PRAG_API_BASE } from '../runtime/config.js';
+import { shopifyIntent, supplierSearchPhrase } from '../account/shopifySupplier.js';
 
 const KNOWLEDGE_URL = `${PRAG_API_BASE}/assistant/knowledge`;
 const SETUP_URL = `${PRAG_API_BASE}/environment/setup`;
@@ -93,9 +94,14 @@ const ENGINES = [
 
 /* ----------------------------------------------------------------- navigation (the machine parts) */
 
-function go(dest) {
+function go(dest, query = '') {
   const top = ['shop', 'software', 'warranty', 'builds', 'console'];
   closeDrawer();
+  if (dest === 'shopify-discovery' || dest === 'shopify-connection') {
+    const shopify = dest === 'shopify-discovery' ? 'discovery' : 'connection';
+    try { sessionStorage.setItem('pragoptics_open_card', JSON.stringify({ section: 'environment', card: 'connections', shopify, query })); } catch { /* the section still opens */ }
+    dest = 'environment';
+  }
   if (dest === 'studio') { try { (window.pragOpenStudio || (() => {}))(); } catch { /* ignore */ } return; }
   if (top.includes(dest)) { try { window.setAppMode?.(dest); } catch { /* ignore */ } return; }
   if (signedIn()) {
@@ -170,7 +176,7 @@ function build() {
     const act = b.dataset.quark;
     if (act === 'close') { closeDrawer(); return; }
     if (act === 'chip') { const t = b.dataset.text || b.textContent; sayYou(t); respond(t); return; }
-    if (act === 'go') { go(b.dataset.to || ''); return; }
+    if (act === 'go') { go(b.dataset.to || '', b.dataset.query || ''); return; }
     if (act === 'step') { guideStep(Number(b.dataset.i) || 0); return; }
   });
 
@@ -283,6 +289,11 @@ function mapSetupToLaunch(step) {
 // the guided launch below, so it is useful and correct with no model at all.
 async function respond(text) {
   const t = text.toLowerCase();
+  const shopify = shopifyIntent(t);
+  if (shopify) {
+    think(() => shopifyGuideHtml(shopify, supplierSearchPhrase(text)));
+    return;
+  }
 
   if (/\b(launch|website|web site|site|store|shop|sell|online|landing|page|get started|set up|setup|go live)\b/.test(t)) {
     const thing = text.replace(/.*\b(for|a|an)\b/i, '').trim();
@@ -332,8 +343,16 @@ function enginesHtml() {
   return `The platform runs on its own engines:${rows}<div class="quark-note">Tell me what you want to do and I take you to the right one.</div>`;
 }
 
+function shopifyGuideHtml(intent, query = '') {
+  const message = intent === 'discovery'
+    ? 'Look up the brand or product and confirm the seller. Use their published contact to ask about dealership or direct fulfillment. Once you have an agreement, send an approval link to their Shopify store administrator.'
+    : 'Use your business name if you manage the store, or the supplier’s name if they manage it. Whoever manages the store signs in through Shopify and approves access.';
+  return `${message}<div class="quark-card-actions"><button type="button" class="quark-btn quark-primary" data-quark="go" data-to="shopify-${intent}" data-query="${esc(query)}">${intent === 'discovery' ? 'Find a supplier' : 'Open Shopify connection'}</button></div>`;
+}
+
 function howToHtml(caps, t) {
-  const want = ['shopify', 'stripe', 'shippo', 'twilio', 'github', 'microsoft', 'google', 'domain', 'mail', 'payment'].find((w) => t.includes(w)) || 'shopify';
+  const want = ['shopify', 'stripe', 'shippo', 'twilio', 'github', 'microsoft', 'google', 'domain', 'mail', 'payment'].find((w) => t.includes(w)) || '';
+  if (!want) return 'Which account do you want to connect?' + chips([{ label: 'Shopify', text: 'Connect Shopify' }, { label: 'Find a supplier', text: 'Find a supplier' }, { label: 'Stripe', text: 'Connect Stripe' }]);
   let cap = null;
   if (caps && caps.length) cap = caps.find((c) => (String(c.id || '') + ' ' + String(c.what || '')).toLowerCase().includes(want));
   const steps = cap && Array.isArray(cap.how) && cap.how.length

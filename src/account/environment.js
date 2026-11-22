@@ -32,6 +32,7 @@ import { stripeAppearance } from '../api/stripeAppearance.js';
 import { ensureStripeJs } from '../runtime/stripeLoader.js';
 import { ico, iconBtn, leadBtn, btnLabel, cardHtml as sharedCard, isOpen, setOpen, initCards, busy, hold, stateLead, stateIcon, copyButton, openModal } from './cards.js';
 import { cardErrorWords } from '../api/stripeWords.js';
+import { newSupplierSearch, shopifyDiscoveryHtml, supplierEmail, supplierMatches, supplierName, supplierInquiryResponse, supplierInquiryFailure, supplierOrderResult } from './shopifySupplier.js';
 // 2026-11-02 (Cameron: "im building this for humans"): one container per domain family, and a table's rows as a table
 import { familiesOf, liveHostsOf, familyState, listWords } from './domainFamilies.js';
 import { rowShape, innerOf, whenOf, statusOf, cellText, headlineOf } from './dataColumns.js';
@@ -53,6 +54,7 @@ import { countWord, cents as money } from '../ui/words.js';
 
 const TENANT_URL = `${PRAG_API_BASE}/tenant`;
 const ENV_URL = `${PRAG_API_BASE}/environment`;
+const SHOPIFY_URL = `${ENV_URL}/connections/shopify`;
 const ORDERS_CHECKOUT_URL = `${PRAG_API_BASE}/orders/checkout`;
 const TEAM_KEY = 'pragoptics_team_id';   // written by team.js; read here so both sections mean the same team
 const SEAT_ROLES = new Set(['owner', 'admin', 'developer', 'member']);
@@ -181,7 +183,8 @@ function canUseSandbox() { return BUILD_ROLES.has(myRole()); }
 export async function renderEnvironment(main, deps) {
   D = deps;
   ev.madeKey = null; ev.filesNote = ''; ev.files = null; ev.keys = null; ev.domains = null; ev.domainNote = ''; ev.linkNote = ''; ev.domArm = ''; ev.keyArm = ''; ev.checking = ''; ev.registrations = []; ev.reg = freshReg();
-  ev.connections = null; ev.connProviders = []; ev.connNote = ''; ev.connPick = ''; ev.connBusy = false; ev.connResult = ''; ev.connTesting = ''; ev.connDraft = {}; ev.connArm = ''; ev.shipArm = ''; ev.rowNote = null; ev.shopifyShop = ''; ev.shopifyStep = ''; ev.shopifyLink = ''; ev.shopifyLinkId = ''; ev.connSyncing = ''; ev.rowNote = null;
+  ev.connections = null; ev.connProviders = []; ev.connNote = ''; ev.connPick = ''; ev.connBusy = false; ev.connResult = ''; ev.connTesting = ''; ev.connDraft = {}; ev.connArm = ''; ev.shipArm = ''; ev.rowNote = null; ev.shopifyLabel = ''; ev.shopifyStep = ''; ev.shopifyLink = ''; ev.shopifyLinkId = ''; ev.connSyncing = ''; ev.rowNote = null;
+  ev.supplierSearch = newSupplierSearch();
   ev.tables = null; ev.tablesNote = ''; ev.table = ''; ev.rows = null; ev.rowsAfter = ''; ev.rowsNote = ''; ev.openRow = ''; ev.rowsLoading = false; ev.rowsFailed = false; ev.moderating = ''; ev.moderatingTo = '';
   ev.decisions = null;
   ev.ai = null; ev.aiNote = ''; ev.aiBusy = false; ev.aiBudget = null; ev.budgetBusy = false; ev.archive = null; ev.archiveNote = ''; ev.archiveStatus = '';
@@ -191,7 +194,16 @@ export async function renderEnvironment(main, deps) {
   resetDocuments(); setDocumentsContext(D, { url, body, myRole, lane: () => ev.lane, view: () => ev.view, files: () => ev.files, tables: () => ev.tables, reloadTables: () => readTables({ keep: true }).then(() => paintData()), openRow: (table, row) => { setOpen('environment:data', true); loadRows(table).then(() => { if (row && ev.table === table) { ev.openRow = String(row); paintData(); } document.getElementById('evData')?.scrollIntoView({ block: 'start' }); }); } });
   ev.domTab = ev.domTab || 'connect'; initCards();
   // A link that names a card (/#account?section=environment&card=connections) opens that card; account.js scrolls to it.
-  try { const want = JSON.parse(sessionStorage.getItem('pragoptics_open_card') || 'null'); const card = { files: 'files', connections: 'connections', domains: 'domains', keys: 'keys', ai: 'ai', data: 'data', mail: 'mail', archive: 'archive', documents: 'documents', import: 'import' }[String(want?.card || '')]; if (card) setOpen(`environment:${card}`, true); } catch { /* fine */ }
+  try {
+    const want = JSON.parse(sessionStorage.getItem('pragoptics_open_card') || 'null');
+    const card = { files: 'files', connections: 'connections', domains: 'domains', keys: 'keys', ai: 'ai', data: 'data', mail: 'mail', archive: 'archive', documents: 'documents', import: 'import' }[String(want?.card || '')];
+    if (card) setOpen(`environment:${card}`, true);
+    if (card === 'connections' && ['discovery', 'connection'].includes(want.shopify)) {
+      ev.connPick = 'm:shopify';
+      ev.shopifyStep = want.shopify === 'discovery' ? 'discovery' : '';
+      if (ev.shopifyStep && typeof want.query === 'string') ev.supplierSearch.query = want.query.slice(0, 120);
+    }
+  } catch { /* fine */ }
   main.innerHTML = `
     <header class="acct-sec-head has-explain"><h2 class="acct-sec-title">Environment</h2>${explainLink('environment', 'How your environment works')}</header>
     <p class="acct-error" id="evError" hidden></p>
@@ -408,6 +420,7 @@ async function setLane(lane) {
   ev.lane = lane === 'sandbox' ? 'sandbox' : 'live';
   try { sessionStorage.setItem(LANE_KEY, ev.lane); } catch { /* fine */ }
   ev.files = null; ev.keys = null; ev.domains = null; ev.connections = null; ev.archive = null; resetDocuments(); resetImport(); ev.connPick = ''; ev.connResult = ''; ev.madeKey = null; ev.filesNote = '';
+  ev.supplierSearch = newSupplierSearch(); ev.shopifyStep = ''; ev.shopifyLabel = ''; ev.shopifyLink = ''; ev.shopifyLinkId = '';
   ev.sites = null; ev.decisions = null; resetMail();
   paint();
   if (ev.lane === 'live' || laneReady(ev.view?.tenant)) {
@@ -2224,7 +2237,7 @@ function connIdentity(c) {
   if (c.provider === 'stripe') return e([d.accountId, d.mode, isManagedStripe(c) ? (d.accountName || d.businessName) : ''].filter(Boolean).join(' · '));
   if (isManagedTwilio(c)) return e([d.friendlyName, d.accountSid, d.type ? `${String(d.type).toLowerCase()} account` : ''].filter(Boolean).join(' · ') || 'not yet authorized');
   if (isManagedShippo(c)) return e(c.status === 'ACTIVE' ? `${d.carrierAccounts || 0} carrier ${d.carrierAccounts === 1 ? 'account' : 'accounts'}${(d.carriers || []).length ? ' · ' + d.carriers.join(', ') : ''}` : 'not yet authorized');
-  if (isManagedShopify(c)) return e(c.status === 'ACTIVE' ? [d.name, d.domain || d.shop, d.productCount !== undefined ? `${d.productCount} products` : ''].filter(Boolean).join(' · ') : `${d.shop || ''} · waiting for the supplier`);
+  if (isManagedShopify(c)) return e(c.status === 'ACTIVE' ? [d.name, d.domain || d.shop, d.productCount !== undefined ? `${d.productCount} products` : ''].filter(Boolean).join(' · ') : [d.shop, 'waiting for the supplier'].filter(Boolean).join(' · '));
   if (c.provider === 'shippo') return e(d.mode ? `${d.mode} token` : '');
   if (isManagedGoogle(c)) return e([d.email, d.projectId ? `project ${d.projectId}` : (d.email ? 'no paying project picked yet' : 'not yet signed in')].filter(Boolean).join(' · '));
   if (isManagedGithub(c)) return e(c.status === 'ACTIVE' ? [d.login ? `@${d.login}` : '', d.accountType === 'Organization' ? 'organization' : '', d.repositorySelection === 'all' ? 'every repository' : d.repositorySelection === 'selected' ? 'the repositories picked' : ''].filter(Boolean).join(' · ') : (d.uninstalled ? 'the app was removed at GitHub' : d.declined ? 'not installed' : 'not installed yet'));
@@ -2488,7 +2501,7 @@ function connectionsHtml() {
                     : doorBtn('conn-microsoft-start', 'external', c.status === 'REJECTED' || c.detail?.declined || c.detail?.failed || msAwaiting(c) ? 'Connect again' : msApproved(c) ? 'Connect' : 'Sign in at Microsoft', 'Opening with Microsoft…', "Microsoft's sign-in page, for a work or school account in your organization", '', 'btn-primary')) : ''}
                   ${isManagedShopify(c) && c.status !== 'ACTIVE' ? doorBtn('conn-shopify-link', 'send', 'Supplier link', 'Making the link…', 'A fresh link for your supplier; the old one stops working', `data-shop="${e(c.detail?.shop || '')}"`) : ''}
                   ${isManagedShopify(c) && c.status === 'ACTIVE' ? stateLead('conn-shopify-sync', 'refresh', 'Sync products', { out: ev.connSyncing === c.id, busyWord: 'Syncing…' }, `data-id="${e(c.id)}" data-tip="Copy the store's products into this environment's data, table supplier_products"`) : ''}
-                  ${isManagedShopify(c) && c.status === 'ACTIVE' ? stateLead('conn-shopify-testorder', 'send', 'Dropship a test order', { out: ev.connBusy && ev.connRow === c.id, busyWord: 'Placing…' }, `data-id="${e(c.id)}" data-tip="Place a one-item order on the supplier's store, shipped to your billing address, to prove the dropship loop"`) : ''}
+                  ${isManagedShopify(c) && c.status === 'ACTIVE' ? stateLead('conn-shopify-testorder', 'send', 'Place a one-item order', { out: ev.connBusy && ev.connRow === c.id, busyWord: 'Placing…' }, `data-id="${e(c.id)}" data-tip="Place a real Shopify order. Your supplier can fulfill and bill it."`) : ''}
                   ${stateIcon(refreshAction, 'check', isManaged(c) ? 'Check status' : 'Test the credential', { out: !!testing, busyWord: 'Checking…', waiting: confirming ? MS_CONFIRM_WAIT : ev.connTesting && !testing ? 'Wait for the check being made' : '' }, `data-id="${e(c.id)}"`)}
                   ${confirming ? stateIcon('conn-remove', 'trash', 'Remove this connection', { waiting: MS_CONFIRM_WAIT }, `data-id="${e(c.id)}" data-label="${e(c.label)}"`, 'is-risky')
                     : iconBtn('conn-remove', 'trash', 'Remove this connection', `data-id="${e(c.id)}" data-label="${e(c.label)}"`, 'is-risky')}</span>`) : ''}</td>
@@ -2500,8 +2513,8 @@ function connectionsHtml() {
               <tr class="ev-link-row" data-row="shopify-link">
                 <td colspan="5" data-th="Supplier link">
                   <div class="ev-link-box"><code class="ev-code">${e(ev.shopifyLink)}</code>${iconBtn('domain-copy', 'copy', 'Copy the link', `data-text="${e(ev.shopifyLink)}"`)}</div>
-                  <div class="ev-key-row ev-invite-row"><input class="acct-input" type="email" inputmode="email" autocomplete="off" placeholder="supplier@email.com" aria-label="Your supplier's email address" id="evShopInvite-${e(c.id)}">${doorBtn('conn-shopify-email', 'send', 'Email it to them', 'Sending…', 'We email this link to your supplier from your own mailer', `data-id="${e(c.id)}" data-shop="${e(c.detail?.shop || '')}"`)}</div>
-                  <p class="acct-card-note ev-note">Copy the link and send it, or enter your supplier's email and we send it from your own mailer. They open it on their Shopify store, see what PragOptics asks for, and approve; this row reads connected when they have.</p>
+                  <div class="ev-key-row ev-invite-row"><input class="acct-input" type="email" inputmode="email" autocomplete="off" placeholder="supplier@email.com" aria-label="The Shopify store administrator’s designated email address" id="evShopInvite-${e(c.id)}">${doorBtn('conn-shopify-email', 'send', 'Email it to them', 'Sending…', 'We email this link to your supplier from your own mailer', `data-id="${e(c.id)}" data-shop="${e(c.detail?.shop || '')}"`)}</div>
+                  <p class="acct-card-note ev-note">Copy and send the link, or enter the Shopify store administrator’s designated email address to send it from your own mailer. They review and approve access independently in Shopify. The row reads connected after approval.</p>
                 </td>
               </tr>` : ''}`; }).join('')}
           </tbody>
@@ -2520,7 +2533,7 @@ function connectionsHtml() {
     ...(ev.lane === 'sandbox' || has(isManagedMicrosoft) ? [] : [['m:microsoft', 'Microsoft 365, sign in with Microsoft']]),
     ...(has(isManagedGoogle) ? [] : [['m:google', 'Google Gemini, sign in with Google']]),
     ...(has(isManagedGithub) ? [] : [['m:github-app', 'GitHub, install the PragOptics app']]),
-    ['m:shopify', 'Shopify supplier']
+    ['m:shopify', 'Shopify store or supplier']
   ];
   // the pasted Microsoft kind is not offered even where an older lane still lists it (decision 9: humans do not fetch API keys)
   const byo = (ev.connProviders || []).filter(p => p.id !== 'microsoft').map(p => [p.id, `${p.label}, your own credential`]);
@@ -3498,54 +3511,183 @@ async function refreshShippoConnect(id, quiet = false) {
  * where a person who can sign into that store's admin approves PragOptics on Shopify's own grant screen. No API connects
  * a store without that approval, and none reads the store's email before it is installed. So the only thing the flow has
  * to ask is who that person is: the customer (approve now, one click) or their supplier (a link to send). Both paths end
- * on the same Shopify approve page; the backend start route opens a pending row and returns both the direct URL and the
- * sendable link. */
+ * at Shopify approval. The backend opens a pending row using a business name and returns the approval link. */
 function shopifyDoorHtml(e, pickWait) {
+  if (ev.shopifyStep === 'discovery') {
+    return shopifyDiscoveryHtml(ev.supplierSearch, {
+      e, stateLead, waiting: pickWait,
+      copy: (text) => leadBtn('domain-copy', 'copy', 'Copy dealership question', `data-text="${e(text)}"`)
+    });
+  }
   if (ev.shopifyStep === 'who') {
     const busy = ev.connBusy && !ev.connRow;
     return `
-        <p class="acct-card-note ev-dom-door">Connecting <b>${e(ev.shopifyShop || 'this store')}</b>. Who can approve PragOptics on it?</p>
+        <p class="acct-card-note ev-dom-door">Connecting <b>${e(ev.shopifyLabel || 'this store')}</b>. Who can approve PragOptics on it?</p>
         <div class="ev-choice-row">
           <button type="button" class="ev-choice" data-env-action="conn-shopify-self" ${busy ? 'disabled' : ''}>
             <b>I manage this store</b>
-            <span>Approve it now. Shopify opens, you say yes, and you come straight back connected.</span>
+            <span>Open the approval link, sign in to Shopify, and approve PragOptics for your store.</span>
           </button>
           <button type="button" class="ev-choice" data-env-action="conn-shopify-supplier" ${busy ? 'disabled' : ''}>
             <b>My supplier manages it</b>
             <span>Get a secure link to send them. They approve on their own store, and this connects the moment they do.</span>
           </button>
         </div>
-        ${busy ? '<p class="acct-card-note ev-note" aria-live="polite">Opening with Shopify…</p>' : '<button type="button" class="ev-back" data-env-action="conn-shopify-back">Back</button>'}`;
+        ${busy ? `<p class="acct-card-note ev-note" aria-live="polite">${ev.connAct === 'conn-shopify-supplier' ? 'Creating the supplier link…' : 'Opening with Shopify…'}</p>` : '<button type="button" class="ev-back" data-env-action="conn-shopify-back">Back</button>'}`;
   }
   return `
         <div class="ev-key-row">
-          <input class="acct-input" id="evShopifyShop" type="text" inputmode="url" autocomplete="off" placeholder="store-name.myshopify.com" aria-label="The Shopify store address to connect" value="${e(ev.shopifyShop || '')}">
+          <input class="acct-input" id="evShopifyLabel" type="text" maxlength="60" autocomplete="organization" placeholder="Business name" aria-label="Your business or supplier name" value="${e(ev.shopifyLabel || '')}">
           ${stateLead('conn-shopify-continue', 'external', 'Continue', { out: false, waiting: pickWait }, '', 'btn-primary')}
         </div>
-        <p class="acct-card-note ev-dom-door">Connect a Shopify store so its products flow into this environment and orders can be fulfilled through it. Enter the store's address to begin, like store-name.myshopify.com.</p>`;
+        <p class="acct-card-note ev-dom-door">Use your business name for your own store or your supplier’s name if they manage the store. The person who manages the store signs in through Shopify to approve.</p>
+        ${stateLead('conn-shopify-discovery', 'search', 'Find a supplier by brand or product', { waiting: pickWait })}`;
 }
 
-/** Step 1 -> 2: take the store address and ask who approves. No backend call yet; nothing is created until a path is picked. */
+async function searchSuppliers() {
+  const state = ev.supplierSearch;
+  if (state.busy || !canManageConnections() || ev.connBusy || ev.connConfirming) return;
+  state.query = String(document.getElementById('evSupplierQuery')?.value || '').trim().slice(0, 120);
+  if (!state.query) { state.error = 'Enter a brand or product to find.'; paintConnections(); return; }
+  state.busy = 'search'; state.error = ''; state.matches = null; paintConnections();
+  try {
+    const result = await post(`${SHOPIFY_URL}/discover`, { query: state.query });
+    state.matches = supplierMatches(result.matches);
+  } catch (ex) {
+    state.error = ex?.status === 404 || ex?.status === 405
+      ? 'Supplier discovery is unavailable on this platform lane. If you know the business, you can still create an approval link by name.'
+      : errText(ex, 'Could not look up Shopify sellers right now.');
+  } finally {
+    state.busy = '';
+    if (state === ev.supplierSearch) paintConnections();
+  }
+}
+
+function reviewSupplierInquiry() {
+  const state = ev.supplierSearch;
+  if (state.busy || !state.selected || ev.connBusy || ev.connConfirming || !canManageConnections()) return;
+  if (state.attempt && !['absent', 'refused'].includes(state.attempt.disposition)) return;
+  state.recipientDraft = document.getElementById('evSupplierInquiryEmail')?.value ?? '';
+  const recipient = supplierEmail(state.recipientDraft);
+  if (!supplierName(state.selected.name)) { state.error = 'Choose a Shopify seller with a valid business name.'; paintConnections(); return; }
+  if (!recipient) { state.error = 'Enter the business email address you confirmed for this inquiry.'; paintConnections(); return; }
+  const sameMissingRequest = state.attempt?.disposition === 'absent' && state.attempt.recipient === recipient;
+  state.attempt = { recipient, requestId: sameMissingRequest ? state.attempt.requestId : crypto.randomUUID(), disposition: 'review' };
+  state.error = ''; state.note = ''; paintConnections();
+  document.querySelector('[data-env-action="conn-shopify-send-inquiry"]')?.focus();
+}
+
+async function submitSupplierInquiry(checkOnly) {
+  const state = ev.supplierSearch;
+  const attempt = state.attempt;
+  if (state.busy || ev.connBusy || ev.connConfirming || !canManageConnections() || !attempt || !state.selected) return;
+  if (checkOnly ? !['unknown', 'pending'].includes(attempt.disposition) : attempt.disposition !== 'review') return;
+  state.busy = checkOnly ? 'check-inquiry' : 'send-inquiry'; state.error = ''; state.note = '';
+  paintConnections();
+  try {
+    const result = await post(`${SHOPIFY_URL}/inquiry`, {
+      supplierName: state.selected.name, sendTo: attempt.recipient, requestId: attempt.requestId,
+      ...(checkOnly ? { checkOnly: true } : {})
+    });
+    const { disposition, note, error } = supplierInquiryResponse(result, attempt.recipient, checkOnly);
+    attempt.disposition = disposition; state.note = note; state.error = error;
+  } catch (ex) {
+    const { disposition, error } = supplierInquiryFailure(ex, checkOnly);
+    attempt.disposition = disposition; state.error = error;
+  } finally {
+    state.busy = '';
+    if (state === ev.supplierSearch) paintConnections();
+  }
+}
+
+async function createSupplierApproval() {
+  const state = ev.supplierSearch;
+  if (state.busy || !state.selected || !state.approval || ev.connBusy || ev.connConfirming || !canManageConnections()) return;
+  state.busy = 'create-approval'; state.error = ''; paintConnections();
+  try {
+    const reply = await post(`${SHOPIFY_URL}/start`, { label: state.selected.name });
+    if (state !== ev.supplierSearch) return;
+    if (!reply.url) throw new Error('Shopify approval link was not returned.');
+    ev.shopifyLink = reply.url;
+    ev.shopifyLinkId = String(reply.connection?.id || '');
+    ev.connResult = 'Supplier approval link created and ready to share. The supplier still needs to approve in Shopify.';
+    ev.supplierSearch = newSupplierSearch();
+    ev.shopifyStep = '';
+    await loadConnections();
+  } catch (ex) {
+    state.error = errText(ex, 'Could not create an approval link right now. Try again in a moment.');
+  } finally {
+    state.busy = '';
+    if (state === ev.supplierSearch) paintConnections();
+  }
+}
+
+function supplierDiscoveryAction(action, button) {
+  const state = ev.supplierSearch;
+  if (!canManageConnections() || ev.connPick !== 'm:shopify') return false;
+  if (action === 'conn-shopify-discovery') {
+    if (!ev.connBusy && !ev.connConfirming) {
+      ev.shopifyStep = 'discovery'; paintConnections();
+      document.getElementById('evSupplierQuery')?.focus();
+    }
+    return true;
+  }
+  if (ev.shopifyStep !== 'discovery' || !action.startsWith('conn-shopify-')) return false;
+  if (state.busy || ev.connBusy || ev.connConfirming) return false;
+  switch (action) {
+    case 'conn-shopify-search': searchSuppliers(); return true;
+    case 'conn-shopify-review-inquiry': reviewSupplierInquiry(); return true;
+    case 'conn-shopify-send-inquiry': submitSupplierInquiry(false); return true;
+    case 'conn-shopify-check-inquiry': submitSupplierInquiry(true); return true;
+    case 'conn-shopify-create-approval': createSupplierApproval(); return true;
+    case 'conn-shopify-select-supplier': {
+      const index = Number(button.dataset.match);
+      if (Number.isInteger(index) && state.matches?.[index]) {
+        state.selected = state.matches[index]; state.recipientDraft = null; state.error = ''; state.note = ''; paintConnections();
+        document.getElementById('evSupplierInquiryEmail')?.focus();
+      }
+      return true;
+    }
+    case 'conn-shopify-edit-inquiry':
+      if (state.attempt?.disposition === 'review') {
+        state.attempt = null; state.error = ''; state.note = ''; paintConnections();
+        document.getElementById('evSupplierInquiryEmail')?.focus();
+      }
+      return true;
+    case 'conn-shopify-agreed':
+      if (state.selected) { state.approval = true; paintConnections(); }
+      return true;
+    case 'conn-shopify-discovery-back':
+      if (state.selected) {
+        state.selected = null; state.attempt = null; state.approval = false; state.error = ''; state.note = '';
+      } else ev.shopifyStep = '';
+      paintConnections();
+      document.getElementById(ev.shopifyStep ? 'evSupplierQuery' : 'evShopifyLabel')?.focus();
+      return true;
+    default: return false;
+  }
+}
+
+/** Take a business name and ask who will approve. The first step makes no request. */
 function shopifyContinue() {
   D.showError('evConnError', '');
-  const shop = String(document.getElementById('evShopifyShop')?.value || '').trim();
-  if (!shop) { D.showError('evConnError', 'Type the Shopify store address first, like store-name.myshopify.com.'); return; }
-  ev.shopifyShop = shop; ev.shopifyStep = 'who'; paintConnections();
+  const label = supplierName(document.getElementById('evShopifyLabel')?.value);
+  if (!label || label.length > 60) { D.showError('evConnError', 'Enter your business or supplier name (up to 60 characters).'); return; }
+  ev.shopifyLabel = label; ev.shopifyStep = 'who'; paintConnections();
+  document.querySelector('[data-env-action="conn-shopify-self"]')?.focus();
 }
 /** Back to the store step. */
 function shopifyBack() { ev.shopifyStep = ''; D.showError('evConnError', ''); paintConnections(); }
 
-/** Path 1 - the customer manages the store: open a pending row, then send them straight to Shopify's approve page
- *  (the same window.location.assign the other OAuth providers use). Approve there and Shopify returns to the callback
- *  connected; the return marker settles the card on this connection. */
+/** The customer manages the store. Open the approval link so the customer can authenticate and approve in Shopify. */
 async function shopifyConnectSelf() {
   if (ev.connBusy) return;
-  const shop = ev.shopifyShop;
-  if (!shop) { ev.shopifyStep = ''; paintConnections(); return; }
-  ev.connRow = ''; ev.connBusy = true; ev.connResult = ''; D.showError('evConnError', ''); paintConnections();
+  const label = ev.shopifyLabel;
+  if (!label) { ev.shopifyStep = ''; paintConnections(); return; }
+  ev.connRow = ''; ev.connAct = 'conn-shopify-self'; ev.connBusy = true; ev.connResult = ''; D.showError('evConnError', ''); paintConnections();
   try {
-    const d = await post(`${ENV_URL}/connections/shopify/start`, { shop });
-    const go = d.directUrl || d.url;
+    const d = await post(`${SHOPIFY_URL}/start`, { label });
+    const go = d.url;
     if (!go) throw new Error('Shopify did not answer with an authorization link.');
     try { sessionStorage.setItem('pragoptics_connect_return', JSON.stringify({ provider: 'shopify', id: String(d.connection?.id || '') })); } catch { /* the return still carries the id */ }
     window.location.assign(go);
@@ -3559,14 +3701,14 @@ async function shopifyConnectSelf() {
  *  see what PragOptics asks for, and approve; this row flips to connected on its own (loadConnections reads it fresh). */
 async function shopifyConnectSupplier() {
   if (ev.connBusy) return;
-  const shop = ev.shopifyShop;
-  if (!shop) { ev.shopifyStep = ''; paintConnections(); return; }
-  ev.connRow = ''; ev.connBusy = true; ev.connResult = ''; D.showError('evConnError', ''); paintConnections();
+  const label = ev.shopifyLabel;
+  if (!label) { ev.shopifyStep = ''; paintConnections(); return; }
+  ev.connRow = ''; ev.connAct = 'conn-shopify-supplier'; ev.connBusy = true; ev.connResult = ''; D.showError('evConnError', ''); paintConnections();
   try {
-    const d = await post(`${ENV_URL}/connections/shopify/start`, { shop });
+    const d = await post(`${SHOPIFY_URL}/start`, { label });
     ev.shopifyLink = d.url; ev.shopifyLinkId = String(d.connection?.id || '');
-    ev.shopifyShop = ''; ev.shopifyStep = ''; ev.connBusy = false;
-    ev.connResult = 'Send this link to whoever manages the store. It connects the moment they approve.';
+    ev.shopifyLabel = ''; ev.shopifyStep = ''; ev.connBusy = false;
+    ev.connResult = 'Supplier approval link created and ready to share. The supplier still needs to approve in Shopify.';
     await loadConnections();
   } catch (ex) {
     ev.connBusy = false; paintConnections();
@@ -3574,24 +3716,54 @@ async function shopifyConnectSupplier() {
   }
 }
 /** A pending supplier row's "New link": mint a fresh link for that store; the old one stops working. */
-async function shopifyRelink(id, shopFromRow) {
+async function shopifyRelink(id, shop) {
   if (ev.connBusy || !id) return;
-  const shop = String(shopFromRow || '').trim();
-  if (!shop) { D.showError('evConnError', 'This row has no store address to relink.'); return; }
   D.showError('evConnError', '');
   ev.connBusy = true; paintConnections();
   try {
-    const d = await post(`${ENV_URL}/connections/shopify/start`, { shop });
+    const d = await post(`${SHOPIFY_URL}/start`, { id, ...(shop ? { shop } : {}) });
     ev.shopifyLink = d.url; ev.shopifyLinkId = String(d.connection?.id || id || '');
-    ev.connResult = 'A fresh link; the old one no longer works.'; ev.connBusy = false;
+    ev.connResult = 'Fresh approval link created. Send this link to the supplier. The old link no longer works.'; ev.connBusy = false;
     await loadConnections();
   } catch (ex) {
     ev.connBusy = false; paintConnections();
     D.showError('evConnError', errText(ex, 'Could not create a fresh link right now.'));
   }
 }
-/** A one-click dropship proof: place a one-item order on the connected supplier store, shipped to the
- *  environment's billing address, so the whole loop is demonstrable without a storefront yet. */
+function confirmTestSupplierOrder(button) {
+  if (ev.connBusy || !canManageConnections() || document.getElementById('evConfirmShopifyOrder')?.hidden === false) return;
+  const id = button.dataset.id;
+  const supplier = ev.connections?.find(row => row.id === id && isManagedShopify(row) && row.status === 'ACTIVE');
+  if (!supplier) return;
+  const lane = ev.lane, teamId = ev.teamId;
+  const close = () => { modal.close(); if (button.isConnected) button.focus(); };
+  const name = D.escapeHtml(supplier.detail?.name || supplier.label || 'your supplier');
+  const modal = openModal('evConfirmShopifyOrder', `
+    <div class="acct-modal-mask" data-shopify-order="cancel"></div>
+    <div class="acct-modal" role="dialog" aria-modal="true" aria-labelledby="evShopifyOrderTitle" aria-describedby="evShopifyOrderNote">
+      <h3 class="acct-modal-h" id="evShopifyOrderTitle">Place a real order?</h3>
+      <p class="acct-modal-note" id="evShopifyOrderNote">This places an order for one available item with <b>${name}</b>. It ships to your billing address. The supplier can fulfill the order and bill you under your agreement.</p>
+      <div class="acct-modal-actions">
+        <button class="btn btn-sm" type="button" data-shopify-order="cancel">Cancel</button>
+        <button class="btn btn-sm btn-primary" type="button" data-shopify-order="confirm">Place order</button>
+      </div>
+    </div>`, {
+    focus: 'button[data-shopify-order="cancel"]',
+    onKey: (event) => { if (event.key === 'Escape') close(); },
+    onClick: (event) => {
+      const action = event.target.closest('[data-shopify-order]')?.dataset.shopifyOrder;
+      if (action === 'cancel') { close(); return; }
+      if (action !== 'confirm') return;
+      modal.close();
+      if (ev.lane !== lane || ev.teamId !== teamId || !canManageConnections() ||
+          !ev.connections?.some(row => row.id === id && isManagedShopify(row) && row.status === 'ACTIVE')) {
+        D.showError('evConnError', 'This supplier connection changed. Check its status before placing an order.');
+        return;
+      }
+      void placeTestSupplierOrder(id);
+    }
+  });
+}
 async function placeTestSupplierOrder(id) {
   if (ev.connBusy || !id) return;
   D.showError('evConnError', '');
@@ -3600,8 +3772,7 @@ async function placeTestSupplierOrder(id) {
     const bp = (D.cachedPing?.() || {}).billingProfile || {};
     const shipTo = { name: bp.customerName || bp.name || '', street1: bp.addressLine1 || '', street2: bp.addressLine2 || '', city: bp.city || '', state: bp.state || '', zip: bp.postalCode || '', country: bp.country || 'US', phone: bp.phone || '' };
     const d = await post(`${ENV_URL}/connections/shopify/order`, { id, test: true, shipTo });
-    const o = d.order || {};
-    ev.connResult = `Test dropship order ${o.name || o.supplierOrderId || ''} placed on the supplier store (status ${o.status || 'UNFULFILLED'}), recorded in your data table supplier_orders. The supplier fulfils it and bills you the way they always have.`;
+    ev.connResult = supplierOrderResult(d);
     ev.connBusy = false; ev.connRow = '';
     await loadConnections();
   } catch (ex) {
@@ -3615,16 +3786,15 @@ async function shopifyEmailInvite(id, shopFromRow) {
   if (ev.connBusy || !id) return;
   const shop = String(shopFromRow || '').trim();
   const input = document.getElementById(`evShopInvite-${id}`);
-  const sendTo = String((input && input.value) || '').trim();
-  if (!sendTo) { D.showError('evConnError', "Type your supplier's email to send them the link, or use Copy."); return; }
-  if (!shop) { D.showError('evConnError', 'This row has no store address to send a link for.'); return; }
+  const sendTo = supplierEmail(input?.value);
+  if (!sendTo) { D.showError('evConnError', "Enter the supplier administrator's designated email address, or copy the link."); return; }
   D.showError('evConnError', '');
-  ev.connBusy = true; ev.connRow = id; paintConnections();
+  ev.connBusy = true; ev.connRow = id; ev.connAct = 'conn-shopify-email'; paintConnections();
   try {
-    const d = await post(`${ENV_URL}/connections/shopify/start`, { shop, sendTo });
+    const d = await post(`${SHOPIFY_URL}/start`, { id, ...(shop ? { shop } : {}), sendTo });
     ev.shopifyLink = d.url; ev.shopifyLinkId = String(d.connection?.id || id || '');
     ev.connResult = d.emailed
-      ? (d.emailNote || `The link was emailed to ${sendTo}.`)
+      ? `The approval email was submitted to your mailer for ${sendTo}. Waiting for the supplier to approve in Shopify.`
       : `The link was not emailed (${d.emailNote || 'no mailer set up for this environment'}). Copy it and send it yourself, or set up a mailer on the Licensing tab.`;
     ev.connBusy = false; ev.connRow = '';
     await loadConnections();
@@ -4231,13 +4401,14 @@ export function bindEnvironmentActions(deps) {
     if (a === 'ship-refund') return void refundShippingLabel(btn.dataset.id || '');
     if (a === 'ship-refund-cancel') { clearTimeout(shipArmTimer); ev.shipArm = ''; paintShipping(); return; }
     if (a === 'ship-test') return void runShippingTest();
+    if (supplierDiscoveryAction(a, btn)) return;
     if (a === 'conn-shopify-continue') return void shopifyContinue();
     if (a === 'conn-shopify-back') return void shopifyBack();
     if (a === 'conn-shopify-self') return void shopifyConnectSelf();
     if (a === 'conn-shopify-supplier') return void shopifyConnectSupplier();
     if (a === 'conn-shopify-link') return void shopifyRelink(btn.dataset.id || '', btn.dataset.shop || '');
     if (a === 'conn-shopify-email') return void shopifyEmailInvite(btn.dataset.id || '', btn.dataset.shop || '');
-    if (a === 'conn-shopify-testorder') return void placeTestSupplierOrder(btn.dataset.id || '');
+    if (a === 'conn-shopify-testorder') return void confirmTestSupplierOrder(btn);
     if (a === 'conn-shopify-refresh') return void refreshShopifyConnect(btn.dataset.id || '');
     if (a === 'conn-shopify-sync') return void syncShopifyProducts(btn.dataset.id || '');
     if (a === 'conn-microsoft-start') return void startMicrosoftConnect('connect');
@@ -4257,7 +4428,10 @@ export function bindEnvironmentActions(deps) {
     const t = e.target.closest?.('[data-env-toggle="domain-renew"]');
     if (t) setRenewal(t.dataset.host || '', !!t.checked, t);
     // Picking a provider redraws the form with that provider's own fields.
-    if (e.target.id === 'evConnProvider') { ev.connPick = e.target.value || ''; ev.connResult = ''; paintConnections(); document.querySelector('[data-conn-field]')?.focus(); }
+    if (e.target.id === 'evConnProvider') {
+      ev.connPick = e.target.value || ''; ev.connResult = ''; ev.shopifyStep = ''; ev.supplierSearch = newSupplierSearch();
+      paintConnections(); document.querySelector('[data-conn-field], #evShopifyLabel')?.focus();
+    }
     // The archive's GitHub account: read the repositories it can reach and redraw the Repository field for that account.
     if (e.target.id === 'evArcConn') { ev.archivePick = e.target.value || ''; maybeFetchRepos(ev.archivePick); paintArchive(); return; }
     // The repository dropdown: "New repository…" reveals the name box; a repository sets the branch to its default.
@@ -4274,6 +4448,9 @@ export function bindEnvironmentActions(deps) {
   document.addEventListener('keydown', (e) => {
     if ((e.key === 'Enter' || e.key === ' ') && e.target.matches?.('tr.ev-row')) { e.preventDefault(); e.target.click(); return; }
     if (e.key === 'Enter' && e.target.id === 'evKeyLabel') { e.preventDefault(); document.querySelector('[data-env-action="key-make"]')?.click(); }
+    if (e.key === 'Enter' && e.target.id === 'evShopifyLabel') { e.preventDefault(); document.querySelector('[data-env-action="conn-shopify-continue"]')?.click(); }
+    if (e.key === 'Enter' && e.target.id === 'evSupplierQuery') { e.preventDefault(); searchSuppliers(); }
+    if (e.key === 'Enter' && e.target.id === 'evSupplierInquiryEmail') { e.preventDefault(); reviewSupplierInquiry(); }
     if (e.key === 'Enter' && e.target.id === 'evRowDelete') { e.preventDefault(); document.querySelector('[data-env-action="data-row-del-go"]')?.click(); }
     if (e.key === 'Enter' && (e.target.id === 'evConnLabel' || e.target.matches?.('[data-conn-field]'))) { e.preventDefault(); document.querySelector('[data-env-action="conn-add"]')?.click(); }
     if (e.key === 'Enter' && e.target.id === 'evDomainHost') { e.preventDefault(); document.querySelector('[data-env-action="domain-add"]')?.click(); }
