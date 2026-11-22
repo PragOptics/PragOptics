@@ -345,8 +345,8 @@ function enginesHtml() {
 
 function shopifyGuideHtml(intent, query = '') {
   const message = intent === 'discovery'
-    ? 'Look up the brand or product and confirm the seller. Use their published contact to ask about dealership or direct fulfillment. Once you have an agreement, send an approval link to their Shopify store administrator.'
-    : 'Use your business name if you manage the store, or the supplier’s name if they manage it. Whoever manages the store signs in through Shopify and approves access.';
+    ? 'Open Connected accounts to find the supplier options available on your lane. Once you have a fulfillment agreement, send an approval link to the person who manages the Shopify store.'
+    : 'Open Shopify in Connected accounts to start. Whoever manages the store signs in through Shopify and approves access.';
   return `${message}<div class="quark-card-actions"><button type="button" class="quark-btn quark-primary" data-quark="go" data-to="shopify-${intent}" data-query="${esc(query)}">${intent === 'discovery' ? 'Find a supplier' : 'Open Shopify connection'}</button></div>`;
 }
 

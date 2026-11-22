@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { COLLECTIVE_HELP, newSupplierSearch, shopifyDiscoveryHtml, shopifyIntent, supplierEmail, supplierMatches, supplierSearchPhrase, supplierName, supplierInquiryResponse, supplierInquiryFailure, supplierOrderResult } from '../src/account/shopifySupplier.js';
+import { COLLECTIVE_HELP, newSupplierSearch, shopifyDiscoveryHtml, shopifyIntent, supplierEmail, supplierMatches, supplierSearchPhrase, supplierName, supplierInquiryResponse, supplierInquiryFailure, supplierOrderResult, readShopifySupplierMode, shopifyStartFields, shopifyOnboardingUrl } from '../src/account/shopifySupplier.js';
 
 test('Quark prefills a specific supplier search and leaves generic requests blank', () => {
   assert.equal(supplierSearchPhrase('I want to dropship Cedar Hive Boxes!'), 'Cedar Hive Boxes');
@@ -39,6 +39,31 @@ test('a Shopify order placement can succeed while local storage fails', () => {
   assert.match(supplierOrderResult({ order, recorded: false }), /Shopify placed order #1001.*local record could not be saved.*do not place this order again/);
   assert.match(supplierOrderResult({ order, recorded: true }), /saved to supplier_orders/);
   assert.match(supplierOrderResult({ order }), /Local storage is unconfirmed/);
+});
+
+test('the existing catalog profile distinguishes old Shopify lanes from current and unavailable lanes', async () => {
+  const base = 'https://lane.example/api/v1';
+  const expectedUrl = base + '/shopify/catalog/profile';
+  const current = await readShopifySupplierMode(base, async (url, options) => {
+    assert.equal(url, expectedUrl);
+    assert.equal(options.credentials, 'omit');
+    return new Response(JSON.stringify({ ucp: { capabilities: { 'dev.shopify.catalog.global': [{ version: 'fixture' }] } } }));
+  });
+  assert.equal(current, 'current');
+  assert.equal(await readShopifySupplierMode(base, async () => new Response(null, { status: 404 })), 'legacy');
+  assert.equal(await readShopifySupplierMode(base, async () => new Response(null, { status: 503 })), 'unavailable');
+  assert.equal(await readShopifySupplierMode(base, async () => new Response('{}')), 'unavailable');
+});
+
+test('only a legacy lane uses the Shopify store address and direct authorization URL', () => {
+  assert.deepEqual(shopifyStartFields('current', 'Cedar Fixture Supply'), { label: 'Cedar Fixture Supply' });
+  assert.deepEqual(shopifyStartFields('legacy', ' cedar-fixture.myshopify.com '), { shop: 'cedar-fixture.myshopify.com' });
+  assert.equal(shopifyStartFields('legacy', ''), null);
+  assert.equal(shopifyStartFields('checking', 'Cedar Fixture Supply'), null);
+  const response = { directUrl: 'https://store.example/authorize', url: 'https://lane.example/approval' };
+  assert.equal(shopifyOnboardingUrl('current', response), response.url);
+  assert.equal(shopifyOnboardingUrl('legacy', response), response.directUrl);
+  assert.equal(shopifyOnboardingUrl('legacy', { ...response, directUrl: '' }), response.url);
 });
 
 const evidence = {

@@ -32,7 +32,7 @@ import { stripeAppearance } from '../api/stripeAppearance.js';
 import { ensureStripeJs } from '../runtime/stripeLoader.js';
 import { ico, iconBtn, leadBtn, btnLabel, cardHtml as sharedCard, isOpen, setOpen, initCards, busy, hold, stateLead, stateIcon, copyButton, openModal } from './cards.js';
 import { cardErrorWords } from '../api/stripeWords.js';
-import { newSupplierSearch, shopifyDiscoveryHtml, supplierEmail, supplierMatches, supplierName, supplierInquiryResponse, supplierInquiryFailure, supplierOrderResult } from './shopifySupplier.js';
+import { newSupplierSearch, shopifyDiscoveryHtml, supplierEmail, supplierMatches, supplierName, supplierInquiryResponse, supplierInquiryFailure, supplierOrderResult, readShopifySupplierMode, shopifyStartFields, shopifyOnboardingUrl } from './shopifySupplier.js';
 // 2026-11-02 (Cameron: "im building this for humans"): one container per domain family, and a table's rows as a table
 import { familiesOf, liveHostsOf, familyState, listWords } from './domainFamilies.js';
 import { rowShape, innerOf, whenOf, statusOf, cellText, headlineOf } from './dataColumns.js';
@@ -184,7 +184,7 @@ export async function renderEnvironment(main, deps) {
   D = deps;
   ev.madeKey = null; ev.filesNote = ''; ev.files = null; ev.keys = null; ev.domains = null; ev.domainNote = ''; ev.linkNote = ''; ev.domArm = ''; ev.keyArm = ''; ev.checking = ''; ev.registrations = []; ev.reg = freshReg();
   ev.connections = null; ev.connProviders = []; ev.connNote = ''; ev.connPick = ''; ev.connBusy = false; ev.connResult = ''; ev.connTesting = ''; ev.connDraft = {}; ev.connArm = ''; ev.shipArm = ''; ev.rowNote = null; ev.shopifyLabel = ''; ev.shopifyStep = ''; ev.shopifyLink = ''; ev.shopifyLinkId = ''; ev.connSyncing = ''; ev.rowNote = null;
-  ev.supplierSearch = newSupplierSearch();
+  ev.supplierSearch = newSupplierSearch(); ev.shopifyMode = ''; ev.shopifyModeRequest = null;
   ev.tables = null; ev.tablesNote = ''; ev.table = ''; ev.rows = null; ev.rowsAfter = ''; ev.rowsNote = ''; ev.openRow = ''; ev.rowsLoading = false; ev.rowsFailed = false; ev.moderating = ''; ev.moderatingTo = '';
   ev.decisions = null;
   ev.ai = null; ev.aiNote = ''; ev.aiBusy = false; ev.aiBudget = null; ev.budgetBusy = false; ev.archive = null; ev.archiveNote = ''; ev.archiveStatus = '';
@@ -209,6 +209,7 @@ export async function renderEnvironment(main, deps) {
     <p class="acct-error" id="evError" hidden></p>
     <div id="evBody"><p class="acct-loading">Loading…</p></div>
   `;
+  if (ev.connPick === 'm:shopify') checkShopifySupplierMode();
   await load();
 }
 
@@ -3512,8 +3513,28 @@ async function refreshShippoConnect(id, quiet = false) {
  * a store without that approval, and none reads the store's email before it is installed. So the only thing the flow has
  * to ask is who that person is: the customer (approve now, one click) or their supplier (a link to send). Both paths end
  * at Shopify approval. The backend opens a pending row using a business name and returns the approval link. */
+function checkShopifySupplierMode() {
+  if (ev.shopifyModeRequest) return;
+  ev.shopifyMode = 'checking';
+  // The API base is fixed for this Environment view. A fresh view probes again.
+  const request = readShopifySupplierMode(PRAG_API_BASE).then((mode) => {
+    if (ev.shopifyModeRequest !== request) return;
+    ev.shopifyMode = mode;
+    if (mode === 'unavailable') ev.shopifyModeRequest = null;
+    paintConnections();
+  });
+  ev.shopifyModeRequest = request;
+  paintConnections();
+}
+
 function shopifyDoorHtml(e, pickWait) {
-  if (ev.shopifyStep === 'discovery') {
+  if (ev.shopifyMode === 'unavailable') return `
+    <p class="acct-card-note ev-dom-door" role="status">Could not check Shopify setup on this lane.</p>
+    ${stateLead('conn-shopify-mode-retry', 'refresh', 'Try Shopify setup again', { waiting: pickWait })}`;
+  if (!['legacy', 'current'].includes(ev.shopifyMode)) {
+    return '<p class="acct-card-note ev-dom-door" role="status">Checking Shopify setup…</p>';
+  }
+  if (ev.shopifyMode === 'current' && ev.shopifyStep === 'discovery') {
     return shopifyDiscoveryHtml(ev.supplierSearch, {
       e, stateLead, waiting: pickWait,
       copy: (text) => leadBtn('domain-copy', 'copy', 'Copy dealership question', `data-text="${e(text)}"`)
@@ -3535,6 +3556,12 @@ function shopifyDoorHtml(e, pickWait) {
         </div>
         ${busy ? `<p class="acct-card-note ev-note" aria-live="polite">${ev.connAct === 'conn-shopify-supplier' ? 'Creating the supplier link…' : 'Opening with Shopify…'}</p>` : '<button type="button" class="ev-back" data-env-action="conn-shopify-back">Back</button>'}`;
   }
+  if (ev.shopifyMode === 'legacy') return `
+        <div class="ev-key-row">
+          <input class="acct-input" id="evShopifyLabel" type="text" inputmode="url" autocomplete="off" placeholder="store-name.myshopify.com" aria-label="Shopify store address" value="${e(ev.shopifyLabel || '')}">
+          ${stateLead('conn-shopify-continue', 'external', 'Continue', { waiting: pickWait }, '', 'btn-primary')}
+        </div>
+        <p class="acct-card-note ev-dom-door">Connecting by store address is available on this lane. Supplier search will be available after the lane is updated.</p>`;
   return `
         <div class="ev-key-row">
           <input class="acct-input" id="evShopifyLabel" type="text" maxlength="60" autocomplete="organization" placeholder="Business name" aria-label="Your business or supplier name" value="${e(ev.shopifyLabel || '')}">
@@ -3625,6 +3652,8 @@ async function createSupplierApproval() {
 function supplierDiscoveryAction(action, button) {
   const state = ev.supplierSearch;
   if (!canManageConnections() || ev.connPick !== 'm:shopify') return false;
+  if (action === 'conn-shopify-mode-retry') { checkShopifySupplierMode(); return true; }
+  if (ev.shopifyMode !== 'current') return false;
   if (action === 'conn-shopify-discovery') {
     if (!ev.connBusy && !ev.connConfirming) {
       ev.shopifyStep = 'discovery'; paintConnections();
@@ -3671,9 +3700,12 @@ function supplierDiscoveryAction(action, button) {
 /** Take a business name and ask who will approve. The first step makes no request. */
 function shopifyContinue() {
   D.showError('evConnError', '');
-  const label = supplierName(document.getElementById('evShopifyLabel')?.value);
-  if (!label || label.length > 60) { D.showError('evConnError', 'Enter your business or supplier name (up to 60 characters).'); return; }
-  ev.shopifyLabel = label; ev.shopifyStep = 'who'; paintConnections();
+  const fields = shopifyStartFields(ev.shopifyMode, document.getElementById('evShopifyLabel')?.value);
+  if (!fields) {
+    D.showError('evConnError', ev.shopifyMode === 'legacy' ? 'Enter the Shopify store address.' : 'Enter your business or supplier name (up to 60 characters).');
+    return;
+  }
+  ev.shopifyLabel = fields.label || fields.shop; ev.shopifyStep = 'who'; paintConnections();
   document.querySelector('[data-env-action="conn-shopify-self"]')?.focus();
 }
 /** Back to the store step. */
@@ -3682,12 +3714,13 @@ function shopifyBack() { ev.shopifyStep = ''; D.showError('evConnError', ''); pa
 /** The customer manages the store. Open the approval link so the customer can authenticate and approve in Shopify. */
 async function shopifyConnectSelf() {
   if (ev.connBusy) return;
-  const label = ev.shopifyLabel;
-  if (!label) { ev.shopifyStep = ''; paintConnections(); return; }
+  const mode = ev.shopifyMode;
+  const fields = shopifyStartFields(mode, ev.shopifyLabel);
+  if (!fields) return;
   ev.connRow = ''; ev.connAct = 'conn-shopify-self'; ev.connBusy = true; ev.connResult = ''; D.showError('evConnError', ''); paintConnections();
   try {
-    const d = await post(`${SHOPIFY_URL}/start`, { label });
-    const go = d.url;
+    const d = await post(`${SHOPIFY_URL}/start`, fields);
+    const go = shopifyOnboardingUrl(mode, d);
     if (!go) throw new Error('Shopify did not answer with an authorization link.');
     try { sessionStorage.setItem('pragoptics_connect_return', JSON.stringify({ provider: 'shopify', id: String(d.connection?.id || '') })); } catch { /* the return still carries the id */ }
     window.location.assign(go);
@@ -3701,11 +3734,11 @@ async function shopifyConnectSelf() {
  *  see what PragOptics asks for, and approve; this row flips to connected on its own (loadConnections reads it fresh). */
 async function shopifyConnectSupplier() {
   if (ev.connBusy) return;
-  const label = ev.shopifyLabel;
-  if (!label) { ev.shopifyStep = ''; paintConnections(); return; }
+  const fields = shopifyStartFields(ev.shopifyMode, ev.shopifyLabel);
+  if (!fields) return;
   ev.connRow = ''; ev.connAct = 'conn-shopify-supplier'; ev.connBusy = true; ev.connResult = ''; D.showError('evConnError', ''); paintConnections();
   try {
-    const d = await post(`${SHOPIFY_URL}/start`, { label });
+    const d = await post(`${SHOPIFY_URL}/start`, fields);
     ev.shopifyLink = d.url; ev.shopifyLinkId = String(d.connection?.id || '');
     ev.shopifyLabel = ''; ev.shopifyStep = ''; ev.connBusy = false;
     ev.connResult = 'Supplier approval link created and ready to share. The supplier still needs to approve in Shopify.';
@@ -4430,6 +4463,7 @@ export function bindEnvironmentActions(deps) {
     // Picking a provider redraws the form with that provider's own fields.
     if (e.target.id === 'evConnProvider') {
       ev.connPick = e.target.value || ''; ev.connResult = ''; ev.shopifyStep = ''; ev.supplierSearch = newSupplierSearch();
+      if (ev.connPick === 'm:shopify') checkShopifySupplierMode();
       paintConnections(); document.querySelector('[data-conn-field], #evShopifyLabel')?.focus();
     }
     // The archive's GitHub account: read the repositories it can reach and redraw the Repository field for that account.

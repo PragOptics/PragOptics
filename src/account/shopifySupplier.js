@@ -93,6 +93,31 @@ export function supplierOrderResult(result) {
   return `${placed} Local storage is unconfirmed. Check the Shopify order reference before taking any further action.`;
 }
 
+export async function readShopifySupplierMode(apiBase, request = fetch) {
+  try {
+    const response = await request(`${apiBase}/shopify/catalog/profile`, { cache: 'no-store', credentials: 'omit' });
+    if (response.status === 404) return 'legacy';
+    if (!response.ok) return 'unavailable';
+    const result = await response.json();
+    const capability = result?.ucp?.capabilities?.['dev.shopify.catalog.global'];
+    return Array.isArray(capability) && capability.length ? 'current' : 'unavailable';
+  } catch { return 'unavailable'; }
+}
+
+export function shopifyStartFields(mode, value) {
+  if (mode === 'legacy') {
+    const shop = String(value || '').trim();
+    return shop ? { shop } : null;
+  }
+  if (mode !== 'current') return null;
+  const label = supplierName(value);
+  return label && label.length <= 60 ? { label } : null;
+}
+
+export function shopifyOnboardingUrl(mode, response) {
+  return mode === 'legacy' ? response.directUrl || response.url : response.url;
+}
+
 export function newSupplierSearch() {
   return { query: '', matches: null, selected: null, busy: '', note: '', error: '', attempt: null, recipientDraft: null, approval: false };
 }
