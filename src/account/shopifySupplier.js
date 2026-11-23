@@ -1,19 +1,5 @@
 export const COLLECTIVE_HELP = 'https://help.shopify.com/en/manual/online-sales-channels/shopify-collective/retailers/discovery';
 
-export function shopifyIntent(text) {
-  const words = String(text || '').toLowerCase();
-  if (/\bshopify collective\b/.test(words)) return 'discovery';
-  if (/\bmy (?:own )?shopify (?:store|shop)\b/.test(words)) return 'connection';
-  if (/\b(?:suppliers?|dropship(?:ping)?|wholesale|dealership)\b/.test(words)) return 'discovery';
-  return /\bshopify\b/.test(words) ? 'connection' : '';
-}
-
-export function supplierSearchPhrase(text) {
-  const match = String(text || '').trim().match(/\b(?:suppliers?\s+for|dropship(?:ping)?|wholesale\s+supplier\s+of)\s+(.+?)[?.!]*$/i);
-  if (!match || /^(?:a |an |my |the )?(?:shopify |dropshipping )?(?:suppliers?|store|business)\b/i.test(match[1])) return '';
-  return match[1].trim().slice(0, 120);
-}
-
 export function publicWebUrl(value) {
   try {
     const url = new URL(value);
@@ -182,3 +168,7 @@ export function shopifyDiscoveryHtml(state, { e, stateLead, copy, waiting }) {
     ${link(COLLECTIVE_HELP, 'How to find suppliers in Shopify Collective')}
     ${back('I know the business name')}`;
 }
+
+// Old cached imports remain inert; interpretation is server-side.
+export const shopifyIntent = () => '';
+export const supplierSearchPhrase = () => '';

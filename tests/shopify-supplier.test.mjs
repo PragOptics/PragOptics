@@ -1,12 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { COLLECTIVE_HELP, newSupplierSearch, shopifyDiscoveryHtml, shopifyIntent, supplierEmail, supplierMatches, supplierSearchPhrase, supplierName, supplierInquiryResponse, supplierInquiryFailure, supplierOrderResult, readShopifySupplierMode, shopifyStartFields, shopifyOnboardingUrl } from '../src/account/shopifySupplier.js';
+import { COLLECTIVE_HELP, newSupplierSearch, shopifyDiscoveryHtml, supplierEmail, supplierMatches, supplierName, supplierInquiryResponse, supplierInquiryFailure, supplierOrderResult, readShopifySupplierMode, shopifyStartFields, shopifyOnboardingUrl } from '../src/account/shopifySupplier.js';
 
-test('Quark prefills a specific supplier search and leaves generic requests blank', () => {
-  assert.equal(supplierSearchPhrase('I want to dropship Cedar Hive Boxes!'), 'Cedar Hive Boxes');
-  assert.equal(supplierSearchPhrase('Find a supplier for cedar boxes?'), 'cedar boxes');
-  assert.equal(supplierSearchPhrase('Find a supplier'), '');
-});
+
 
 test('supplier name and recipient validation match server limits', () => {
   assert.equal(supplierName('  Cedar Hive Supply  '), 'Cedar Hive Supply');
@@ -80,13 +76,7 @@ function render(state) {
   });
 }
 
-test('Quark distinguishes Shopify suppliers, an own-store connection and a storefront launch', () => {
-  assert.equal(shopifyIntent('Connect my supplier’s Shopify store'), 'discovery');
-  assert.equal(shopifyIntent('Find a dropshipping supplier'), 'discovery');
-  assert.equal(shopifyIntent('How do I find suppliers in Shopify Collective?'), 'discovery');
-  assert.equal(shopifyIntent('Connect my own Shopify store'), 'connection');
-  assert.equal(shopifyIntent('I want to launch an online store'), '');
-});
+
 
 test('discovery separates seller evidence and supplier-published contact', () => {
   assert.equal(supplierEmail(' dealer@supplier.example '), 'dealer@supplier.example');

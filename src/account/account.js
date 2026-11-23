@@ -1,4 +1,3 @@
-import { quarkRequestAllowed } from '../assistant/quarkPlatform.js';
 // src/account/account.js
 //
 // THE panel. One container for everything about the signed-in person:
@@ -5487,20 +5486,14 @@ window.addEventListener('hashchange', () => {
   } catch { /* the page stays as it is */ }
 });
 
-// Quark uses the panel's existing authenticated transport and verified navigation.
-// Never return a token or a credential to the assistant.
+// The browser supplies session/scope and renders the private service's result.
 export function quarkPlatformAccess() {
   return {
-    request: (address, options = {}) => {
-      if (!quarkRequestAllowed(PRAG_API_BASE, address, options.method || 'GET')) throw new Error('That request is not available to Quark.');
-      return viewApiFetch(address, options);
-    },
+    send: input => viewApiFetch(PRAG_API_BASE + '/assistant/respond', { method: 'POST', body: JSON.stringify(input) }),
     context: () => ({
       userId: hasLiveSession() ? pingUserId() : '',
       tenant: agentMode() ? agentEnv() : pickedTeamId(),
-      lane: environmentLaneForQuark(),
-      isAdmin: isAdmin(), role: roleInView(),
-      sections: allSections().filter(s => !(s.id === 'licensing' && licensingHidden()) && !(s.id === 'liveagents' && liveAgentsHidden()) && !(s.id === 'approvals' && approvalsHidden())).map(s => s.id)
+      lane: environmentLaneForQuark()
     })
   };
 }

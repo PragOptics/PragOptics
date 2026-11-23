@@ -1,28 +1,5 @@
-// src/assistant/quark.js
-//
-// QUARK — the platform's front-end assistant (2026-11-21).
-//
-// What it is: one assistant the person just talks to, and it only exists once you are signed in.
-// On the signed-in Profile Home tab it is a docked side-chat. On every other surface inside the
-// platform it is Quark himself in the corner — the rendered character — who opens the same chat.
-// It never appears before sign-in or on the landing screen, and it knows nothing about the user
-// until they are signed in. When the chat opens the corner character steps aside, so the two never
-// sit misaligned at any size.
-//
-// It knows the platform because it reads the platform's own self-description
-// (GET v1/assistant/knowledge, the awareness endpoint), it holds the order a launch actually
-// happens in, it does the machine parts (it navigates you to the exact place), and it hands you only
-// the clicks that are yours.
-//
-// The deterministic controller uses capability knowledge, actual setup state and bounded actions.
-// It works without a model and reports unconfirmed state explicitly. A future model proposes intents
-// through respond(); src/assistant/quark.instructions.md describes the boundaries. No secrets live here.
-
-import { PRAG_API_BASE } from '../runtime/config.js';
-import { createPlatformGuide, capabilityDestination, scopeKey } from './quarkPlatform.js';
-import { answerPlatform, supplierResult } from './quarkPlatformView.js';
-
-const KNOWLEDGE_URL = `${PRAG_API_BASE}/assistant/knowledge`;
+// Quark's public chat shell. Its interpreter and workflows execute privately.
+import { createQuarkClient, scopeKey } from './quarkClient.js';
 const NAME = 'Quark';
 
 /* ----------------------------------------------------------------- session (read-only) */
@@ -35,61 +12,17 @@ function firstName() {
   return n ? n.split(/\s+/)[0] : '';
 }
 
-/* ----------------------------------------------------------------- the platform's own knowledge */
-
-let _knowledge = null, _knowledgeRead = null;
-async function knowledge() {
-  if (_knowledge) return _knowledge;
-  if (_knowledgeRead) return _knowledgeRead;
-  _knowledgeRead = (async () => {
-    try {
-      const headers = {}; const t = tokens()?.access_token;
-      if (t) headers.Authorization = `Bearer ${t}`;
-      const res = await fetch(KNOWLEDGE_URL, { headers });
-      if (!res.ok) return null;
-      const d = await res.json();
-      _knowledge = Array.isArray(d?.capabilities) ? d.capabilities : null;
-      return _knowledge;
-    } catch { return null; }
-    finally { _knowledgeRead = null; }
-  })();
-  return _knowledgeRead;
-}
-
-/* ----------------------------------------------------------------- the platform's engines */
-
-// The platform is built on engines (runtimes), not just website features. Quark names them so it is
-// aware of the whole platform. These descriptions do not imply fresh deployment verification.
-const ENGINES = [
-  { label: 'Public frontend', what: 'the account panel, public pages and the separate PragOptics Hardware Shop.' },
-  { label: 'Core platform', what: 'accounts, environment scope, connections, billing, data and operator workflows.' },
-  { label: 'Studio', what: 'designs, reconstructs, builds and publishes sites and reusable modules.' },
-  { label: 'Python Data Engine', what: 'decodes supported data formats and reports incomplete recovery explicitly.' },
-  { label: 'PowerShell Exchange runtime', what: 'executes authorized Microsoft tenant operations decided by the core platform.' },
-  { label: 'FNM', what: 'the independent foundation runtime; separate from the web storefront and site assistants.' },
-  { label: 'Site serving edge', what: 'serves published environment sites at their assigned domains.' },
-];
-
-/* ----------------------------------------------------------------- navigation (the machine parts) */
-
-function go(dest, query = '', card = '', row = '') {
-  const shopifyDestination = ['shopify-discovery','shopify-connection','shopify-review'].includes(dest);
-  const top = ['shop', 'software', 'warranty', 'builds', 'console'];
+function applyNavigation(destination) {
+  if (!destination || typeof destination !== 'object') return;
   closeDrawer();
-  if (dest === 'shopify-discovery' || dest === 'shopify-connection' || dest === 'shopify-review') {
-    const shopify = dest === 'shopify-discovery' ? 'discovery' : dest === 'shopify-review' ? 'review' : 'connection';
-    try { sessionStorage.setItem('pragoptics_open_card', JSON.stringify({ section: 'environment', card: 'connections', shopify, query, row })); } catch { /* the section still opens */ }
-    dest = 'environment';
+  if (destination.mode === 'studio') { window.pragOpenStudio?.(); return; }
+  if (destination.mode) { window.setAppMode?.(destination.mode); return; }
+  if (!destination.section) return;
+  if (destination.card) {
+    try { sessionStorage.setItem('pragoptics_open_card', JSON.stringify(destination)); } catch { /* navigation still opens */ }
   }
-  if (card && !shopifyDestination) { try { sessionStorage.setItem('pragoptics_open_card', JSON.stringify({ section: dest, card, row })); } catch { /* navigation still works */ } }
-  if (dest === 'studio') { try { (window.pragOpenStudio || (() => {}))(); } catch { /* ignore */ } return; }
-  if (top.includes(dest)) { try { window.setAppMode?.(dest); } catch { /* ignore */ } return; }
-  if (signedIn()) {
-    try { window.presetAccountSection?.(dest); window.setAppMode?.('account'); } catch { /* ignore */ }
-  } else {
-    try { sessionStorage.setItem('pragoptics_return_to', dest === 'subscription' ? 'subscription' : dest); } catch { /* falls back to Profile */ }
-    try { (window.openLoginModal || window.startPragOpticsLogin || (() => {}))('login'); } catch { /* ignore */ }
-  }
+  window.presetAccountSection?.(destination.section);
+  window.setAppMode?.('account');
 }
 
 /* ----------------------------------------------------------------- Quark's mark = the character */
@@ -156,11 +89,7 @@ function build() {
     const act = b.dataset.quark;
     if (act === 'close') { closeDrawer(); return; }
     if (act === 'chip') { const t = b.dataset.text || b.textContent; sayYou(t); respond(t); return; }
-    if (act === 'go') { go(b.dataset.to || '', b.dataset.query || '', b.dataset.card || '', b.dataset.row || ''); return; }
-    if (act === 'family' || act === 'capability') { respond(act + ':' + (b.dataset.id || '')); return; }
-    if (act === 'open-capability') { openCapability(b.dataset.id || ''); return; }
-    if (act === 'supplier-action') { runSupplierAction(b, b.dataset.action || '', b.dataset.id || '', b.dataset.order || ''); return; }
-    if (act === 'step') { respond('Show my setup'); return; }
+    if (act === 'remote') { respond(null, b.dataset.ticket || '', b); return; }
   });
 
   const drawer = document.createElement('div');
@@ -196,78 +125,40 @@ function chips(list) {
 
 /* ----------------------------------------------------------------- platform guidance and scoped operations */
 
-let platformAccess = null, platformGuide = null, replyGeneration = 0, conversationOwner = '';
-
+let platformAccess = null, client = null, replyGeneration = 0, conversationOwner = '';
 async function accessPlatform() {
   if (!platformAccess) {
     const account = await import('../account/account.js');
     platformAccess = account.quarkPlatformAccess();
-    platformGuide = createPlatformGuide({ apiBase: PRAG_API_BASE, context: platformAccess.context, request: platformAccess.request });
+    client = createQuarkClient({ context: platformAccess.context, send: platformAccess.send });
   }
-  return { guide: platformGuide, context: platformAccess.context };
+  return client;
 }
-
 function resetConversationIfChanged() {
   let team = '';
   try { team = sessionStorage.getItem('pragoptics_team_id') || ''; } catch { /* own environment */ }
   const key = signedIn() ? JSON.stringify([ping()?.user?.userId || '', platformAccess?.context().tenant || team, platformAccess?.context().lane || 'live']) : '';
   if (key === conversationOwner) return;
-  conversationOwner = key;
-  replyGeneration++;
+  conversationOwner = key; replyGeneration++;
   if (el.log) el.log.replaceChildren();
   greeted = false;
 }
-
-async function respond(text) {
-  if (!signedIn()) return;
+async function respond(text, ticket = '', button = null) {
+  if (!signedIn() || button?.disabled) return;
+  if (button) button.disabled = true;
   const generation = ++replyGeneration;
   const row = sayQuark('Reading the platform…');
   try {
-    const { guide, context } = await accessPlatform();
-    const key = scopeKey(context());
-    const caps = await knowledge();
-    let html;
-    if (/\b(engine|engines|powershell|power shell|python|fnm|runtime|compute)\b/i.test(text) && !String(text).startsWith('capability:')) {
-      html = enginesHtml();
-    } else {
-      html = await answerPlatform(text, { capabilities: caps, guide, context });
-    }
-    if (generation !== replyGeneration || !signedIn() || scopeKey(context()) !== key) { row.remove(); return; }
-    row.querySelector('.quark-body').innerHTML = html;
+    const transport = await accessPlatform(), key = scopeKey(platformAccess.context());
+    const result = await transport.request(ticket ? { ticket } : { text });
+    if (generation !== replyGeneration || !signedIn() || scopeKey(platformAccess.context()) !== key) { row.remove(); return; }
+    row.querySelector('.quark-body').innerHTML = result.html;
+    if (result.navigation) applyNavigation(result.navigation);
     scrollLog();
   } catch (error) {
     if (generation !== replyGeneration || !signedIn()) { row.remove(); return; }
-    row.querySelector('.quark-body').textContent = error?.code === 'SCOPE_CHANGED' ? error.message : (error?.message || 'I could not read the current platform state. No action was reported complete.');
-  }
-}
-
-async function openCapability(id) {
-  const { context } = await accessPlatform();
-  const capability = (await knowledge() || []).find(c => c.id === id);
-  const destination = capabilityDestination(capability, context());
-  if (!destination) { sayQuark('That workflow is not available in the current account view.'); return; }
-  go(destination.mode || destination.section, '', destination.card || '');
-}
-
-async function runSupplierAction(button, action, id, supplierOrderId) {
-  if (button.disabled) return;
-  button.disabled = true;
-  const generation = ++replyGeneration;
-  const row = sayQuark(action === 'sync' ? 'Syncing this supplier’s products…' : 'Checking the supplier…');
-  try {
-    const { guide, context } = await accessPlatform();
-    const key = scopeKey(context());
-    const result = await guide.supplierAction(action, id, supplierOrderId);
-    if (generation !== replyGeneration || !signedIn() || scopeKey(context()) !== key) { row.remove(); return; }
-    row.querySelector('.quark-body').innerHTML = supplierResult(action, result);
-  } catch (error) {
-    if (generation !== replyGeneration || !signedIn()) { row.remove(); return; }
-    row.querySelector('.quark-body').textContent = error?.message || 'The supplier action was not confirmed. Check its status before trying again.';
-  } finally { if (button.isConnected) button.disabled = false; scrollLog(); }
-}
-
-function enginesHtml() {
-  return `The platform uses these engines: ${ENGINES.map(engine => `<div class="quark-cap"><b>${esc(engine.label)}</b><p>${esc(engine.what)}</p></div>`).join('')}<p>The core platform decides scope and authority. The engines execute their own bounded work.</p>`;
+    row.querySelector('.quark-body').textContent = error?.message || 'Quark could not confirm a result.';
+  } finally { if (button?.isConnected) button.disabled = false; }
 }
 
 function greetingHtml() {
@@ -397,7 +288,6 @@ function toggleDrawer() { drawerOpen ? closeDrawer() : openDrawer(); }
 export function initQuark() {
   if (built) return;
   build();
-  if (signedIn()) knowledge();   // no unauthenticated knowledge requests
 
   // Place now and again once the view/section has settled (boot fires several mode changes in a row,
   // and the account section content renders a beat later).
