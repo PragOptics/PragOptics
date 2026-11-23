@@ -1132,7 +1132,7 @@ function budgetHtml(manage) {
   const e = D.escapeHtml, b = ev.aiBudget;
   if (!b) return '';
   const rows = b.installs || [], own = b.own, lanes = b.lanes || [];
-  const laneSel = (r) => manage ? `<select class="acct-input ev-budget-in" data-budget-field="lane" aria-label="Model lane">${lanes.map(l => `<option value="${e(l.lane)}"${l.lane === r.lane ? ' selected' : ''}>${e(cap(l.lane))} · ${e(l.model)}${l.exchangeCents ? ` · ${e(cents(l.exchangeCents))}` : ''}</option>`).join('')}</select>` : `${e(cap(r.lane))}<br><span class="adm-muted lic-desc">${e(r.model)}</span>`;
+  const laneSel = (r) => manage ? `<select class="acct-input ev-budget-in" data-budget-field="lane" aria-label="Model lane">${lanes.map(l => `<option value="${e(l.lane)}"${l.lane === r.lane ? ' selected' : ''}>${e(cap(l.lane))} · ${e(l.model)}${(l.priceCents ?? l.exchangeCents) != null ? ` · ${e(cents(l.priceCents ?? l.exchangeCents))}` : ''}</option>`).join('')}</select>` : `${e(cap(r.lane))}<br><span class="adm-muted lic-desc">${e(r.model)}</span>`;
   const effortSel = (r) => manage ? `<select class="acct-input ev-budget-in" data-budget-field="effort" aria-label="Effort">${(b.efforts || []).map(x => `<option value="${e(x)}"${x === r.effort ? ' selected' : ''}>${e(cap(x))}</option>`).join('')}</select>` : e(cap(r.effort));
   const num = (r, field, val, min) => manage ? `<input class="acct-input ev-budget-in ev-budget-num" type="number" min="${min}" step="1" data-budget-field="${field}" value="${e(String(val))}">` : e(String(val));
   const body = rows.length ? rows.map(r => `
