@@ -1,3 +1,4 @@
+import { quarkRequestAllowed } from '../assistant/quarkPlatform.js';
 // src/account/account.js
 //
 // THE panel. One container for everything about the signed-in person:
@@ -20,7 +21,7 @@ import { tierName, ADDON_NAME, tierBadge } from '../components/tierCopy.js';
 import { mountPricingSelect } from '../components/pricingCards.js';
 import { openReportAnomaly, openSupportRequest, installErrorCapture } from './report.js';
 import { renderTeam, renderTenants, bindTeamActions } from './team.js';
-import { renderEnvironment, renderAi, bindEnvironmentActions } from './environment.js';
+import { renderEnvironment, renderAi, bindEnvironmentActions, environmentLaneForQuark } from './environment.js';
 import { renderLicensing, bindLicensingActions } from './licensing.js';
 import { renderLiveAgents, renderAgentDesk, bindLiveAgentsActions, stopLiveAgentsTimers } from './liveAgents.js';
 import { renderHome, bindHomeActions } from './home.js';
@@ -5351,7 +5352,7 @@ function bindOnce() {
 // The setup checklist's names (setup.js; the server's link.card) are here too (2026-09-28): a card made by cardHtml is
 // found by its body's id, card-<key with : as ->; a name with no card of its own opens the section's first card.
 const CARD_IDS = {
-  environment: { environment: 'evBody', storage: 'evBody', lanes: 'evBody', publish: 'evBody', files: 'evFiles', data: 'evData', mail: 'evMail', connections: 'evConnections', domains: 'evDomains', keys: 'evKeys' },
+  environment: { environment: 'evBody', storage: 'evBody', lanes: 'evBody', publish: 'evBody', files: 'evFiles', documents: 'evDocuments', import: 'evImport', variables: 'evVariables', archive: 'evArchive', shipping: 'evShipping', data: 'evData', mail: 'evMail', connections: 'evConnections', domains: 'evDomains', keys: 'evKeys' },
   ai: { ai: 'evAi', budget: 'evAi' },
   approvals: {},
   subscription: { plan: 'acctPricing', card: 'acctPmActions', payment: 'acctPmActions', details: 'card-billing-details', bandwidth: 'card-billing-bandwidth' },
@@ -5485,3 +5486,21 @@ window.addEventListener('hashchange', () => {
     if (id && id !== activeSection) showSection(id);
   } catch { /* the page stays as it is */ }
 });
+
+// Quark uses the panel's existing authenticated transport and verified navigation.
+// Never return a token or a credential to the assistant.
+export function quarkPlatformAccess() {
+  return {
+    request: (address, options = {}) => {
+      if (!quarkRequestAllowed(PRAG_API_BASE, address, options.method || 'GET')) throw new Error('That request is not available to Quark.');
+      return viewApiFetch(address, options);
+    },
+    context: () => ({
+      userId: hasLiveSession() ? pingUserId() : '',
+      tenant: agentMode() ? agentEnv() : pickedTeamId(),
+      lane: environmentLaneForQuark(),
+      isAdmin: isAdmin(), role: roleInView(),
+      sections: allSections().filter(s => !(s.id === 'licensing' && licensingHidden()) && !(s.id === 'liveagents' && liveAgentsHidden()) && !(s.id === 'approvals' && approvalsHidden())).map(s => s.id)
+    })
+  };
+}

@@ -14,15 +14,15 @@
 // happens in, it does the machine parts (it navigates you to the exact place), and it hands you only
 // the clicks that are yours.
 //
-// The brain is deterministic today — the capability knowledge plus a built-in guided launch — so it
-// works and cannot go wrong with no model wired in. `ask()` is the one place a model plugs in (see
-// the note there); src/assistant/quark.instructions.md is its brief. No secrets live here.
+// The deterministic controller uses capability knowledge, actual setup state and bounded actions.
+// It works without a model and reports unconfirmed state explicitly. A future model proposes intents
+// through respond(); src/assistant/quark.instructions.md describes the boundaries. No secrets live here.
 
 import { PRAG_API_BASE } from '../runtime/config.js';
-import { shopifyIntent, supplierSearchPhrase } from '../account/shopifySupplier.js';
+import { createPlatformGuide, capabilityDestination, scopeKey } from './quarkPlatform.js';
+import { answerPlatform, supplierResult } from './quarkPlatformView.js';
 
 const KNOWLEDGE_URL = `${PRAG_API_BASE}/assistant/knowledge`;
-const SETUP_URL = `${PRAG_API_BASE}/environment/setup`;
 const NAME = 'Quark';
 
 /* ----------------------------------------------------------------- session (read-only) */
@@ -56,52 +56,32 @@ async function knowledge() {
   return _knowledgeRead;
 }
 
-async function setupState() {
-  if (!signedIn()) return null;
-  try {
-    const t = tokens()?.access_token;
-    let url = SETUP_URL;
-    try { const team = sessionStorage.getItem('pragoptics_team_id'); if (team) url += `?tenant=${encodeURIComponent(team)}`; } catch { /* own env */ }
-    const res = await fetch(url, { headers: { Authorization: `Bearer ${t}` } });
-    if (!res.ok) return null;
-    const d = await res.json();
-    return (d && Array.isArray(d.groups)) ? d : null;
-  } catch { return null; }
-}
-
-/* ----------------------------------------------------------------- the launch path (plain words) */
-
-const LAUNCH = [
-  { key: 'address', label: 'Claim your web address', why: 'Your site needs a name people can type. Pick one and I set it up.', cta: 'Find my address', to: 'environment' },
-  { key: 'verify',  label: 'Prove the address is yours', why: 'A quick ownership check so your mail and your live site can use the name.', cta: 'Start the check', to: 'environment' },
-  { key: 'build',   label: 'Build your pages', why: 'Describe your site or pick a starting point. This can run while the check finishes.', cta: 'Open the studio', to: 'studio' },
-  { key: 'pay',     label: 'Turn on payments and email', why: 'Take card payments and send mail from your own address. I wire the plumbing; you connect your accounts.', cta: 'Set these up', to: 'environment' },
-  { key: 'publish', label: 'Go live', why: 'Everything ready. One step puts your site on the web at your address.', cta: 'Publish', to: 'studio' },
-  { key: 'found',   label: 'Help people find you', why: 'Add your site to search and turn on alerts for new orders and messages.', cta: 'Finish up', to: 'environment' },
-];
-
 /* ----------------------------------------------------------------- the platform's engines */
 
 // The platform is built on engines (runtimes), not just website features. Quark names them so it is
-// aware of the whole platform. fnm_demo keeps its name for now; the path drops "demo" later.
+// aware of the whole platform. These descriptions do not imply fresh deployment verification.
 const ENGINES = [
-  { label: 'The front end', what: 'the app and its API: accounts, environments, connections, billing and the operator desks.' },
-  { label: 'The studio', what: 'the builder where a site or app is designed, built and published.' },
-  { label: 'The PowerShell engine', what: 'runs PowerShell automation on the platform.' },
-  { label: 'The Python engine', what: 'runs Python automation on the platform.' },
-  { label: 'fnm_demo', what: 'the FNM engine, the foundation runtime. The name drops "demo" later.' },
+  { label: 'Public frontend', what: 'the account panel, public pages and the separate PragOptics Hardware Shop.' },
+  { label: 'Core platform', what: 'accounts, environment scope, connections, billing, data and operator workflows.' },
+  { label: 'Studio', what: 'designs, reconstructs, builds and publishes sites and reusable modules.' },
+  { label: 'Python Data Engine', what: 'decodes supported data formats and reports incomplete recovery explicitly.' },
+  { label: 'PowerShell Exchange runtime', what: 'executes authorized Microsoft tenant operations decided by the core platform.' },
+  { label: 'FNM', what: 'the independent foundation runtime; separate from the web storefront and site assistants.' },
+  { label: 'Site serving edge', what: 'serves published environment sites at their assigned domains.' },
 ];
 
 /* ----------------------------------------------------------------- navigation (the machine parts) */
 
-function go(dest, query = '') {
+function go(dest, query = '', card = '', row = '') {
+  const shopifyDestination = ['shopify-discovery','shopify-connection','shopify-review'].includes(dest);
   const top = ['shop', 'software', 'warranty', 'builds', 'console'];
   closeDrawer();
-  if (dest === 'shopify-discovery' || dest === 'shopify-connection') {
-    const shopify = dest === 'shopify-discovery' ? 'discovery' : 'connection';
-    try { sessionStorage.setItem('pragoptics_open_card', JSON.stringify({ section: 'environment', card: 'connections', shopify, query })); } catch { /* the section still opens */ }
+  if (dest === 'shopify-discovery' || dest === 'shopify-connection' || dest === 'shopify-review') {
+    const shopify = dest === 'shopify-discovery' ? 'discovery' : dest === 'shopify-review' ? 'review' : 'connection';
+    try { sessionStorage.setItem('pragoptics_open_card', JSON.stringify({ section: 'environment', card: 'connections', shopify, query, row })); } catch { /* the section still opens */ }
     dest = 'environment';
   }
+  if (card && !shopifyDestination) { try { sessionStorage.setItem('pragoptics_open_card', JSON.stringify({ section: dest, card, row })); } catch { /* navigation still works */ } }
   if (dest === 'studio') { try { (window.pragOpenStudio || (() => {}))(); } catch { /* ignore */ } return; }
   if (top.includes(dest)) { try { window.setAppMode?.(dest); } catch { /* ignore */ } return; }
   if (signedIn()) {
@@ -176,8 +156,11 @@ function build() {
     const act = b.dataset.quark;
     if (act === 'close') { closeDrawer(); return; }
     if (act === 'chip') { const t = b.dataset.text || b.textContent; sayYou(t); respond(t); return; }
-    if (act === 'go') { go(b.dataset.to || '', b.dataset.query || ''); return; }
-    if (act === 'step') { guideStep(Number(b.dataset.i) || 0); return; }
+    if (act === 'go') { go(b.dataset.to || '', b.dataset.query || '', b.dataset.card || '', b.dataset.row || ''); return; }
+    if (act === 'family' || act === 'capability') { respond(act + ':' + (b.dataset.id || '')); return; }
+    if (act === 'open-capability') { openCapability(b.dataset.id || ''); return; }
+    if (act === 'supplier-action') { runSupplierAction(b, b.dataset.action || '', b.dataset.id || '', b.dataset.order || ''); return; }
+    if (act === 'step') { respond('Show my setup'); return; }
   });
 
   const drawer = document.createElement('div');
@@ -207,169 +190,93 @@ function bubble(role, html) {
 function sayYou(text) { bubble('you', esc(text)); }
 function sayQuark(html) { return bubble('quark', html); }
 
-function think(render) {
-  const row = sayQuark('<span class="quark-typing"><i></i><i></i><i></i></span>');
-  setTimeout(() => { row.querySelector('.quark-body').innerHTML = render(); scrollLog(); }, 380);
-}
-
 function chips(list) {
   return `<div class="quark-chips">${list.map((c) => `<button type="button" class="quark-chip" data-quark="chip" data-text="${esc(c.text || c)}">${esc(c.label || c)}</button>`).join('')}</div>`;
 }
 
-/* ----------------------------------------------------------------- the launch guide */
+/* ----------------------------------------------------------------- platform guidance and scoped operations */
 
-let launchStarted = false;
-// Steps the person's account has ACTUALLY completed (from their setup state). Never the preview
-// position: clicking "Next step" to read ahead must never mark a step done that isn't.
-let doneSteps = 0;
+let platformAccess = null, platformGuide = null, replyGeneration = 0, conversationOwner = '';
 
-function trackerHtml(cur) {
-  return `<div class="quark-track">${LAUNCH.map((s, i) => {
-    const state = i === cur ? 'now' : i < doneSteps ? 'done' : 'next';
-    return `<span class="quark-trk is-${state}"><b>${i < doneSteps ? '&#10003;' : (i + 1)}</b>${esc(short(s.label))}</span>`;
-  }).join('')}</div>`;
-}
-function short(label) {
-  return label.replace(/^Claim your web address/, 'Address').replace(/^Prove the address is yours/, 'Verify').replace(/^Build your pages/, 'Build').replace(/^Turn on payments and email/, 'Pay + email').replace(/^Go live/, 'Publish').replace(/^Help people find you/, 'Be found');
-}
-
-function stepCardHtml(i) {
-  const s = LAUNCH[i];
-  const last = i >= LAUNCH.length - 1;
-  return `
-    ${trackerHtml(i)}
-    <div class="quark-card">
-      <div class="quark-card-k">Step ${i + 1} of ${LAUNCH.length}</div>
-      <div class="quark-card-t">${esc(s.label)}</div>
-      <div class="quark-card-b">${esc(s.why)}</div>
-      <div class="quark-card-actions">
-        <button type="button" class="quark-btn quark-primary" data-quark="go" data-to="${esc(s.to)}">${esc(s.cta)}</button>
-        ${!last ? `<button type="button" class="quark-btn quark-ghost" data-quark="step" data-i="${i + 1}">Next step</button>` : ''}
-      </div>
-    </div>`;
-}
-
-function guideStep(i) {
-  if (i >= LAUNCH.length) { sayQuark(`That is the whole path. When each one is done your site is live, and you can change anything just by asking me.`); return; }
-  launchStarted = true;
-  think(() => stepCardHtml(i));
-}
-
-async function startLaunch(thing) {
-  launchStarted = true;
-  const name = thing ? ` for ${esc(thing)}` : '';
-  const st = await setupState();
-  if (st) {
-    const steps = (st.groups || []).flatMap((g) => g.steps || []);
-    const next = steps.find((s) => s.state === 'next') || steps.find((s) => s.state === 'open');
-    doneSteps = Math.max(0, Math.min(mapSetupToLaunch(next), LAUNCH.length - 1));
-    think(() => `Here is the whole path, and I start you on the next thing that is actually yours.${stepCardHtml(doneSteps)}`);
-    return;
+async function accessPlatform() {
+  if (!platformAccess) {
+    const account = await import('../account/account.js');
+    platformAccess = account.quarkPlatformAccess();
+    platformGuide = createPlatformGuide({ apiBase: PRAG_API_BASE, context: platformAccess.context, request: platformAccess.request });
   }
-  doneSteps = 0;
-  think(() => `Good${name}. Here is the whole path, start to finish. One thing at a time, in the right order, and I take you to each place.${stepCardHtml(0)}`);
+  return { guide: platformGuide, context: platformAccess.context };
 }
 
-function mapSetupToLaunch(step) {
-  const id = String(step?.id || step?.link?.card || '').toLowerCase();
-  if (/domain|address/.test(id)) return 0;
-  if (/verif/.test(id)) return 1;
-  if (/site|build|studio/.test(id)) return 2;
-  if (/stripe|pay|mail|licens/.test(id)) return 3;
-  if (/live|publish/.test(id)) return 4;
-  return 0;
+function resetConversationIfChanged() {
+  let team = '';
+  try { team = sessionStorage.getItem('pragoptics_team_id') || ''; } catch { /* own environment */ }
+  const key = signedIn() ? JSON.stringify([ping()?.user?.userId || '', platformAccess?.context().tenant || team, platformAccess?.context().lane || 'live']) : '';
+  if (key === conversationOwner) return;
+  conversationOwner = key;
+  replyGeneration++;
+  if (el.log) el.log.replaceChildren();
+  greeted = false;
 }
 
-/* ----------------------------------------------------------------- the brain (deterministic today) */
-
-// WHERE A MODEL PLUGS IN. When a platform assistant model is connected, this is the only change:
-// POST { text, history } to a platform assistant endpoint with the instructions
-// (src/assistant/quark.instructions.md) as the system prompt and the knowledge() list as grounding,
-// and render the streamed reply through sayQuark(). Until then Quark answers from the knowledge and
-// the guided launch below, so it is useful and correct with no model at all.
 async function respond(text) {
-  const t = text.toLowerCase();
-  const shopify = shopifyIntent(t);
-  if (shopify) {
-    think(() => shopifyGuideHtml(shopify, supplierSearchPhrase(text)));
-    return;
-  }
-
-  if (/\b(launch|website|web site|site|store|shop|sell|online|landing|page|get started|set up|setup|go live)\b/.test(t)) {
-    const thing = text.replace(/.*\b(for|a|an)\b/i, '').trim();
-    startLaunch(thing && thing.length < 40 ? thing : '');
-    return;
-  }
-  if (/\b(engine|engines|powershell|power shell|python|fnm|runtime|compute|studio)\b/.test(t)) {
-    think(() => enginesHtml());
-    return;
-  }
-  if (/\b(what|which|everything|capab|can (you|this|it)|do here|features?)\b/.test(t)) {
+  if (!signedIn()) return;
+  const generation = ++replyGeneration;
+  const row = sayQuark('Reading the platform…');
+  try {
+    const { guide, context } = await accessPlatform();
+    const key = scopeKey(context());
     const caps = await knowledge();
-    think(() => capabilitiesHtml(caps));
-    return;
+    let html;
+    if (/\b(engine|engines|powershell|power shell|python|fnm|runtime|compute)\b/i.test(text) && !String(text).startsWith('capability:')) {
+      html = enginesHtml();
+    } else {
+      html = await answerPlatform(text, { capabilities: caps, guide, context });
+    }
+    if (generation !== replyGeneration || !signedIn() || scopeKey(context()) !== key) { row.remove(); return; }
+    row.querySelector('.quark-body').innerHTML = html;
+    scrollLog();
+  } catch (error) {
+    if (generation !== replyGeneration || !signedIn()) { row.remove(); return; }
+    row.querySelector('.quark-body').textContent = error?.code === 'SCOPE_CHANGED' ? error.message : (error?.message || 'I could not read the current platform state. No action was reported complete.');
   }
-  if (/\b(connect|hook up|integrat|shopify|stripe|shippo|twilio|github|microsoft|google|supplier|payment|mail|domain)\b/.test(t)) {
-    const caps = await knowledge();
-    think(() => howToHtml(caps, t));
-    return;
-  }
-  if (/\b(hi|hey|hello|yo|sup)\b/.test(t) && t.length < 12) { think(() => greetingHtml()); return; }
-
-  think(() => `I can take you the whole way to a live site, connect your tools like Shopify or Stripe, or explain anything on the platform. What do you want to do?${chips([{ label: 'Launch a website', text: 'I want to launch a website' }, { label: 'What can this do', text: 'What can this platform do' }, { label: 'Connect a tool', text: 'How do I connect a tool' }])}`);
 }
 
-function capabilitiesHtml(caps) {
-  if (!caps || !caps.length) {
-    return `In short: claim and verify a web address, build and publish a site in the studio, connect your own tools (Shopify, Stripe, Shippo, email and more), take payments, send mail from your address, publish your own API, and manage your team and data in one environment. It runs on its own engines: the front end, the studio, a PowerShell engine, a Python engine, and fnm_demo. Want me to launch you through it?${chips([{ label: 'Launch me through it', text: 'I want to launch a website' }])}`;
-  }
-  const fam = {};
-  for (const c of caps) { const key = String(c.id || '').split('.')[0] || 'platform'; (fam[key] = fam[key] || []).push(c); }
-  const titleOf = (k) => ({
-    connections: 'Connect your own tools', 'domains-licensing': 'Web address, mail and licensing', 'auth-identity': 'Accounts and sign-in',
-    'billing-commerce': 'Payments and billing', 'studio-projects': 'Build and publish', 'imports-data': 'Your data and imports',
-    'shipping-ai-metering': 'Shipping, AI and usage', 'admin-desks': 'Operator desks', 'env-lifecycle': 'Your environment', assistant: 'This assistant',
-  }[k] || k);
-  const rows = Object.keys(fam).slice(0, 9).map((k) => {
-    const items = fam[k].slice(0, 3).map((c) => `<li>${esc(plain(c.what))}</li>`).join('');
-    return `<div class="quark-cap"><b>${esc(titleOf(k))}</b><ul>${items}</ul></div>`;
-  }).join('');
-  return `Read straight from the platform's own record of itself — ${caps.length} capabilities in all:${rows}<div class="quark-note">Tell me which one you want and I will take you there.</div>${chips([{ label: 'Launch a website', text: 'I want to launch a website' }, { label: 'Connect Shopify', text: 'How do I connect Shopify' }])}`;
+async function openCapability(id) {
+  const { context } = await accessPlatform();
+  const capability = (await knowledge() || []).find(c => c.id === id);
+  const destination = capabilityDestination(capability, context());
+  if (!destination) { sayQuark('That workflow is not available in the current account view.'); return; }
+  go(destination.mode || destination.section, '', destination.card || '');
 }
-function plain(what) { return String(what || '').replace(/\s+/g, ' ').trim(); }
+
+async function runSupplierAction(button, action, id, supplierOrderId) {
+  if (button.disabled) return;
+  button.disabled = true;
+  const generation = ++replyGeneration;
+  const row = sayQuark(action === 'sync' ? 'Syncing this supplier’s products…' : 'Checking the supplier…');
+  try {
+    const { guide, context } = await accessPlatform();
+    const key = scopeKey(context());
+    const result = await guide.supplierAction(action, id, supplierOrderId);
+    if (generation !== replyGeneration || !signedIn() || scopeKey(context()) !== key) { row.remove(); return; }
+    row.querySelector('.quark-body').innerHTML = supplierResult(action, result);
+  } catch (error) {
+    if (generation !== replyGeneration || !signedIn()) { row.remove(); return; }
+    row.querySelector('.quark-body').textContent = error?.message || 'The supplier action was not confirmed. Check its status before trying again.';
+  } finally { if (button.isConnected) button.disabled = false; scrollLog(); }
+}
 
 function enginesHtml() {
-  const rows = ENGINES.map((x) => `<div class="quark-cap"><b>${esc(x.label)}</b><ul><li>${esc(x.what)}</li></ul></div>`).join('');
-  return `The platform runs on its own engines:${rows}<div class="quark-note">Tell me what you want to do and I take you to the right one.</div>`;
+  return `The platform uses these engines: ${ENGINES.map(engine => `<div class="quark-cap"><b>${esc(engine.label)}</b><p>${esc(engine.what)}</p></div>`).join('')}<p>The core platform decides scope and authority. The engines execute their own bounded work.</p>`;
 }
-
-function shopifyGuideHtml(intent, query = '') {
-  const message = intent === 'discovery'
-    ? 'Open Connected accounts to find the supplier options available on your lane. Once you have a fulfillment agreement, send an approval link to the person who manages the Shopify store.'
-    : 'Open Shopify in Connected accounts to start. Whoever manages the store signs in through Shopify and approves access.';
-  return `${message}<div class="quark-card-actions"><button type="button" class="quark-btn quark-primary" data-quark="go" data-to="shopify-${intent}" data-query="${esc(query)}">${intent === 'discovery' ? 'Find a supplier' : 'Open Shopify connection'}</button></div>`;
-}
-
-function howToHtml(caps, t) {
-  const want = ['shopify', 'stripe', 'shippo', 'twilio', 'github', 'microsoft', 'google', 'domain', 'mail', 'payment'].find((w) => t.includes(w)) || '';
-  if (!want) return 'Which account do you want to connect?' + chips([{ label: 'Shopify', text: 'Connect Shopify' }, { label: 'Find a supplier', text: 'Find a supplier' }, { label: 'Stripe', text: 'Connect Stripe' }]);
-  let cap = null;
-  if (caps && caps.length) cap = caps.find((c) => (String(c.id || '') + ' ' + String(c.what || '')).toLowerCase().includes(want));
-  const steps = cap && Array.isArray(cap.how) && cap.how.length
-    ? `<ol class="quark-steps">${cap.how.slice(0, 4).map((h) => `<li>${esc(plain(h))}</li>`).join('')}</ol>`
-    : `<ol class="quark-steps"><li>Open your environment and its Connected accounts.</li><li>Pick ${esc(cap0(want))} and follow the one short flow.</li><li>Approve it on the provider, and it connects straight back.</li></ol>`;
-  const note = cap?.doneState ? `<div class="quark-note">Done when: ${esc(plain(cap.doneState))}</div>` : '';
-  return `Here is how to connect ${esc(cap0(want))}:${steps}${note}<div class="quark-card-actions"><button type="button" class="quark-btn quark-primary" data-quark="go" data-to="environment">Take me there</button></div>`;
-}
-function cap0(w) { return w.charAt(0).toUpperCase() + w.slice(1); }
 
 function greetingHtml() {
   const who = firstName();
   const hi = who ? `Welcome back, ${esc(who)}.` : `Hi, I'm ${NAME}.`;
   const lead = signedIn()
-    ? `Want me to pick up your launch where you left off, or take you somewhere specific?`
+    ? `What would you like to do in the platform or the environment you have open?`
     : `Tell me what you want to launch and I take you there step by step. I handle the technical parts; you just make the calls.`;
-  return `${hi} ${lead}${chips([{ label: 'Launch a website', text: 'I want to launch a website' }, { label: 'A store', text: 'I want to launch an online store' }, { label: 'What can this do', text: 'What can this platform do' }])}`;
+  return `${hi} ${lead}${chips([{ label: 'My setup', text: 'Show my setup' }, { label: 'Find a workflow', text: 'Show platform capabilities' }, { label: 'What can this do', text: 'What can this platform do' }])}`;
 }
 
 function greetOnce() {
@@ -437,6 +344,7 @@ function undockToDrawer() {
 let homeRetry = 0;
 function placeQuark() {
   if (!built) return;
+  resetConversationIfChanged();
   // Quark only exists signed in, and never on the landing / pre-sign-in screen.
   if (!signedIn() || visibleView() === 'landing') {
     homeRetry = 0;
@@ -489,7 +397,7 @@ function toggleDrawer() { drawerOpen ? closeDrawer() : openDrawer(); }
 export function initQuark() {
   if (built) return;
   build();
-  knowledge();   // warm the read; never blocks
+  if (signedIn()) knowledge();   // no unauthenticated knowledge requests
 
   // Place now and again once the view/section has settled (boot fires several mode changes in a row,
   // and the account section content renders a beat later).
@@ -514,7 +422,7 @@ export function initQuark() {
   } catch { /* no observer: the timed retry still covers the common case */ }
   replace();
 
-  window.pragQuark = { open: openDrawer, ask: (t) => { sayYou(t); respond(t); } };
+  window.pragQuark = { open: () => { if (signedIn() && visibleView() !== 'landing') openDrawer(); }, ask: (t) => { if (signedIn() && visibleView() !== 'landing') { sayYou(t); respond(t); } } };
 }
 
 export default initQuark;

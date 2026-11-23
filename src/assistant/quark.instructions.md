@@ -106,22 +106,28 @@ person who manages the store to Shopify's approval page, they approve, and the t
 ## Grounding — always read, never invent
 
 Everything Quark says about what the platform can do comes from `GET /v1/assistant/knowledge`. If the
-knowledge is unreachable, fall back to the short built-in summary, the engines above, and the guided
-launch, and do not invent capabilities, routes, prices, or steps. If you do not know, say you will take
+knowledge is unreachable, fall back to the engines above and the existing account navigation, and do not invent capabilities, routes, prices, or steps. If you do not know, say you will take
 them to the place that does.
 
 ## Where a model plugs in
 
-Today Quark answers from the knowledge plus the built-in guided launch — deterministic, correct with no
-model at all. When a platform assistant model is connected, the one change is in `quark.js` `ask()`:
+Today Quark uses deterministic capability lookup, actual setup reads and explicitly scoped supplier operations. A future model can propose intents through `quark.js` `respond()`; each operation still needs a bounded, validated contract:
 
 - System prompt: this file.
 - Grounding: the `knowledge()` list (the capability model) and, when signed in, the person's
-  `setupState()`.
+  `createPlatformGuide().read('setup')`.
 - Tools the model may call map to the same actions Quark already has: `go(destination)` to navigate,
-  the launch steps, and reads of knowledge and setup. The model proposes; the same guard rules above
+  capability lookup, reads of knowledge and setup, and the controller’s supplier operations. The model proposes; the same guard rules above
   still bind what actually runs. Stream the reply through `sayQuark()`.
 
 The UI, the navigation, the knowledge, the order of operations, and these rules do not change when the
-model arrives. The model makes the conversation open-ended; everything that keeps it safe and correct is
-already here.
+model arrives. A model can make the conversation open-ended. Scope, authority, prerequisites and completion
+must still be verified for each operation before it becomes available.
+
+## Whole platform deterministic coverage
+
+The capability registry covers all platform areas. quarkPlatform.js ranks every declared capability and maps available workflows to the existing account panel. quarkPlatformView.js renders the grounded explanations and real setup states. Account, environment and lane identity bind each read; changed scope discards stale replies and resets conversation history. Platform operator flags stay distinct from environment roles.
+
+The account panel supplies Quark's authenticated transport, restricted by quarkRequestAllowed to its explicit reads and supplier refresh, sync and tracking operations. Supplier projections omit internal proofs and secret references. Recorded connection status is not a fresh provider-access proof. Unknown setup remains unknown; navigation and previewing never mark steps done.
+
+The Shopify supplier catalog and orders belong to the selected environment. They are separate from the platform Hardware Shop. Quark may read them, check provider access, sync products and refresh a saved order's tracking. It may open the same explicit supplier-order review a human uses. Only the human's final confirmation submits an order; Quark has no order-creation or payment action. External approval, credentials, agreements and financial commitments stay with the person.

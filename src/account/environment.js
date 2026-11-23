@@ -32,6 +32,8 @@ import { stripeAppearance } from '../api/stripeAppearance.js';
 import { ensureStripeJs } from '../runtime/stripeLoader.js';
 import { ico, iconBtn, leadBtn, btnLabel, cardHtml as sharedCard, isOpen, setOpen, initCards, busy, hold, stateLead, stateIcon, copyButton, openModal } from './cards.js';
 import { cardErrorWords } from '../api/stripeWords.js';
+import { supplierOrderChoices } from './supplierOrderReview.js';
+import { openSupplierOrderReview } from './supplierOrderModal.js';
 import { newSupplierSearch, shopifyDiscoveryHtml, supplierEmail, supplierMatches, supplierName, supplierInquiryResponse, supplierInquiryFailure, supplierOrderResult, readShopifySupplierMode, shopifyStartFields, shopifyOnboardingUrl } from './shopifySupplier.js';
 // 2026-11-02 (Cameron: "im building this for humans"): one container per domain family, and a table's rows as a table
 import { familiesOf, liveHostsOf, familyState, listWords } from './domainFamilies.js';
@@ -181,6 +183,7 @@ function canUseSandbox() { return BUILD_ROLES.has(myRole()); }
    ================================================================ */
 
 export async function renderEnvironment(main, deps) {
+  let supplierReviewId = "";
   D = deps;
   ev.madeKey = null; ev.filesNote = ''; ev.files = null; ev.keys = null; ev.domains = null; ev.domainNote = ''; ev.linkNote = ''; ev.domArm = ''; ev.keyArm = ''; ev.checking = ''; ev.registrations = []; ev.reg = freshReg();
   ev.connections = null; ev.connProviders = []; ev.connNote = ''; ev.connPick = ''; ev.connBusy = false; ev.connResult = ''; ev.connTesting = ''; ev.connDraft = {}; ev.connArm = ''; ev.shipArm = ''; ev.rowNote = null; ev.shopifyLabel = ''; ev.shopifyStep = ''; ev.shopifyLink = ''; ev.shopifyLinkId = ''; ev.connSyncing = ''; ev.rowNote = null;
@@ -196,7 +199,8 @@ export async function renderEnvironment(main, deps) {
   // A link that names a card (/#account?section=environment&card=connections) opens that card; account.js scrolls to it.
   try {
     const want = JSON.parse(sessionStorage.getItem('pragoptics_open_card') || 'null');
-    const card = { files: 'files', connections: 'connections', domains: 'domains', keys: 'keys', ai: 'ai', data: 'data', mail: 'mail', archive: 'archive', documents: 'documents', import: 'import' }[String(want?.card || '')];
+    if (want?.shopify === 'review' && typeof want.row === 'string') supplierReviewId = want.row;
+    const card = { variables: 'variables', shipping: 'shipping', files: 'files', connections: 'connections', domains: 'domains', keys: 'keys', ai: 'ai', data: 'data', mail: 'mail', archive: 'archive', documents: 'documents', import: 'import' }[String(want?.card || '')];
     if (card) setOpen(`environment:${card}`, true);
     if (card === 'connections' && ['discovery', 'connection'].includes(want.shopify)) {
       ev.connPick = 'm:shopify';
@@ -211,6 +215,7 @@ export async function renderEnvironment(main, deps) {
   `;
   if (ev.connPick === 'm:shopify') checkShopifySupplierMode();
   await load();
+  if (supplierReviewId && canManageConnections()) void confirmTestSupplierOrder({ dataset: { id: supplierReviewId }, isConnected: false });
 }
 
 async function fetchView() {
@@ -2502,7 +2507,7 @@ function connectionsHtml() {
                     : doorBtn('conn-microsoft-start', 'external', c.status === 'REJECTED' || c.detail?.declined || c.detail?.failed || msAwaiting(c) ? 'Connect again' : msApproved(c) ? 'Connect' : 'Sign in at Microsoft', 'Opening with Microsoft…', "Microsoft's sign-in page, for a work or school account in your organization", '', 'btn-primary')) : ''}
                   ${isManagedShopify(c) && c.status !== 'ACTIVE' ? doorBtn('conn-shopify-link', 'send', 'Supplier link', 'Making the link…', 'A fresh link for your supplier; the old one stops working', `data-shop="${e(c.detail?.shop || '')}"`) : ''}
                   ${isManagedShopify(c) && c.status === 'ACTIVE' ? stateLead('conn-shopify-sync', 'refresh', 'Sync products', { out: ev.connSyncing === c.id, busyWord: 'Syncing…' }, `data-id="${e(c.id)}" data-tip="Copy the store's products into this environment's data, table supplier_products"`) : ''}
-                  ${isManagedShopify(c) && c.status === 'ACTIVE' ? stateLead('conn-shopify-testorder', 'send', 'Place a one-item order', { out: ev.connBusy && ev.connRow === c.id, busyWord: 'Placing…' }, `data-id="${e(c.id)}" data-tip="Place a real Shopify order. Your supplier can fulfill and bill it."`) : ''}
+                  ${isManagedShopify(c) && c.status === 'ACTIVE' ? stateLead('conn-shopify-testorder', 'send', 'Review supplier order', { out: ev.connBusy && ev.connRow === c.id, busyWord: 'Reviewing…' }, `data-id="${e(c.id)}" data-tip="Place a real Shopify order. Your supplier can fulfill and bill it."`) : ''}
                   ${stateIcon(refreshAction, 'check', isManaged(c) ? 'Check status' : 'Test the credential', { out: !!testing, busyWord: 'Checking…', waiting: confirming ? MS_CONFIRM_WAIT : ev.connTesting && !testing ? 'Wait for the check being made' : '' }, `data-id="${e(c.id)}"`)}
                   ${confirming ? stateIcon('conn-remove', 'trash', 'Remove this connection', { waiting: MS_CONFIRM_WAIT }, `data-id="${e(c.id)}" data-label="${e(c.label)}"`, 'is-risky')
                     : iconBtn('conn-remove', 'trash', 'Remove this connection', `data-id="${e(c.id)}" data-label="${e(c.label)}"`, 'is-risky')}</span>`) : ''}</td>
@@ -3763,56 +3768,47 @@ async function shopifyRelink(id, shop) {
     D.showError('evConnError', errText(ex, 'Could not create a fresh link right now.'));
   }
 }
-function confirmTestSupplierOrder(button) {
+async function confirmTestSupplierOrder(button) {
   if (ev.connBusy || !canManageConnections() || document.getElementById('evConfirmShopifyOrder')?.hidden === false) return;
   const id = button.dataset.id;
   const supplier = ev.connections?.find(row => row.id === id && isManagedShopify(row) && row.status === 'ACTIVE');
   if (!supplier) return;
-  const lane = ev.lane, teamId = ev.teamId;
-  const close = () => { modal.close(); if (button.isConnected) button.focus(); };
-  const name = D.escapeHtml(supplier.detail?.name || supplier.label || 'your supplier');
-  const modal = openModal('evConfirmShopifyOrder', `
-    <div class="acct-modal-mask" data-shopify-order="cancel"></div>
-    <div class="acct-modal" role="dialog" aria-modal="true" aria-labelledby="evShopifyOrderTitle" aria-describedby="evShopifyOrderNote">
-      <h3 class="acct-modal-h" id="evShopifyOrderTitle">Place a real order?</h3>
-      <p class="acct-modal-note" id="evShopifyOrderNote">This places an order for one available item with <b>${name}</b>. It ships to your billing address. The supplier can fulfill the order and bill you under your agreement.</p>
-      <div class="acct-modal-actions">
-        <button class="btn btn-sm" type="button" data-shopify-order="cancel">Cancel</button>
-        <button class="btn btn-sm btn-primary" type="button" data-shopify-order="confirm">Place order</button>
-      </div>
-    </div>`, {
-    focus: 'button[data-shopify-order="cancel"]',
-    onKey: (event) => { if (event.key === 'Escape') close(); },
-    onClick: (event) => {
-      const action = event.target.closest('[data-shopify-order]')?.dataset.shopifyOrder;
-      if (action === 'cancel') { close(); return; }
-      if (action !== 'confirm') return;
-      modal.close();
-      if (ev.lane !== lane || ev.teamId !== teamId || !canManageConnections() ||
-          !ev.connections?.some(row => row.id === id && isManagedShopify(row) && row.status === 'ACTIVE')) {
-        D.showError('evConnError', 'This supplier connection changed. Check its status before placing an order.');
-        return;
-      }
-      void placeTestSupplierOrder(id);
-    }
-  });
+  const lane = ev.lane, pickedTeam = ev.teamId;
+  const stillHere = () => ev.lane === lane && ev.teamId === pickedTeam && canManageConnections() &&
+    ev.connections?.some(row => row.id === id && isManagedShopify(row) && row.status === 'ACTIVE');
+  let choices, catalogError = null;
+  ev.connBusy = true; ev.connRow = id; paintConnections();
+  try {
+    const catalog = await D.apiFetch(url(ENV_URL + '/data/supplier_products', { values: 1, limit: 100 }));
+    if (!stillHere()) return;
+    choices = supplierOrderChoices(catalog.rows, id, supplier.detail?.currency || '');
+    if (!choices.length) throw new Error('No priced variants were returned for this supplier. Sync products before reviewing an order.');
+  } catch (error) { catalogError = error; }
+  finally { ev.connBusy = false; ev.connRow = ''; paintConnections(); }
+  if (!stillHere()) return;
+  if (catalogError) { D.showError('evConnError', errText(catalogError, 'Could not read the supplier catalog. No order was placed.')); return; }
+  const billing = (D.cachedPing?.() || {}).billingProfile || {};
+  const address = { name: billing.customerName || billing.name || '', street1: billing.addressLine1 || '', street2: billing.addressLine2 || '',
+    city: billing.city || '', state: billing.state || '', zip: billing.postalCode || '', country: billing.country || '', phone: billing.phone || '' };
+  openSupplierOrderReview({ supplier, choices, address, valid: stillHere, escape: D.escapeHtml,
+    onPlace: reviewed => placeReviewedSupplierOrder(id, reviewed),
+    onError: message => D.showError('evConnError', message),
+    onClose: () => { if (button.isConnected) button.focus(); } });
 }
-async function placeTestSupplierOrder(id) {
-  if (ev.connBusy || !id) return;
+
+async function placeReviewedSupplierOrder(id, draft) {
+  if (ev.connBusy || !id || !draft?.lines?.length || !canManageConnections()) return;
   D.showError('evConnError', '');
   ev.connBusy = true; ev.connRow = id; paintConnections();
   try {
-    const bp = (D.cachedPing?.() || {}).billingProfile || {};
-    const shipTo = { name: bp.customerName || bp.name || '', street1: bp.addressLine1 || '', street2: bp.addressLine2 || '', city: bp.city || '', state: bp.state || '', zip: bp.postalCode || '', country: bp.country || 'US', phone: bp.phone || '' };
-    const d = await post(`${ENV_URL}/connections/shopify/order`, { id, test: true, shipTo });
-    ev.connResult = supplierOrderResult(d);
-    ev.connBusy = false; ev.connRow = '';
+    const result = await post(SHOPIFY_URL + '/order', { id, lines: draft.lines, ...(draft.shipTo ? { shipTo: draft.shipTo } : {}) });
+    ev.connResult = supplierOrderResult(result);
     await loadConnections();
-  } catch (ex) {
-    ev.connBusy = false; ev.connRow = ''; paintConnections();
-    D.showError('evConnError', errText(ex, 'Could not place a test order right now.'));
-  }
+  } catch (error) {
+    D.showError('evConnError', errText(error, 'The supplier order was not confirmed. Check supplier_orders and Shopify before submitting it again.'));
+  } finally { ev.connBusy = false; ev.connRow = ''; paintConnections(); }
 }
+
 /** Email the supplier the invite link from this environment's own mailer. Re-mints so the link sent is fresh;
  *  a missing mailer never loses the link (the backend still returns it to copy). */
 async function shopifyEmailInvite(id, shopFromRow) {
@@ -4491,4 +4487,9 @@ export function bindEnvironmentActions(deps) {
     if (e.key === 'Enter' && e.target.id === 'evRegHost') { e.preventDefault(); document.querySelector('[data-env-action="domain-reg-check"]')?.click(); }
     if (e.key === 'Enter' && e.target.id === 'evLinkHost') { e.preventDefault(); document.querySelector('[data-env-action="domain-link"]')?.click(); }
   });
+}
+
+// Public state for Quark: no tokens, secrets, addresses or credentials.
+export function environmentLaneForQuark() {
+  return ev.teamId === teamId() && ev.lane === 'sandbox' ? 'sandbox' : 'live';
 }

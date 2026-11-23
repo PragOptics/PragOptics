@@ -781,3 +781,7 @@ select.acct-input, select.adm-select, select.adm-input { background-color: var(-
 .hm-approvals-go { flex: none; font-weight: 700; color: var(--brand-600); }
 @media (max-width: 480px) { .ap-fields > div { grid-template-columns: minmax(0, 1fr); gap: 2px; } .hm-approvals { flex-wrap: wrap; } .hm-approvals-s { flex-basis: 100%; } }
 
+
+/* Explicit supplier-order review: keep long details and actions inside the dialog. */
+#evConfirmShopifyOrder .acct-modal { overflow-wrap: anywhere; }
+#evConfirmShopifyOrder .acct-modal-actions { flex-wrap: wrap; }

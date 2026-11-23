@@ -130,3 +130,6 @@
   .quark-char { right: 16px; bottom: 16px; }
   .quark-drawer { right: 0; left: 0; bottom: 0; width: 100vw; height: 84vh; border-radius: var(--radius) var(--radius) 0 0; transform-origin: bottom center; }
 }
+
+/* Capability names remain readable within the existing chat width. */
+.quark-card-actions .quark-btn { max-width: 100%; white-space: normal; text-align: left; overflow-wrap: anywhere; }
