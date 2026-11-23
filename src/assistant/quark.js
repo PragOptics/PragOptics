@@ -16,7 +16,12 @@ function applyNavigation(destination) {
   if (!destination || typeof destination !== 'object') return;
   closeDrawer();
   if (destination.mode === 'studio') { window.pragOpenStudio?.(); return; }
-  if (destination.mode) { window.setAppMode?.(destination.mode); return; }
+  if (destination.mode) {
+    window.setAppMode?.(destination.mode);
+    // Display an existing view selected by the server; no local intent matching.
+    if (destination.mode === 'checkout' && destination.card === 'track') window.pragTrackOrder?.();
+    return;
+  }
   if (!destination.section) return;
   if (destination.card) {
     try { sessionStorage.setItem('pragoptics_open_card', JSON.stringify(destination)); } catch { /* navigation still opens */ }
