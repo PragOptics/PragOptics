@@ -20,7 +20,7 @@ import { tierName, ADDON_NAME, tierBadge } from '../components/tierCopy.js';
 import { mountPricingSelect } from '../components/pricingCards.js';
 import { openReportAnomaly, openSupportRequest, installErrorCapture } from './report.js';
 import { renderTeam, renderTenants, bindTeamActions } from './team.js';
-import { renderEnvironment, renderAi, bindEnvironmentActions, environmentLaneForQuark } from './environment.js';
+import { renderEnvironment, renderAi, bindEnvironmentActions, environmentLaneForQuark, refreshConnectionsFromQuark } from './environment.js';
 import { renderLicensing, bindLicensingActions } from './licensing.js';
 import { renderLiveAgents, renderAgentDesk, bindLiveAgentsActions, stopLiveAgentsTimers } from './liveAgents.js';
 import { renderHome, bindHomeActions } from './home.js';
@@ -5490,6 +5490,7 @@ window.addEventListener('hashchange', () => {
 export function quarkPlatformAccess() {
   return {
     send: input => viewApiFetch(PRAG_API_BASE + '/assistant/respond', { method: 'POST', body: JSON.stringify(input) }),
+    refresh: resource => resource === 'connections' ? refreshConnectionsFromQuark() : undefined,
     context: () => ({
       userId: hasLiveSession() ? pingUserId() : '',
       tenant: agentMode() ? agentEnv() : pickedTeamId(),

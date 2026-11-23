@@ -155,7 +155,7 @@ async function accessPlatform() {
   if (!platformAccess) {
     const account = await import('../account/account.js');
     platformAccess = account.quarkPlatformAccess();
-    client = createQuarkClient({ context: activeContext, send: platformAccess.send });
+    client = createQuarkClient({ context: activeContext, send: platformAccess.send, refresh: platformAccess.refresh });
   }
   return client;
 }

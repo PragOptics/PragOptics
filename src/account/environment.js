@@ -3781,7 +3781,7 @@ async function confirmTestSupplierOrder(button) {
   try {
     const catalog = await D.apiFetch(url(ENV_URL + '/data/supplier_products', { values: 1, limit: 100 }));
     if (!stillHere()) return;
-    choices = supplierOrderChoices(catalog.rows, id, supplier.detail?.currency || '');
+    choices = supplierOrderChoices(catalog, id, supplier.detail?.currency || '');
     if (!choices.length) throw new Error('No priced variants were returned for this supplier. Sync products before reviewing an order.');
   } catch (error) { catalogError = error; }
   finally { ev.connBusy = false; ev.connRow = ''; paintConnections(); }
@@ -4492,4 +4492,14 @@ export function bindEnvironmentActions(deps) {
 // Public state for Quark: no tokens, secrets, addresses or credentials.
 export function environmentLaneForQuark() {
   return ev.teamId === teamId() && ev.lane === 'sandbox' ? 'sandbox' : 'live';
+}
+
+// Refresh only the native connection card after a confirmed Quark operation.
+export async function refreshConnectionsFromQuark() {
+  const scope={team:ev.teamId,lane:ev.lane};
+  const ready=()=>!!document.getElementById('evConnections') && ev.teamId===teamId() && ev.teamId===scope.team && ev.lane===scope.lane && !ev.connBusy && !ev.connConfirming && !ev.connPick && !ev.connArm && !ev.shipArm && ![...document.querySelectorAll('#evConnections input:not([type="checkbox"]):not([type="hidden"]),#evConnections textarea')].some(input=>String(input.value||'').trim());
+  if (!ready()) return;
+  const result=await D.apiFetch(url(`${ENV_URL}/connections`,{_:Date.now()}));
+  if (!ready() || !Array.isArray(result.connections)) return;
+  ev.connections=result.connections;ev.connProviders=result.providers||[];ev.connLimit=Number(result.limit||0);ev.connNote='';paintConnections();
 }

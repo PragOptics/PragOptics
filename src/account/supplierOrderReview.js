@@ -1,7 +1,8 @@
 // A shared, explicit review for human and Quark navigation. No network or order placement here.
 export function supplierOrderChoices(rows, connectionId, currency = '') {
+  const records = Array.isArray(rows) ? rows : rows?.ok === false ? [] : Array.isArray(rows?.items) ? rows.items : rows?.rows;
   const choices = [];
-  for (const row of Array.isArray(rows) ? rows : []) {
+  for (const row of Array.isArray(records) ? records : []) {
     const product = row?.value;
     if (!product || product.supplier !== connectionId || !Array.isArray(product.variants)) continue;
     for (const variant of product.variants) {

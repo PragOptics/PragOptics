@@ -23,3 +23,10 @@ test('shipping must be reviewed explicitly and incomplete addresses fail before 
   const draft=supplierOrderReview(choices,choices[0].variantId,1,{name:'Fixture recipient',street1:'123 Fixture Street',city:'Fixture city',zip:'12345',country:'us'});
   assert.equal(draft.shipTo.country,'US');assert.equal(draft.shipTo.name,'Fixture recipient');
 });
+
+test('supplier order review accepts the native items response and rejects refused catalogs',()=>{
+ const items=[{key:'native-product',value:{supplier:'native-supplier',title:'OmniSource',currency:'USD',variants:[{id:'gid://shopify/ProductVariant/10',sku:'omnisource',price:'25.00'}]}}];
+ const choices=supplierOrderChoices({ok:true,table:'supplier_products',items,nextAfter:null},'native-supplier');
+ assert.equal(choices.length,1);assert.equal(choices[0].productTitle,'OmniSource');assert.equal(supplierOrderReview(choices,choices[0].variantId,2).summary.totalCents,5000);
+ assert.deepEqual(supplierOrderChoices({ok:false,items},'native-supplier'),[]);assert.deepEqual(supplierOrderChoices({items},'other-supplier'),[]);
+});

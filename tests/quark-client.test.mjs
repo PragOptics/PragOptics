@@ -42,3 +42,18 @@ test('cached-client compatibility exports contain no active local interpreter or
   assert.equal(legacy.capabilityDestination(),null);assert.equal(legacy.quarkRequestAllowed(),false);
   assert.throws(()=>legacy.createPlatformGuide(),/private service/);
 });
+
+test('confirmed connection changes refresh the native view without replaying an operation',async()=>{
+ let refreshes=0,calls=0;const scope={userId:'fixture-user',tenant:'fixture-environment',lane:'live'};
+ const client=createQuarkClient({context:()=>scope,send:async()=>{calls++;return{ok:true,html:'Synced',refresh:'connections'};},refresh:async resource=>{assert.equal(resource,'connections');refreshes++;}});
+ assert.equal((await client.request({text:'Sync products'})).html,'Synced');assert.equal(refreshes,1);assert.equal(calls,1);
+ const broken=createQuarkClient({context:()=>scope,send:async()=>({ok:true,html:'Confirmed',refresh:'connections'}),refresh:async()=>{throw new Error('View unavailable');}});
+ assert.equal((await broken.request({text:'Sync products'})).html,'Confirmed');
+});
+
+test('a reply from another scope cannot refresh the current view',async()=>{
+ let release,refreshes=0;let scope={userId:'fixture-user',tenant:'one',lane:'live'};
+ const client=createQuarkClient({context:()=>scope,send:()=>new Promise(resolve=>release=resolve),refresh:()=>{refreshes++;}});
+ const pending=client.request({text:'Sync products'});scope={...scope,tenant:'two'};release({ok:true,html:'Old result',refresh:'connections'});
+ await assert.rejects(pending,{code:'SCOPE_CHANGED'});assert.equal(refreshes,0);
+});

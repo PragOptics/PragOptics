@@ -3,7 +3,7 @@ export function scopeKey(scope = {}) {
   return JSON.stringify([scope.userId || '', scope.tenant || '', scope.lane === 'sandbox' ? 'sandbox' : 'live',scope.audience||'customer']);
 }
 function changed() { return Object.assign(new Error('The account or environment changed. Ask Quark again.'), { code: 'SCOPE_CHANGED' }); }
-export function createQuarkClient({ context, send }) {
+export function createQuarkClient({ context, send, refresh }) {
   const running = new Set();
   return {
     async request(input) {
@@ -17,6 +17,8 @@ export function createQuarkClient({ context, send }) {
         const result = await send({ ...input, tenant: scope.tenant || '', lane: scope.lane === 'sandbox' ? 'sandbox' : 'live',audience:scope.audience||'customer' });
         if (scopeKey(context()) !== key) throw changed();
         if (!result || result.ok !== true || typeof result.html !== 'string' || result.html.length > 250000) throw new Error('Quark returned no confirmed reply.');
+        if (result.refresh === 'connections' && typeof refresh === 'function') { try { await refresh(result.refresh); } catch { /* The confirmed operation remains confirmed if its view cannot refresh. */ } }
+        if (scopeKey(context()) !== key) throw changed();
         return result;
       } catch (error) {
         if (scopeKey(context()) !== key) throw changed();
