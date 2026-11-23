@@ -10,7 +10,7 @@ function fixture(send = async()=>({ok:true,html:'Reply'})) {
 }
 test('the chat sends a message and selected scope, without interpreting the text',async()=>{
   const f=fixture();await f.client.request({text:'A user supplied request'});
-  assert.deepEqual(f.calls,[{text:'A user supplied request',tenant:'fixture-environment',lane:'live'}]);
+  assert.deepEqual(f.calls,[{text:'A user supplied request',tenant:'fixture-environment',lane:'live',audience:'customer'}]);
 });
 test('a control is forwarded opaquely and a double click cannot start a second request',async()=>{
   let release;const f=fixture(()=>new Promise(resolve=>{release=resolve;}));

@@ -1,6 +1,12 @@
 // Quark's public chat shell. Its interpreter and workflows execute privately.
 import { createQuarkClient, scopeKey } from './quarkClient.js';
 const NAME = 'Quark';
+let audience='customer',audienceScope='';
+function activeContext(){
+  const context=platformAccess.context(),key=JSON.stringify([context.userId||'',context.tenant||'',context.lane||'live',tokens()?.access_token||'']);
+  if(key!==audienceScope){audienceScope=key;audience='customer';const picker=document.getElementById('quarkAudience');if(picker){picker.innerHTML='<option value="customer">Your environment</option>';}}
+  return {...context,audience};
+}
 
 /* ----------------------------------------------------------------- session (read-only) */
 
@@ -69,9 +75,10 @@ function build() {
   chat.innerHTML = `
     <div class="quark-head">
       <span class="quark-mark" aria-hidden="true"></span>
-      <span class="quark-id"><span class="quark-name">${NAME}</span><span class="quark-sub">your guide to the platform</span></span>
+      <span class="quark-id"><span class="quark-name">${NAME}</span><span class="quark-sub">your platform assistant</span></span>
       <button type="button" class="quark-close" aria-label="Close ${NAME}" data-quark="close">&times;</button>
     </div>
+    <div class="quark-context"><label>Working as <select id="quarkAudience" aria-label="Quark working context"><option value="customer">Your environment</option></select></label></div>
     <div class="quark-log" id="quarkLog" role="log" aria-live="polite"></div>
     <form class="quark-ask" id="quarkForm" autocomplete="off">
       <input class="quark-input" id="quarkInput" type="text" placeholder="Tell me what you want to do" aria-label="Ask ${NAME}">
@@ -148,7 +155,7 @@ async function accessPlatform() {
   if (!platformAccess) {
     const account = await import('../account/account.js');
     platformAccess = account.quarkPlatformAccess();
-    client = createQuarkClient({ context: platformAccess.context, send: platformAccess.send });
+    client = createQuarkClient({ context: activeContext, send: platformAccess.send });
   }
   return client;
 }
@@ -158,6 +165,7 @@ function resetConversationIfChanged() {
   const key = signedIn() ? JSON.stringify([ping()?.user?.userId || '', platformAccess?.context().tenant || team, platformAccess?.context().lane || 'live']) : '';
   if (key === conversationOwner) return;
   conversationOwner = key; replyGeneration++;
+  if(platformAccess)activeContext();
   if (el.log) el.log.replaceChildren();
   greeted = false;
 }
@@ -167,9 +175,10 @@ async function respond(text, ticket = '', button = null) {
   const generation = ++replyGeneration;
   const row = sayQuark('Reading the platform…');
   try {
-    const transport = await accessPlatform(), key = scopeKey(platformAccess.context());
+    const transport = await accessPlatform(), key = scopeKey(activeContext());
     const result = await transport.request(ticket ? { ticket } : { text });
-    if (generation !== replyGeneration || !signedIn() || scopeKey(platformAccess.context()) !== key) { row.remove(); return; }
+    if (generation !== replyGeneration || !signedIn() || scopeKey(activeContext()) !== key) { row.remove(); return; }
+    if(result.context?.audiences){const picker=document.getElementById('quarkAudience');picker.innerHTML=result.context.audiences.map(value=>'<option value="'+esc(value)+'"'+(value===audience?' selected':'')+'>'+esc({customer:'Your environment',agent:'Assigned agent',operator:'Platform operator'}[value]||value)+'</option>').join('');picker.onchange=()=>{audience=picker.value;conversationOwner='';replyGeneration++;el.log.replaceChildren();greeted=false;respond('Show platform capabilities');};}
     row.querySelector('.quark-body').innerHTML = result.html;
     if (result.navigation) applyNavigation(result.navigation);
     scrollLog();

@@ -135,3 +135,6 @@
 
 /* Capability names remain readable within the existing chat width. */
 .quark-card-actions .quark-btn { max-width: 100%; white-space: normal; text-align: left; overflow-wrap: anywhere; }
+
+/* Quark working context */
+.quark-context{padding:6px 12px;font-size:12px}.quark-context select{max-width:170px;font:inherit;border-radius:6px;padding:3px 5px}
