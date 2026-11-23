@@ -6,6 +6,8 @@
    misaligned at any width. Uses the design tokens, so it follows light/dark. No pills past --radius-pill. */
 
 :root {
+  --quark-corner-inline: 16px;
+  --quark-corner-block: 16px;
   --quark-grad: linear-gradient(135deg, var(--brand-600) 0%, var(--brand-purp-solid) 100%);
   --quark-glass: color-mix(in srgb, var(--menu) 88%, transparent);
   --quark-edge: color-mix(in srgb, var(--brand-600) 26%, var(--border));
@@ -16,7 +18,7 @@
 /* Quark himself: the whole alien, free-standing in the corner. Transparent, no frame, no tile — a
    little character who stands there and bobs, with a soft ground shadow and glow. Click him to talk. */
 .quark-char {
-  position: fixed; right: 16px; bottom: 12px; z-index: 1400;
+  position: fixed; right: var(--quark-corner-inline); bottom: var(--quark-corner-block); z-index: 1400;
   width: 66px; height: 83px; padding: 0; border: 0; border-radius: 0;
   background: url('/images/quark.png') center bottom / contain no-repeat;
   cursor: pointer; overflow: visible;
@@ -47,9 +49,9 @@
 .quark-log::-webkit-scrollbar { width: 8px; }
 .quark-log::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--ink) 18%, transparent); border-radius: 8px; }
 
-.quark-msg { display: flex; gap: 10px; max-width: 100%; }
-.quark-msg .quark-body { padding: 10px 13px; border-radius: 13px; }
-.quark-avatar { width: 28px; height: 34px; flex: 0 0 auto; margin-top: 0;
+.quark-msg { display: flex; align-items: flex-start; gap: 10px; min-width: 0; max-width: 100%; }
+.quark-msg .quark-body { min-width: 0; overflow-wrap: anywhere; padding: 10px 13px; border-radius: 13px; }
+.quark-avatar { width: 28px; height: 34px; flex: 0 0 auto; margin-top: 4px;
   background: url('/images/quark.png') center / contain no-repeat; }
 .quark-quark .quark-body { background: var(--surface-2); border: 1px solid var(--border); border-top-left-radius: 4px; }
 .quark-you { justify-content: flex-end; }
@@ -99,7 +101,7 @@
 
 /* ---------------------------------------------------------------- docked on a home surface */
 
-.quark-home { width: 100%; display: flex; justify-content: center; margin: 0 0 10px; }
+.quark-home { scroll-margin-block: 80px 16px; width: 100%; display: flex; justify-content: center; margin: 0 0 10px; }
 .quark-home-acct { margin: 0 0 16px; }
 .quark-chat.quark-docked {
   width: 100%; max-width: 780px; height: min(60vh, 560px);
@@ -113,7 +115,7 @@
 /* Same corner and offsets as the character, and it grows from that corner, so opening reads as the character
    expanding. The character is hidden by JS while this is open, so the two are never on screen misaligned. */
 .quark-drawer {
-  position: fixed; right: 24px; bottom: 24px; z-index: 1401;
+  position: fixed; right: var(--quark-corner-inline); bottom: var(--quark-corner-block); z-index: 1401;
   width: min(392px, calc(100vw - 32px)); height: min(600px, calc(100vh - 120px));
   background: var(--quark-glass); border: 1px solid var(--quark-edge); border-radius: var(--radius);
   box-shadow: var(--aura); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); overflow: hidden;

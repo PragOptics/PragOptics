@@ -39,6 +39,7 @@ let docked = false;
 let drawerOpen = false;
 let greeted = false;
 let curMode = 'landing';
+let logPosition = { top: 0, atEnd: true };
 
 function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 
@@ -104,7 +105,19 @@ function build() {
 
 /* ----------------------------------------------------------------- rendering messages */
 
-function scrollLog() { try { el.log.scrollTop = el.log.scrollHeight; } catch { /* ignore */ } }
+function scrollLog() {
+  logPosition = { top: 0, atEnd: true };
+  try { el.log.scrollTop = el.log.scrollHeight; } catch { /* ignore */ }
+}
+function rememberLogPosition() {
+  if (!el.log?.clientHeight) return;
+  logPosition = { top: el.log.scrollTop, atEnd: el.log.scrollHeight - el.log.clientHeight - el.log.scrollTop < 16 };
+}
+function restoreLogPosition() {
+  requestAnimationFrame(() => {
+    if (el.log?.clientHeight) el.log.scrollTop = logPosition.atEnd ? el.log.scrollHeight : logPosition.top;
+  });
+}
 
 function bubble(role, html) {
   const row = document.createElement('div');
@@ -214,9 +227,19 @@ function homeHost() {
 function dockHome() {
   const host = homeHost();
   if (!host) return false;
+  const moving = el.chat.parentElement !== host;
+  if (moving) rememberLogPosition();
+  // Docking owns the chat now: the floating shell must stop painting and taking clicks.
+  drawerOpen = false;
+  el.drawer.classList.remove('is-open');
+  el.drawer.hidden = true;
   el.chat.classList.add('quark-docked');
   el.chat.classList.remove('quark-in-drawer');
-  if (el.chat.parentElement !== host) host.appendChild(el.chat);
+  if (moving) {
+    host.appendChild(el.chat);
+    restoreLogPosition();
+    requestAnimationFrame(() => el.chat.scrollIntoView({ block: 'nearest' }));
+  }
   docked = true;
   el.char?.classList.add('quark-hidden');
   greetOnce();
@@ -224,9 +247,11 @@ function dockHome() {
 }
 
 function undockToDrawer() {
+  rememberLogPosition();
   el.chat.classList.remove('quark-docked');
   el.chat.classList.add('quark-in-drawer');
   if (el.chat.parentElement !== el.drawer) el.drawer.appendChild(el.chat);
+  restoreLogPosition();
   docked = false;
   const h = document.getElementById('quarkHome');
   if (h && h.parentElement && el.chat.parentElement !== h) h.parentElement.removeChild(h);
@@ -240,6 +265,8 @@ function placeQuark() {
   if (!signedIn() || visibleView() === 'landing') {
     homeRetry = 0;
     if (drawerOpen) closeDrawer();
+    el.drawer.hidden = true;
+    el.drawer.classList.remove('is-open');
     if (el.chat.parentElement !== el.drawer) undockToDrawer();
     el.char?.classList.add('quark-hidden');
     return;
@@ -259,23 +286,23 @@ function placeQuark() {
 /* ----------------------------------------------------------------- drawer */
 
 function openDrawer() {
-  // The corner character only shows off the Home tab, so opening always means the corner drawer. Make
-  // sure the chat is actually in the drawer (never left docked), whatever the placement state was.
-  if (el.chat.parentElement !== el.drawer) {
-    el.chat.classList.remove('quark-docked');
-    el.chat.classList.add('quark-in-drawer');
-    el.drawer.appendChild(el.chat);
+  if (isHomeSurface()) {
+    dockHome();
+    el.input?.focus({ preventScroll: true });
+    return;
   }
-  docked = false;
+  if (el.chat.parentElement !== el.drawer) undockToDrawer();
   el.drawer.hidden = false;
   requestAnimationFrame(() => el.drawer.classList.add('is-open'));
   drawerOpen = true;
   el.char?.classList.add('quark-hidden');
   greetOnce();
-  setTimeout(() => el.input?.focus(), 140);
+  restoreLogPosition();
+  setTimeout(() => el.input?.focus({ preventScroll: true }), 140);
 }
 function closeDrawer() {
   if (!drawerOpen) return;
+  rememberLogPosition();
   el.drawer.classList.remove('is-open');
   drawerOpen = false;
   setTimeout(() => { if (!drawerOpen) el.drawer.hidden = true; }, 240);
