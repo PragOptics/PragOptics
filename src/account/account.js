@@ -5034,8 +5034,9 @@ function showSection(id) {
   if (id === 'licensing' && TEAM_ON && roleInView() === null) return void waitForLicensingRole(main);
   // a role read that failed (or a team picked since) is asked again on the next section; Team and Environment read the view themselves
   if (TEAM_ON && id !== 'team' && id !== 'environment' && id !== 'ai' && roleInView() === null) ensureTeamRole();
-  consumeOpenCard(id);
+  // Let the section read its workflow intent before consuming the scroll note.
   paintSection(id, main);
+  consumeOpenCard(id);
   paintEnvLine();
   // the setup checklist at the top of every customer section (setup.js): mounted after the section's first paint, which
   // every section writes in one go; what each reads later lands inside its own hosts, so the block stays
