@@ -12,6 +12,7 @@
 // a viewer's card says the list is for members). Each card stands on its own read: one that fails says so on its card
 // and the others paint.
 
+import { connectionAccessMode } from './connectionAccess.js';
 import { PRAG_API_BASE } from '../runtime/config.js';
 import { cardHtml as sharedCard, ico, leadBtn, initCards } from './cards.js';
 import { explainLink } from '../components/explainer.js';
@@ -19,7 +20,7 @@ import { groupsOf, countsLine } from './approvalGroups.js';
 import { renderWaitingCard } from './envArrivalsBlock.js';   // Waiting on you: the decisions and the submissions nobody acted on, one card (2026-11-15)
 
 let D = null;
-const hm = { projects: null, sites: null, domains: null, connections: null, members: null, data: null, files: null, errs: {} };
+const hm = { projects: null, sites: null, domains: null, connections: null, connectionAccess: null, members: null, data: null, files: null, errs: {} };
 
 const TEAM_KEY = 'pragoptics_team_id';
 function teamId() { try { return sessionStorage.getItem(TEAM_KEY) || ''; } catch { return ''; } }
@@ -73,7 +74,7 @@ async function load() {
     read('approvals', '/environment/approvals')
   ]);
   hm.projects = p?.projects || null; hm.sites = s?.sites || null; hm.domains = d?.domains || null;
-  hm.connections = c?.connections || null; hm.members = m?.members || null;
+  hm.connections = c?.connections || null; hm.connectionAccess = connectionAccessMode(c); hm.members = m?.members || null;
   hm.data = dt?.tables || null; hm.files = fl?.items || null;
   hm.approvals = ap ? groupsOf(ap) : null;
   paint();
@@ -112,7 +113,7 @@ function glanceRow() {
     tile('folder', 'Files', filesN != null ? String(filesN) : '–', filesN != null ? (filesN === 1 ? 'file' : 'files') : (hm.errs.files ? 'not read' : ''), 'environment', 'files'),
     tile('globe', 'Domain', dom ? e(dom.host) : (hm.domains ? 'none yet' : '–'), dom ? (String(dom.status || '').toUpperCase() === 'VERIFIED' ? 'verified' : String(dom.status || '').toLowerCase()) : '', 'environment', 'domains'),
     tile('users', 'Team', teamN != null ? String(teamN) : '–', teamN != null ? (teamN === 1 ? 'person' : 'people') : (hm.errs.members === 'members' ? 'members only' : ''), 'team'),
-    tile('plug', 'Connected', connUp ? 'paid' : (connN != null ? String(connN) : '–'), connUp ? 'plans' : (connN != null ? (connN === 1 ? 'account' : 'accounts') : ''), connUp ? 'subscription' : 'environment', connUp ? '' : 'connections')
+    tile('plug', 'Connected', connUp ? 'paid' : (connN != null ? String(connN) : '–'), connUp ? 'plans' : hm.connectionAccess ? 'Shopify review · expires ' + when(hm.connectionAccess.expiresAt) : (connN != null ? (connN === 1 ? 'account' : 'accounts') : ''), connUp ? 'subscription' : 'environment', connUp ? '' : 'connections')
   ].join('');
   return `<p class="hm-glance-h">At a glance</p><div class="hm-glance">${tiles}</div>`;
 }

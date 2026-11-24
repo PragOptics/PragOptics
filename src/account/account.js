@@ -3377,6 +3377,18 @@ function userManageHtml(u, { self }) {
             ${u.phoneChangesFrozen ? `<button class="btn btn-sm btn-lead" type="button" data-um-unfreeze data-tip="Lets the account add, verify, and remove mobile numbers again">${ico('lock')}<span>Unfreeze phone changes</span></button>` : ''}
           </div>
         </section>
+        ${isOwner() && !self && ((!u.isAdmin && !u.isDev && !u.isAgent && tier === 'free' && u.environmentId && (!status || status === 'ACTIVE')) || u.shopifyReviewAccess?.enabled) ? `
+        <section class="um-sec">
+          <div class="um-sec-h">Shopify review access</div>
+          <p class="acct-modal-note">Complimentary managed Shopify workflows in this customer's own live environment. Billing stays Free; MFA and other paid integrations stay unchanged.</p>
+          ${u.shopifyReviewAccess?.enabled ? '<p class="um-note">Granted until ' + escapeHtml(fmtDate(u.shopifyReviewAccess.expiresAt)) + '. Expiry is enforced by the server.</p>' : ''}
+          <label class="um-field"><span class="adm-label">Days of review access (1–90)</span><input class="adm-input" id="umShopifyDays" type="number" min="1" max="90" value="30"></label>
+          <label class="um-field"><span class="adm-label">Reason</span><input class="adm-input" id="umShopifyReason" type="text" maxlength="500" value="Isolated Shopify App Store review"></label>
+          <div class="um-actions">
+            <button class="btn btn-sm btn-lead" type="button" data-um-shopify-review="grant">${ico('check')}<span>Grant or renew review access</span></button>
+            ${u.shopifyReviewAccess?.enabled ? '<button class="btn btn-sm btn-lead is-danger" type="button" data-um-shopify-review="revoke">Revoke review access</button>' : ''}
+          </div>
+        </section>` : ''}
         <section class="um-sec">
           <div class="um-sec-h">Support recovery</div>
           <p class="acct-modal-note">Clears the authenticator and every passkey and signs the account out everywhere. The customer enrolls a new second factor on their next sign-in. The password is untouched. A reason is required.</p>
@@ -3477,6 +3489,16 @@ async function runClose(btn, um) {
 }
 /** The Manage account window's buttons: each a selector and what its press does, looked up by the window's one click listener. */
 const USER_MANAGE_ACTIONS = [
+  ['[data-um-shopify-review]', (btn, um) => {
+    if (!isOwner()) return;
+    const reason = (um.$('#umShopifyReason')?.value || '').trim();
+    const enabled = btn.dataset.umShopifyReview === 'grant';
+    const days = Number(um.$('#umShopifyDays')?.value);
+    if (reason.length < 8 || reason.length > 500) { showError('umError', 'Enter a reason of 8 to 500 characters.'); return; }
+    if (enabled && (!Number.isInteger(days) || days < 1 || days > 90)) { showError('umError', 'Choose 1 to 90 days.'); return; }
+    const shopifyReviewAccess = enabled ? { enabled: true, environmentId: um.row.environmentId, lane: 'live', expiresAt: new Date(Date.now() + days * 86400000).toISOString() } : { enabled: false };
+    armConfirm(btn, 'Confirm: ' + (enabled ? 'grant Shopify review access to ' : 'revoke Shopify review access for ') + (um.row.email || ''), () => runPatch(btn, { shopifyReviewAccess, reason }, um));
+  }],
   ['[data-um-save]', (btn, um) => {
     const patch = {};
     const roleEl = um.$('#umRole'), adminEl = um.$('#umAdmin'), devEl = um.$('#umDev'), agentEl = um.$('#umAgent');

@@ -25,6 +25,7 @@
 // wording, dates) arrive through `deps` from account.js.
 
 import { PRAG_API_BASE, STUDIO_URL, LANE } from '../runtime/config.js';
+import { connectionAccessMode, connectionOptions, connectionAccessNote } from './connectionAccess.js';
 import { tierName, tierBadge } from '../components/tierCopy.js';
 import { explainLink } from '../components/explainer.js';
 import { accessToken } from '../runtime/session.js';
@@ -76,7 +77,7 @@ function laneChoice() { try { return sessionStorage.getItem(LANE_KEY) === 'sandb
 const ev = { lane: laneChoice(), teamId: '', view: null, files: null, filesTruncated: false, keys: null, madeKey: null, filesNote: '', uploading: false, domains: null, domainLimit: 0, cnameTarget: null, serving: null, binding: '', domainNote: '', checking: '', registrations: [], reg: null,
   // Connected accounts (the connection broker): the list, the provider
   // catalog the form renders from, the picked provider, and the last outcome.
-  connections: null, connProviders: [], connLimit: 0, connNote: '', connPick: '', connBusy: false, connResult: '', connTesting: '',
+  connections: null, connAccess: null, connProviders: [], connLimit: 0, connNote: '', connPick: '', connBusy: false, connResult: '', connTesting: '',
   // The Microsoft 365 row whose sign-in is being finished (confirmMicrosoftConnect): its request is out, the doors wait.
   // Not reset by a re-render, so a repaint in the middle still draws them waiting.
   connConfirming: '',
@@ -186,7 +187,7 @@ export async function renderEnvironment(main, deps) {
   let supplierReviewId = "";
   D = deps;
   ev.madeKey = null; ev.filesNote = ''; ev.files = null; ev.keys = null; ev.domains = null; ev.domainNote = ''; ev.linkNote = ''; ev.domArm = ''; ev.keyArm = ''; ev.checking = ''; ev.registrations = []; ev.reg = freshReg();
-  ev.connections = null; ev.connProviders = []; ev.connNote = ''; ev.connPick = ''; ev.connBusy = false; ev.connResult = ''; ev.connTesting = ''; ev.connDraft = {}; ev.connArm = ''; ev.shipArm = ''; ev.rowNote = null; ev.shopifyLabel = ''; ev.shopifyStep = ''; ev.shopifyLink = ''; ev.shopifyLinkId = ''; ev.connSyncing = ''; ev.rowNote = null;
+  ev.connections = null; ev.connAccess = null; ev.connProviders = []; ev.connNote = ''; ev.connPick = ''; ev.connBusy = false; ev.connResult = ''; ev.connTesting = ''; ev.connDraft = {}; ev.connArm = ''; ev.shipArm = ''; ev.rowNote = null; ev.shopifyLabel = ''; ev.shopifyStep = ''; ev.shopifyLink = ''; ev.shopifyLinkId = ''; ev.connSyncing = ''; ev.rowNote = null;
   ev.supplierSearch = newSupplierSearch(); ev.shopifyMode = ''; ev.shopifyModeRequest = null;
   ev.tables = null; ev.tablesNote = ''; ev.table = ''; ev.rows = null; ev.rowsAfter = ''; ev.rowsNote = ''; ev.openRow = ''; ev.rowsLoading = false; ev.rowsFailed = false; ev.moderating = ''; ev.moderatingTo = '';
   ev.decisions = null;
@@ -335,17 +336,24 @@ async function loadKeys() {
 }
 
 async function loadConnections() {
+  const scope = { team: ev.teamId, lane: ev.lane };
+  const current = () => ev.teamId === scope.team && ev.lane === scope.lane && ev.teamId === teamId();
   try {
     // Always read the CURRENT status. A supplier's Shopify approval (and GitHub/Microsoft OAuth returns) flip a
     // row ACTIVE out-of-band, so a cached list read keeps showing the old "pending" and overwrites every refresh --
     // the row reads "waiting for the supplier" forever though it is connected. The unique param defeats the cache.
     const d = await D.apiFetch(url(`${ENV_URL}/connections`, { _: Date.now() }));
+    if (!current()) return;
+    ev.connAccess = connectionAccessMode(d);
+    if (ev.connAccess && ev.connPick !== 'm:shopify') { ev.connPick = 'm:shopify'; ev.connDraft = {}; }
     ev.connections = d.connections || [];
     ev.connProviders = d.providers || [];
     ev.connLimit = Number(d.limit || 0);
     ev.connNote = '';
     setTimeout(() => { handleProviderReturn(); }, 0);
   } catch (ex) {
+    if (!current()) return;
+    ev.connAccess = null; ev.connProviders = []; ev.connLimit = 0;
     ev.connections = [];
     if (ex?.status === 404) ev.connNote = 'The connection routes are not on this lane yet.';
     else if (ex?.data?.code === 'UPGRADE_REQUIRED') ev.connNote = ex.data.error;
@@ -425,7 +433,7 @@ async function setLane(lane) {
   if (lane === 'sandbox' && !canUseSandbox()) return;   // only the builders switch to the sandbox lane
   ev.lane = lane === 'sandbox' ? 'sandbox' : 'live';
   try { sessionStorage.setItem(LANE_KEY, ev.lane); } catch { /* fine */ }
-  ev.files = null; ev.keys = null; ev.domains = null; ev.connections = null; ev.archive = null; resetDocuments(); resetImport(); ev.connPick = ''; ev.connResult = ''; ev.madeKey = null; ev.filesNote = '';
+  ev.files = null; ev.keys = null; ev.domains = null; ev.connections = null; ev.connAccess = null; ev.archive = null; resetDocuments(); resetImport(); ev.connPick = ''; ev.connResult = ''; ev.madeKey = null; ev.filesNote = '';
   ev.supplierSearch = newSupplierSearch(); ev.shopifyStep = ''; ev.shopifyLabel = ''; ev.shopifyLink = ''; ev.shopifyLinkId = '';
   ev.sites = null; ev.decisions = null; resetMail();
   paint();
@@ -2527,11 +2535,11 @@ function connectionsHtml() {
         </table>
       </div>`;
 
-  const pick = String(ev.connPick || '');
+  const pick = ev.connAccess ? 'm:shopify' : String(ev.connPick || '');
   const picked = providerOf(pick);
   const atLimit = ev.connLimit > 0 && (rows || []).length >= ev.connLimit;
   const has = (fn) => (rows || []).some(fn);
-  const doors = [
+  const managedDoors = [
     ...(has(isManagedStripe) ? [] : [['m:stripe', 'Stripe, set up through PragOptics']]),
     ...(has(isManagedTwilio) ? [] : [['m:twilio', 'Twilio, your account']]),
     ...(has(isManagedShippo) ? [] : [['m:shippo', 'Shippo, your account']]),
@@ -2542,7 +2550,8 @@ function connectionsHtml() {
     ['m:shopify', 'Shopify store or supplier']
   ];
   // the pasted Microsoft kind is not offered even where an older lane still lists it (decision 9: humans do not fetch API keys)
-  const byo = (ev.connProviders || []).filter(p => p.id !== 'microsoft').map(p => [p.id, `${p.label}, your own credential`]);
+  const options = connectionOptions(managedDoors, (ev.connProviders || []).filter(p => p.id !== 'microsoft').map(p => [p.id, `${p.label}, your own credential`]), ev.connAccess);
+  const doors = options.managed, byo = options.credentials;
   // why the picked door waits: a Microsoft sign-in being finished, or a row's door already opening
   const pickWait = ev.connConfirming ? MS_CONFIRM_WAIT : ev.connBusy && ev.connRow ? 'Wait for the account being opened' : '';
   let form = '';
@@ -2588,6 +2597,7 @@ function connectionsHtml() {
     body: `
       ${ev.lane === 'sandbox' ? '<p class="acct-card-note ev-note"><b>Sandbox:</b> test keys live here, in its own vault. Live has its own connections. Microsoft 365 connects on Live only, and the software reads through it from both lanes.</p>' : ''}
       ${ev.connNote ? `<p class="acct-card-note ev-note">${e(ev.connNote)}</p>` : ''}
+      ${ev.connAccess ? `<p class="acct-card-note ev-note">${e(connectionAccessNote(ev.connAccess))}</p>` : ''}
       ${form}
       <p class="acct-error" id="evConnError" hidden></p>
       ${ev.connResult ? `<p class="acct-card-note ev-note ev-conn-result" aria-live="polite">${e(ev.connResult)}</p>` : ''}
@@ -4501,5 +4511,5 @@ export async function refreshConnectionsFromQuark() {
   if (!ready()) return;
   const result=await D.apiFetch(url(`${ENV_URL}/connections`,{_:Date.now()}));
   if (!ready() || !Array.isArray(result.connections)) return;
-  ev.connections=result.connections;ev.connProviders=result.providers||[];ev.connLimit=Number(result.limit||0);ev.connNote='';paintConnections();
+  ev.connAccess=connectionAccessMode(result);ev.connections=result.connections;ev.connProviders=result.providers||[];ev.connLimit=Number(result.limit||0);ev.connNote='';paintConnections();
 }
