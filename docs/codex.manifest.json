@@ -119,6 +119,12 @@
           "name": "Privacy Policy",
           "path": "PragOptics-Privacy.md",
           "format": "md"
+        },
+        {
+          "type": "file",
+          "name": "Shopify Supplier Data Processing & Retention",
+          "path": "PragOptics-Shopify-Supplier-Data.md",
+          "format": "md"
         }
       ]
     },
