@@ -116,7 +116,7 @@ The network address a report is sent from is used only to limit repeated reports
 
 When a Shopify supplier approves a named PragOptics customer, the connector processes the store identity and approval, its permitted product catalog, explicitly reviewed supplier-order instructions, and the status and tracking of those orders. Supplier relationships remain separate. The connector does not process buyer payments.
 
-The [Shopify Supplier Data Processing and Retention](PragOptics-Shopify-Supplier-Data.md) document states the parties' roles, purposes, authorization limits, security obligations, retention events, privacy-request periods and contact route. It supplements this policy and Platform Agreement Section 4.9.
+The [Shopify Supplier Data Processing and Retention](PragOptics-Supplier-Data.md) document states the parties' roles, purposes, authorization limits, security obligations, retention events, privacy-request periods and contact route. It supplements this policy and Platform Agreement Section 4.9.
 
 ---
 
@@ -162,7 +162,7 @@ Participants may implement additional retention or deletion logic through workfl
 
 ### 4.3 Shopify Connector Retention
 
-The [supplier retention schedule](PragOptics-Shopify-Supplier-Data.md#4-retention-schedule) distinguishes installation authorization, mirrored products, retained business-order records, privacy-request selectors and limited completion receipts. Privacy-report download access expires after 48 hours. Privacy requests have a tracked 30-day response deadline; unresolved requests require operator action and are not represented as completed. These periods do not imply an automatic purge of every business record after 30 days.
+The [supplier retention schedule](PragOptics-Supplier-Data.md#4-retention-schedule) distinguishes installation authorization, mirrored products, retained business-order records, privacy-request selectors and limited completion receipts. Privacy-report download access expires after 48 hours. Privacy requests have a tracked 30-day response deadline; unresolved requests require operator action and are not represented as completed. These periods do not imply an automatic purge of every business record after 30 days.
 
 ---
 
