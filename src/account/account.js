@@ -114,6 +114,7 @@ let $body = null;
 let mounted = false;
 let mountedAsAdmin = false;
 let mountedAsRoster = false;   // the agent roster (the owner or the agent flag): the shell carries the Agents desk only for it
+let mountedUserId = '';
 let activeSection = 'home';   // the environment home (2026-10-12): the first thing the panel and the switch land on
 // Small cache so switching sections does not re-hit the API every click.
 const cache = { users: null };
@@ -5472,12 +5473,21 @@ export function onAccountEnter() {
     window.openLoginModal?.() || window.setAppMode?.('landing');
     return;
   }
-  // Remount when admin-ness or roster-ness changed (a different user signed in, or the same person signed in again
+  // Remount when identity or privileges changed (a different user signed in, or the same person signed in again
   // after the owner granted them the agent flag): the sidebar groups must never leak between identities, and the
   // Agents desk must appear without a reload (2026-10-12, Cameron: "the alias account can not see an internal agents
   // page": the shell had mounted from the expired session's ping and a re-sign-in never re-rendered it).
-  const admin = isAdmin(), roster = isRoster();
-  if (mounted && (mountedAsAdmin !== admin || mountedAsRoster !== roster)) { mounted = false; cache.users = null; }
+  const admin = isAdmin(), roster = isRoster(), userId = pingUserId();
+  const identityChanged = mountedUserId !== userId;
+  if (identityChanged) {
+    cache.users = null;
+    knownPrimary = '';
+    savedName = null;
+    notifyPrefs = null;
+    subData = null;
+    sessionKillFired = false;
+  }
+  if (mounted && (identityChanged || mountedAsAdmin !== admin || mountedAsRoster !== roster)) { mounted = false; cache.users = null; }
   if (!mounted) {
     // A preset internal section (the queue, from /#account?section=buildsqueue on a reload) is kept while the ping that
     // says who this is has not landed yet; showSection demotes it only once the answer is known (2026-09-21, Cameron
@@ -5490,6 +5500,7 @@ export function onAccountEnter() {
     mounted = true;
     mountedAsAdmin = admin;
     mountedAsRoster = roster;
+    mountedUserId = userId;
     lastEnter = { id: '', at: 0 };
     // the role on the team in view, for the Licensing entry; Team and Environment read the same view themselves, and a
     // preset Licensing waits for this same read (showSection)
