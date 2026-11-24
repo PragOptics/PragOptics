@@ -350,6 +350,7 @@ async function loadConnections() {
     ev.connProviders = d.providers || [];
     ev.connLimit = Number(d.limit || 0);
     ev.connNote = '';
+    if (ev.connPick === 'm:shopify') checkShopifySupplierMode();
     setTimeout(() => { handleProviderReturn(); }, 0);
   } catch (ex) {
     if (!current()) return;
@@ -2586,7 +2587,7 @@ function connectionsHtml() {
           <select class="acct-input acct-select" id="evConnProvider" aria-label="Which account to connect" ${atLimit ? 'disabled' : ''}>
             <option value="">Connect…</option>
             <optgroup label="Through PragOptics">${doors.map(([v, label]) => `<option value="${e(v)}" ${pick === v ? 'selected' : ''}>${e(label)}</option>`).join('')}</optgroup>
-            <optgroup label="With a credential you paste">${byo.map(([v, label]) => `<option value="${e(v)}" ${pick === v ? 'selected' : ''}>${e(label)}</option>`).join('')}</optgroup>
+            ${byo.length ? `<optgroup label="With a credential you paste">${byo.map(([v, label]) => `<option value="${e(v)}" ${pick === v ? 'selected' : ''}>${e(label)}</option>`).join('')}</optgroup>` : ''}
           </select>
         </div>
         ${atLimit ? `<p class="acct-card-note ev-note">This environment holds ${ev.connLimit} connections, the most it can carry. Remove one to connect another.</p>` : door}
