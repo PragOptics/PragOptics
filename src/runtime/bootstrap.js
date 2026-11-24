@@ -1,3 +1,5 @@
+import {closePrivateModals,uncoverSession,sessionChanged} from '../account/sessionPrivacy.js';
+let idlePrivacyGate = null;
     /*bootsrap.js*/
     
     import { initDnaSwirl, registerLegacyGlobals } from './router.js';
@@ -53,6 +55,7 @@
     // routePostLogin is now a thin forwarder only
     function routePostLoginForward({ ping }) {
       applyPostLoginResolution({ ping });
+      uncoverSession();
     }
     
     
@@ -327,7 +330,8 @@
 
 
 // ✅ authRouter contract: bootstrap owns token persistence
-function setToken(tokens) {
+function setToken(tokens, {renewal=false} = {}) {
+  if (!renewal) closePrivateModals();
   pragopticsToken = tokens?.access_token || null;
 
   if (tokens) {
@@ -338,6 +342,7 @@ function setToken(tokens) {
   } else {
     sessionStorage.removeItem("pragoptics_tokens");
   }
+  sessionChanged({renewal});
 }
     /* ===========================
        NAV / ENTRY
@@ -429,7 +434,7 @@ function setToken(tokens) {
       const tokens = getStoredTokens();
       if (!tokens?.access_token) return { refreshed: false, reason: "no-session" };
       const left = accessTokenExp(tokens.access_token) - Math.floor(Date.now() / 1000);
-      if (left <= 0) return { refreshed: false, reason: "already-expired" };
+      if (left <= 0) { invalidateSession("expired"); openLoginModal("login"); return { refreshed: false, reason: "already-expired" }; }
       if (!force && left > REFRESH_WINDOW_S) return { refreshed: false, reason: "not-yet", secondsLeft: left };
       if (!force && Date.now() - lastActivityAt > ACTIVE_WITHIN_MS) return { refreshed: false, reason: "idle" };
       refreshInFlight = true;
@@ -437,13 +442,16 @@ function setToken(tokens) {
         const res = await fetch(REFRESH_URL, { method: "POST", headers: { Authorization: `Bearer ${tokens.access_token}` } });
         if (res.status === 404) { refreshUnsupported = true; return { refreshed: false, reason: "unsupported" }; }
         const data = await res.json().catch(() => ({}));
+        if (getStoredTokens()?.access_token !== tokens.access_token) return { refreshed:false, reason:'session-changed' };
         if (res.ok && data?.tokens?.access_token) {
-          setToken({ ...tokens, ...data.tokens });
+          setToken({ ...tokens, ...data.tokens }, {renewal:true});
           return { refreshed: true, secondsLeft: accessTokenExp(data.tokens.access_token) - Math.floor(Date.now() / 1000) };
         }
-        if (res.status === 401 && data?.code === "SESSION_MAX_AGE") { invalidateSession("expired"); return { refreshed: false, reason: "max-age" }; }
+        if (res.status === 401 || res.status === 403) { invalidateSession("expired"); openLoginModal("login"); return { refreshed: false, reason: `http-${res.status}` }; }
+        idlePrivacyGate?.pause();
         return { refreshed: false, reason: `http-${res.status}` };
       } catch {
+        idlePrivacyGate?.pause();
         return { refreshed: false, reason: "network" };
       } finally {
         refreshInFlight = false;
@@ -465,6 +473,7 @@ function setToken(tokens) {
     }
 
     function invalidateSession(reason = "expired") {
+    closePrivateModals();
     // Clear all privileged UI
     clearAllWizardSurfaces();
     setWizardMenuVisible(false);
@@ -484,6 +493,7 @@ function setToken(tokens) {
     // read "Your plan" for a visitor whose session had merely expired.
     sessionStorage.removeItem("pragoptics_tokens");
     sessionStorage.removeItem("pragoptics_ping");
+    sessionChanged();
 
     // Drop any lane override too, so an expired session on the dev lane returns
     // this browser to its host default (live on pragoptics.com) on next load,
@@ -497,6 +507,7 @@ function setToken(tokens) {
 
     // Return app to safe baseline
     setAppMode("landing");
+    uncoverSession();
 
     // User feedback (once per action)
     //
@@ -535,9 +546,10 @@ function setToken(tokens) {
 
     // make it available to all view controllers
     window.isAccessTokenValid = isAccessTokenValid;
+    window.invalidateSession = invalidateSession;
     // Make a dormant session honest: after 30 min idle, a signed-in tab shows "Are you still there?" and resumes with a forced
     // session refresh (window.pragRefreshSession) or sign-in — the front-end twin of the studio's idle gate (Cameron 2026-11-18).
-    try { createIdleGate().start(); } catch (e) { /* the gate is a convenience, never block boot on it */ }
+    try { idlePrivacyGate = createIdleGate(); idlePrivacyGate.start(); } catch (e) { invalidateSession('signin'); openLoginModal('login'); }
     // The session's state is settled here: the account's theme and the footer
     // toggle's absence follow it (src/runtime/userTheme.js).
     syncUserTheme();
@@ -841,6 +853,7 @@ window.applyPostLoginResolution = applyPostLoginResolution;
       try {
         const res = await fetch(`${PRAG_API_BASE}/auth/software/redeem`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code }) });
         const data = await res.json().catch(() => ({}));
+
         if (!res.ok || !data?.tokens?.access_token) throw new Error(data?.error || `redeem ${res.status}`);
         sessionStorage.setItem("pragoptics_tokens", JSON.stringify(data.tokens));
         const pingRes = await fetch(`${PRAG_API_BASE}/ping`, { headers: { Authorization: `Bearer ${data.tokens.access_token}` } });

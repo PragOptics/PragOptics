@@ -6,11 +6,12 @@
    (src/account/idleGate.js; the front-end twin of the studio's gate, Cameron 2026-11-18).
    ============================================================ */
 .idle-gate{
-  position:fixed; inset:0; z-index:2147483000;
+  position:fixed; inset:0; z-index:2147483000; margin:0;
+  width:100%; height:100%; max-width:none; max-height:none; border:0;
   display:flex; align-items:center; justify-content:center; padding:24px;
-  background:color-mix(in srgb, var(--shade) 66%, transparent);
-  -webkit-backdrop-filter:blur(3px); backdrop-filter:blur(3px);
+  background:#111827; background:Canvas;
 }
+html.session-privacy-locked dialog:not([data-session-protection]){visibility:hidden!important;}
 .idle-card{
   width:min(440px, calc(100vw - 48px));
   background:var(--menu); border:1px solid var(--border); border-radius:var(--radius);
@@ -119,3 +120,8 @@ select.acct-select, select.acct-input, .acct-modal select {
 .skip-link { position: absolute; left: 12px; top: -48px; z-index: 20000; padding: 8px 12px; border-radius: var(--radius-btn-sm); background: var(--brand-600); color: var(--on-brand, #fff); font-weight: 700; text-decoration: none; }
 .skip-link:focus { top: 12px; outline: 2px solid var(--ink); outline-offset: 2px; }
 main#main:focus { outline: none; }
+
+/* Also cover viewport space outside a zoomed native dialog and any later private popup. */
+.idle-gate::backdrop{background:Canvas;}
+html.session-privacy-locked body > :not([data-session-protection]),
+html.session-privacy-locked body > :not([data-session-protection]) *{visibility:hidden!important;}

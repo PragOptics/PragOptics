@@ -1,3 +1,4 @@
+import {closePrivateModal,registerPrivateModal} from './sessionPrivacy.js';
 // src/account/cards.js
 //
 // The account panel's card language (2026-09-17): every card is open and
@@ -280,6 +281,7 @@ export async function copyButton(btn, text, { select = null, ms = 1600 } = {}) {
  * prompt opened again never runs two sets of listeners. `onKey` listens on the document (Escape). `focus` is a
  * selector to focus once it is open. */
 export function openModal(id, html, { onClick = null, onInput = null, onChange = null, onKey = null, focus = '' } = {}) {
+  closePrivateModal(id);
   let host = document.getElementById(id);
   if (!host) { host = document.createElement('div'); host.id = id; host.className = 'acct-modal-host'; document.body.appendChild(host); }
   host.innerHTML = html;
@@ -291,12 +293,15 @@ export function openModal(id, html, { onClick = null, onInput = null, onChange =
   listen(host, 'change', onChange);
   listen(document, 'keydown', onKey);
   let open = true;
+  let unregister = () => {};
   const close = () => {
     if (!open) return;
     open = false;
     for (const [target, type, fn] of on) target.removeEventListener(type, fn);
     host.hidden = true; host.innerHTML = '';
+    unregister();
   };
+  unregister = registerPrivateModal(id, close);
   if (focus) host.querySelector(focus)?.focus?.();
   return { host, $: (sel) => host.querySelector(sel), close };
 }

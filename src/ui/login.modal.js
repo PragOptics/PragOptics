@@ -1,3 +1,5 @@
+import {closePrivateModals} from '../account/sessionPrivacy.js';
+import {accessToken} from '../runtime/session.js';
 // ui/login.modal.js
 
 import { PRAG_API_BASE } from "../runtime/config.js";
@@ -11,6 +13,8 @@ let isBound = false;
    ====================================================== */
 
 export function openLoginModal(mode = "login") {
+  if (accessToken() && typeof window.isAccessTokenValid === 'function' && !window.isAccessTokenValid()) window.invalidateSession?.('signin');
+  closePrivateModals();
   const modal = document.getElementById("loginModal");
   const mask  = document.getElementById("loginMask");
   if (!modal || !mask) return;

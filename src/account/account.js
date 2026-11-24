@@ -1,3 +1,4 @@
+import {sessionVersion,assertSessionVersion,sessionBoundResponse} from './sessionPrivacy.js';
 // src/account/account.js
 //
 // THE panel. One container for everything about the signed-in person:
@@ -202,6 +203,7 @@ function sessionKillReason(status, data) {
 let sessionKillFired = false;
 
 async function apiFetch(url, options = {}) {
+  const requestSessionVersion = sessionVersion();
   // VIEW ONLY (2026-10-11, Cameron: "yes to all, and view only, no edit"): a rostered agent inside a customer's environment
   // reads the operator desks and never writes through them. The server refuses too (auth/opsRead.js keeps every write
   // admin-only); this says so first, in the desk's own error line, before a request leaves the browser.
@@ -217,15 +219,17 @@ async function apiFetch(url, options = {}) {
       ...(options.headers || {})
     }
   });
+  assertSessionVersion(requestSessionVersion);
   // raw: hand back the Response untouched (a PDF/blob the caller reads itself),
   // instead of parsing JSON. The caller checks the body; only transport/auth
   // failures throw here.
   if (options.raw) {
     if (!res.ok) { const err = new Error(`Request failed (${res.status})`); err.status = res.status; throw err; }
-    return res;
+    return sessionBoundResponse(res, requestSessionVersion);
   }
   let data = null;
   try { data = await res.json(); } catch { /* empty or non-JSON */ }
+  assertSessionVersion(requestSessionVersion);
   if (!res.ok) {
     const err = new Error(data?.error || `Request failed (${res.status})`);
     err.status = res.status;
