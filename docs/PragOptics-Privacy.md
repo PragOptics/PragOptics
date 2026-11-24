@@ -236,10 +236,12 @@ Material changes will be communicated through reasonable notice. Continued use o
 
 ## 11. Cookies and Device Storage
 
-PragOptics sets no cookies of its own and runs no analytics, advertising, or tracking. The site keeps a small amount of data in your browser's own storage so that it works. Nothing in this list is used to identify or follow you across other sites.
+The main PragOptics front end keeps its account session and preferences in browser storage. The Shopify supplier pages also use strictly necessary first-party cookies for supplier sign-in, invitation hand-off and authorization security. PragOptics runs no analytics, advertising or cross-site tracking. Nothing in this list is used to follow you across other sites.
 
 | What | Where | Why | How long |
 |------|-------|-----|----------|
+| Shopify supplier sign-in | Secure, HttpOnly first-party cookie | Keeps the verified Shopify supplier session | Up to ten minutes, bounded by the Shopify session expiry |
+| Shopify invitation and authorization hand-off | Secure, HttpOnly first-party cookies | Carries the invitation and verifies the authorization return | Up to ten minutes; cleared when used or expired |
 | Sign-in session | Session storage | Keeps you signed in while the tab is open | Until the tab closes or you sign out |
 | Cart | Local storage | Remembers what you added to the cart | Until you empty it |
 | Theme choice | Local storage | Keeps the light or dark theme you picked | Until you change it |
