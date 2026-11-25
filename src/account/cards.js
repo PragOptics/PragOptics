@@ -360,8 +360,8 @@ export function armed(btn, word, { keep = 'Keep it', ms = 6000 } = {}) {
   btn.setAttribute('data-tip', 'Press again to confirm');
   btn.classList.add('is-armed');
   const c = document.createElement('button');
-  c.type = 'button'; c.className = 'btn btn-sm btn-ico btn-arm-cancel'; c.setAttribute('data-arm-cancel', '1');
-  c.setAttribute('aria-label', keep); c.setAttribute('data-tip', keep); c.innerHTML = ico('x');
+  c.type = 'button'; c.className = 'btn btn-sm btn-arm-cancel'; c.setAttribute('data-arm-cancel', '1');
+  c.setAttribute('aria-label', keep); c.setAttribute('data-tip', keep); c.textContent = keep;
   btn.after(c);
   // the second press is asked for where it can be seen, with the time running out under it (Cameron pressed an icon on the
   // Tenants desk and had no sign a second press was wanted, 2026-09-29): the question beside an icon-only button, and under

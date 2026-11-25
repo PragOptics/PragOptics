@@ -8,6 +8,7 @@
 // or a Stripe key. Publishable keys are browser-safe by design; secret keys
 // live only in the backend's environment.
 
+import { studioHandoffLane } from './studioHandoff.js';
 const LANE_SETTING = 'dev';
 
 const LANES = {
@@ -40,7 +41,11 @@ let laneOverride = null;
 try { laneOverride = localStorage.getItem('pragoptics_lane_override'); } catch { /* blocked */ }
 if (laneOverride !== 'dev' && laneOverride !== 'live') laneOverride = null;
 
-export const LANE = laneOverride || (isProdHost ? 'live' : LANE_SETTING);
+// A Studio return carries its authenticated platform lane. Keep that choice
+// within this tab so other open accounts and lanes are not switched with it.
+let sessionLane = null;
+try { sessionLane = studioHandoffLane(location.hash, sessionStorage); } catch { /* default routing */ }
+export const LANE = sessionLane || laneOverride || (isProdHost ? 'live' : LANE_SETTING);
 
 const lane = LANES[LANE] || LANES.live;
 

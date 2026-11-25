@@ -66,6 +66,7 @@ function landOnTarget(lane, { handoff, verifier } = {}) {
     localStorage.setItem(OVERRIDE_KEY, lane);
     sessionStorage.removeItem('pragoptics_tokens');
     sessionStorage.removeItem('pragoptics_ping');
+    sessionStorage.removeItem('pragoptics_session_lane');
     if (handoff) {
       sessionStorage.setItem(HANDOFF_KEY, handoff);
       if (verifier) sessionStorage.setItem(HANDOFF_VERIFIER_KEY, verifier);

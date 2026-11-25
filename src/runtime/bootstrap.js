@@ -16,7 +16,8 @@ let idlePrivacyGate = null;
     import { formatPhone, gotoStep1, gotoStep2, gotoStep3, gotoStep4, gotoStep5, syncWizardAuthIndicator, initPostLoginWizard, buildRequestedSubscription, endFinalizeVeil } from "../wizard/index.js";
     import { handleBillingProfile, startPaymentStep, pollUntilResolved } from "../api/billing.js";
     import { setDnaMode } from "../components/dnaController.js";
-    import { showStatusModal } from "../components/statusModal.js";
+    import { showStatusModal, hideStatusModal } from "../components/statusModal.js";
+    import { redeemStudioSession, parseStudioHandoff } from './studioHandoff.js';
     import { promptForCode } from "../auth/twoFactorFlow.js";
     import { initHeaderMenu } from '../components/header.menu.js';
     import { initWizardNavigation } from '../wizard/wizard.controller.js';
@@ -493,6 +494,7 @@ function setToken(tokens, {renewal=false} = {}) {
     // read "Your plan" for a visitor whose session had merely expired.
     sessionStorage.removeItem("pragoptics_tokens");
     sessionStorage.removeItem("pragoptics_ping");
+    sessionStorage.removeItem("pragoptics_session_lane");
     sessionChanged();
 
     // Drop any lane override too, so an expired session on the dev lane returns
@@ -822,8 +824,8 @@ window.applyPostLoginResolution = applyPostLoginResolution;
       // has no session (sessionStorage is per tab), so the studio mints the same one-time code the site mints for it
       // and lands here as /#handoff=<code>&to=account?section=environment. The code is redeemed once on this lane,
       // the session stored exactly as a sign-in stores it, and the tab lands on the section asked for.
-      const hm = String(location.hash || "").match(/^#handoff=([A-Za-z0-9_-]{32,64})(?:&to=([^&]*))?/);
-      if (hm) { redeemStudioHandoff(hm[1], decodeURIComponent(hm[2] || "account")); return; }
+      const hm = parseStudioHandoff(location.hash);
+      if (hm) { redeemStudioHandoff(hm.code, hm.to); return; }
       const m = String(location.hash || "").match(/mode=(landing|console|shop|software|checkout|warranty|builds|admin)/);
       if (m) setAppMode(m[1]);
       // Warranty-card short link: /#warranty (with optional &device=)
@@ -850,22 +852,26 @@ window.applyPostLoginResolution = applyPostLoginResolution;
     async function redeemStudioHandoff(code, to) {
       try { history.replaceState(null, "", location.pathname + location.search); } catch { /* the hash is read once */ }
       const dest = /^account(\?|$)/.test(to) ? to : "account";
+      let failure = '';
+      showStatusModal({ mode: 'loading', message: 'Opening your platform account…' });
       try {
-        const res = await fetch(`${PRAG_API_BASE}/auth/software/redeem`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code }) });
-        const data = await res.json().catch(() => ({}));
-
-        if (!res.ok || !data?.tokens?.access_token) throw new Error(data?.error || `redeem ${res.status}`);
-        sessionStorage.setItem("pragoptics_tokens", JSON.stringify(data.tokens));
-        const pingRes = await fetch(`${PRAG_API_BASE}/ping`, { headers: { Authorization: `Bearer ${data.tokens.access_token}` } });
-        const ping = await pingRes.json();
+        const { tokens, ping } = await redeemStudioSession({ apiBase: PRAG_API_BASE, code });
         sessionStorage.setItem("pragoptics_ping", JSON.stringify(ping));
+        setToken(tokens);
+        lastPing = ping;
         syncUserTheme();
         window.setConsoleAuthenticated?.();
-      } catch {
-        // an expired or used code: the section still opens behind the sign-in, and the sign-in lands there
+        refreshAdminNav();
+        window.syncLandingPlans?.();
+        uncoverSession();
+      } catch (error) {
+        failure = `Studio could not transfer your session. Sign in to continue on the ${LANE} platform. (${error.code || 'HANDOFF_UNAVAILABLE'})`;
+      } finally {
+        hideStatusModal();
       }
       location.hash = "#" + dest;
       routeToAccountOnLoad();
+      if (failure) setTimeout(() => showStatusModal({ mode: 'error', message: failure }), 80);
     }
 
     // The session carried into the studio's origin by a one-time code (auth/softwareHandoff.js). The site composes the

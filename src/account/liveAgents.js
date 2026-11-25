@@ -206,7 +206,7 @@ function requestCard() {
     ${open ? `
       <p class="la-status"><span class="la-dot is-open"></span> Your request is in. The owner and the agent roster can see it; someone will pick it up.</p>
       ${m.note ? `<p class="acct-card-note">"${e(m.note)}"</p>` : ''}
-      <div class="ev-dom-actions">${iconBtn({ la: 'withdraw' }, 'x', 'Withdraw the request', '', '')}</div>` : ''}
+      <div class="ev-dom-actions">${leadBtn({ la: 'withdraw' }, 'x', 'Withdraw request')}</div>` : ''}
     ${taken ? `
       <div class="la-helper">
         <span class="la-helper-av">${avatarHtml({ avatar: m.takenByAvatar, email: m.takenByEmail }, 44)}</span>
@@ -215,7 +215,7 @@ function requestCard() {
           <p class="acct-card-note">End their access any time with Mark it done below. What they do shows in the ledger.</p>
         </div>
       </div>
-      <div class="ev-dom-actions">${iconBtn({ la: 'withdraw' }, 'check', 'Mark it done', '', '')}</div>` : ''}`;
+      <div class="ev-dom-actions">${leadBtn({ la: 'withdraw' }, 'check', 'Mark it done')}</div>` : ''}`;
   return card({ key: 'request', icon: 'message', title: 'Agent support', summary: open ? 'requested' : taken ? 'an agent is helping' : 'ready', body });
 }
 
@@ -438,7 +438,7 @@ export function bindLiveAgentsActions(deps) {
     try {
       if (a === 'request') return void await doRequest();
       // Closing the door is guarded: the first press arms it with a clear warning and a timer, the second confirms.
-      if (a === 'withdraw') { if (!armed(btn, 'This closes the door and ends the agent’s access.', { keep: 'Keep it open', ms: 6000 })) return; return void await doClose(); }
+      if (a === 'withdraw') { if (!armed(btn, 'End this support request?', { keep: 'Keep it open', ms: 6000 })) return; return void await doClose(); }
       if (a === 'take') return void await doTake(env, btn);
       if (a === 'revoke-agent') { if (!armed(btn, 'Remove the agent badge from this person?', { keep: 'Keep it', ms: 6000 })) return; return void await doRevokeAgent(btn.dataset.user || '', btn.dataset.email || ''); }
       if (a === 'accept-rate') return void await doAcceptRate(btn.dataset.agent || '');

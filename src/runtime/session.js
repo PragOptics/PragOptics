@@ -2,7 +2,7 @@
 // the customer's own work - cart, warranty and builds queues, pending
 // reservations, account-link intents - so signing out must not touch it.
 // This used to call localStorage.clear(), which silently emptied the cart.
-const SESSION_KEYS = ["pragoptics_tokens", "pragoptics_ping"];
+const SESSION_KEYS = ["pragoptics_tokens", "pragoptics_ping", "pragoptics_session_lane"];
 
 // The ONE localStorage key that is session policy, not the customer's work: the
 // lane override pins this browser to a non-default lane (a platform operator's
