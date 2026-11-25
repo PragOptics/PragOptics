@@ -86,6 +86,7 @@ const ev = { lane: laneChoice(), teamId: '', view: null, files: null, filesTrunc
   // (an Account SID, a tenant id), so a typo in the token does not mean
   // re-typing everything. Secret fields are never kept.
   connDraft: {}, connArm: '',
+  printfulAvailable: false, printfulStoreNaming: false, printfulNaming: '',
   // Remove a row (2026-11-08): the key whose typed-DELETE confirm is open, and the key whose delete is in flight.
   rowDelArm: '', rowDeleting: '' };
 let D = null;
@@ -190,6 +191,7 @@ export async function renderEnvironment(main, deps) {
   ev.madeKey = null; ev.filesNote = ''; ev.files = null; ev.keys = null; ev.domains = null; ev.domainNote = ''; ev.linkNote = ''; ev.domArm = ''; ev.keyArm = ''; ev.checking = ''; ev.registrations = []; ev.reg = freshReg();
   ev.connections = null; ev.connAccess = null; ev.connProviders = []; ev.connNote = ''; ev.connPick = ''; ev.connBusy = false; ev.connResult = ''; ev.connTesting = ''; ev.connDraft = {}; ev.connArm = ''; ev.shipArm = ''; ev.rowNote = null; ev.shopifyLabel = ''; ev.shopifyStep = ''; ev.shopifyLink = ''; ev.shopifyLinkId = ''; ev.connSyncing = ''; ev.rowNote = null;
   ev.supplierSearch = newSupplierSearch(); ev.shopifyMode = ''; ev.shopifyModeRequest = null;
+  ev.printfulAvailable = false; ev.printfulStoreNaming = false; ev.printfulNaming = '';
   ev.tables = null; ev.tablesNote = ''; ev.table = ''; ev.rows = null; ev.rowsAfter = ''; ev.rowsNote = ''; ev.openRow = ''; ev.rowsLoading = false; ev.rowsFailed = false; ev.moderating = ''; ev.moderatingTo = '';
   ev.decisions = null;
   ev.ai = null; ev.aiNote = ''; ev.aiBusy = false; ev.aiBudget = null; ev.budgetBusy = false; ev.archive = null; ev.archiveNote = ''; ev.archiveStatus = '';
@@ -350,6 +352,7 @@ async function loadConnections() {
     ev.connections = d.connections || [];
     ev.connProviders = d.providers || [];
     ev.printfulAvailable = Array.isArray(d.managedProviders) && d.managedProviders.includes('printful');
+    ev.printfulStoreNaming = ev.printfulAvailable && d.printfulStoreNaming === true;
     ev.connLimit = Number(d.limit || 0);
     ev.connNote = '';
     if (ev.connPick === 'm:shopify') checkShopifySupplierMode();
@@ -438,6 +441,7 @@ async function setLane(lane) {
   try { sessionStorage.setItem(LANE_KEY, ev.lane); } catch { /* fine */ }
   ev.files = null; ev.keys = null; ev.domains = null; ev.connections = null; ev.connAccess = null; ev.archive = null; resetDocuments(); resetImport(); ev.connPick = ''; ev.connResult = ''; ev.madeKey = null; ev.filesNote = '';
   ev.supplierSearch = newSupplierSearch(); ev.shopifyStep = ''; ev.shopifyLabel = ''; ev.shopifyLink = ''; ev.shopifyLinkId = '';
+  ev.connDraft = {}; ev.printfulAvailable = false; ev.printfulStoreNaming = false; ev.printfulNaming = ''; ev.connBusy = false; ev.connTesting = ''; ev.connRow = '';
   ev.sites = null; ev.decisions = null; resetMail();
   paint();
   if (ev.lane === 'live' || laneReady(ev.view?.tenant)) {
@@ -2441,7 +2445,7 @@ function stripeState(d = {}) {
 /** The line under a managed row: what Stripe wants, or what it is doing, in the customer's words. */
 function stripeNeedsHtml(c) {
   const e = D.escapeHtml;
-  if (isManagedPrintful(c)) return c.status === 'ACTIVE' ? '' : `<div class="ev-conn-needs">${e(printfulConnectionWords(c).needs)}</div>`;
+  if (isManagedPrintful(c)) { const words = printfulConnectionWords(c); return words.needs ? `<div class="ev-conn-needs">${e(words.needs)}</div>` : ''; }
   if (isManagedStripe(c) && c.detail?.disconnected) return `<div class="ev-conn-needs">${e(c.lastError || 'PragOptics was disconnected from this Stripe account.')}</div>`;
   if (isManagedTwilio(c)) return c.status === 'ACTIVE' ? '' : `<div class="ev-conn-needs">${e(c.lastError || 'Waiting for you to authorize PragOptics at Twilio.')}</div>`;
   if (isManagedShippo(c)) return c.status === 'ACTIVE' ? '' : `<div class="ev-conn-needs">${e(c.lastError || 'Waiting for you to sign in or sign up at Shippo and approve PragOptics.')}</div>`;
@@ -2470,6 +2474,20 @@ function connFieldsHtml(p) {
       </label>
     </div>
     <p class="acct-card-note ev-dom-door">Checked with ${e(p.label)} first, then kept in this environment's vault and never shown again.</p>`;
+}
+
+function printfulNameStepHtml(c) {
+  if (!isManagedPrintful(c)) return '';
+  const words = printfulConnectionWords(c), choosing = ev.printfulStoreNaming && ev.printfulNaming === c.id;
+  if (!choosing && !(words.namingRequired && c.status === 'ACTIVE')) return '';
+  const e = D.escapeHtml, manage = canManageConnections();
+  return `<tr class="ev-note-row" data-row="printful-name"><td colspan="5" data-th="Store name">
+    ${choosing && manage ? `<label class="ev-conn-field"><span class="ev-conn-field-label">Store name</span><input class="acct-input" id="evPrintfulName-${e(c.id)}" type="text" maxlength="120" required autocomplete="organization" value="${e(ev.connDraft.printfulNames?.[c.id] ?? words.requestedName)}" placeholder="e.g. Bridges Industrial" /></label>
+      <div class="ev-key-row"><button class="btn btn-primary btn-sm" type="button" data-env-action="conn-printful-name-save" data-id="${e(c.id)}" ${ev.connBusy ? 'disabled' : ''}>${ev.connBusy ? 'Saving…' : 'Save store name'}</button><button class="btn btn-sm" type="button" data-env-action="conn-printful-name-cancel" ${ev.connBusy ? 'disabled' : ''}>Cancel</button></div>` : ''}
+    ${words.namingRequired && c.status === 'ACTIVE' ? `<p class="acct-card-note">Chosen name: <b>${e(words.requestedName)}</b>. Printful currently calls this store <b>${e(c.detail.storeName)}</b>.</p>
+      <p class="acct-card-note">${manage ? 'Open this store’s Printful settings, enter the chosen name in Store name and Save. Return here and check the name to finish.' : 'An owner or admin can finish the name in Printful and verify it here.'}</p>
+      ${manage && words.settingsUrl ? `<div class="ev-key-row"><a class="btn btn-sm" href="${e(words.settingsUrl)}" target="_blank" rel="noopener noreferrer">Open Printful store settings</a><button class="btn btn-sm" type="button" data-env-action="conn-printful-refresh" data-id="${e(c.id)}" ${ev.connTesting ? 'disabled' : ''}>${ev.connTesting === c.id ? 'Checking…' : 'Check store name'}</button></div>` : ''}` : ''}
+    </td></tr>`;
 }
 
 function connectionsHtml() {
@@ -2524,9 +2542,10 @@ function connectionsHtml() {
                   ${isManagedShopify(c) && c.status === 'ACTIVE' ? stateLead('conn-shopify-sync', 'refresh', 'Sync products', { out: ev.connSyncing === c.id, busyWord: 'Syncing…' }, `data-id="${e(c.id)}" data-tip="Copy the store's products into this environment's data, table supplier_products"`) : ''}
                   ${isManagedShopify(c) && c.status === 'ACTIVE' ? stateLead('conn-shopify-testorder', 'send', 'Review supplier order', { out: ev.connBusy && ev.connRow === c.id, busyWord: 'Reviewing…' }, `data-id="${e(c.id)}" data-tip="Place a real Shopify order. Your supplier can fulfill and bill it."`) : ''}
                   ${stateIcon(refreshAction, 'check', isManaged(c) ? 'Check status' : 'Test the credential', { out: !!testing, busyWord: 'Checking…', waiting: confirming ? MS_CONFIRM_WAIT : ev.connTesting && !testing ? 'Wait for the check being made' : '' }, `data-id="${e(c.id)}"`)}
+                  ${isManagedPrintful(c) && ev.printfulStoreNaming ? `<button class="btn btn-sm" type="button" data-env-action="conn-printful-name" data-id="${e(c.id)}" ${ev.connBusy ? 'disabled' : ''}>${c.detail?.requestedStoreName ? 'Change store name' : 'Name store'}</button>` : ''}
                   ${confirming ? stateIcon('conn-remove', 'trash', 'Remove this connection', { waiting: MS_CONFIRM_WAIT }, `data-id="${e(c.id)}" data-label="${e(c.label)}"`, 'is-risky')
                     : iconBtn('conn-remove', 'trash', 'Remove this connection', `data-id="${e(c.id)}" data-label="${e(c.label)}"`, 'is-risky')}</span>`) : ''}</td>
-              </tr>${isManagedShippo(c) && c.status !== 'ACTIVE' && c.lastError && !(ev.rowNote && ev.rowNote.id === c.id) ? `
+              </tr>${printfulNameStepHtml(c)}${isManagedShippo(c) && c.status !== 'ACTIVE' && c.lastError && !(ev.rowNote && ev.rowNote.id === c.id) ? `
               <tr class="ev-note-row" data-row="note"><td colspan="5" data-th="Problem"><p class="acct-error ev-row-note">${e(c.lastError)}</p></td></tr>` : ''}${ev.rowNote && ev.rowNote.id === c.id ? `
               <tr class="ev-note-row" data-row="note">
                 <td colspan="5" data-th="${ev.rowNote.error ? 'Problem' : 'Result'}"><p class="${ev.rowNote.error ? 'acct-error' : 'acct-card-note'} ev-row-note" aria-live="polite">${e(ev.rowNote.text)}</p></td>
@@ -2575,6 +2594,7 @@ function connectionsHtml() {
         <div class="ev-key-row">${stateLead('conn-twilio-start', 'external', 'Connect your Twilio account', { out: ev.connBusy && !ev.connRow, busyWord: 'Opening with Twilio…', waiting: pickWait }, '', 'btn-primary')}</div>
         <p class="acct-card-note ev-dom-door">Approve PragOptics on your own upgraded Twilio account; Twilio bills you directly.</p>`;
     else if (pick === 'm:printful') door = `
+        ${ev.printfulStoreNaming ? `<label class="ev-conn-field"><span class="ev-conn-field-label">Store name</span><input class="acct-input" id="evPrintfulStoreName" type="text" maxlength="120" required autocomplete="organization" value="${e(ev.connDraft.printfulName || '')}" placeholder="e.g. Bridges Industrial" /></label><p class="acct-card-note">Choose your store’s name first. At Printful, select an existing store or create one. If its name differs, we’ll guide you to its name setting and verify it when you return.</p>` : ''}
         <div class="ev-key-row">${stateLead('conn-printful-start', 'external', 'Connect your Printful store', { out: ev.connBusy && !ev.connRow, busyWord: 'Opening Printful…', waiting: pickWait }, '', 'btn-primary')}</div>
         <p class="acct-card-note ev-dom-door">Approve your store at Printful, then return here. Printful bills your account for confirmed fulfillment; connecting does not place an order.</p>`;
     else if (pick === 'm:shippo') door = `
@@ -3505,29 +3525,63 @@ async function testConnection(id) {
   await loadConnections();
 }
 
-/** The platform opens the Stripe account and hands the customer to Stripe's setup. The single-use URL is used at once, never shown. */
-async function startPrintfulConnect() {
+/** Name the store before leaving for Printful; a provider read verifies the actual saved name after approval. */
+async function startPrintfulConnect(id = '') {
   if (ev.connBusy) return;
+  const row = (ev.connections || []).find(c => c.id === id && isManagedPrintful(c));
+  const storeName = String(id ? row?.detail?.requestedStoreName || '' : document.getElementById('evPrintfulStoreName')?.value || '').trim().normalize('NFC');
+  if (ev.printfulStoreNaming && (!storeName || storeName.length > 120)) {
+    if (id) { ev.printfulNaming = id; paintConnections(); document.getElementById(`evPrintfulName-${id}`)?.focus(); }
+    else { D.showError('evConnError', 'Choose a store name using 1 to 120 characters.'); document.getElementById('evPrintfulStoreName')?.focus(); }
+    return;
+  }
+  ev.connDraft.printfulName = storeName;
+  const scope = { team: ev.teamId, lane: ev.lane, token: accessToken() };
+  const current = () => ev.teamId === scope.team && ev.teamId === teamId() && ev.lane === scope.lane && accessToken() === scope.token;
   D.showError('evConnError', '');
-  ev.connBusy = true; ev.connResult = ''; paintConnections();
+  ev.connRow = id; ev.connAct = 'conn-printful-start'; ev.connBusy = true; ev.connResult = ''; paintConnections();
   try {
-    const d = await post(`${ENV_URL}/connections/printful/start`, {});
+    const d = await post(`${ENV_URL}/connections/printful/start`, storeName ? { storeName } : {});
+    if (!current()) return;
     const target = new URL(d?.url || '');
     if (target.origin !== 'https://www.printful.com' || target.pathname !== '/oauth/authorize') throw new Error('Printful did not return a valid authorization link.');
     try { sessionStorage.setItem('pragoptics_connect_return', JSON.stringify({ provider: 'printful', id: String(d.connection?.id || '') })); } catch { /* callback URL also carries the connection */ }
     window.location.assign(target.href);
   } catch (ex) {
+    if (!current()) return;
     ev.connBusy = false; paintConnections();
     D.showError('evConnError', errText(ex, 'Could not start Printful authorization.'));
   }
 }
+async function savePrintfulName(id) {
+  if (ev.connBusy || !canManageConnections()) return;
+  const input = document.getElementById(`evPrintfulName-${id}`), storeName = String(input?.value || '').trim().normalize('NFC');
+  if (!storeName || storeName.length > 120) { D.showError('evConnError', 'Choose a store name using 1 to 120 characters.'); input?.focus(); return; }
+  const scope = { team: ev.teamId, lane: ev.lane, token: accessToken() };
+  const current = () => ev.teamId === scope.team && ev.teamId === teamId() && ev.lane === scope.lane && accessToken() === scope.token;
+  ev.connDraft.printfulNames = { ...ev.connDraft.printfulNames, [id]: storeName };
+  ev.connBusy = true; D.showError('evConnError', ''); paintConnections();
+  try {
+    const d = await post(`${ENV_URL}/connections/printful/name`, { id, storeName });
+    if (!current()) return;
+    ev.printfulNaming = ''; ev.connBusy = false;
+    if (d.connection?.status === 'ACTIVE') await refreshPrintfulConnect(id);
+    else { rowNote(id, 'Store name saved. Authorize at Printful to continue.'); await loadConnections(); }
+  } catch (ex) {
+    if (!current()) return;
+    ev.connBusy = false; paintConnections(); D.showError('evConnError', errText(ex, 'Could not save the store name.'));
+  }
+}
 async function refreshPrintfulConnect(id, quiet = false) {
   if (!id || ev.connTesting) return;
+  const scope = { team: ev.teamId, lane: ev.lane, token: accessToken() };
+  const current = () => ev.teamId === scope.team && ev.teamId === teamId() && ev.lane === scope.lane && accessToken() === scope.token;
   ev.connTesting = id; paintConnections();
   try {
     const d = await post(`${ENV_URL}/connections/printful/refresh`, { id });
-    rowNote(id, d.connection?.message || 'Printful confirmed the store.');
-  } catch (ex) { rowNote(id, errText(ex, 'Could not verify the Printful connection.'), true); }
+    if (!current()) return;
+    rowNote(id, d.connection?.detail?.requestedStoreName && !d.connection.detail.namingRequired ? `Printful confirmed the store name: ${d.connection.detail.storeName}.` : d.connection?.message || 'Printful confirmed the store.');
+  } catch (ex) { if (!current()) return; rowNote(id, errText(ex, 'Could not verify the Printful connection.'), true); }
   ev.connTesting = '';
   await loadConnections();
 }
@@ -4378,6 +4432,11 @@ export function bindEnvironmentActions(deps) {
     });
   });
 
+  document.addEventListener('input', (e) => {
+    if (e.target.id === 'evPrintfulStoreName') ev.connDraft.printfulName = e.target.value;
+    if (String(e.target.id || '').startsWith('evPrintfulName-')) ev.connDraft.printfulNames = { ...ev.connDraft.printfulNames, [e.target.id.slice('evPrintfulName-'.length)]: e.target.value };
+  });
+
   document.addEventListener('change', (e) => {
     const sw = e.target.closest?.('[data-env-switch="ai"]');
     if (sw) setAi(!!sw.checked);
@@ -4476,8 +4535,11 @@ export function bindEnvironmentActions(deps) {
     if (a === 'conn-twilio-start') return void startTwilioConnect();
     if (a === 'conn-twilio-refresh') return void refreshTwilioConnect(btn.dataset.id || '');
     if (a === 'conn-shippo-start') return void startShippoConnect();
-    if (a === 'conn-printful-start') return void startPrintfulConnect();
+    if (a === 'conn-printful-start') return void startPrintfulConnect(btn.dataset.id || '');
     if (a === 'conn-printful-refresh') return void refreshPrintfulConnect(btn.dataset.id || '');
+    if (a === 'conn-printful-name') { ev.printfulNaming = btn.dataset.id || ''; paintConnections(); document.getElementById(`evPrintfulName-${ev.printfulNaming}`)?.focus(); return; }
+    if (a === 'conn-printful-name-cancel') { ev.printfulNaming = ''; paintConnections(); return; }
+    if (a === 'conn-printful-name-save') return void savePrintfulName(btn.dataset.id || '');
     if (a === 'conn-shippo-refresh') return void refreshShippoConnect(btn.dataset.id || '');
     if (a === 'ship-rates') return void getShippingRates();
     if (a === 'ship-rate-pick') { shipState().picked = btn.dataset.id || ''; paintShipping(); return; }
@@ -4517,7 +4579,7 @@ export function bindEnvironmentActions(deps) {
     if (e.target.id === 'evConnProvider') {
       ev.connPick = e.target.value || ''; ev.connResult = ''; ev.shopifyStep = ''; ev.supplierSearch = newSupplierSearch();
       if (ev.connPick === 'm:shopify') checkShopifySupplierMode();
-      paintConnections(); document.querySelector('[data-conn-field], #evShopifyLabel')?.focus();
+      paintConnections(); document.querySelector('[data-conn-field], #evShopifyLabel, #evPrintfulStoreName')?.focus();
     }
     // The archive's GitHub account: read the repositories it can reach and redraw the Repository field for that account.
     if (e.target.id === 'evArcConn') { ev.archivePick = e.target.value || ''; maybeFetchRepos(ev.archivePick); paintArchive(); return; }
@@ -4533,6 +4595,8 @@ export function bindEnvironmentActions(deps) {
   });
 
   document.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && e.target.id === 'evPrintfulStoreName') { e.preventDefault(); void startPrintfulConnect(); }
+    if (e.key === 'Enter' && e.target.id.startsWith('evPrintfulName-')) { e.preventDefault(); void savePrintfulName(e.target.id.slice('evPrintfulName-'.length)); }
     if ((e.key === 'Enter' || e.key === ' ') && e.target.matches?.('tr.ev-row')) { e.preventDefault(); e.target.click(); return; }
     if (e.key === 'Enter' && e.target.id === 'evKeyLabel') { e.preventDefault(); document.querySelector('[data-env-action="key-make"]')?.click(); }
     if (e.key === 'Enter' && e.target.id === 'evShopifyLabel') { e.preventDefault(); document.querySelector('[data-env-action="conn-shopify-continue"]')?.click(); }
