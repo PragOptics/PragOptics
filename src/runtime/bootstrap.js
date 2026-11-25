@@ -967,7 +967,7 @@ window.applyPostLoginResolution = applyPostLoginResolution;
       } catch { /* the desk still lists where the item stands */ }
       try {
         const provider = q.get("connect") || "", id = q.get("id") || "";
-        if (["stripe", "twilio", "shippo", "shopify", "microsoft", "google", "github"].includes(provider) && id) {
+        if (["stripe", "twilio", "shippo", "printful", "shopify", "microsoft", "google", "github"].includes(provider) && id) {
           const outcome = q.get("outcome") || "return";
           const ticket = provider === "microsoft" && outcome === "confirm" ? String(q.get("ticket") || "") : "";
           sessionStorage.setItem("pragoptics_connect_return", JSON.stringify({ provider, id, outcome, ...(ticket ? { ticket } : {}) }));

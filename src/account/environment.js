@@ -26,6 +26,7 @@
 
 import { PRAG_API_BASE, STUDIO_URL, LANE } from '../runtime/config.js';
 import { connectionAccessMode, connectionOptions, connectionAccessNote } from './connectionAccess.js';
+import { isManagedPrintful, printfulConnectionWords } from './printfulConnection.js';
 import { tierName, tierBadge } from '../components/tierCopy.js';
 import { explainLink } from '../components/explainer.js';
 import { accessToken } from '../runtime/session.js';
@@ -348,6 +349,7 @@ async function loadConnections() {
     if (ev.connAccess && ev.connPick !== 'm:shopify') { ev.connPick = 'm:shopify'; ev.connDraft = {}; }
     ev.connections = d.connections || [];
     ev.connProviders = d.providers || [];
+    ev.printfulAvailable = Array.isArray(d.managedProviders) && d.managedProviders.includes('printful');
     ev.connLimit = Number(d.limit || 0);
     ev.connNote = '';
     if (ev.connPick === 'm:shopify') checkShopifySupplierMode();
@@ -2239,7 +2241,7 @@ async function pollRegistration(host) {
 
 /* ---------- connected accounts ---------- */
 
-const PROVIDER_ICON = { twilio: 'SMS', shippo: 'Ship', stripe: 'Pay', github: 'Git', microsoft: '365', shopify: 'Shop', google: 'AI', openai: 'AI', anthropic: 'AI' };
+const PROVIDER_ICON = { printful: 'Print', twilio: 'SMS', shippo: 'Ship', stripe: 'Pay', github: 'Git', microsoft: '365', shopify: 'Shop', google: 'AI', openai: 'AI', anthropic: 'AI' };
 
 function providerOf(id) { return (ev.connProviders || []).find(p => p.id === id) || null; }
 
@@ -2248,6 +2250,7 @@ function providerOf(id) { return (ev.connProviders || []).find(p => p.id === id)
 function connIdentity(c) {
   const e = D.escapeHtml;
   const d = c.detail || {}, f = c.fields || {};
+  if (isManagedPrintful(c)) return e(printfulConnectionWords(c).identity);
   if (c.provider === 'twilio') return e(d.friendlyName || f.accountSid || '');
   if (c.provider === 'stripe') return e([d.accountId, d.mode, isManagedStripe(c) ? (d.accountName || d.businessName) : ''].filter(Boolean).join(' · '));
   if (isManagedTwilio(c)) return e([d.friendlyName, d.accountSid, d.type ? `${String(d.type).toLowerCase()} account` : ''].filter(Boolean).join(' · ') || 'not yet authorized');
@@ -2268,6 +2271,7 @@ function connStatusTag(c) {
   // closing (2026-09-24, agreement 13.3): the owner closed the account and every stored credential was deleted; only a
   // member of the paused environment can still read the list, and the row is the record
   if (c.status === 'CLOSED') return '<span class="acct-tag is-quiet" data-tip="The credential was deleted for good. The account itself stays yours at its provider.">deleted when the account closed</span>';
+  if (isManagedPrintful(c)) return `<span class="acct-tag ${c.status === 'ACTIVE' ? 'is-verified' : 'is-pending'}" title="${e(printfulConnectionWords(c).billing)}">${e(printfulConnectionWords(c).status)}</span>`;
   if (isManagedMicrosoft(c)) return msStatusTag(c);   // its own words first: a REJECTED Microsoft row reads disconnected, never rejected
   if (c.status === 'REJECTED' && c.detail?.disconnected) return `<span class="acct-tag is-bad" title="${e(c.lastError || '')}">disconnected</span>`;
   if (c.status === 'REJECTED') return `<span class="acct-tag is-bad" title="${e(c.lastError || '')}">rejected</span>`;
@@ -2338,7 +2342,7 @@ function msApproved(c) { return msWaiting(c) && !msAwaiting(c) && !c.detail?.nee
 const MS_AWAITING_WORDS = 'The Microsoft sign-in is waiting to be finished on the PragOptics page where Connect was pressed. If that page was closed, press Connect again.';
 // What the row's other controls say while its sign-in is being finished (THE BUTTON RULE: disabled, saying why).
 const MS_CONFIRM_WAIT = 'Wait for the Microsoft sign-in to finish';
-function isManaged(c) { return isManagedStripe(c) || isManagedTwilio(c) || isManagedShippo(c) || isManagedShopify(c) || isManagedMicrosoft(c) || isManagedGithub(c); }
+function isManaged(c) { return isManagedPrintful(c) || isManagedStripe(c) || isManagedTwilio(c) || isManagedShippo(c) || isManagedShopify(c) || isManagedMicrosoft(c) || isManagedGithub(c); }
 
 /** The Microsoft row's tag: connected, waiting for you at Microsoft, needs your Microsoft administrator, PragOptics is approving, disconnected. */
 function msStatusTag(c) {
@@ -2437,6 +2441,7 @@ function stripeState(d = {}) {
 /** The line under a managed row: what Stripe wants, or what it is doing, in the customer's words. */
 function stripeNeedsHtml(c) {
   const e = D.escapeHtml;
+  if (isManagedPrintful(c)) return c.status === 'ACTIVE' ? '' : `<div class="ev-conn-needs">${e(printfulConnectionWords(c).needs)}</div>`;
   if (isManagedStripe(c) && c.detail?.disconnected) return `<div class="ev-conn-needs">${e(c.lastError || 'PragOptics was disconnected from this Stripe account.')}</div>`;
   if (isManagedTwilio(c)) return c.status === 'ACTIVE' ? '' : `<div class="ev-conn-needs">${e(c.lastError || 'Waiting for you to authorize PragOptics at Twilio.')}</div>`;
   if (isManagedShippo(c)) return c.status === 'ACTIVE' ? '' : `<div class="ev-conn-needs">${e(c.lastError || 'Waiting for you to sign in or sign up at Shippo and approve PragOptics.')}</div>`;
@@ -2488,7 +2493,7 @@ function connectionsHtml() {
               const p = providerOf(c.provider);
               const testing = ev.connTesting === c.id;
               const kind = isManagedShopify(c) ? 'supplier' : isManaged(c) ? 'via PragOptics' : `key ••••${e(c.hint || '')}`;
-              const refreshAction = isManagedGithub(c) ? 'conn-github-app-refresh' : isManagedStripe(c) ? 'conn-stripe-refresh' : isManagedTwilio(c) ? 'conn-twilio-refresh' : isManagedShippo(c) ? 'conn-shippo-refresh' : isManagedShopify(c) ? 'conn-shopify-refresh' : isManagedMicrosoft(c) ? 'conn-microsoft-refresh' : 'conn-test';
+              const refreshAction = isManagedPrintful(c) ? 'conn-printful-refresh' : isManagedGithub(c) ? 'conn-github-app-refresh' : isManagedStripe(c) ? 'conn-stripe-refresh' : isManagedTwilio(c) ? 'conn-twilio-refresh' : isManagedShippo(c) ? 'conn-shippo-refresh' : isManagedShopify(c) ? 'conn-shopify-refresh' : isManagedMicrosoft(c) ? 'conn-microsoft-refresh' : 'conn-test';
               // a provider's page opened from this row: its button turns and says so; the other rows' (and this row's
               // other door, a Microsoft row waiting on an approval carries two) wait, saying why; while a Microsoft sign-in is
               // being finished every door waits for it (a door leaves the page, and the finish is still out)
@@ -2508,6 +2513,7 @@ function connectionsHtml() {
                   ${isManagedStripe(c) && (() => { const s = stripeState(c.detail); return s.kind === 'action' || s.kind === 'incomplete' || (s.kind === 'payments' && s.needs.length > 0); })() ? doorBtn('conn-stripe-continue', 'external', 'Continue setup', 'Opening with Stripe…', "Stripe's own pages for what it still needs", '', 'btn-primary') : ''}
                   ${isManagedTwilio(c) && c.status !== 'ACTIVE' ? doorBtn('conn-twilio-start', 'external', c.detail?.disconnected || c.detail?.declined ? 'Connect again' : 'Authorize at Twilio', 'Opening with Twilio…', "Twilio's authorization page for PragOptics, on your own Twilio account", '', 'btn-primary') : ''}
                   ${isManagedShippo(c) && c.status !== 'ACTIVE' ? doorBtn('conn-shippo-start', 'external', c.detail?.disconnected || c.detail?.declined ? 'Connect again' : 'Authorize at Shippo', 'Opening with Shippo…', "Shippo's authorization page for PragOptics; sign in or create your Shippo account there", '', 'btn-primary') : ''}
+                  ${isManagedPrintful(c) && c.status !== 'ACTIVE' ? doorBtn('conn-printful-start', 'external', 'Authorize at Printful', 'Opening Printful…', 'Approve your Printful store for this environment', '', 'btn-primary') : ''}
                   ${isManagedGoogle(c) && c.status !== 'ACTIVE' ? (c.detail?.email && !c.detail?.disconnected && !c.detail?.failed && !c.detail?.declined ? stateLead('conn-google-pick', 'check', 'Pick the project that pays', { out: ev.connPicking === c.id, busyWord: 'Reading your projects…' }, `data-id="${e(c.id)}"`, 'btn-primary') : doorBtn('conn-google-start', 'external', c.detail?.email ? 'Sign in again' : 'Sign in at Google', 'Opening with Google…', 'Sign in with Google and approve PragOptics', '')) : ''}
                   ${isManagedGithub(c) && c.status !== 'ACTIVE' ? doorBtn('conn-github-app-start', 'external', c.detail?.installationId || c.detail?.uninstalled ? 'Install again' : 'Install on GitHub', 'Opening GitHub…', "GitHub's install page for the PragOptics app", '') : ''}
                   ${isManagedMicrosoft(c) && c.status !== 'ACTIVE' && !msApproving(c) ? (msNeedsApproval(c)
@@ -2541,6 +2547,7 @@ function connectionsHtml() {
   const atLimit = ev.connLimit > 0 && (rows || []).length >= ev.connLimit;
   const has = (fn) => (rows || []).some(fn);
   const managedDoors = [
+    ...(ev.printfulAvailable && !has(isManagedPrintful) ? [['m:printful', 'Printful, your store']] : []),
     ...(has(isManagedStripe) ? [] : [['m:stripe', 'Stripe, set up through PragOptics']]),
     ...(has(isManagedTwilio) ? [] : [['m:twilio', 'Twilio, your account']]),
     ...(has(isManagedShippo) ? [] : [['m:shippo', 'Shippo, your account']]),
@@ -2567,6 +2574,9 @@ function connectionsHtml() {
     else if (pick === 'm:twilio') door = `
         <div class="ev-key-row">${stateLead('conn-twilio-start', 'external', 'Connect your Twilio account', { out: ev.connBusy && !ev.connRow, busyWord: 'Opening with Twilio…', waiting: pickWait }, '', 'btn-primary')}</div>
         <p class="acct-card-note ev-dom-door">Approve PragOptics on your own upgraded Twilio account; Twilio bills you directly.</p>`;
+    else if (pick === 'm:printful') door = `
+        <div class="ev-key-row">${stateLead('conn-printful-start', 'external', 'Connect your Printful store', { out: ev.connBusy && !ev.connRow, busyWord: 'Opening Printful…', waiting: pickWait }, '', 'btn-primary')}</div>
+        <p class="acct-card-note ev-dom-door">Approve your store at Printful, then return here. Printful bills your account for confirmed fulfillment; connecting does not place an order.</p>`;
     else if (pick === 'm:shippo') door = `
         <div class="ev-key-row">${stateLead('conn-shippo-start', 'external', 'Connect your Shippo account', { out: ev.connBusy && !ev.connRow, busyWord: 'Opening with Shippo…', waiting: pickWait }, '', 'btn-primary')}</div>
         <p class="acct-card-note ev-dom-door">Sign in or create your Shippo account there and approve PragOptics; Shippo bills you directly for labels.</p>`;
@@ -3496,6 +3506,31 @@ async function testConnection(id) {
 }
 
 /** The platform opens the Stripe account and hands the customer to Stripe's setup. The single-use URL is used at once, never shown. */
+async function startPrintfulConnect() {
+  if (ev.connBusy) return;
+  D.showError('evConnError', '');
+  ev.connBusy = true; ev.connResult = ''; paintConnections();
+  try {
+    const d = await post(`${ENV_URL}/connections/printful/start`, {});
+    const target = new URL(d?.url || '');
+    if (target.origin !== 'https://www.printful.com' || target.pathname !== '/oauth/authorize') throw new Error('Printful did not return a valid authorization link.');
+    try { sessionStorage.setItem('pragoptics_connect_return', JSON.stringify({ provider: 'printful', id: String(d.connection?.id || '') })); } catch { /* callback URL also carries the connection */ }
+    window.location.assign(target.href);
+  } catch (ex) {
+    ev.connBusy = false; paintConnections();
+    D.showError('evConnError', errText(ex, 'Could not start Printful authorization.'));
+  }
+}
+async function refreshPrintfulConnect(id, quiet = false) {
+  if (!id || ev.connTesting) return;
+  ev.connTesting = id; paintConnections();
+  try {
+    const d = await post(`${ENV_URL}/connections/printful/refresh`, { id });
+    rowNote(id, d.connection?.message || 'Printful confirmed the store.');
+  } catch (ex) { rowNote(id, errText(ex, 'Could not verify the Printful connection.'), true); }
+  ev.connTesting = '';
+  await loadConnections();
+}
 async function startShippoConnect() {
   if (ev.connBusy) return;
   D.showError('evConnError', '');
@@ -4166,7 +4201,7 @@ function readProviderReturn() {
   let provider = '', id = '', outcome = '', ticket = '';
   try {
     const q = new URLSearchParams(String(window.location.hash || '').split('?')[1] || '');
-    if (['stripe', 'twilio', 'shippo', 'shopify', 'microsoft', 'google', 'github'].includes(q.get('connect'))) { provider = q.get('connect'); id = q.get('id') || ''; outcome = q.get('outcome') || 'return'; ticket = q.get('ticket') || ''; history.replaceState(null, '', window.location.pathname + '#account'); }
+    if (['stripe', 'twilio', 'shippo', 'printful', 'shopify', 'microsoft', 'google', 'github'].includes(q.get('connect'))) { provider = q.get('connect'); id = q.get('id') || ''; outcome = q.get('outcome') || 'return'; ticket = q.get('ticket') || ''; history.replaceState(null, '', window.location.pathname + '#account'); }
   } catch { /* no query to read */ }
   if (!id) {
     try {
@@ -4184,6 +4219,10 @@ function readProviderReturn() {
 /* Back from Twilio, Shopify, Shippo or Stripe: the card's line for the outcome, then the provider is read once more.
  * Stripe is also the return of an older page that named no provider. */
 const PROVIDER_RETURN = {
+  printful: {
+    words: outcome => outcome === 'declined' ? 'Printful authorization was declined.' : outcome === 'failed' ? 'Printful authorization could not be verified. The connection shows the diagnostic.' : 'Back from Printful. Verifying your store…',
+    refresh: id => refreshPrintfulConnect(id, true)
+  },
   twilio: {
     words: (o) => (o === 'declined' ? 'You declined the authorization at Twilio. Nothing was connected.' : o === 'failed' ? 'Twilio named an account the platform could not read. Try connecting again.' : 'Back from Twilio. Checking the account…'),
     refresh: (id) => refreshTwilioConnect(id, true)
@@ -4432,6 +4471,8 @@ export function bindEnvironmentActions(deps) {
     if (a === 'conn-twilio-start') return void startTwilioConnect();
     if (a === 'conn-twilio-refresh') return void refreshTwilioConnect(btn.dataset.id || '');
     if (a === 'conn-shippo-start') return void startShippoConnect();
+    if (a === 'conn-printful-start') return void startPrintfulConnect();
+    if (a === 'conn-printful-refresh') return void refreshPrintfulConnect(btn.dataset.id || '');
     if (a === 'conn-shippo-refresh') return void refreshShippoConnect(btn.dataset.id || '');
     if (a === 'ship-rates') return void getShippingRates();
     if (a === 'ship-rate-pick') { shipState().picked = btn.dataset.id || ''; paintShipping(); return; }
