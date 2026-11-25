@@ -4290,9 +4290,14 @@ async function handleProviderReturn() {
   if (r.provider === 'google') { await googleReturn(r.id, r.outcome); return; }
   if (r.provider === 'github') { await githubAppReturn(r.id, r.outcome); return; }
   const back = PROVIDER_RETURN[r.provider] || PROVIDER_RETURN.stripe;
-  ev.connResult = back.words(r.outcome);
+  const progress = back.words(r.outcome);
+  ev.connResult = progress;
   paintConnections();
   await back.refresh(r.id);
+  if (r.provider === 'printful' && r.outcome === 'return' && ev.connResult === progress) {
+    ev.connResult = '';
+    paintConnections();
+  }
 }
 
 let connArmTimer = null;
