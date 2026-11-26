@@ -21,6 +21,25 @@ export function studioHandoffLane(hash, storage) {
   catch { return null; }
 }
 
+// Routing belongs to a tab, like its session. A fresh tab must not inherit
+// another account's dev switch through localStorage. Migrate existing signed-in
+// tabs once, preferring the lane verified by their last account response.
+export function sessionRoutingLane({ hash = '', session, legacy } = {}) {
+  const pinned = studioHandoffLane(hash, session);
+  if (pinned) return pinned;
+  try {
+    if (!JSON.parse(session?.getItem('pragoptics_tokens') || 'null')?.access_token) return null;
+    const raw = JSON.parse(session?.getItem('pragoptics_ping') || 'null')?.deployment?.lane;
+    let lane = raw === 'dev' ? 'dev' : ['live', 'blue', 'green'].includes(raw) ? 'live' : null;
+    if (!lane) {
+      const old = legacy?.getItem('pragoptics_lane_override');
+      if (['dev', 'live'].includes(old)) lane = old;
+    }
+    if (lane) session?.setItem(SESSION_LANE_KEY, lane);
+    return lane;
+  } catch { return null; }
+}
+
 export async function redeemStudioSession({ apiBase, code, fetcher = fetch }) {
   const signal = AbortSignal.timeout(20000);
   const res = await fetcher(`${apiBase}/auth/software/redeem`, {

@@ -8,7 +8,7 @@
 // or a Stripe key. Publishable keys are browser-safe by design; secret keys
 // live only in the backend's environment.
 
-import { studioHandoffLane } from './studioHandoff.js';
+import { sessionRoutingLane } from './studioHandoff.js';
 const LANE_SETTING = 'dev';
 
 const LANES = {
@@ -28,24 +28,12 @@ const LANES = {
 const host = typeof location !== 'undefined' ? location.hostname : '';
 const isProdHost = host === 'pragoptics.com' || host === 'www.pragoptics.com';
 
-// Runtime lane toggle for platform operators (see src/runtime/lane.js): a
-// localStorage override set only by an explicit sign-out-and-switch gesture.
-// It changes where THIS browser routes API calls (and which Stripe
-// publishable key rides along); the deployed site itself never changes.
-//
-// The production default stays untouchable: absent that explicit gesture,
-// pragoptics.com is ALWAYS live, so a committed LANE_SETTING = 'dev' can
-// never route customers to the sandbox. The override is honored everywhere
-// because it cannot exist without the gesture.
-let laneOverride = null;
-try { laneOverride = localStorage.getItem('pragoptics_lane_override'); } catch { /* blocked */ }
-if (laneOverride !== 'dev' && laneOverride !== 'live') laneOverride = null;
-
-// A Studio return carries its authenticated platform lane. Keep that choice
-// within this tab so other open accounts and lanes are not switched with it.
+// Lane selection belongs to the current tab. Existing sessions migrate from
+// their verified ping; unsigned new tabs use the production default. A Studio
+// handoff selects routing here, then redemption verifies access on that lane.
 let sessionLane = null;
-try { sessionLane = studioHandoffLane(location.hash, sessionStorage); } catch { /* default routing */ }
-export const LANE = sessionLane || laneOverride || (isProdHost ? 'live' : LANE_SETTING);
+try { sessionLane = sessionRoutingLane({ hash: location.hash, session: sessionStorage, legacy: localStorage }); } catch { /* default routing */ }
+export const LANE = sessionLane || (isProdHost ? 'live' : LANE_SETTING);
 
 const lane = LANES[LANE] || LANES.live;
 

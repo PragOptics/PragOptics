@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 const source=await readFile(new URL('../src/runtime/studioHandoff.js',import.meta.url),'utf8');
-const {studioHandoffLane,parseStudioHandoff,redeemStudioSession,SESSION_LANE_KEY}=await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'));
+const {studioHandoffLane,sessionRoutingLane,parseStudioHandoff,redeemStudioSession,SESSION_LANE_KEY}=await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'));
 test('lane and destination are parsed together in either parameter order, including the selected environment',()=>{
  const code='a'.repeat(43),to='account?section=environment&team=team-a';
  for(const hash of [`#handoff=${code}&lane=dev&to=${encodeURIComponent(to)}`,`#handoff=${code}&to=${encodeURIComponent(to)}&lane=dev`])assert.deepEqual(parseStudioHandoff(hash),{code,to,lane:'dev'});
@@ -21,4 +21,15 @@ test('rejected redemption never attempts account verification',async()=>{
 });
 test('failed account verification cannot return a usable session',async()=>{
   let count=0;await assert.rejects(redeemStudioSession({apiBase:'https://example.test',code:'synthetic',fetcher:async()=>++count===1?{ok:true,status:200,json:async()=>({tokens:{access_token:'synthetic'}})}:{ok:false,status:403}}),{code:'HANDOFF_PING_403'});
+});
+
+test('fresh tabs ignore another tabs legacy dev choice while existing accounts migrate from their verified lane',()=>{
+  const storage=(data={})=>({getItem:k=>data[k]??null,setItem:(k,v)=>{data[k]=v;},removeItem:k=>{delete data[k];}});
+  const legacy=storage({pragoptics_lane_override:'dev'}),fresh=storage();
+  assert.equal(sessionRoutingLane({session:fresh,legacy}),null);
+  const live=storage({pragoptics_tokens:JSON.stringify({access_token:'synthetic'}),pragoptics_ping:JSON.stringify({deployment:{lane:'green'}})});
+  assert.equal(sessionRoutingLane({session:live,legacy}),'live');assert.equal(live.getItem(SESSION_LANE_KEY),'live');
+  const dev=storage({pragoptics_tokens:JSON.stringify({access_token:'synthetic'}),pragoptics_ping:JSON.stringify({deployment:{lane:'dev'}})});
+  assert.equal(sessionRoutingLane({session:dev,legacy}),'dev');
+  legacy.removeItem('pragoptics_lane_override');assert.equal(sessionRoutingLane({session:live,legacy}),'live');assert.equal(sessionRoutingLane({session:dev,legacy}),'dev');
 });

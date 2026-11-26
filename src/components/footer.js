@@ -1,6 +1,6 @@
 // /src/components/footer.js
 import { LANE } from '../runtime/config.js';
-import { isPlatformOperator } from '../runtime/lane.js';
+import { switchLane } from '../runtime/lane.js';
 import { accessToken } from '../runtime/session.js';
 import { getTheme, toggleTheme } from '../runtime/theme.js';
 import { sunSvg, moonSvg, LIGHT_LABEL, DARK_LABEL } from './themeMarks.js';
@@ -60,26 +60,12 @@ export function initFooter() {
     themeBtn.addEventListener("click", () => { toggleTheme(); label(); });
   }
 
-  // Lane badge — an operator ESCAPE HATCH, not a public element.
-  //
-  // It renders only when this browser is actually routed to the dev sandbox
-  // AND the viewer is a platform operator (or this very browser performed the
-  // operator lane switch, which stamps the override key). A random visitor
-  // never sees it: on the production domain the ONLY way to be on the dev lane
-  // is to have deliberately switched, and that switch lives behind the operator
-  // gate in the account panel (src/account/account.js). On the live lane the
-  // chip renders nothing at all — there is nothing to escape.
-  //
-  // Its one job is to get back to live: clicking it opens a galactic confirm
-  // that clears the override and reloads on live. It never offers live -> dev;
-  // that direction stays in the account panel.
+  // Any tab already on dev needs a visible return, including a dev account
+  // without a developer/admin flag. This never grants live -> dev access.
   const env = document.getElementById("footerEnv");
   if (!env) return;
 
-  let overrideDev = false;
-  try { overrideDev = localStorage.getItem("pragoptics_lane_override") === "dev"; } catch { /* blocked */ }
-
-  const showLaneBadge = LANE === "dev" && (overrideDev || isPlatformOperator());
+  const showLaneBadge = LANE === "dev";
   if (!showLaneBadge) {
     // Take the separator that precedes the chip with it, so the public footer
     // never ends in a dangling "|".
@@ -94,7 +80,8 @@ export function initFooter() {
   env.setAttribute("role", "button");
   env.setAttribute("tabindex", "0");
   env.setAttribute("aria-haspopup", "dialog");
-  env.title = "Routing API calls to the dev sandbox. Click to return to live.";
+  env.setAttribute("aria-label", "Platform lane: dev. Return to live");
+  env.title = "This tab uses the dev platform. Click to return to live.";
 
   env.addEventListener("click", openReturnToLive);
   env.addEventListener("keydown", (e) => {
@@ -126,16 +113,9 @@ export async function openReportSite() {
   }
 }
 
-// Drop this browser back to the live lane: remove the dev override (so the
-// production safety net in config.js resolves to live) and clear the dev
-// session so nothing runs stale. The cart lives under its own key and is kept.
+// Use the shared, verified lane handoff; only this tab's session is replaced.
 function returnToLive() {
-  try {
-    localStorage.removeItem("pragoptics_lane_override");
-    sessionStorage.removeItem("pragoptics_tokens");
-    sessionStorage.removeItem("pragoptics_ping");
-  } catch { /* storage blocked — the reload still drops any in-memory override */ }
-  location.reload();
+  return switchLane('live');
 }
 
 // Galactic confirm popup, built from the shared modal language (modals.css).
@@ -158,11 +138,10 @@ function openReturnToLive() {
         <button class="modal-close" type="button" aria-label="Close" data-lane-close>&#10005;</button>
       </div>
       <div class="modal-body lane-return-body">
-        <p>This browser is routing API calls to the <strong>dev sandbox</strong>
-           (<code>dev.api.pragoptics.com</code>) with test keys. It is a per-browser
-           setting, so the live site is unaffected for everyone else.</p>
-        <p class="lane-return-note">Returning clears the local dev override and reloads
-           on the live site. Your cart is kept. You will sign in again on live.</p>
+        <p>This tab uses the <strong>dev platform</strong>
+           (<code>dev.api.pragoptics.com</code>) with test keys. Other tabs keep their own accounts and lanes.</p>
+        <p class="lane-return-note">Returning opens your linked live account, or asks you to sign in there.
+           Your cart is kept. Your live environment's sandbox is separate from the dev platform.</p>
       </div>
       <div class="modal-foot lane-return-foot">
         <div class="actions">

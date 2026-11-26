@@ -1541,16 +1541,16 @@ function laneSwitchHtml(attr) {
   const opt = (k, label, tip) => `<button class="ev-lane ${LANE === k ? 'is-on' : ''}" type="button" role="tab" aria-selected="${LANE === k}" ${attr}="lane-${k}" ${LANE === k ? 'disabled' : ''} data-tip="${escapeHtml(LANE === k ? `You are on the ${k} lane` : tip)}">${label}</button>`;
   return `<div class="ev-lanes" role="tablist" aria-label="Which lane this browser calls">
     ${opt('live', 'Live', 'Signs you out here and signs you in on the live lane')}
-    ${opt('dev', 'Dev', 'Signs you out here and signs you in on the dev sandbox')}
+    ${opt('dev', 'Dev', 'Switches this tab to the dev platform; sign-in may be required')}
   </div>`;
 }
 
 function platformLaneCardHtml() {
-  if (!isPlatformOperator()) return '';
+  if (!isPlatformOperator() && LANE !== 'dev') return '';
   return `<div class="acct-grid-tail">${cardHtml({ key: 'profile:lane', icon: 'zap', title: 'Platform lane', summary: `calls go to ${escapeHtml(LANE)}`, body: `
-      <p class="acct-card-note">This browser is routing API calls to the <strong>${escapeHtml(LANE)}</strong> lane.
+      <p class="acct-card-note">This tab uses the <strong>${escapeHtml(LANE)}</strong> platform lane. Other tabs keep their own lane and account.
       When your accounts are linked, switching is seamless; otherwise it asks you to sign in on the
-      other lane. The site itself never changes, only where your calls go.</p>
+      other lane. An environment's Live/Sandbox work area and Studio module publishing permission are separate.</p>
       ${laneSwitchHtml('data-acct-action')}` })}</div>`;
 }
 
@@ -3098,6 +3098,7 @@ async function loadAdminCosts(force) {
         <div class="adm-stat-grid" style="margin-top:8px;">
           ${statCard(money(d.total), `Total, ${escapeHtml(d.month || '')} (${escapeHtml(d.currency || 'USD')})`, escapeHtml(sub))}
         </div>
+        ${d.lastQueryError ? `<p class="acct-error" role="status">${escapeHtml(d.lastQueryError.message || 'The latest Azure cost query failed.')} ${d.lastQueryError.providerStatus ? `Azure HTTP ${escapeHtml(String(d.lastQueryError.providerStatus))}.` : ''}</p>` : ''}
         ${rows.length ? `
           <div class="adm-table-scroll">
             <table class="adm-table">
@@ -3180,6 +3181,9 @@ function renderCostAlert(host, a) {
         <button class="btn btn-sm btn-lead" type="button" data-adm-action="cost-alert-run" data-tip="Run the check now against live Azure spend and email a test alert if a level is reached">${ico('refresh')}<span>Run now</span></button>
       </div>
       ${fired.length ? `<p class="adm-note">Already alerted this month at ${escapeHtml(fired.map(p => p + '%').join(', '))}.</p>` : ''}
+      <p class="adm-note">Checked daily at ${escapeHtml(a.scheduleUtc || '03:25')} UTC. Alerts are sent by the daily check after a threshold is reached.</p>
+      ${a.lastCheckedAt ? `<p class="adm-note">Last check: ${escapeHtml(new Date(a.lastCheckedAt).toLocaleString())}. ${escapeHtml(({ sent: 'Email sent.', 'no-new-band': 'No new threshold reached.', 'email-not-sent': 'Email was not sent; the next check will retry.', 'needs-cost-role': 'Azure cost permission is missing.', 'no-subscription': 'Azure subscription is not configured.', 'cost-unavailable': 'Azure cost is unavailable.', error: 'The check failed; inspect platform diagnostics.' })[a.lastCheckReason] || 'Check recorded.')}</p>` : ''}
+      ${a.lastEmailAt ? `<p class="adm-note">Last email sent: ${escapeHtml(new Date(a.lastEmailAt).toLocaleString())}.</p>` : ''}
       <p class="adm-note" id="admCostAlertRun" hidden></p>
       <p class="acct-error" id="admCostAlertErr" hidden></p>
     </div>`;
@@ -3228,9 +3232,10 @@ function usersTableHtml(users) {
               <td>
                 ${u.isAdmin ? '<span class="adm-pill adm-flag-admin">admin</span>' : ''}
                 ${u.isDev ? '<span class="adm-pill adm-flag-dev">dev</span>' : ''}
+                ${u.canPublishModules ? '<span class="adm-pill">module publisher</span>' : ''}
                 ${u.isAgent ? '<span class="adm-pill adm-flag-agent">agent</span>' : ''}
                 ${u.phoneChangesFrozen ? '<span class="adm-pill is-bad" title="Phone changes are paused pending review">phone paused</span>' : ''}
-                ${!u.isAdmin && !u.isDev && !u.isAgent && !u.phoneChangesFrozen ? '<span class="adm-muted">—</span>' : ''}
+                ${!u.isAdmin && !u.isDev && !u.isAgent && !u.canPublishModules && !u.phoneChangesFrozen ? '<span class="adm-muted">—</span>' : ''}
               </td>
               <td class="adm-muted">${escapeHtml((u.createdAt || '').slice(0, 10) || '—')}</td>
               <td class="cell-tight">${userManageButtonHtml(u)}</td>
@@ -3354,11 +3359,12 @@ function userManageHtml(u, { self }) {
                   <input type="checkbox" id="umAdmin" ${u.isAdmin ? 'checked' : ''} ${self || !isOwner() ? 'disabled' : ''}> Admin
                 </label>
                 <label class="um-check" title="Dev accounts can route this browser to the dev lane">
-                  <input type="checkbox" id="umDev" ${u.isDev ? 'checked' : ''}> Dev
+                  <input type="checkbox" id="umDev" ${u.isDev ? 'checked' : ''}> Dev lane access
                 </label>
                 <label class="um-check ${self || !isOwner() ? 'is-locked' : ''}" title="${!isOwner() ? 'Only the platform owner grants or removes the Agent role' : 'Agents take support requests and build in a customer\'s environment; no operator panel'}">
                   <input type="checkbox" id="umAgent" ${u.isAgent ? 'checked' : ''} ${self || !isOwner() ? 'disabled' : ''}> Agent
                 </label>
+                ${typeof u.canPublishModules === 'boolean' ? `<label class="um-check" title="Submit reusable Studio modules from a paid environment for platform review. Does not grant access to the dev lane."><input type="checkbox" id="umPublisher" ${u.canPublishModules ? 'checked' : ''}> Studio module publisher</label>` : ''}
               </div>
             </div>
           </div>
@@ -3502,10 +3508,11 @@ const USER_MANAGE_ACTIONS = [
   }],
   ['[data-um-save]', (btn, um) => {
     const patch = {};
-    const roleEl = um.$('#umRole'), adminEl = um.$('#umAdmin'), devEl = um.$('#umDev'), agentEl = um.$('#umAgent');
+    const roleEl = um.$('#umRole'), adminEl = um.$('#umAdmin'), devEl = um.$('#umDev'), agentEl = um.$('#umAgent'), publisherEl = um.$('#umPublisher');
     if (roleEl && !roleEl.disabled && roleEl.value !== String(um.row.role || '')) patch.role = roleEl.value;
     if (adminEl && !adminEl.disabled && adminEl.checked !== (um.row.isAdmin === true)) patch.isAdmin = adminEl.checked;
     if (devEl && devEl.checked !== (um.row.isDev === true)) patch.isDev = devEl.checked;
+    if (publisherEl && publisherEl.checked !== um.row.canPublishModules) patch.canPublishModules = publisherEl.checked;
     if (agentEl && !agentEl.disabled && agentEl.checked !== (um.row.isAgent === true)) patch.isAgent = agentEl.checked;
     if (!Object.keys(patch).length) { showError('umError', 'Nothing to save: the role and flags match the account.'); return; }
     runPatch(btn, patch, um);

@@ -28,8 +28,8 @@
 
 import { PRAG_API_BASE } from './config.js';
 import { accessToken } from './session.js';
+import { SESSION_LANE_KEY } from './studioHandoff.js';
 
-const OVERRIDE_KEY = 'pragoptics_lane_override';
 const SIGNIN_FLAG = 'pragoptics_lane_signin_v1';
 const HANDOFF_KEY = 'pragoptics_lane_handoff_v1';
 const HANDOFF_VERIFIER_KEY = 'pragoptics_lane_handoff_verifier_v1';
@@ -63,10 +63,12 @@ function currentToken() {
 
 function landOnTarget(lane, { handoff, verifier } = {}) {
   try {
-    localStorage.setItem(OVERRIDE_KEY, lane);
+    sessionStorage.setItem(SESSION_LANE_KEY, lane);
     sessionStorage.removeItem('pragoptics_tokens');
     sessionStorage.removeItem('pragoptics_ping');
-    sessionStorage.removeItem('pragoptics_session_lane');
+    sessionStorage.removeItem(HANDOFF_KEY);
+    sessionStorage.removeItem(HANDOFF_VERIFIER_KEY);
+    sessionStorage.removeItem(SIGNIN_FLAG);
     if (handoff) {
       sessionStorage.setItem(HANDOFF_KEY, handoff);
       if (verifier) sessionStorage.setItem(HANDOFF_VERIFIER_KEY, verifier);
@@ -92,7 +94,8 @@ export async function switchLane(lane) {
       const res = await fetch(`${PRAG_API_BASE}/auth/lane/exchange`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ toLane: lane, bindingHash })
+        body: JSON.stringify({ toLane: lane, bindingHash }),
+        signal: AbortSignal.timeout(20000)
       });
       if (res.ok) {
         const data = await res.json();
