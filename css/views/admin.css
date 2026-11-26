@@ -303,6 +303,10 @@ th.adm-num { text-align: right; }
   background: var(--surface-3);
   padding: 16px 12px;
 }
+.adm-side > .adm-side-brand,
+.adm-side > .adm-nav,
+.adm-side > .adm-side-report,
+.adm-side > .adm-side-foot { flex-shrink: 0; }
 .adm-side-brand { padding: 6px 10px 14px; display: flex; align-items: center; gap: 10px; }
 .adm-side-avatar { flex: none; }
 /* Agent portal: a brand accent down the whole shell so it is never mistaken for your own account. */
@@ -402,15 +406,22 @@ th.adm-num { text-align: right; }
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 0 4px 6px;
+  /* A full agent/operator navigation must leave a visible gap above the
+     actions even when it consumes all of the sidebar's spare height. */
+  padding: 12px 4px 6px;
   min-width: 0;
 }
 .adm-side-report + .adm-side-foot { margin-top: 0; }
 .adm-side-report-btns { display: grid; gap: 6px; flex: 1 1 auto; min-width: 0; }
 .adm-side-alien {
-  display: block; width: 16px; height: 16px; flex: none; background-color: currentColor;
-  /* the whole alien inside its box (2026-09-28: at 132% the head and feet were cut off on the phone rail);
-     the box is the button's icon size, the same 16px as the help glyph, so both buttons stay one height */
+  /* Reserve the existing icon slot. Its larger painted glyph does not enter
+     flex sizing, so the labelled button keeps its existing width and height. */
+  display: block; position: relative; width: 16px; height: 16px; flex: none;
+}
+.adm-side-alien::before {
+  content: ""; position: absolute; left: 50%; top: 50%;
+  width: 26px; height: 30px; transform: translate(-50%, -50%);
+  background-color: currentColor; pointer-events: none;
   -webkit-mask: url("/images/anomaly.png") center / contain no-repeat;
   mask: url("/images/anomaly.png") center / contain no-repeat;
 }
