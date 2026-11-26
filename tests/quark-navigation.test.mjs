@@ -17,7 +17,7 @@ function fixture(destination){
   paintEnvLine:noop,SETUP_SECTIONS:new Set(),teamDeps:()=>({}),stopLiveAgentsTimers:noop,
   hasLiveSession:()=>true,CARD_IDS:{environment:{connections:'evConnections',data:'evData'}},CARD_TRIES:24,ROW_TRIES:56,
   setTimeout:(fn,ms)=>timers.push({fn,ms}),CSS:{escape:s=>s},openCardOf:noop,
-  D:null,ev:{lane:'live',teamId:'fixture-team'},freshReg:()=>({}),newSupplierSearch:()=>({}),
+  laneChoice:()=> 'live',D:null,ev:{lane:'live',teamId:'fixture-team'},freshReg:()=>({}),newSupplierSearch:()=>({}),
   resetMail:noop,setMailContext:noop,mailContext:()=>({}),resetVariables:noop,setVariablesContext:noop,
   resetImport:noop,setImportContext:noop,resetDocuments:noop,setDocumentsContext:noop,documentProfiles:()=>[],
   url:noop,body:noop,myRole:role,initCards:noop,setOpen:(key,value)=>opens.push({key,value}),

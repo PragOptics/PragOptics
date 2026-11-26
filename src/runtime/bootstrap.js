@@ -1,3 +1,4 @@
+import {accountSelection,captureAccountSelection} from './accountContext.js';
 import {closePrivateModals,uncoverSession,sessionChanged} from '../account/sessionPrivacy.js';
 let idlePrivacyGate = null;
     /*bootsrap.js*/
@@ -879,14 +880,25 @@ window.applyPostLoginResolution = applyPostLoginResolution;
     // the person is signed in on and talks to that lane after. The plain address when the mint fails (the studio asks for a sign-in).
     async function goToSoftware(url, extra = "") {
       const base = String(url || STUDIO_URL).replace(/\/+$/, "");
-      const more = /^[A-Za-z0-9_=&-]{1,120}$/.test(String(extra || "")) ? String(extra) : "";   // "install=<buildId>" from the Builds page
-      let target = more ? `${base}/#${more}` : base;
-      try {
-        const token = accessToken();
-        const res = await fetch(`${PRAG_API_BASE}/auth/software/handoff`, { method: "POST", headers: { Authorization: `Bearer ${token}` } });
-        const d = res.ok ? await res.json() : null;
-        if (d?.code) target = `${base}/#handoff=${encodeURIComponent(d.code)}&api=${encodeURIComponent(PRAG_API_BASE)}&lane=${encodeURIComponent(LANE)}${more ? "&" + more : ""}`;
-      } catch { /* the plain address */ }
+      const more = /^[A-Za-z0-9_=&-]{1,120}$/.test(String(extra || "")) ? String(extra) : "";
+      const selection = accountSelection(sessionStorage), token = accessToken();
+      const params = new URLSearchParams(more);
+      params.set('team', selection.team); params.set('workLane', selection.workLane);
+      let target = `${base}/#${params}`;
+      if (token && isSessionActive()) {
+        showStatusModal({ mode: 'loading', message: 'Opening Studio…' });
+        try {
+          const res = await fetch(`${PRAG_API_BASE}/auth/software/handoff`, { method: 'POST', headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(20000) });
+          const d = await res.json().catch(() => ({}));
+          if (!res.ok || !/^[A-Za-z0-9_-]{32,64}$/.test(d.code || '')) throw new Error(`Studio session transfer failed (HTTP ${res.status}). Try Open Studio again.`);
+          const current = accountSelection(sessionStorage);
+          if (accessToken() !== token || current.team !== selection.team || current.workLane !== selection.workLane) throw new Error('Your account or environment changed. Open Studio again.');
+          target = `${base}/#handoff=${encodeURIComponent(d.code)}&api=${encodeURIComponent(PRAG_API_BASE)}&lane=${encodeURIComponent(LANE)}&${params}`;
+        } catch (error) {
+          showStatusModal({ mode: 'error', message: error.name === 'TimeoutError' ? 'Studio did not answer in time. Try Open Studio again.' : error.message });
+          return;
+        }
+      }
       location.assign(target);
     }
     window.pragGoToSoftware = goToSoftware;
@@ -942,12 +954,7 @@ window.applyPostLoginResolution = applyPostLoginResolution;
       try { q = new URLSearchParams(hash.split("?")[1] || ""); } catch { return; }
       let took = false;
       try {
-        const team = q.get("team");
-        if (team !== null) {
-          if (team === "own") sessionStorage.removeItem("pragoptics_team_id");
-          else if (/^[A-Za-z0-9_-]{1,64}$/.test(team)) sessionStorage.setItem("pragoptics_team_id", team);
-          q.delete("team"); took = true;
-        }
+        took = captureAccountSelection(q, sessionStorage) || took;
       } catch { /* the tab's own team stays, and the address still names the door's */ }
       try {
         if (q.get("tenant")) {

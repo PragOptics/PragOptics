@@ -370,7 +370,7 @@ const ACCOUNT_SECTIONS = [
   { id: 'ai',           label: 'AI' },           // 2026-11-02, Cameron: "AI should be its own tab"
   { id: 'licensing',    label: 'Licensing' },
   { id: 'liveagents',   label: 'Live Agents' },
-  { id: 'orders',       label: 'Orders' },
+  { id: 'orders',       label: 'Shop purchases' },
   { id: 'builds',       label: 'My Builds' }
 ];
 
@@ -384,7 +384,7 @@ const INTERNAL_SECTIONS = [
   { id: 'notify',     label: 'Notifications' },
   { id: 'reports',    label: 'Anomalies' },
   { id: 'support',    label: 'Support' },
-  { id: 'shiporders', label: 'Shop orders' },
+  { id: 'shiporders', label: 'PragOptics shop orders' },
   { id: 'payments',   label: 'Payments' },
   { id: 'warranty',   label: 'Warranty' },
   { id: 'inventory',  label: 'Inventory' },
@@ -2769,9 +2769,10 @@ function orderLinesLabel(lines) {
 async function renderOrders(main) {
   const showClaim = (LANE !== 'live') || ORDERS_CLAIM_LIVE;
   main.innerHTML = `
-    <header class="acct-sec-head has-explain"><h2 class="acct-sec-title">Orders</h2>${explainLink('orders')}</header>
+    <header class="acct-sec-head has-explain"><h2 class="acct-sec-title">PragOptics purchases</h2>${explainLink('orders')}</header>
+    <p class="acct-card-note">Purchases you placed with PragOptics appear here. Manage orders from your business’s own store in its private Store operations in Studio.</p>
     <div class="ev-cards">
-    ${cardHtml({ key: 'orders:list', icon: 'cart', title: 'Orders', summary: 'loading', open: true, body: `
+    ${cardHtml({ key: 'orders:list', icon: 'cart', title: 'Your purchases', summary: 'loading', open: true, body: `
       <p class="acct-error" id="acctOrdersError" hidden></p>
       <div id="acctOrdersBody"><p class="acct-loading">Loading…</p></div>` })}
     ${showClaim ? cardHtml({ key: 'orders:claim', icon: 'link', title: 'Link a guest order', summary: 'by order number', body: `
@@ -4067,7 +4068,7 @@ const OD_PAID_LIKE = new Set(['PAID', 'LABEL_PURCHASED', 'SHIPPED', 'DELIVERED',
 async function renderAdminOrders(main) {
   main.innerHTML = `
     <header class="adm-sec-head">
-      <h2 class="adm-sec-title">Shop orders</h2>
+      <h2 class="adm-sec-title">PragOptics shop orders</h2>
       <div class="adm-tabs" role="tablist">
         <button class="adm-tab is-active" type="button" role="tab" aria-selected="true" data-adm-orders="">All</button>
         <button class="adm-tab" type="button" role="tab" aria-selected="false" data-adm-orders="PAID">Paid</button>
@@ -4081,6 +4082,7 @@ async function renderAdminOrders(main) {
         <button class="btn btn-sm btn-ico" type="button" data-adm-action="orders-export" data-tip="Every row below with every money column, as a spreadsheet file" aria-label="Export CSV: every row below with every money column">${ico('download')}</button>
       </div>
     </header>
+    <p class="adm-note">Orders placed with PragOptics. Customer-owned stores keep their orders in their own environment’s Store operations.</p>
     <p class="adm-error" id="admOrdersError" hidden></p>
     <div id="admOrdersSummary"></div>
     <div id="admOrdersBody"><p class="adm-note">Loading…</p></div>

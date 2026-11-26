@@ -18,14 +18,22 @@ import { cardHtml as sharedCard, ico, leadBtn, initCards } from './cards.js';
 import { explainLink } from '../components/explainer.js';
 import { groupsOf, countsLine } from './approvalGroups.js';
 import { renderWaitingCard } from './envArrivalsBlock.js';   // Waiting on you: the decisions and the submissions nobody acted on, one card (2026-11-15)
+import { accountSelection } from '../runtime/accountContext.js';
+import { sessionVersion } from './sessionPrivacy.js';
 
 let D = null;
-const hm = { projects: null, sites: null, domains: null, connections: null, connectionAccess: null, members: null, data: null, files: null, errs: {} };
+let loadGeneration = 0;
+const hm = { projectsComplete: false, projects: null, sites: null, domains: null, connections: null, connectionAccess: null, members: null, data: null, files: null, errs: {} };
 
 const TEAM_KEY = 'pragoptics_team_id';
 function teamId() { try { return sessionStorage.getItem(TEAM_KEY) || ''; } catch { return ''; } }
 /** A URL that names the team in view, as the Environment and Licensing reads do. */
-function tq(path) { const t = teamId(); return t ? `${PRAG_API_BASE}${path}${path.includes('?') ? '&' : '?'}tenant=${encodeURIComponent(t)}` : `${PRAG_API_BASE}${path}`; }
+function tq(path) {
+  const params = new URLSearchParams();
+  const team = teamId(); if (team) params.set('tenant', team);
+  if (/^\/environment\/(projects|publish|data|files|connections|approvals)(?:[/?]|$)/.test(path)) params.set('lane', accountSelection(sessionStorage).workLane);
+  return `${PRAG_API_BASE}${path}${params.size ? (path.includes('?') ? '&' : '?') + params : ''}`;
+}
 function card(o) { return sharedCard({ ...o, key: 'home:' + o.key }); }
 function when(s) { try { return s && D.fmtDate ? D.fmtDate(s) : (s ? new Date(s).toLocaleDateString() : ''); } catch { return ''; } }
 function count(n, one, many) { const k = Number(n) || 0; return `${k} ${k === 1 ? one : many}`; }
@@ -51,14 +59,16 @@ export async function renderHome(main, deps) {
 }
 
 async function load() {
-  hm.errs = {};
+  const generation = ++loadGeneration, session = sessionVersion(), selection = accountSelection(sessionStorage);
+  const deps = D, errs = {};
+  hm.removeArm = '';
   const read = async (key, path) => {
-    try { return await D.apiFetch(tq(path)); }
+    try { return await deps.apiFetch(tq(path)); }
     catch (ex) {
       // the one paid-plan refusal reads as what it is, every other failure in the desk's words
-      if (ex?.status === 403 && (ex?.data?.code === 'UPGRADE_REQUIRED' || /paid plan/i.test(ex?.message || ''))) { hm.errs[key] = 'upgrade'; return null; }
-      if (ex?.status === 403 && key === 'members') { hm.errs[key] = 'members'; return null; }
-      hm.errs[key] = D.friendlyError(ex, 'This could not be read.');
+      if (ex?.status === 403 && (ex?.data?.code === 'UPGRADE_REQUIRED' || /paid plan/i.test(ex?.message || ''))) { errs[key] = 'upgrade'; return null; }
+      if (ex?.status === 403 && key === 'members') { errs[key] = 'members'; return null; }
+      errs[key] = deps.friendlyError(ex, 'This could not be read.');
       return null;
     }
   };
@@ -73,7 +83,10 @@ async function load() {
     // what waits for a decision (2026-11-02, approvals): a line on Home only when something does
     read('approvals', '/environment/approvals')
   ]);
-  hm.projects = p?.projects || null; hm.sites = s?.sites || null; hm.domains = d?.domains || null;
+  const current = accountSelection(sessionStorage);
+  if (generation !== loadGeneration || session !== sessionVersion() || current.team !== selection.team || current.workLane !== selection.workLane) return;
+  hm.errs = errs;
+  hm.projects = Array.isArray(p?.projects) ? p.projects : null; hm.projectsComplete = Array.isArray(p?.projects) && p.truncated !== true && !p.nextCursor && (p.truncated === false || p.projects.length < 500); hm.sites = s?.sites || null; hm.domains = d?.domains || null;
   hm.connections = c?.connections || null; hm.connectionAccess = connectionAccessMode(c); hm.members = m?.members || null;
   hm.data = dt?.tables || null; hm.files = fl?.items || null;
   hm.approvals = ap ? groupsOf(ap) : null;
@@ -84,7 +97,7 @@ function paint() {
   const body = document.getElementById('hmBody');
   if (!body) return;
   // ONE CARD for what waits on the team (2026-11-15, Cameron: clean, not a hodge podge): the Approvals line and the submissions to acknowledge, together; nothing when nothing waits
-  body.innerHTML = `<div id="hmWaiting"></div>${projectsCard()}${glanceRow()}${cleanupSection()}`;
+  body.innerHTML = `<p class="acct-card-note">Environment work area: <strong>${accountSelection(sessionStorage).workLane === 'sandbox' ? 'Sandbox' : 'Live'}</strong>. <button class="btn btn-sm" type="button" data-acct-section="environment">Manage environment</button></p><div id="hmWaiting"></div>${projectsCard()}${glanceRow()}${cleanupSection()}`;
   renderWaitingCard(document.getElementById('hmWaiting'), D, { url: (p) => tq(p), decisionsHtml: approvalsLine() });
 }
 
@@ -111,18 +124,19 @@ function glanceRow() {
   const tiles = [
     tile('database', 'Data', dataN != null ? String(dataN) : '–', dataN != null ? (dataN === 1 ? 'table' : 'tables') : (hm.errs.data ? 'not read' : ''), 'environment', 'data'),
     tile('folder', 'Files', filesN != null ? String(filesN) : '–', filesN != null ? (filesN === 1 ? 'file' : 'files') : (hm.errs.files ? 'not read' : ''), 'environment', 'files'),
-    tile('globe', 'Domain', dom ? e(dom.host) : (hm.domains ? 'none yet' : '–'), dom ? (String(dom.status || '').toUpperCase() === 'VERIFIED' ? 'verified' : String(dom.status || '').toLowerCase()) : '', 'environment', 'domains'),
+    tile('globe', accountSelection(sessionStorage).workLane === 'sandbox' ? 'Live domain' : 'Domain', dom ? e(dom.host) : (hm.domains ? 'none yet' : '–'), dom ? (String(dom.status || '').toUpperCase() === 'VERIFIED' ? 'verified' : String(dom.status || '').toLowerCase()) : '', 'environment', 'domains'),
     tile('users', 'Team', teamN != null ? String(teamN) : '–', teamN != null ? (teamN === 1 ? 'person' : 'people') : (hm.errs.members === 'members' ? 'members only' : ''), 'team'),
     tile('plug', 'Connected', connUp ? 'paid' : (connN != null ? String(connN) : '–'), connUp ? 'plans' : hm.connectionAccess ? 'Shopify review · expires ' + when(hm.connectionAccess.expiresAt) : (connN != null ? (connN === 1 ? 'account' : 'accounts') : ''), connUp ? 'subscription' : 'environment', connUp ? '' : 'connections')
   ].join('');
   return `<p class="hm-glance-h">At a glance</p><div class="hm-glance">${tiles}</div>`;
 }
 
-// Leftover publishes with no project behind them (an early test, say). A plain Remove on your click --
-// the write guard does not block a button you press -- so it is gone for good, no Studio trip.
+// A missing project link is a review item, never evidence that a public site is disposable.
 function cleanupSection() {
   const e = D.escapeHtml;
-  const projIds = new Set((hm.projects || []).map(p => p.id));
+  if (!hm.sites?.length) return '';
+  if (!hm.projectsComplete) return '<p class="adm-note">Published-site project links could not be fully verified. Review them in Studio before removing anything.</p>';
+  const projIds = new Set(hm.projects.map(p => p.id));
   const orphans = (hm.sites || []).filter(s => !s.project || !projIds.has(s.project));
   if (!orphans.length) return '';
   const rows = orphans.map(s => {
@@ -130,9 +144,10 @@ function cleanupSection() {
     const act = armed
       ? `<button class="btn btn-sm is-risky" type="button" data-home-action="remove-site" data-slug="${e(s.slug)}">${ico('trash')}<span>Remove for good?</span></button><button class="btn btn-sm" type="button" data-home-action="remove-cancel">${ico('x')}<span>Keep</span></button>`
       : `<button class="btn btn-sm is-risky" type="button" data-home-action="remove-arm" data-slug="${e(s.slug)}">${ico('trash')}<span>Remove</span></button>`;
-    return `<div class="hm-row hm-row-sub"><div class="hm-row-main"><p class="hm-row-t">${e(s.slug || 'site')} <span class="acct-tag">leftover</span></p><p class="hm-row-s adm-muted">A published file with no project behind it${s.publishedAt ? ` · ${e(when(s.publishedAt))}` : ''}${s.files != null ? ` · ${e(count(s.files, 'file', 'files'))}` : ''}.</p></div><div class="hm-row-act act-row">${act}</div></div>`;
+    const address = /^https?:\/\//i.test(String(s.address || '')) ? `<a class="btn btn-sm" href="${e(s.address)}" target="_blank" rel="noopener">Open site</a>` : '';
+    return `<div class="hm-row hm-row-sub"><div class="hm-row-main"><p class="hm-row-t">${e(s.slug || 'site')} <span class="acct-tag">${s.project ? 'project link unavailable' : 'published independently'}</span></p><p class="hm-row-s adm-muted">Public site${s.publishedAt ? ` · ${e(when(s.publishedAt))}` : ''}${s.files != null ? ` · ${e(count(s.files, 'file', 'files'))}` : ''}.</p></div><div class="hm-row-act act-row">${address}${act}</div></div>`;
   }).join('');
-  return `<p class="hm-glance-h">Leftovers to clean up</p><div class="hm-list">${rows}</div>`;
+  return `<p class="hm-glance-h">Published sites to review</p><p class="adm-note">A site can be valid without a linked Studio project. Check its address and purpose before choosing Remove.</p><div class="hm-list">${rows}</div>`;
 }
 
 async function removeSite(slug) {
@@ -151,54 +166,37 @@ function projectsCard() {
   for (const s of (hm.sites || [])) { if (s && s.project && !siteOf[s.project]) siteOf[s.project] = s; }
   const liveHostOf = {};
   for (const d of (hm.domains || [])) { const sv = d && d.serve; if (sv && sv.status === 'SERVING' && sv.site) liveHostOf[sv.site] = d.host; }
-  // Same-named projects pile up from re-imports/saves. Within a name the PRIMARY is the published one,
-  // else the newest by version then date; the rest are older copies, hidden unless asked for.
-  const nameKey = p => String(p.name || p.id).trim().toLowerCase();
-  const byName = {};
-  for (const p of list) { (byName[nameKey(p)] = byName[nameKey(p)] || []).push(p); }
-  const primaryId = {};
-  for (const n in byName) {
-    primaryId[n] = byName[n].slice().sort((a, b) => {
-      const pa = siteOf[a.id] ? 1 : 0, pb = siteOf[b.id] ? 1 : 0; if (pa !== pb) return pb - pa;
-      if ((b.version || 0) !== (a.version || 0)) return (b.version || 0) - (a.version || 0);
-      return String(b.updatedAt || '').localeCompare(String(a.updatedAt || ''));
-    })[0].id;
-  }
-  const isPrimary = p => primaryId[nameKey(p)] === p.id;
+  // Names are labels, not identities. Distinct projects remain visible even
+  // when they share a name; actual version history belongs to each project.
+  const names = new Map();
+  for (const project of list) { const key=String(project.name || '').trim().toLowerCase(); names.set(key,(names.get(key)||0)+1); }
+  const identity = project => names.get(String(project.name || '').trim().toLowerCase()) > 1 ? ` · ${String(project.id || '').slice(0,8)}` : '';
   const isSite = p => String(p.kind || '').toLowerCase() === 'website';
   const stateLine = (p) => {
     const site = siteOf[p.id], host = site ? liveHostOf[site.slug] : '';
-    if (site && host) return `${ico('globe', 13)} Live at <a href="https://${e(host)}" target="_blank" rel="noopener">${e(host)}</a>`;
-    if (site) return `${ico('globe', 13)} Shared <span class="adm-muted">· not on a domain yet</span>`;
+    if (site && host) return `${ico('globe', 13)} Public at <a href="https://${e(host)}" target="_blank" rel="noopener">${e(host)}</a>`;
+    if (site) return `${ico('globe', 13)} Public site <span class="adm-muted">· no connected domain</span>`;
     return `<span class="adm-muted">In the Studio</span>`;
   };
   const openIcon = (p) => `<button class="btn btn-sm btn-ico" type="button" data-home-action="open-project" data-id="${e(p.id)}" data-tip="Open in the studio" aria-label="Open ${e(p.name || p.id)} in the studio">${ico('external')}</button>`;
-  const partRow = (p) => `<div class="hm-part"><span class="hm-part-n">${ico(isSite(p) ? 'globe' : 'box', 14)} ${e(p.name || p.id)} <span class="adm-muted">${e(kindWord(p.kind))}</span></span>${openIcon(p)}</div>`;
-  // Primary projects split into the website(s) and the reusable parts; older copies hide behind a toggle.
-  const primaries = list.filter(isPrimary);
-  const primarySites = primaries.filter(isSite);
-  const parts = primaries.filter(p => !isSite(p));
-  const older = list.filter(p => !isPrimary(p));
+  const partRow = (p) => `<div class="hm-part"><span class="hm-part-n">${ico(isSite(p) ? 'globe' : 'box', 14)} ${e(p.name || p.id)} <span class="adm-muted">${e(kindWord(p.kind))}${e(identity(p))}</span></span>${openIcon(p)}</div>`;
+  const primarySites = list.filter(isSite);
+  const parts = list.filter(p => !isSite(p));
   const newest = (a, b) => String(b.updatedAt || '').localeCompare(String(a.updatedAt || ''));
   primarySites.sort(newest); parts.sort(newest);
-  // Each website is a COLLAPSIBLE workspace: the row leads, its reusable parts tuck under it and open on
-  // click. Default collapsed, so Home stays compact and your sites are what you see first -- and a second
-  // site (a subdomain, say) reads as its own workspace, never mixed into the first.
+  // Keep projects separate unless Studio has an actual connection between them.
   hm.openWs = hm.openWs || new Set();
-  const wsRow = (w, kids) => {
-    const open = hm.openWs.has(w.id);
+  const wsRow = (w) => {
     const meta = [kindWord(w.kind), w.version != null ? `v${w.version}` : '', w.updatedAt ? `updated ${when(w.updatedAt)}` : ''].filter(Boolean).join(' · ');
     return `
-    <div class="hm-ws${open ? ' is-open' : ''}">
+    <div class="hm-ws">
       <div class="hm-ws-head">
-        <button class="hm-ws-toggle" type="button" data-home-action="toggle-ws" data-id="${e(w.id)}" aria-expanded="${open ? 'true' : 'false'}" aria-label="${open ? 'Collapse' : 'Expand'} ${e(w.name || w.id)}">${ico('chevron', 16)}</button>
         <div class="hm-row-main">
-          <p class="hm-row-t">${e(w.name || w.id)} <span class="acct-tag is-primary">your website</span></p>
-          <p class="hm-row-s">${e(meta)} · ${stateLine(w)}${kids.length ? ` <span class="adm-muted">· ${kids.length} ${kids.length === 1 ? 'part' : 'parts'}</span>` : ''}</p>
+          <p class="hm-row-t">${e(w.name || w.id)}${e(identity(w))} <span class="acct-tag is-primary">website project</span></p>
+          <p class="hm-row-s">${e(meta)} · ${stateLine(w)}</p>
         </div>
         <div class="hm-row-act">${leadBtn({ home: 'open-project' }, 'external', 'Open in the studio', `data-id="${e(w.id)}"`, 'btn-primary')}</div>
       </div>
-      ${open && kids.length ? `<div class="hm-parts">${kids.map(partRow).join('')}</div>` : ''}
     </div>`;
   };
   const partsDrawer = (id, label, sub, arr) => {
@@ -212,23 +210,15 @@ function projectsCard() {
       ${open ? `<div class="hm-parts">${arr.map(partRow).join('')}</div>` : ''}
     </div>`;
   };
-  let tree;
-  if (primarySites.length === 1) {
-    tree = wsRow(primarySites[0], parts);
-  } else if (primarySites.length > 1) {
-    tree = primarySites.map(w => wsRow(w, [])).join('') + (parts.length ? partsDrawer('__parts__', 'Reusable parts', 'Forms and apps you can use on any of your sites', parts) : '');
-  } else {
-    tree = parts.length ? partsDrawer('__parts__', 'Forms and apps', 'Reusable parts, not on a website yet', parts) : '';
-  }
-  const olderBlock = older.length ? `
-    <button class="hm-older-toggle${hm.showOlder ? ' is-open' : ''}" type="button" data-home-action="toggle-older" aria-expanded="${hm.showOlder ? 'true' : 'false'}">${ico('chevron', 14)} ${older.length} older ${older.length === 1 ? 'copy' : 'copies'}</button>
-    ${hm.showOlder ? `<div class="hm-parts hm-older">${older.map(p => `<div class="hm-part hm-row-sub"><span class="hm-part-n">${e(p.name || p.id)} <span class="adm-muted">${e(kindWord(p.kind))}${p.version != null ? ` · v${p.version}` : ''}${p.updatedAt ? ` · ${when(p.updatedAt)}` : ''}</span></span>${openIcon(p)}</div>`).join('')}</div>` : ''}` : '';
+  const tree = primarySites.map(w => wsRow(w)).join('') + (parts.length
+    ? partsDrawer('__parts__', 'Other projects', 'Apps, notebooks and data projects. Open Studio to inspect their connections.', parts) : '');
   const body = `
     ${errLine('projects')}
-    ${hm.projects === null && !hm.errs.projects ? '' : (list.length ? `${tree}${olderBlock}` : '<p class="acct-empty">No projects yet. Open the studio and the first one you save lands here.</p>')}
+    ${hm.projects === null ? '' : (list.length ? `${tree}` : '<p class="acct-empty">No projects yet. Open the studio and the first one you save lands here.</p>')}
+    ${hm.projects && !hm.projectsComplete ? '<p class="acct-card-note">Showing the available projects. This is not the full inventory.</p>' : ''}
     <p class="acct-card-note hm-start">Start a website: open the Studio to build from scratch, from a template, or import a site you already have.</p>
     <div class="acct-actions-row act-row">${leadBtn({ home: 'open-studio' }, 'external', 'Open the studio', '', list.length ? '' : 'btn-primary')}</div>`;
-  const summary = hm.projects ? `${count(primarySites.length, 'website', 'websites')}${parts.length ? ` · ${count(parts.length, 'part', 'parts')}` : ''}${older.length ? ` · ${older.length} older` : ''}` : (hm.errs.projects ? 'not read' : '');
+  const summary = hm.projects ? `${hm.projectsComplete ? '' : 'Showing '}${count(primarySites.length, 'website', 'websites')}${parts.length ? ` · ${count(parts.length, 'other project', 'other projects')}` : ''}` : (hm.errs.projects ? 'not read' : '');
   return card({ key: 'projects', icon: 'box', title: 'Projects', summary, body });
 }
 
@@ -243,7 +233,7 @@ function sitesCard() {
       <div class="hm-row-main">
         <p class="hm-row-t">${e(s.slug || 'site')} <span class="acct-tag">not from a project</span></p>
         <p class="hm-row-s">${s.address ? `<a href="${e(s.address)}" target="_blank" rel="noopener">${e(hostOnly(s.address))}</a>` : ''}${s.publishedAt ? ` · published ${e(when(s.publishedAt))}` : ''}${s.files != null ? ` · ${e(count(s.files, 'file', 'files'))}` : ''}</p>
-        <p class="hm-row-s adm-muted">A leftover publish not tied to any project. Remove it from the Studio's Publish dialog.</p>
+        <p class="hm-row-s adm-muted">This public site has no matching project in the available list. Review its address and purpose in Studio.</p>
       </div>
     </div>`).join('');
   const body = `

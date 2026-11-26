@@ -187,6 +187,7 @@ function canUseSandbox() { return BUILD_ROLES.has(myRole()); }
 
 export async function renderEnvironment(main, deps) {
   let supplierReviewId = "";
+  ev.lane = laneChoice();
   D = deps;
   ev.madeKey = null; ev.filesNote = ''; ev.files = null; ev.keys = null; ev.domains = null; ev.domainNote = ''; ev.linkNote = ''; ev.domArm = ''; ev.keyArm = ''; ev.checking = ''; ev.registrations = []; ev.reg = freshReg();
   ev.connections = null; ev.connAccess = null; ev.connProviders = []; ev.connNote = ''; ev.connPick = ''; ev.connBusy = false; ev.connResult = ''; ev.connTesting = ''; ev.connDraft = {}; ev.connArm = ''; ev.shipArm = ''; ev.rowNote = null; ev.shopifyLabel = ''; ev.shopifyStep = ''; ev.shopifyLink = ''; ev.shopifyLinkId = ''; ev.connSyncing = ''; ev.rowNote = null;
@@ -4612,7 +4613,7 @@ export function bindEnvironmentActions(deps) {
 
 // Public state for Quark: no tokens, secrets, addresses or credentials.
 export function environmentLaneForQuark() {
-  return ev.teamId === teamId() && ev.lane === 'sandbox' ? 'sandbox' : 'live';
+  return laneChoice();
 }
 
 // Refresh only the native connection card after a confirmed Quark operation.
