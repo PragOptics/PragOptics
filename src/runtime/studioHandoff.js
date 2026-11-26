@@ -1,6 +1,31 @@
 // Routing a handoff to a lane grants no access: that lane must redeem the code
 // and verify the resulting account before the frontend accepts the session.
 export const SESSION_LANE_KEY = 'pragoptics_session_lane';
+export const LANE_SIGNIN_KEY = 'pragoptics_lane_signin_v1';
+export const LANE_HANDOFF_KEY = 'pragoptics_lane_handoff_v1';
+export const LANE_VERIFIER_KEY = 'pragoptics_lane_handoff_verifier_v1';
+export const DEV_ENTRY_KEY = 'pragoptics_dev_entry_v1';
+const SESSION_NOTICE_KEY = 'pragoptics_session_return_v1';
+
+export function clearLaneRouting(session, legacy) {
+  for (const key of [SESSION_LANE_KEY, LANE_SIGNIN_KEY, LANE_HANDOFF_KEY, LANE_VERIFIER_KEY, DEV_ENTRY_KEY]) {
+    try { session?.removeItem(key); } catch { /* preserve customer work */ }
+  }
+  try { legacy?.removeItem('pragoptics_lane_override'); } catch { /* preserve customer work */ }
+}
+
+export function returnExpiredDevToLive({ lane, host, reason, session, legacy, navigate }) {
+  clearLaneRouting(session, legacy);
+  if (lane !== 'dev' || !['pragoptics.com', 'www.pragoptics.com'].includes(host)) return false;
+  try { session?.setItem(SESSION_NOTICE_KEY, reason === 'suspended' ? 'suspended' : 'expired'); } catch { /* sign-in remains available */ }
+  navigate('/#account');
+  return true;
+}
+
+export function consumeSessionReturnNotice(session) {
+  try { const reason = session?.getItem(SESSION_NOTICE_KEY); session?.removeItem(SESSION_NOTICE_KEY); return ['expired', 'suspended'].includes(reason) ? reason : null; }
+  catch { return null; }
+}
 
 export function parseStudioHandoff(hash) {
   if (!String(hash || '').startsWith('#handoff=')) return null;
@@ -25,11 +50,16 @@ export function studioHandoffLane(hash, storage) {
 // another account's dev switch through localStorage. Migrate existing signed-in
 // tabs once, preferring the lane verified by their last account response.
 export function sessionRoutingLane({ hash = '', session, legacy } = {}) {
-  const pinned = studioHandoffLane(hash, session);
-  if (pinned) return pinned;
+  if (parseStudioHandoff(hash)?.lane) return studioHandoffLane(hash, session);
   try {
-    if (!JSON.parse(session?.getItem('pragoptics_tokens') || 'null')?.access_token) return null;
+    const token = JSON.parse(session?.getItem('pragoptics_tokens') || 'null')?.access_token;
     const raw = JSON.parse(session?.getItem('pragoptics_ping') || 'null')?.deployment?.lane;
+    const pinned = session?.getItem(SESSION_LANE_KEY);
+    if (pinned === 'live') return pinned;
+    const entering = session?.getItem(DEV_ENTRY_KEY) === '1' || session?.getItem(LANE_SIGNIN_KEY) === '1' || (session?.getItem(LANE_HANDOFF_KEY) && session?.getItem(LANE_VERIFIER_KEY));
+    if (pinned === 'dev' && ((token && raw === 'dev') || entering)) return pinned;
+    if (pinned === 'dev') session?.removeItem(SESSION_LANE_KEY);
+    if (!token) return null;
     let lane = raw === 'dev' ? 'dev' : ['live', 'blue', 'green'].includes(raw) ? 'live' : null;
     if (!lane) {
       const old = legacy?.getItem('pragoptics_lane_override');

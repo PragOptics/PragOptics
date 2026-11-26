@@ -26,13 +26,15 @@
 // sign-out-and-sign-in behavior. Either way the target session is minted
 // fresh on the target lane, so nothing runs stale.
 
-import { PRAG_API_BASE } from './config.js';
+import { PRAG_API_BASE, LANE } from './config.js';
 import { accessToken } from './session.js';
-import { SESSION_LANE_KEY } from './studioHandoff.js';
+import { SESSION_LANE_KEY, LANE_SIGNIN_KEY, LANE_HANDOFF_KEY, LANE_VERIFIER_KEY, DEV_ENTRY_KEY, clearLaneRouting } from './studioHandoff.js';
+import { sessionVersion } from '../account/sessionPrivacy.js';
+import { showStatusModal } from '../components/statusModal.js';
 
-const SIGNIN_FLAG = 'pragoptics_lane_signin_v1';
-const HANDOFF_KEY = 'pragoptics_lane_handoff_v1';
-const HANDOFF_VERIFIER_KEY = 'pragoptics_lane_handoff_verifier_v1';
+const SIGNIN_FLAG = LANE_SIGNIN_KEY;
+const HANDOFF_KEY = LANE_HANDOFF_KEY;
+const HANDOFF_VERIFIER_KEY = LANE_VERIFIER_KEY;
 
 // Proof of possession for the handoff token. The browser mints a 256-bit
 // verifier, sends only its sha256 at exchange, keeps the verifier in this
@@ -63,7 +65,9 @@ function currentToken() {
 
 function landOnTarget(lane, { handoff, verifier } = {}) {
   try {
+    clearLaneRouting(sessionStorage, localStorage);
     sessionStorage.setItem(SESSION_LANE_KEY, lane);
+    if (lane === 'dev') sessionStorage.setItem(DEV_ENTRY_KEY, '1');
     sessionStorage.removeItem('pragoptics_tokens');
     sessionStorage.removeItem('pragoptics_ping');
     sessionStorage.removeItem(HANDOFF_KEY);
@@ -85,25 +89,40 @@ function landOnTarget(lane, { handoff, verifier } = {}) {
  */
 export async function switchLane(lane) {
   if (lane !== 'dev' && lane !== 'live') return;
+  if (lane === LANE) return;
 
   const token = currentToken();
+  const version = sessionVersion();
+  const stillCurrent = () => currentToken() === token && sessionVersion() === version;
+  if (lane === 'dev' && (!token || !isPlatformOperator())) {
+    showStatusModal({ mode: 'error', message: 'This account cannot switch platform environments.' });
+    return;
+  }
   if (token) {
     try {
       const verifier = randomHex(32);
       const bindingHash = await sha256Hex(verifier);
+      if (!stillCurrent()) return;
       const res = await fetch(`${PRAG_API_BASE}/auth/lane/exchange`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ toLane: lane, bindingHash }),
         signal: AbortSignal.timeout(20000)
       });
+      if (!stillCurrent()) return;
+      const data = await res.json().catch(() => ({}));
+      if (!stillCurrent()) return;
       if (res.ok) {
-        const data = await res.json();
         if (data?.token) { landOnTarget(lane, { handoff: data.token, verifier }); return; }
       }
-      // 403 (not an operator) / 409 (not linked) / anything else -> fall back.
+      if (lane === 'dev' && [401, 403].includes(res.status)) {
+        showStatusModal({ mode: 'error', message: typeof data.error === 'string' ? data.error : 'This account could not authorize the platform switch.' });
+        return;
+      }
+      // An authorized operator can still use the explicit sign-in fallback.
     } catch { /* offline etc. -> fall back */ }
   }
+  if (!stillCurrent()) return;
   landOnTarget(lane); // plain sign-in on the target lane
 }
 

@@ -4,8 +4,10 @@ import { switchLane } from '../runtime/lane.js';
 import { accessToken } from '../runtime/session.js';
 import { getTheme, toggleTheme } from '../runtime/theme.js';
 import { sunSvg, moonSvg, LIGHT_LABEL, DARK_LABEL } from './themeMarks.js';
+import { showDevelopmentIndicators } from './platformLaneBadge.js';
 
 export function initFooter() {
+  showDevelopmentIndicators(LANE);
   // Year (tiny + deterministic)
   const y = document.getElementById("footerYear");
   if (y) y.textContent = String(new Date().getFullYear());

@@ -1,3 +1,4 @@
+import {clearLaneRouting} from './studioHandoff.js';
 // The session lives entirely in sessionStorage. Everything in localStorage is
 // the customer's own work - cart, warranty and builds queues, pending
 // reservations, account-link intents - so signing out must not touch it.
@@ -10,8 +11,6 @@ const SESSION_KEYS = ["pragoptics_tokens", "pragoptics_ping", "pragoptics_sessio
 // lane it was switched to - so pragoptics.com would keep talking to the dev
 // sandbox after logout instead of returning to its live default. Cleared
 // surgically; the cart and queues are left untouched.
-const LANE_OVERRIDE_KEY = "pragoptics_lane_override";
-
 /**
  * The session's access token, or '' signed out: the one reader of the stored tokens outside bootstrap.js (which writes
  * them). Read at every use and never kept, so a sign-out or a new sign-in is seen at once.
@@ -25,7 +24,7 @@ export function logout() {
   for (const k of SESSION_KEYS) {
     try { sessionStorage.removeItem(k); } catch {}
   }
-  try { localStorage.removeItem(LANE_OVERRIDE_KEY); } catch {}
+  clearLaneRouting(sessionStorage, localStorage);
 
   // Return user to PragOptics in a signed-out state
   window.location.replace('/');

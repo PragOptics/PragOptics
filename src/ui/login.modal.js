@@ -2,7 +2,8 @@ import {closePrivateModals} from '../account/sessionPrivacy.js';
 import {accessToken} from '../runtime/session.js';
 // ui/login.modal.js
 
-import { PRAG_API_BASE } from "../runtime/config.js";
+import { PRAG_API_BASE, LANE } from "../runtime/config.js";
+import { showDevelopmentIndicators, signInTitle } from '../components/platformLaneBadge.js';
 import { getAgreementAck } from "../runtime/state.js";
 import { finalizeAuth } from "../auth/twoFactorFlow.js";
 
@@ -13,7 +14,10 @@ let isBound = false;
    ====================================================== */
 
 export function openLoginModal(mode = "login") {
-  if (accessToken() && typeof window.isAccessTokenValid === 'function' && !window.isAccessTokenValid()) window.invalidateSession?.('signin');
+  if (accessToken() && typeof window.isAccessTokenValid === 'function' && !window.isAccessTokenValid()) {
+    if (window.invalidateSession?.('signin') === true) return;
+  }
+  showDevelopmentIndicators(LANE);
   closePrivateModals();
   const modal = document.getElementById("loginModal");
   const mask  = document.getElementById("loginMask");
@@ -305,10 +309,7 @@ function bindLoginModal(modal) {
 
     // Titles + submit label
     if (title) {
-      title.textContent =
-        mode === "login" ? "Sign in to PragOptics™" :
-        mode === "signup" ? "Create your PragOptics™ account" :
-        "Reset your PragOptics™ password";
+      title.textContent = signInTitle(mode, LANE);
     }
 
     submitBtn.textContent =

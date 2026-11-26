@@ -18,7 +18,7 @@ let idlePrivacyGate = null;
     import { handleBillingProfile, startPaymentStep, pollUntilResolved } from "../api/billing.js";
     import { setDnaMode } from "../components/dnaController.js";
     import { showStatusModal, hideStatusModal } from "../components/statusModal.js";
-    import { redeemStudioSession, redeemLaneSession, parseStudioHandoff } from './studioHandoff.js';
+    import { redeemStudioSession, redeemLaneSession, parseStudioHandoff, clearLaneRouting, returnExpiredDevToLive, consumeSessionReturnNotice } from './studioHandoff.js';
     import { promptForCode } from "../auth/twoFactorFlow.js";
     import { initHeaderMenu } from '../components/header.menu.js';
     import { initWizardNavigation } from '../wizard/wizard.controller.js';
@@ -111,6 +111,11 @@ let idlePrivacyGate = null;
     syncUserTheme();
 
     initFooter();
+    const sessionReturnNotice = consumeSessionReturnNotice(sessionStorage);
+    if (sessionReturnNotice) setTimeout(() => showStatusModal({
+      mode: sessionReturnNotice === 'suspended' ? 'error' : 'info',
+      message: sessionReturnNotice === 'suspended' ? 'This account is suspended. Contact support@bridgesindust.com.' : 'Your session has expired. Please sign in again.'
+    }), 100);
     // Every "write to us" link on the page opens the Contact form instead of the visitor's mail app (2026-11-15; components/contactForm.js).
     wireContactLinks();
     initCookieNotice();
@@ -495,7 +500,7 @@ function setToken(tokens, {renewal=false} = {}) {
     // read "Your plan" for a visitor whose session had merely expired.
     sessionStorage.removeItem("pragoptics_tokens");
     sessionStorage.removeItem("pragoptics_ping");
-    sessionStorage.removeItem("pragoptics_session_lane");
+    clearLaneRouting(sessionStorage, localStorage);
     sessionChanged();
 
     // Drop any lane override too, so an expired session on the dev lane returns
@@ -511,6 +516,7 @@ function setToken(tokens, {renewal=false} = {}) {
     // Return app to safe baseline
     setAppMode("landing");
     uncoverSession();
+    if (returnExpiredDevToLive({ lane: LANE, host: location.hostname, reason, session: sessionStorage, legacy: localStorage, navigate: target => window.location.replace(target) })) return true;
 
     // User feedback (once per action)
     //
@@ -1089,8 +1095,7 @@ window.applyPostLoginResolution = applyPostLoginResolution;
       setTimeout(() => openLoginModal("login"), 400);
     }
 
-    // The lane flag lives in the FOOTER's environment chip (footer.js), the
-    // established home for environment status. Nothing rides the header.
+    // The lane flag lives in the header and sign-in portal; Live stays unlabelled.
 
 
     /* ===========================
