@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 const source=await readFile(new URL('../src/runtime/studioHandoff.js',import.meta.url),'utf8');
-const {studioHandoffLane,sessionRoutingLane,parseStudioHandoff,redeemStudioSession,SESSION_LANE_KEY}=await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'));
+const {studioHandoffLane,sessionRoutingLane,parseStudioHandoff,redeemStudioSession,redeemLaneSession,SESSION_LANE_KEY}=await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'));
 test('lane and destination are parsed together in either parameter order, including the selected environment',()=>{
  const code='a'.repeat(43),to='account?section=environment&team=team-a';
  for(const hash of [`#handoff=${code}&lane=dev&to=${encodeURIComponent(to)}`,`#handoff=${code}&to=${encodeURIComponent(to)}&lane=dev`])assert.deepEqual(parseStudioHandoff(hash),{code,to,lane:'dev'});
@@ -32,4 +32,14 @@ test('fresh tabs ignore another tabs legacy dev choice while existing accounts m
   const dev=storage({pragoptics_tokens:JSON.stringify({access_token:'synthetic'}),pragoptics_ping:JSON.stringify({deployment:{lane:'dev'}})});
   assert.equal(sessionRoutingLane({session:dev,legacy}),'dev');
   legacy.removeItem('pragoptics_lane_override');assert.equal(sessionRoutingLane({session:live,legacy}),'live');assert.equal(sessionRoutingLane({session:dev,legacy}),'dev');
+});
+
+test('lane redemption verifies the target account and lane before returning a session',async()=>{
+  const calls=[];const fetcher=async(url,options)=>{calls.push({url,options});return{ok:true,status:200,json:async()=>url.endsWith('/ping')?{user:{userId:'dev-user'},deployment:{lane:'dev'}}:{tokens:{access_token:'synthetic'}}};};
+  const result=await redeemLaneSession({apiBase:'https://dev.example.test',token:'single-use',verifier:'browser-proof',code:'synthetic-code',lane:'dev',fetcher});
+  assert.equal(result.ping.user.userId,'dev-user');assert.deepEqual(JSON.parse(calls[0].options.body),{token:'single-use',verifier:'browser-proof',code:'synthetic-code'});assert.equal(calls[1].options.headers.Authorization,'Bearer synthetic');
+});
+test('a lane switch preserves the actual refusal and cannot accept an unverified or wrong-lane account',async()=>{
+  await assert.rejects(redeemLaneSession({apiBase:'https://example.test',lane:'dev',fetcher:async()=>({ok:false,status:401,json:async()=>({error:'That code did not match this lane’s authenticator.'})})}),error=>error.code==='LANE_REDEEM_401'&&error.message.includes('did not match'));
+  let calls=0;await assert.rejects(redeemLaneSession({apiBase:'https://example.test',lane:'dev',fetcher:async()=>++calls===1?{ok:true,status:200,json:async()=>({tokens:{access_token:'synthetic'}})}:{ok:true,json:async()=>({user:{userId:'live-user'},deployment:{lane:'blue'}})}}),{code:'HANDOFF_LANE_MISMATCH'});
 });

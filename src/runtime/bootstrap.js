@@ -17,7 +17,7 @@ let idlePrivacyGate = null;
     import { handleBillingProfile, startPaymentStep, pollUntilResolved } from "../api/billing.js";
     import { setDnaMode } from "../components/dnaController.js";
     import { showStatusModal, hideStatusModal } from "../components/statusModal.js";
-    import { redeemStudioSession, parseStudioHandoff } from './studioHandoff.js';
+    import { redeemStudioSession, redeemLaneSession, parseStudioHandoff } from './studioHandoff.js';
     import { promptForCode } from "../auth/twoFactorFlow.js";
     import { initHeaderMenu } from '../components/header.menu.js';
     import { initWizardNavigation } from '../wizard/wizard.controller.js';
@@ -1047,34 +1047,32 @@ window.applyPostLoginResolution = applyPostLoginResolution;
           // use and is burned by the redeem call, so a wrong or missing code
           // costs a fresh switch rather than a retry.
           const code = await promptForCode({
-            title: "Confirm it's you on this lane",
-            sub: "Enter the 6-digit code from your authenticator for this lane, or a recovery code."
+            title: `Confirm it's you on ${LANE === 'dev' ? 'Dev' : 'Live'}`,
+            sub: `Use the authenticator for your ${LANE} PragOptics account. The single-use transfer expires after 60 seconds.`
           });
-          if (!code) throw new Error("switch canceled");
+          if (!code) throw Object.assign(new Error('The lane switch was canceled.'), { code: 'LANE_SWITCH_CANCELED' });
           // The verifier proves this is the browser that started the switch;
           // the target lane refuses the token without it.
-          const res = await fetch(`${PRAG_API_BASE}/auth/lane/redeem`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ token: __handoff, verifier: __verifier, code })
-          });
-          if (!res.ok) throw new Error("handoff rejected");
-          const data = await res.json();
-          sessionStorage.setItem("pragoptics_tokens", JSON.stringify(data.tokens));
-          const pingRes = await fetch(`${PRAG_API_BASE}/ping`, {
-            headers: { Authorization: `Bearer ${data.tokens.access_token}` }
-          });
-          const ping = await pingRes.json();
+          const { tokens, ping } = await redeemLaneSession({ apiBase: PRAG_API_BASE, token: __handoff, verifier: __verifier, code, lane: LANE });
           sessionStorage.setItem("pragoptics_ping", JSON.stringify(ping));
+          setToken(tokens);
+          lastPing = ping;
           syncUserTheme();
           // the sign-in box opened for the signed-out page while the handoff was redeemed: the session is live now, so
           // it closes here instead of sitting over the panel with the last lane's fields filled (2026-10-05, Cameron)
           closeLoginModal();
           window.setConsoleAuthenticated?.();
+          refreshAdminNav();
+          window.syncLandingPlans?.();
+          uncoverSession();
           applyPostLoginResolution({ ping });
-        } catch {
+        } catch (error) {
           // Handoff failed: fall back to a plain sign-in on this lane.
           openLoginModal("login");
+          const message = `Could not complete the switch to ${LANE}: ${error.message || 'Session transfer failed.'} Sign in on this lane to continue. (${error.code || 'LANE_SWITCH_UNAVAILABLE'})`;
+          const errorBox = document.getElementById('loginError');
+          if (errorBox) { errorBox.textContent = message; errorBox.hidden = false; }
+          else showStatusModal({ mode: 'error', message });
         }
       })();
     }

@@ -31,6 +31,7 @@ import { renderBuildsQueue, renderMyBuilds } from './buildsDesk.js';
 import { renderInterestBlock, interestCount } from './interestDesk.js';
 import { renderArrivalsBlock } from './arrivalsBlock.js';   // Not yet acknowledged: every arrival he has not acted on, one block on the Overview (2026-11-15; the count lives in the block, no tile repeats it)   // Launch interest: the shop's Notify me sign-ups, on the Catalog desk and the Overview (2026-11-15)
 import { renderNeedsAttention } from './needsAttentionDesk.js';
+import { adminAiDeskHtml } from './adminAiDesk.js';
 import { renderAgreementNotice } from './agreementNotice.js';
 import { renderSetup, markSetupStale } from './setup.js';
 import { billingDetailsHtml, editBillingDetails, cancelBillingDetails, saveBillingDetails } from './billingDetails.js';
@@ -2897,72 +2898,17 @@ function statCard(n, label, hint, accent) {
 /** The operator's AI section (2026-09-19): the month's spend against the platform ceiling, every owner who spent, the provider and its lanes. */
 async function renderAdminAi(main) {
   main.innerHTML = `
-    <header class="adm-sec-head"><h2 class="adm-sec-title">AI</h2></header>
+    <header class="adm-sec-head"><h2 class="adm-sec-title">Platform AI</h2></header>
     <p class="acct-error" id="admAiError" hidden></p>
     <div id="admAiBody"><p class="acct-loading">Loading…</p></div>`;
   const host = document.getElementById('admAiBody');
   try {
-    const d = await apiFetch(ADMIN_AI_URL);
-    const cap = d.cap || {}, p = d.provider || {};
-    const money = d.money && typeof d.money === 'object' ? d.money : null;   // the month's money since backend 88b5f8c; a lane without it shows cost alone
-    const pct = Number(cap.percent || 0);
-    const hasCap = Number(cap.capCents) > 0;   // AI_PLATFORM_CAP_CENTS is optional (2026-11-10): unset, the prepaid balances are the ceiling
-    const cls = pct >= 95 ? 'is-hot' : pct >= 70 ? 'is-warn' : '';
-    host.innerHTML = `
-      <div class="adm-stat-grid">
-        ${money ? statCard(cents(money.revenueCents), `Charged in ${escapeHtml(d.month || '')}`, 'platform credit drawn by answers') : ''}
-        ${statCard(cents(cap.totalCents), money ? 'Cost to the platform' : `Spent in ${escapeHtml(d.month || '')}`, money ? 'paid to the provider' : '')}
-        ${money ? statCard(cents(money.marginCents), 'Margin', `${escapeHtml(String(money.marginPercent ?? ''))}% on cost`, Number(money.marginCents) < 0 ? 'amber' : '') : ''}
-        ${money ? statCard(cents(money.outstandingCents), 'Credit outstanding', `${nFmt(money.outstandingOwners || 0)} ${Number(money.outstandingOwners) === 1 ? 'account holds' : 'accounts hold'} prepaid credit`) : ''}
-        ${hasCap ? statCard(cents(cap.capCents), 'Platform ceiling', 'AI_PLATFORM_CAP_CENTS', pct >= 80 ? 'amber' : '') : statCard('none', 'Platform ceiling', 'AI_PLATFORM_CAP_CENTS not set')}
-        ${statCard(nFmt(cap.totalCalls), 'Answers this month')}
-        ${statCard(escapeHtml(p.configured ? p.name : 'not configured'), 'Provider', p.configured ? `${(p.lanes || []).length} lanes, default ${escapeHtml(p.defaultLane || '')}` : 'AI_PROVIDER and AI_API_KEY', p.configured ? '' : 'amber')}
-      </div>
-      <div class="adm-card">
-        ${hasCap ? `<div class="use-row ev-meter">
-          <div class="use-head"><span class="use-name">Ceiling used</span><span class="use-val">${escapeHtml(String(pct))}%${cap.warned80 ? ' · 80% alert sent' : ''}</span></div>
-          <div class="use-track"><div class="use-fill ${cls}" style="width:${Math.min(100, pct).toFixed(1)}%"></div></div>
-        </div>` : ''}
-        <p class="adm-note">${hasCap ? 'Past the ceiling every AI call on the platform answers 503 until the month resets or the setting is raised.' : 'No platform ceiling is set: each account\'s prepaid credit is its own ceiling. Set AI_PLATFORM_CAP_CENTS and past it every AI call on the platform answers 503 until the month resets or the setting is raised.'} Platform credit is prepaid: each answer is charged at the provider's cost plus the margin (AI_MARGIN_PERCENT, 100 unless set). A Free account has ten answers to try. An environment on its own AI account pays its provider directly; its answers are counted here, never charged.</p>
-      </div>
-      ${(p.lanes || []).length ? `
-      <div class="adm-card">
-        <h3 class="adm-card-h">Lanes and prices</h3>
-        <div class="adm-table-scroll">
-          <table class="adm-table">
-            <thead><tr><th>Lane</th><th>Model</th><th class="adm-num">Per exchange</th></tr></thead>
-            <tbody>${p.lanes.map(l => `<tr><td>${escapeHtml(l.lane)}${l.lane === p.defaultLane ? ' <span class="acct-tag is-primary">default</span>' : ''}</td><td><code>${escapeHtml(l.model)}</code></td><td class="adm-num">${escapeHtml(String(l.exchangeCents))}¢</td></tr>`).join('')}</tbody>
-          </table>
-        </div>
-      </div>` : ''}
-      <div class="adm-card">
-        <h3 class="adm-card-h">Who spent (${escapeHtml(d.month || '')})</h3>
-        ${!(d.rows || []).length ? '<p class="adm-empty">Nobody has used AI this month.</p>' : `
-        <div class="adm-table-scroll">
-          <table class="adm-table">
-            <thead><tr><th>Account</th><th>Tier</th><th class="adm-num">Charged</th><th class="adm-num">Cost</th><th class="adm-num">Margin</th><th class="adm-num">Credit left</th><th class="adm-num">Answers</th><th class="adm-num">Own account</th><th>Lanes</th></tr></thead>
-            <tbody>
-              ${d.rows.map(r => { const hasMoney = r.costCents != null; const neg = hasMoney && Number(r.marginCents) < 0; return `
-                <tr>
-                  <td class="adm-cell-email cell-ellip" title="${escapeHtml(r.email || r.userId)}">${escapeHtml(r.email || r.userId)}</td>
-                  <td>${tierPill(r.tier)}</td>
-                  <td class="adm-num">${escapeHtml(cents(r.usedCents))}</td>
-                  <td class="adm-num">${hasMoney ? escapeHtml(cents(r.costCents)) : '—'}</td>
-                  <td class="adm-num ${neg ? 'adm-money-neg' : ''}">${hasMoney ? escapeHtml(cents(r.marginCents)) : '—'}</td>
-                  <td class="adm-num">${r.balanceCents != null ? escapeHtml(cents(r.balanceCents)) : '—'}</td>
-                  <td class="adm-num">${escapeHtml(nFmt(r.calls))}</td>
-                  <td class="adm-num">${Number(r.ownCalls) > 0 ? `${escapeHtml(nFmt(r.ownCalls))} · ${escapeHtml(cents(r.ownCostCents || 0))} est.` : '—'}</td>
-                  <td class="adm-muted">${escapeHtml(Object.entries(r.byLane || {}).map(([k, v]) => `${k} ${v.calls}`).join(', '))}</td>
-                </tr>`; }).join('')}
-            </tbody>
-          </table>
-        </div>
-        ${d.truncated ? '<p class="adm-note">Showing the first 2,000 accounts.</p>' : ''}`}
-      </div>`;
+    const data = await apiFetch(ADMIN_AI_URL);
+    host.innerHTML = adminAiDeskHtml(data, { statCard, tierPill, platformLane: LANE });
   } catch (ex) {
     host.innerHTML = '';
     if (ex?.status === 404) { host.innerHTML = '<p class="adm-empty">The AI routes are not on this lane yet.</p>'; return; }
-    showError('admAiError', friendlyError(ex, 'Could not read the AI usage.'));
+    showError('admAiError', friendlyError(ex, 'Could not read platform AI usage.'));
   }
 }
 

@@ -40,6 +40,17 @@ export function sessionRoutingLane({ hash = '', session, legacy } = {}) {
   } catch { return null; }
 }
 
+async function verifiedAccount({ apiBase, tokens, fetcher, signal, expectedLane }) {
+  const pingRes = await fetcher(`${apiBase}/ping`, { headers: { Authorization: `Bearer ${tokens.access_token}` }, signal });
+  if (!pingRes.ok) throw Object.assign(new Error('Account verification failed.'), { code: `HANDOFF_PING_${pingRes.status}` });
+  const ping = await pingRes.json();
+  if (!ping?.user) throw Object.assign(new Error('Account verification failed.'), { code: 'HANDOFF_ACCOUNT_MISSING' });
+  const rawLane = ping.deployment?.lane;
+  const actualLane = rawLane === 'dev' ? 'dev' : ['live', 'blue', 'green'].includes(rawLane) ? 'live' : null;
+  if (expectedLane && actualLane !== expectedLane) throw Object.assign(new Error('The account response did not verify the selected platform lane.'), { code: 'HANDOFF_LANE_MISMATCH' });
+  return { tokens, ping };
+}
+
 export async function redeemStudioSession({ apiBase, code, fetcher = fetch }) {
   const signal = AbortSignal.timeout(20000);
   const res = await fetcher(`${apiBase}/auth/software/redeem`, {
@@ -47,9 +58,15 @@ export async function redeemStudioSession({ apiBase, code, fetcher = fetch }) {
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok || !data?.tokens?.access_token) throw Object.assign(new Error('Session transfer failed.'), { code: `HANDOFF_REDEEM_${res.status}` });
-  const pingRes = await fetcher(`${apiBase}/ping`, { headers: { Authorization: `Bearer ${data.tokens.access_token}` }, signal });
-  if (!pingRes.ok) throw Object.assign(new Error('Account verification failed.'), { code: `HANDOFF_PING_${pingRes.status}` });
-  const ping = await pingRes.json();
-  if (!ping?.user) throw Object.assign(new Error('Account verification failed.'), { code: 'HANDOFF_ACCOUNT_MISSING' });
-  return { tokens: data.tokens, ping };
+  return verifiedAccount({ apiBase, tokens: data.tokens, fetcher, signal });
+}
+
+export async function redeemLaneSession({ apiBase, token, verifier, code, lane, fetcher = fetch }) {
+  const signal = AbortSignal.timeout(20000);
+  const res = await fetcher(`${apiBase}/auth/lane/redeem`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token, verifier, code }), signal
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data?.tokens?.access_token) throw Object.assign(new Error(typeof data.error === 'string' ? data.error.slice(0, 300) : 'The platform could not complete the lane switch.'), { code: `LANE_REDEEM_${res.status}` });
+  return verifiedAccount({ apiBase, tokens: data.tokens, fetcher, signal, expectedLane: lane });
 }
