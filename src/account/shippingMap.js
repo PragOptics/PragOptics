@@ -77,6 +77,7 @@ export async function mountTrackingMap(host, data, { isCurrent = () => true, not
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap contributors</a>'
   }).addTo(map);
   tiles.on('tileerror', () => { if (alive()) note('Map background unavailable. Reported locations and the timeline remain available.'); });
+  map.fitBounds(points.map(p => p.resolved.point), { padding: [35, 35], maxZoom: 10 });
   const color = getComputedStyle(host).getPropertyValue('--brand-600').trim() || '#7463dd';
   const origin = points.find(p => p.kind === 'origin'), destination = points.find(p => p.kind === 'destination');
   if (origin && destination) L.polyline([origin.resolved.point, destination.resolved.point], { color, weight: 2, opacity: .4, dashArray: '5 8' }).addTo(map);
@@ -94,10 +95,9 @@ export async function mountTrackingMap(host, data, { isCurrent = () => true, not
     if (element) { element.setAttribute('role', 'button'); element.setAttribute('tabindex', '0'); element.setAttribute('aria-label', `${item.label}: ${place.textContent}`); element.addEventListener('keydown', event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); marker.openPopup(); } }); }
     if (item.eventIndex != null) markers.set(item.eventIndex, marker);
   }
-  map.fitBounds(points.map(p => p.resolved.point), { padding: [35, 35], maxZoom: 10 });
   if (typeof ResizeObserver !== 'undefined') { resize = new ResizeObserver(() => { if (alive()) map.invalidateSize(); }); resize.observe(host); }
   const missing = located.filter(item => item.location && !item.resolved).length;
-  note(`Area locations; lines connect reported stops, not a recorded travel path.${missing ? ` ${missing} location${missing === 1 ? ' is' : 's are'} not plotted.` : ''}`);
+  note(`Dotted: origin to destination. Solid: reported scan locations. Area estimates; lines are schematic, not the actual travel path.${missing ? ` ${missing} location${missing === 1 ? ' is' : 's are'} not plotted.` : ''}`);
   return {
     dispose() { disposed = true; resize?.disconnect(); map?.remove(); },
     selectEvent(index) {

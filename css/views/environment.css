@@ -70,6 +70,28 @@
 .ev-ship-rate-amt { color: var(--muted); white-space: nowrap; }
 .ev-ship-h { margin: 18px 0 6px; font-size: .92rem; color: var(--card-title); }
 .ev-ship-test { margin-top: 12px; }
+.ev-label-controls { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; margin: 10px 0 16px; }
+.ev-label-controls [role="group"] { display: flex; gap: 4px; flex-wrap: wrap; }
+.ev-label-controls .is-on { color: var(--card-title, var(--ink)); border-color: var(--brand-600); background: color-mix(in srgb, var(--brand-600) 12%, var(--surface-2)); }
+.ev-label-group + .ev-label-group { margin-top: 26px; padding-top: 18px; border-top: 1px solid var(--border); }
+.ev-label-group h5 { margin: 0 0 10px; color: var(--ink); font-size: .86rem; }
+.ev-label-group h5 span { margin-left: 7px; color: var(--muted); font-weight: 400; }
+#accountView .ev-label-scroll { overflow-x: auto; border: 1px solid var(--border); }
+#accountView .ev-label-table { min-width: 40rem; width: 100%; table-layout: auto; }
+#accountView .ev-label-table th, #accountView .ev-label-table td, #accountView .ev-labels .acct-tag { white-space: nowrap; overflow-wrap: normal; word-break: normal; }
+#accountView .ev-label-table .ev-label-number { font-variant-numeric: tabular-nums; }
+#accountView .ev-label-table th:last-child, #accountView .ev-label-table td:last-child { position: sticky; right: 0; z-index: 1; background: var(--surface-2); box-shadow: -7px 0 9px -9px var(--ink); }
+#accountView .ev-labels .act-row { display: inline-flex; flex-wrap: nowrap; align-items: center; gap: 6px; }
+#accountView .ev-labels .act-row .btn + .btn { margin: 0; }
+.ev-label-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 270px), 1fr)); gap: 12px; }
+.ev-label-card { min-width: 0; padding: 16px; background: var(--surface-3); border: 1px solid var(--border); border-radius: 10px; }
+.ev-label-card header { display: flex; gap: 8px; align-items: center; margin-bottom: 14px; }
+.ev-label-card header strong { font-size: .8rem; overflow-wrap: anywhere; }
+.ev-label-card dl { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 130px), 1fr)); gap: 12px; margin: 0 0 16px; }
+.ev-label-card dl > div:last-child { grid-column: 1 / -1; }
+.ev-label-card dt { font-size: .7rem; color: var(--muted); margin-bottom: 5px; }
+.ev-label-card dd { margin: 0; font-size: .8rem; }
+.ev-label-card footer { padding-top: 12px; border-top: 1px solid var(--border); }
 
 /* The environment's private tracking viewer uses the account's own themes. */
 .acct-modal-host .modal-card.shipment-dialog { width: min(1020px, calc(100vw - 32px)); max-width: none; max-height: calc(100dvh - 32px); display: flex; flex-direction: column; padding: 0; overflow: hidden; }

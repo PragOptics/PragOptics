@@ -12,7 +12,7 @@ function dateWords(value) {
 }
 export function trackingEvents(data) {
   const events = [...(Array.isArray(data.history) ? data.history : [])];
-  const current = data.current || (data.status || data.detail ? { status: data.status, detail: data.detail, at: '', location: null } : null);
+  const current = data.current || (!Array.isArray(data.history) && (data.status || data.detail) ? { status: data.status, detail: data.detail, at: '', location: null } : null);
   const key = event => JSON.stringify([event.status, event.detail, event.at, event.location]);
   if (current && !events.some(event => key(event) === key(current))) events.push(current);
   return events.sort((a, b) => String(a.at || '').localeCompare(String(b.at || '')));
@@ -32,7 +32,7 @@ export function trackingBody(data) {
   <div class="shipment-route"><div><span class="shipment-eyebrow">From</span><strong>${esc(trackingLocationWords(data.origin) || 'Not supplied by carrier yet')}</strong></div><span aria-hidden="true">→</span><div><span class="shipment-eyebrow">To</span><strong>${esc(trackingLocationWords(data.destination) || 'Not supplied by carrier yet')}</strong></div></div>
   <dl class="shipment-facts"><div><dt>Tracking number</dt><dd>${esc(data.trackingNumber || 'Pending')}</dd></div><div><dt>Expected delivery</dt><dd>${esc(dateWords(data.eta) || 'Not supplied yet')}</dd></div><div><dt>Last carrier event</dt><dd>${esc(dateWords(current.at) || 'Time not supplied')}</dd></div><div><dt>Checked</dt><dd>${esc(dateWords(data.checkedAt) || 'Just now')}</dd></div></dl>
   <div class="shipment-map" id="shipmentMap" role="region" aria-label="Shipment locations"><span>Preparing shipment map…</span></div>
-  <p class="shipment-map-note" id="shipmentMapNote" aria-live="polite"></p>
+  <p class="shipment-map-note" id="shipmentMapNote" aria-live="polite"></p>${data.locationNote ? `<p class="shipment-request-status is-error">${esc(data.locationNote)}</p>` : ''}
   <div class="shipment-events-head"><h4>Tracking events</h4><span>${events.length} ${events.length === 1 ? 'event' : 'events'}</span></div>
   <ol class="shipment-events">${events.length ? events.map((event, index) => ({ event, index })).reverse().map(({ event, index }) => `<li><span class="shipment-event-dot" aria-hidden="true"></span><div><div class="shipment-event-top"><strong>${esc(trackingWords(event.status))}</strong>${event.at ? `<time datetime="${esc(event.at)}">${esc(dateWords(event.at))}</time>` : ''}</div><p>${esc(event.detail || 'No additional detail supplied.')}</p>${event.location ? `<button type="button" class="shipment-event-location" data-shipment-event="${index}">${ico('globe')}${esc(trackingLocationWords(event.location))}</button>` : ''}${event.substatus?.text ? `<p class="shipment-event-sub ${event.substatus.actionRequired ? 'needs-action' : ''}">${esc(event.substatus.text)}</p>` : ''}</div></li>`).join('') : '<li class="shipment-no-events">The label exists. Carrier scans will appear here when reported.</li>'}</ol>`;
 }

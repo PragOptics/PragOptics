@@ -32,6 +32,7 @@ import { explainLink } from '../components/explainer.js';
 import { accessToken } from '../runtime/session.js';
 import { sessionVersion } from './sessionPrivacy.js';
 import { openShipmentTracking, closeShipmentTracking, trackingWords } from './shippingTracking.js';
+import { shippingLabelsHtml, labelView, rememberLabelView } from './shippingLabels.js';
 import { stripeAppearance } from '../api/stripeAppearance.js';
 import { ensureStripeJs } from '../runtime/stripeLoader.js';
 import { ico, iconBtn, leadBtn, btnLabel, cardHtml as sharedCard, isOpen, setOpen, initCards, busy, hold, stateLead, stateIcon, copyButton, openModal } from './cards.js';
@@ -2825,7 +2826,7 @@ function shipFromBilling() {
 function shippingScope() { return JSON.stringify([sessionVersion(), ev.teamId || '', ev.lane, activeShippo()?.id || '']); }
 function shipState() {
   const scope = shippingScope();
-  if (!ev.ship || ev.ship.scope !== scope) ev.ship = { scope, fromV: shipFromBilling(), toV: {}, parcel: { length: '', width: '', height: '', weight: '' }, rates: null, shipmentId: '', picked: '', labels: null, tracking: {}, busy: '', note: '', noteErr: false };
+  if (!ev.ship || ev.ship.scope !== scope) ev.ship = { scope, fromV: shipFromBilling(), toV: {}, parcel: { length: '', width: '', height: '', weight: '' }, rates: null, shipmentId: '', picked: '', labels: null, labelFilter: 'active', labelView: labelView(), nextLabelPage: null, labelsBusy: false, tracking: {}, busy: '', note: '', noteErr: false };
   return ev.ship;
 }
 function shipInput(id, label, val, ph, extra = '') {
@@ -2860,27 +2861,7 @@ function shippingHtml() {
     </div>
     <div class="ev-key-row">${stateLead('ship-buy', 'check', 'Buy this label', { out: s.busy === 'buy', busyWord: 'Buying…', waiting: s.picked ? '' : 'Pick a rate first' }, '', 'btn-primary')}</div>`;
 
-  // Real bought labels only — a failed buy (ERROR) is not a label and never sits in the list.
-  const labels = (s.labels || []).filter(l => String(l.status || '').toUpperCase() !== 'ERROR');
-  const shipStatusWord = (st) => ({ SUCCESS: 'bought', REFUNDPENDING: 'refund pending', REFUNDED: 'refunded', QUEUED: 'finishing', WAITING: 'finishing' }[String(st || '').toUpperCase()] || String(st || '').toLowerCase() || '—');
-  const labelsHtml = s.labels == null ? '<p class="acct-loading">Loading labels…</p>' : !labels.length ? '<p class="acct-empty">No labels bought yet.</p>' : `
-    <div class="adm-table-scroll"><table class="adm-table adm-table--wrap ev-table">
-      <thead><tr><th>Tracking number</th><th>Label</th><th>Delivery</th><th>When</th><th></th></tr></thead>
-      <tbody>${labels.map(l => `
-        <tr>
-          <td data-th="Tracking" class="cell-ellip">${l.trackingNumber ? e(l.trackingNumber) : '—'}${l.test ? ' <span class="acct-tag">test</span>' : ''}</td>
-          <td data-th="Label" class="cell-tight"><span class="acct-tag ${l.status === 'SUCCESS' ? 'is-verified' : (l.status === 'REFUNDED' || l.status === 'REFUNDPENDING') ? 'is-quiet' : ''}">${e(shipStatusWord(l.status))}</span></td>
-          <td data-th="Delivery"><span class="acct-tag">${e((s.tracking[l.transactionId]?.status || l.trackingStatus) ? trackingWords(s.tracking[l.transactionId]?.status || l.trackingStatus) : 'Not checked')}</span></td>
-          <td data-th="When" class="cell-tight adm-muted">${l.createdAt ? e(D.fmtDate(l.createdAt)) : ''}</td>
-          <td class="cell-tight ev-actions-cell"><span class="act-row">
-            ${l.trackingNumber ? iconBtn('ship-track', 'search', 'Check tracking', `data-id="${e(l.transactionId)}"`) : ''}
-            ${l.transactionId ? iconBtn('ship-label-open', 'external', 'Open the label PDF', `data-id="${e(l.transactionId)}"`) : ''}
-            ${l.status === 'SUCCESS' ? (ev.shipArm === l.transactionId
-              ? `<button class="btn btn-sm btn-ico is-armed" type="button" data-env-action="ship-refund" data-id="${e(l.transactionId)}" aria-label="Refund? Press again to confirm." data-tip="Press again to confirm">${ico('trash')}<span>Refund?</span></button>${iconBtn('ship-refund-cancel', 'x', 'Keep it', '', 'btn-arm-cancel')}`
-              : iconBtn('ship-refund', 'trash', 'Refund this label', `data-id="${e(l.transactionId)}"`, 'is-risky')) : ''}
-          </span></td>
-        </tr>`).join('')}</tbody>
-    </table></div>`;
+  const labelsHtml = shippingLabelsHtml({ labels: s.labels, tracking: s.tracking, filter: s.labelFilter, view: s.labelView, armed: ev.shipArm, formatDate: D.fmtDate, nextPage: s.nextLabelPage, loadingMore: s.labelsBusy });
 
   const note = s.note ? `<p class="${s.noteErr ? 'acct-error' : 'acct-card-note'} ev-row-note" aria-live="polite">${e(s.note)}</p>` : '';
 
@@ -2917,13 +2898,18 @@ function shippingHtml() {
 function paintShipping() { const h = document.getElementById('evShipping'); if (h) h.innerHTML = shippingHtml(); }
 function shipNote(text, err = false) { const s = shipState(); s.note = text || ''; s.noteErr = !!err; }
 
-async function loadShippingLabels() {
+async function loadShippingLabels(more = false) {
   const c = activeShippo();
   if (!c) return;
   const s = shipState();
-  try { const d = await D.apiFetch(url(`${ENV_URL}/shipping/labels`, { connectionId: c.id })); s.labels = d.labels || []; }
-  catch { s.labels = []; }
-  paintShipping();
+  if (s.labelsBusy || (more && !s.nextLabelPage)) return;
+  s.labelsBusy = true; if (more) { readShipForm(); paintShipping(); }
+  try {
+    const d = await D.apiFetch(url(`${ENV_URL}/shipping/labels`, { connectionId: c.id, ...(more ? { page: s.nextLabelPage } : {}) }));
+    s.labels = more ? [...new Map([...(s.labels || []), ...(d.labels || [])].map(label => [label.transactionId, label])).values()] : d.labels || [];
+    s.nextLabelPage = d.nextPage || null;
+  } catch (error) { if (!more) s.labels = []; shipNote(errText(error, 'Could not load labels.'), true); }
+  s.labelsBusy = false; paintShipping();
 }
 async function getShippingRates() {
   const c = activeShippo(); if (!c) return;
@@ -4562,6 +4548,9 @@ export function bindEnvironmentActions(deps) {
     if (a === 'ship-rate-pick') { shipState().picked = btn.dataset.id || ''; paintShipping(); return; }
     if (a === 'ship-buy') return void buyShippingLabel();
     if (a === 'ship-label-open') return void openShippingLabel(btn.dataset.id || '');
+    if (a === 'ship-label-filter') { if (['active', 'history', 'all'].includes(btn.dataset.value)) { const state = readShipForm(); state.labelFilter = btn.dataset.value; paintShipping(); } return; }
+    if (a === 'ship-label-view') { if (['list', 'cards'].includes(btn.dataset.value)) { const state = readShipForm(); state.labelView = btn.dataset.value; rememberLabelView(state.labelView); paintShipping(); } return; }
+    if (a === 'ship-label-more') return void loadShippingLabels(true);
     if (a === 'ship-track') return void trackShippingLabel(btn.dataset.id || '');
     if (a === 'ship-refund') return void refundShippingLabel(btn.dataset.id || '');
     if (a === 'ship-refund-cancel') { clearTimeout(shipArmTimer); ev.shipArm = ''; paintShipping(); return; }

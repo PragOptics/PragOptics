@@ -15,6 +15,7 @@ test('the tracking view exposes status, route, every scan, ETA and checked time 
 test('an older API response remains usable and does not invent locations or carrier scans', () => {
   const data = { status: 'PRE_TRANSIT', detail: 'USPS awaits item', trackingNumber: 'n' };
   assert.equal(trackingEvents(data).length, 1); assert.match(trackingBody(data), /Not supplied by carrier yet/);
+  assert.equal(trackingEvents({ status: '', detail: 'The label exists.', history: [], current: null }).length, 0, 'shipment endpoint fallback must never manufacture a carrier scan');
   assert.equal(trackingWords('DELIVERED'), 'Delivered'); assert.equal(trackingWords('RETURNED'), 'Returned to sender');
 });
 test('carrier-controlled text is escaped in every tracking HTML surface', () => {
