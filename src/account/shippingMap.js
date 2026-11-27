@@ -1,5 +1,6 @@
 // Interactive tracking geography. Only public reference shards are fetched;
 // customer street addresses are never sent to a geocoding service.
+import { trackingEvents, lastReportedLocation, trackingRoutePlan } from './shippingJourney.js';
 const lookups = new Map();
 let leafletReady;
 const clean = value => String(value || '').trim();
@@ -55,9 +56,10 @@ function leaflet() {
 export async function mountTrackingMap(host, data, { isCurrent = () => true, note = () => {} } = {}) {
   let map, resize, disposed = false;
   const alive = () => !disposed && isCurrent() && host.isConnected;
+  const events = trackingEvents(data), last = lastReportedLocation(data, events);
   const candidates = [
     ...(data.origin ? [{ kind: 'origin', label: 'From', location: data.origin }] : []),
-    ...(data.history || []).map((event, index) => ({ kind: 'event', label: event.detail || event.status || 'Tracking event', location: event.location, eventIndex: index })),
+    ...events.map((event, index) => ({ kind: 'event', label: event.detail || event.status || 'Tracking event', location: event.location, at: event.at, eventIndex: index })),
     ...(data.destination ? [{ kind: 'destination', label: 'To', location: data.destination }] : [])
   ];
   const located = await Promise.all(candidates.map(async item => ({ ...item, resolved: await resolveTrackingLocation(item.location) })));
@@ -77,32 +79,50 @@ export async function mountTrackingMap(host, data, { isCurrent = () => true, not
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap contributors</a>'
   }).addTo(map);
   tiles.on('tileerror', () => { if (alive()) note('Map background unavailable. Reported locations and the timeline remain available.'); });
-  map.fitBounds(points.map(p => p.resolved.point), { padding: [35, 35], maxZoom: 10 });
+  const sidePadding = Math.min(75, Math.max(25, (host.clientWidth - 70) / 2));
+  map.fitBounds(points.map(p => p.resolved.point), { paddingTopLeft: [sidePadding, 75], paddingBottomRight: [sidePadding, 35], maxZoom: 10 });
   const color = getComputedStyle(host).getPropertyValue('--brand-600').trim() || '#7463dd';
-  const origin = points.find(p => p.kind === 'origin'), destination = points.find(p => p.kind === 'destination');
-  if (origin && destination) L.polyline([origin.resolved.point, destination.resolved.point], { color, weight: 2, opacity: .4, dashArray: '5 8' }).addTo(map);
-  const scans = points.filter(p => p.kind === 'event');
-  if (scans.length > 1) L.polyline(scans.map(p => p.resolved.point), { color, weight: 3, opacity: .9 }).addTo(map);
+  const route = trackingRoutePlan(located, data.status);
+  if (route.remaining) L.polyline(route.remaining, { color, weight: 2, opacity: .5, dashArray: '5 8', className: 'shipment-route-remaining' }).addTo(map);
+  for (const segment of route.segments) L.polyline(segment, { color, weight: 3, opacity: .9, className: 'shipment-route-reported' }).addTo(map);
+  const highlighted = route.lastMapped;
+  const highlightLabel = highlighted?.eventIndex === last?.index ? 'Last reported' : 'Last mapped report';
+  if (highlighted) L.circleMarker(highlighted.resolved.point, { radius: 17, color, fillColor: color, fillOpacity: .1, weight: 1, opacity: .5, interactive: false, className: 'shipment-last-halo' }).addTo(map);
   const markers = new Map();
+  let lastMarker;
   for (const item of points) {
-    const marker = L.circleMarker(item.resolved.point, { radius: item.kind === 'event' ? 6 : 9, color, fillColor: color, fillOpacity: item.kind === 'destination' ? .15 : .9, weight: 2 }).addTo(map);
+    const latest = item === highlighted;
+    const marker = L.circleMarker(item.resolved.point, { radius: latest ? 9 : item.kind === 'event' ? 5 : 8, color, fillColor: color, fillOpacity: item.kind === 'destination' ? .15 : 1, weight: latest ? 3 : 2, className: latest ? 'shipment-last-marker' : '' }).addTo(map);
     const popup = document.createElement('div'); popup.className = 'shipment-map-popup';
-    const heading = document.createElement('strong'); heading.textContent = item.label;
+    const heading = document.createElement('strong'); heading.textContent = latest ? `${highlightLabel}: ${item.label}` : item.label;
     const place = document.createElement('p'); place.textContent = trackingLocationWords(item.location);
     const precision = document.createElement('small'); precision.textContent = item.resolved.precision;
-    popup.append(heading, place, precision); marker.bindPopup(popup);
+    popup.append(heading, place);
+    if (item.kind === 'event') { const time = document.createElement('p'); time.textContent = item.at ? new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(item.at)) : 'Report time not supplied'; popup.append(time); }
+    popup.append(precision); marker.bindPopup(popup);
+    if (latest) {
+      const tip = document.createElement('div'); tip.className = 'shipment-last-tip';
+      const title = document.createElement('strong'); title.textContent = highlightLabel;
+      const time = document.createElement('span'); time.textContent = item.at ? new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(item.at)) : 'Report time not supplied';
+      tip.append(title, time); marker.bindTooltip(tip, { permanent: true, direction: 'top', offset: [0, -12], className: 'shipment-last-tooltip' }); lastMarker = marker;
+    }
     const element = marker.getElement();
-    if (element) { element.setAttribute('role', 'button'); element.setAttribute('tabindex', '0'); element.setAttribute('aria-label', `${item.label}: ${place.textContent}`); element.addEventListener('keydown', event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); marker.openPopup(); } }); }
+    if (element) { element.setAttribute('role', 'button'); element.setAttribute('tabindex', '0'); element.setAttribute('aria-label', `${latest ? highlightLabel + ': ' : ''}${item.label}: ${place.textContent}`); element.addEventListener('keydown', event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); marker.openPopup(); } }); }
     if (item.eventIndex != null) markers.set(item.eventIndex, marker);
   }
+  lastMarker?.bringToFront();
   if (typeof ResizeObserver !== 'undefined') { resize = new ResizeObserver(() => { if (alive()) map.invalidateSize(); }); resize.observe(host); }
   const missing = located.filter(item => item.location && !item.resolved).length;
-  note(`Dotted: origin to destination. Solid: reported scan locations. Area estimates; lines are schematic, not the actual travel path.${missing ? ` ${missing} location${missing === 1 ? ' is' : 's are'} not plotted.` : ''}`);
+  note(`Solid: reported stops. Dotted: remaining connection${highlighted ? ' from the last mapped report' : ''}. Area estimates, not roads or live GPS.${last && highlighted?.eventIndex !== last.index ? ' The latest reported location could not be mapped.' : ''}${missing ? ` ${missing} event location${missing === 1 ? ' is' : 's are'} unavailable on the map; history retains every event.` : ''}`);
   return {
     dispose() { disposed = true; resize?.disconnect(); map?.remove(); },
     selectEvent(index) {
       const marker = markers.get(Number(index));
-      if (marker && alive()) { map.panTo(marker.getLatLng()); marker.openPopup(); }
+      if (marker && alive()) {
+        const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+        host.scrollIntoView({ block: 'nearest', behavior: reduced ? 'auto' : 'smooth' });
+        map.panTo(marker.getLatLng(), { animate: !reduced }); marker.openPopup();
+      }
       else note('This event has no mappable location. Its full details are in the timeline.');
     }
   };

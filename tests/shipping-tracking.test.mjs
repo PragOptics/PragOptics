@@ -9,8 +9,22 @@ test('the tracking view exposes status, route, every scan, ETA and checked time 
   const data = { carrier: 'usps', trackingNumber: 'synthetic-tracking', service: 'Ground Advantage', status: 'TRANSIT', detail: 'Arrived at facility', current: history[1], history, origin: { city: 'League City', state: 'TX', zip: '77573', country: 'US' }, destination: { city: 'San Francisco', state: 'CA', zip: '94103', country: 'US' }, eta: '2026-11-30T12:00:00Z', checkedAt: '2026-11-27T12:02:00Z' };
   assert.equal(trackingEvents(data).length, 2, 'the current event is not duplicated');
   const html = trackingBody(data);
-  for (const text of ['In transit', 'Tracking events', 'Expected delivery', 'Checked', 'League City', 'San Francisco', 'Arrived at facility', 'synthetic-tracking']) assert.ok(html.includes(text), text);
+  for (const text of ['In transit', 'Tracking history', 'Expected delivery', 'Checked', 'League City', 'San Francisco', 'Arrived at facility', 'synthetic-tracking', 'Last reported location']) assert.ok(html.includes(text), text);
   assert.ok(html.indexOf('Arrived at facility', html.indexOf('shipment-events')) < html.lastIndexOf('Label created'));
+});
+
+test('compact history groups reports by date and opens only the newest complete detail by default', () => {
+  const history = [
+    {status: 'PRE_TRANSIT', at: '2026-11-24T15:00:00Z', detail: 'Label created'},
+    {status: 'TRANSIT', at: '2026-11-26T15:00:00Z', detail: 'Accepted', location: {city: 'Houston', state: 'TX', country: 'US'}},
+    {status: 'FAILURE', at: '2026-11-26T16:00:00Z', detail: 'Delivery needs attention', substatus: {text: 'Contact carrier', actionRequired: true}}
+  ];
+  const html = trackingBody({status: 'FAILURE', history, current: history[2]});
+  assert.equal((html.match(/<details /g) || []).length, 3);
+  assert.equal((html.match(/" open>/g) || []).length, 1);
+  assert.equal((html.match(/class="shipment-day"/g) || []).length, 2);
+  for (const text of ['Expand all', 'Collapse all', 'Action needed', 'Contact carrier', 'The latest update did not include a location.']) assert.ok(html.includes(text), text);
+  assert.match(html, /shipment-last-time[^]*2026-11-26T15:00:00Z/);
 });
 test('an older API response remains usable and does not invent locations or carrier scans', () => {
   const data = { status: 'PRE_TRANSIT', detail: 'USPS awaits item', trackingNumber: 'n' };
