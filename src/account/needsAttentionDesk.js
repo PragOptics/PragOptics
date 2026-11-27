@@ -60,6 +60,9 @@ const na = { status: 'OPEN', items: [], loading: false, busy: {}, flash: '', seq
 
 // A short name for each kind the backend raises (auth/licenseOrders.js ATTENTION; the title carries the particulars).
 const KIND_LABEL = {
+  'vault.audit': 'Credential-storage event',
+  'vault.health': 'Audit coverage',
+  'vault.monitor': 'Audit monitoring',
   'order.stuck-paid': 'Paid, not ordered',
   'order.delayed': 'Order not active',
   'order.cancelled': 'Order cancelled',
@@ -128,6 +131,7 @@ const ACTION_BUSY = { attach: 'Attaching…', refused: 'Marking refused…', che
 const ASK_FIRST = { refused: 'Mark refused?', done: '', reorder: 'Order again?', refund: 'Refund to card?' };
 // A kind's own words where an action id means something else there: null asks nothing.
 const KIND_ASK = {
+  'vault.audit': { 'notify-environment': 'Send a service notice only to the verified affected environment’s owner?' },
   'conduct.report': { takedown: 'Take it down?', suspend: 'Suspend the account?', close: 'Close for cause?', done: null },
   'tenant.admin-ask': { done: 'Made it?', refused: 'Cannot make it?' },
   'close.owed': { charge: 'Charge the card again?', paid: 'Record it paid?' },
@@ -359,6 +363,18 @@ function owedBoxHtml(it, out) {
     </div>`;
 }
 
+function vaultNoticeBoxHtml(it, out) {
+  const id = idOf(it), f = formOf(id), choices = Array.isArray(it.data?.affectedEnvironments) ? it.data.affectedEnvironments : [];
+  return `<div class="na-form">
+    <label class="na-input"><span class="na-k">Verified affected environment</span>
+      <select class="adm-input" ${fieldAttrs(id, 'target', out)}><option value="">Choose the environment</option>${choices.map(c => `<option value="${e(c.id)}" ${f.target === c.id ? 'selected' : ''}>${e(c.name)} · ${e(c.id)}</option>`).join('')}</select>
+    </label>
+    <label class="na-input"><span class="na-k">Confirmed impact for its owner</span>
+      <input class="adm-input" type="text" maxlength="500" value="${e(f.note || '')}" placeholder="What this environment is affected by, in plain language" ${fieldAttrs(id, 'note', out)}>
+      <span class="adm-muted na-input-hint">Only the selected environment’s current owner receives this notice. Internal tests never notify customers.</span>
+    </label>
+  </div>`;
+}
 function actionsHtml(it) {
   const id = idOf(it);
   const out = na.busy[id] || '';
@@ -367,7 +383,8 @@ function actionsHtml(it) {
   const box = acts.some(a => a.id === 'attach') ? attachBoxHtml(it, out)
     : it.kind === 'conduct.report' ? conductBoxHtml(it, out)
       : it.kind === 'tenant.admin-ask' ? adminAskBoxHtml(it, out)
-        : it.kind === 'close.owed' ? owedBoxHtml(it, out) : '';
+        : it.kind === 'close.owed' ? owedBoxHtml(it, out)
+          : it.kind === 'vault.audit' && acts.some(a => a.id === 'notify-environment') ? vaultNoticeBoxHtml(it, out) : '';
   return `${box}<div class="na-actions">${acts.map((a, i) => {
     const label = String(a.label || a.id);
     const at = `data-id="${e(id)}" data-act="${e(a.id)}"`;
@@ -383,6 +400,7 @@ function inputFor(it, actionId) {
   if (actionId === 'attach') { const typed = String(na.typed[id] || '').trim(); return typed ? { subscriptionId: typed } : null; }
   const f = na.form[id] || {};
   const pick = (keys) => { const o = {}; for (const k of keys) { const v = String(f[k] ?? '').trim(); if (v) o[k] = v; } return o; };
+  if (it.kind === 'vault.audit' && actionId === 'notify-environment') return pick(['target', 'note']);
   if (it.kind === 'conduct.report') {
     const t = it.data?.target || {};
     const o = pick(['target', 'note']);

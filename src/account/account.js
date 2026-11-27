@@ -3566,7 +3566,7 @@ async function renderUsers(main) {
 let ntState = null;                    // { events, members, audiences, staffRoles, smsConfigured, routes, updatedAt }
 let ntNotice = { roles: [], userIds: [] };
 
-const NT_AUDIENCE_LABEL = { admin: 'Admin', developer: 'Developer', member: 'Member', viewer: 'Viewer' };
+const NT_AUDIENCE_LABEL = { admin: 'Admin', developer: 'Developer', 'platform-owner': 'Platform owner', member: 'Member', viewer: 'Viewer' };
 // Legacy audience names an older server may still report; the router folds
 // them into Admin, so they are never offered as a second checkbox.
 const NT_HIDDEN = new Set(['operators', 'owner']);
@@ -3602,6 +3602,12 @@ function ntAudienceChecks(attrName, key, selected, list = ntAudiences()) {
 
 function ntRowHtml(ev) {
   const r = ntState.routes[ev.key] || { roles: ['admin'], userIds: [], email: true, sms: false };
+  if (ev.ownerOnly) return `<tr data-nt-row="${escapeHtml(ev.key)}">
+    <td><strong>${escapeHtml(ev.label)}</strong><div class="adm-muted nt-detail">${escapeHtml(ev.detail)}</div></td>
+    <td><strong>Platform owner</strong><div class="adm-muted">Verified owner flag and current primary email. Fixed security routing.</div></td>
+    <td>Email · required</td>
+    <td class="cell-tight">${isOwner() ? `<button class="btn btn-sm btn-ico" type="button" data-nt-test="${escapeHtml(ev.key)}" aria-label="Send a labelled internal owner-routing test">${ico('send')}</button>` : 'Owner-managed'}</td>
+  </tr>`;
   const smsTitle = ntState.smsConfigured ? 'Also text the recipients whose mobile number is verified' : 'Text messages are not switched on for this platform';
   return `
     <tr data-nt-row="${escapeHtml(ev.key)}">
