@@ -121,9 +121,18 @@
 .shipment-facts dt { color: var(--muted); font-size: .72rem; margin-bottom: 5px; }
 .shipment-facts dd { margin: 0; font-size: .82rem; color: var(--ink); overflow-wrap: anywhere; }
 .shipment-map { height: 310px; min-width: 0; overflow: hidden; border: 1px solid var(--border); border-radius: 10px; background: var(--surface-3); z-index: 0; }
+/* Theme only the raster backdrop. Reports, route geometry and attribution keep
+   their own colors; switching themes reuses the loaded map without new tiles. */
+.shipment-map .leaflet-tile-pane { filter: none; }
+html:not([data-theme="light"]) .shipment-map .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(.9) contrast(.9) saturate(.75); }
+.shipment-map .leaflet-overlay-pane path { stroke: var(--brand-600); }
+.shipment-map .leaflet-overlay-pane path[fill]:not([fill="none"]) { fill: var(--brand-600); }
 .shipment-map > span, .shipment-map-empty { display: grid; place-items: center; padding: 24px; box-sizing: border-box; text-align: center; color: var(--muted); font-size: .86rem; }
 .shipment-map-note { margin: 7px 0 20px; font-size: .72rem; color: var(--muted); }
-.shipment-map .leaflet-control-attribution, .shipment-map .leaflet-bar a, .shipment-map .leaflet-popup-content-wrapper, .shipment-map .leaflet-popup-tip { background: var(--surface-2); color: var(--ink); }
+.shipment-map .leaflet-control-attribution, .shipment-map .leaflet-bar a, .shipment-map .leaflet-popup-content-wrapper, .shipment-map .leaflet-popup-tip { background: var(--bg-deep); color: var(--ink); }
+.shipment-map .leaflet-bar a:hover { background: color-mix(in srgb, var(--brand-600) 12%, var(--bg-deep)); }
+.shipment-map .leaflet-bar a.leaflet-disabled { background: var(--bg-deep); color: var(--muted); opacity: .55; }
+.shipment-map .leaflet-popup-close-button { color: var(--muted); }
 .shipment-map .leaflet-control-attribution a { color: var(--brand-600); }
 .shipment-map-popup { overflow-wrap: anywhere; }
 .shipment-map-popup strong { display: block; max-width: 240px; }
@@ -163,7 +172,11 @@
 .shipment-last-place { border: 0; background: transparent; color: var(--ink); font: inherit; font-size: .86rem; font-weight: 700; padding: 0; text-align: left; cursor: pointer; overflow-wrap: anywhere; }
 .shipment-last-report strong { font-size: .85rem; }
 .shipment-last-time, .shipment-last-report small { font-size: .74rem; color: var(--muted); }
-.shipment-map .shipment-last-tooltip { background: var(--surface-2); color: var(--ink); border: 1px solid var(--border); box-shadow: var(--aura); padding: 7px 10px; }
+.shipment-map .shipment-last-tooltip { background: var(--bg-deep); color: var(--ink); border: 1px solid var(--border); box-shadow: var(--aura); padding: 7px 10px; }
+.shipment-map .leaflet-tooltip-top::before { border-top-color: var(--bg-deep); }
+.shipment-map .leaflet-tooltip-bottom::before { border-bottom-color: var(--bg-deep); }
+.shipment-map .leaflet-tooltip-left::before { border-left-color: var(--bg-deep); }
+.shipment-map .leaflet-tooltip-right::before { border-right-color: var(--bg-deep); }
 .shipment-last-tip { display: grid; gap: 2px; font-size: .68rem; }
 .shipment-last-tip strong { color: var(--brand-600); font-size: .73rem; }
 .shipment-event-location { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; min-width: 0; border: 0; padding: 3px 0; background: transparent; color: var(--brand-600); font: inherit; font-size: .78rem; text-align: left; cursor: pointer; }
