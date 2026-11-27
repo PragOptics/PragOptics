@@ -20,7 +20,7 @@ function fixture(destination){
   laneChoice:()=> 'live',D:null,ev:{lane:'live',teamId:'fixture-team'},freshReg:()=>({}),newSupplierSearch:()=>({}),
   resetMail:noop,setMailContext:noop,mailContext:()=>({}),resetVariables:noop,setVariablesContext:noop,
   resetImport:noop,setImportContext:noop,resetDocuments:noop,setDocumentsContext:noop,documentProfiles:()=>[],
-  url:noop,body:noop,myRole:role,initCards:noop,setOpen:(key,value)=>opens.push({key,value}),
+  url:noop,body:noop,myRole:role,initCards:noop,closeShipmentTracking:noop,setOpen:(key,value)=>opens.push({key,value}),
   explainLink:()=>"",checkShopifySupplierMode:noop,load:async()=>{},canManageConnections:()=>true,
   confirmTestSupplierOrder:button=>reviews.push(button.dataset.id)};
  vm.createContext(context);

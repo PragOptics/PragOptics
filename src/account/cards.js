@@ -1,8 +1,8 @@
 import {closePrivateModal,registerPrivateModal} from './sessionPrivacy.js';
 // src/account/cards.js
 //
-// The account panel's card language (2026-09-17): every card is open and
-// readable without a click; its head line carries an icon, the title, the
+// The account panel's shared sections: list view starts with compact closed
+// rows; optional cards retain their existing open preferences. The head carries an icon, the title, the
 // (i) that explains it, a summary, and a chevron that folds it away for a
 // person who wants a shorter page. Every action is an icon with a styled
 // tooltip (css/components/tooltip.css) and a label for screen readers; words
@@ -15,8 +15,7 @@ import {closePrivateModal,registerPrivateModal} from './sessionPrivacy.js';
 
 import { esc } from '../ui/words.js';
 import { writeClipboard, selectText } from '../ui/clipboard.js';
-
-const OPEN_KEY = 'pragoptics_acct_open';
+import { cardView, cardStateKey, cardDefaultOpen, initCardLayout } from './cardLayout.js';
 
 export const ICONS = {
   refresh: '<polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>',
@@ -389,9 +388,9 @@ function bindArming() {
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && armedBtn) disarm(); });
 }
 
-function state() { try { return JSON.parse(sessionStorage.getItem(OPEN_KEY) || '{}') || {}; } catch { return {}; } }
-export function isOpen(key, fallback = true) { const s = state(); return key in s ? !!s[key] : !!fallback; }
-export function setOpen(key, on) { const s = state(); s[key] = !!on; try { sessionStorage.setItem(OPEN_KEY, JSON.stringify(s)); } catch { /* fine */ } }
+function state() { try { return JSON.parse(sessionStorage.getItem(cardStateKey()) || '{}') || {}; } catch { return {}; } }
+export function isOpen(key, fallback = true) { const s = state(); return key in s ? !!s[key] : cardDefaultOpen(fallback); }
+export function setOpen(key, on) { const s = state(); s[key] = !!on; try { sessionStorage.setItem(cardStateKey(), JSON.stringify(s)); } catch { /* fine */ } }
 function apply(sec, open) {
   sec.classList.toggle('is-open', open);
   const body = sec.querySelector(':scope > .ev-card-body'); if (body) body.hidden = !open;
@@ -450,7 +449,7 @@ export function packGrid(grid) {
   const two = window.matchMedia('(min-width: 1100px)');
   const gap = 14;
   const fit = (card) => {
-    if (!two.matches) { card.style.gridRowEnd = ''; return; }
+    if (cardView() === 'list' || !two.matches) { card.style.gridRowEnd = ''; return; }
     const h = Math.ceil(card.getBoundingClientRect().height);
     if (h > 0) card.style.gridRowEnd = `span ${h + gap}`;
   };
@@ -464,6 +463,7 @@ export function packGrid(grid) {
 let bound = false;
 /** One listener for every card's head, on the document, once. A click on the head folds or opens; a click on anything interactive inside it (the (i), a button) is that thing's own. */
 export function initCards() {
+  initCardLayout({ apply, isOpen });
   if (bound) return;
   bound = true;
   document.addEventListener('click', (e) => {

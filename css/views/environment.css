@@ -70,6 +70,73 @@
 .ev-ship-rate-amt { color: var(--muted); white-space: nowrap; }
 .ev-ship-h { margin: 18px 0 6px; font-size: .92rem; color: var(--card-title); }
 .ev-ship-test { margin-top: 12px; }
+
+/* The environment's private tracking viewer uses the account's own themes. */
+.acct-modal-host .modal-card.shipment-dialog { width: min(1020px, calc(100vw - 32px)); max-width: none; max-height: calc(100dvh - 32px); display: flex; flex-direction: column; padding: 0; overflow: hidden; }
+.shipment-dialog .modal-head, .shipment-foot { flex: none; }
+.shipment-dialog .shipment-body { overflow-y: auto; min-height: 0; padding: 0 24px 20px; }
+.shipment-request-status { margin: 0; padding: 12px 0; color: var(--muted); font-size: .8rem; }
+.shipment-request-status.is-error { color: var(--danger-text, var(--danger)); }
+.shipment-status { display: flex; align-items: center; gap: 14px; padding: 20px; border: 1px solid var(--border); border-radius: 12px; background: color-mix(in srgb, var(--brand-600) 7%, var(--surface-2)); }
+.shipment-status-icon { display: grid; place-items: center; width: 48px; height: 48px; flex: none; border-radius: 12px; color: var(--brand-600); background: color-mix(in srgb, var(--brand-600) 12%, transparent); }
+.shipment-status-icon .ev-ico { width: 25px; height: 25px; }
+.shipment-eyebrow { display: block; color: var(--muted); font-size: .68rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.shipment-status h4 { font-size: 1.65rem; line-height: 1.2; color: var(--ink); margin: 4px 0 6px; }
+.shipment-status p { font-size: .85rem; color: var(--muted); margin: 0; }
+.shipment-status-tag { margin-left: auto; flex: none; font-size: .72rem; font-weight: 700; padding: 6px 10px; border: 1px solid var(--border); border-radius: 6px; color: var(--brand-600); }
+.shipment-status.has-issue { border-color: var(--danger); }
+.shipment-progress { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); padding: 0; margin: 22px 0; list-style: none; gap: 10px; }
+.shipment-progress li { position: relative; display: flex; flex-direction: column; gap: 8px; font-size: .72rem; color: var(--muted); }
+.shipment-progress li > span { z-index: 1; display: grid; place-items: center; width: 26px; height: 26px; border: 1px solid var(--border); background: var(--surface-2); border-radius: 50%; font-size: .7rem; }
+.shipment-progress li:not(:last-child)::after { content: ''; position: absolute; top: 13px; left: 26px; width: calc(100% - 16px); height: 1px; background: var(--border); }
+.shipment-progress .is-current { color: var(--ink); font-weight: 700; }
+.shipment-progress .is-current > span, .shipment-progress .is-complete > span { background: var(--brand-600); border-color: var(--brand-600); color: var(--on-brand, #fff); }
+.shipment-progress .is-complete::after { background: var(--brand-600) !important; }
+.shipment-route { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 18px; padding: 16px 0; border-block: 1px solid var(--border); }
+.shipment-route strong { display: block; font-size: .9rem; font-weight: 600; margin-top: 5px; overflow-wrap: anywhere; }
+.shipment-route > span { color: var(--brand-600); font-size: 1.3rem; }
+.shipment-facts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin: 18px 0; }
+.shipment-facts dt { color: var(--muted); font-size: .72rem; margin-bottom: 5px; }
+.shipment-facts dd { margin: 0; font-size: .82rem; color: var(--ink); overflow-wrap: anywhere; }
+.shipment-map { height: 310px; min-width: 0; overflow: hidden; border: 1px solid var(--border); border-radius: 10px; background: var(--surface-3); z-index: 0; }
+.shipment-map > span, .shipment-map-empty { display: grid; place-items: center; padding: 24px; box-sizing: border-box; text-align: center; color: var(--muted); font-size: .86rem; }
+.shipment-map-note { margin: 7px 0 20px; font-size: .72rem; color: var(--muted); }
+.shipment-map .leaflet-control-attribution, .shipment-map .leaflet-bar a, .shipment-map .leaflet-popup-content-wrapper, .shipment-map .leaflet-popup-tip { background: var(--surface-2); color: var(--ink); }
+.shipment-map .leaflet-control-attribution a { color: var(--brand-600); }
+.shipment-map-popup strong { display: block; max-width: 240px; }
+.shipment-map-popup p { margin: 6px 0; }
+.shipment-map-popup small { color: var(--muted); }
+.shipment-events-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.shipment-events-head h4 { margin: 0; font-size: 1rem; }
+.shipment-events-head > span { color: var(--muted); font-size: .76rem; }
+.shipment-events { list-style: none; padding: 0; margin: 16px 0 0; }
+.shipment-events li { display: grid; grid-template-columns: 12px minmax(0, 1fr); gap: 15px; padding: 0 0 24px; position: relative; }
+.shipment-events li:not(:last-child)::before { content: ''; position: absolute; left: 5px; top: 10px; bottom: 0; width: 1px; background: var(--border); }
+.shipment-event-dot { position: relative; margin-top: 4px; width: 10px; height: 10px; border-radius: 50%; background: var(--brand-600); }
+.shipment-event-top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px 16px; flex-wrap: wrap; }
+.shipment-event-top strong { font-size: .88rem; }
+.shipment-event-top time { font-size: .74rem; color: var(--muted); }
+.shipment-events p { font-size: .84rem; margin: 7px 0; line-height: 1.5; color: var(--muted); }
+.shipment-event-location { display: inline-flex; align-items: center; gap: 6px; border: 0; padding: 3px 0; background: transparent; color: var(--brand-600); font: inherit; font-size: .78rem; text-align: left; cursor: pointer; }
+.shipment-event-location .ev-ico { width: 13px; height: 13px; }
+.shipment-event-sub.needs-action { color: var(--danger-text, var(--danger)); font-weight: 600; }
+.shipment-foot { display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid var(--border); padding: 14px 24px; }
+.shipment-foot .btn { display: inline-flex; align-items: center; gap: 7px; }
+@media (max-width: 650px) {
+  .acct-modal-host .modal-card.shipment-dialog { width: calc(100vw - 20px); max-height: calc(100dvh - 20px); }
+  .shipment-dialog .shipment-body { padding: 0 14px 14px; }
+  .shipment-status { padding: 14px; gap: 10px; }
+  .shipment-status-icon { width: 34px; height: 34px; }
+  .shipment-status h4 { font-size: 1.25rem; }
+  .shipment-status-tag { display: none; }
+  .shipment-progress { gap: 4px; }
+  .shipment-progress li { font-size: .61rem; }
+  .shipment-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .shipment-route { gap: 12px; }
+  .shipment-route strong { font-size: .8rem; }
+  .shipment-map { height: 250px; }
+  .shipment-foot { padding: 12px 14px; flex-wrap: wrap; }
+}
 .acct-chip input[type="radio"] { position: absolute; opacity: 0; width: 0; height: 0; margin: 0; }
 /* THE BRAND-TINTED NOTE BOX (2026-10-05): one tint for a result, a status line, a flash and the test-lane banner, here, in
    team.css and in admin.css; each keeps its own margin, padding and type. */

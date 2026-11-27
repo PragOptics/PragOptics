@@ -1,0 +1,9 @@
+{
+  "source": "U.S. Census Bureau Gazetteer",
+  "year": "2026",
+  "postalSource": "https://www2.census.gov/geo/docs/maps-data/data/gazetteer/2026_Gazetteer/2026_Gaz_zcta_national.zip",
+  "placeSource": "https://www2.census.gov/geo/docs/maps-data/data/gazetteer/2026_Gazetteer/2026_Gaz_place_national.zip",
+  "postalAreas": 33791,
+  "places": 32363,
+  "precision": "Representative area points; not street, facility, or package GPS positions"
+}

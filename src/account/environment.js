@@ -30,6 +30,8 @@ import { isManagedPrintful, printfulConnectionWords } from './printfulConnection
 import { tierName, tierBadge } from '../components/tierCopy.js';
 import { explainLink } from '../components/explainer.js';
 import { accessToken } from '../runtime/session.js';
+import { sessionVersion } from './sessionPrivacy.js';
+import { openShipmentTracking, closeShipmentTracking, trackingWords } from './shippingTracking.js';
 import { stripeAppearance } from '../api/stripeAppearance.js';
 import { ensureStripeJs } from '../runtime/stripeLoader.js';
 import { ico, iconBtn, leadBtn, btnLabel, cardHtml as sharedCard, isOpen, setOpen, initCards, busy, hold, stateLead, stateIcon, copyButton, openModal } from './cards.js';
@@ -186,6 +188,7 @@ function canUseSandbox() { return BUILD_ROLES.has(myRole()); }
    ================================================================ */
 
 export async function renderEnvironment(main, deps) {
+  closeShipmentTracking();
   let supplierReviewId = "";
   ev.lane = laneChoice();
   D = deps;
@@ -437,6 +440,7 @@ function sandboxSetupHtml(v) {
 }
 
 async function setLane(lane) {
+  closeShipmentTracking();
   if (lane === 'sandbox' && !canUseSandbox()) return;   // only the builders switch to the sandbox lane
   ev.lane = lane === 'sandbox' ? 'sandbox' : 'live';
   try { sessionStorage.setItem(LANE_KEY, ev.lane); } catch { /* fine */ }
@@ -2818,8 +2822,10 @@ function shipFromBilling() {
     phone: String(b.phone || '').trim()
   };
 }
+function shippingScope() { return JSON.stringify([sessionVersion(), ev.teamId || '', ev.lane, activeShippo()?.id || '']); }
 function shipState() {
-  if (!ev.ship) ev.ship = { fromV: shipFromBilling(), toV: {}, parcel: { length: '', width: '', height: '', weight: '' }, rates: null, shipmentId: '', picked: '', labels: null, busy: '', note: '', noteErr: false };
+  const scope = shippingScope();
+  if (!ev.ship || ev.ship.scope !== scope) ev.ship = { scope, fromV: shipFromBilling(), toV: {}, parcel: { length: '', width: '', height: '', weight: '' }, rates: null, shipmentId: '', picked: '', labels: null, tracking: {}, busy: '', note: '', noteErr: false };
   return ev.ship;
 }
 function shipInput(id, label, val, ph, extra = '') {
@@ -2859,11 +2865,12 @@ function shippingHtml() {
   const shipStatusWord = (st) => ({ SUCCESS: 'bought', REFUNDPENDING: 'refund pending', REFUNDED: 'refunded', QUEUED: 'finishing', WAITING: 'finishing' }[String(st || '').toUpperCase()] || String(st || '').toLowerCase() || '—');
   const labelsHtml = s.labels == null ? '<p class="acct-loading">Loading labels…</p>' : !labels.length ? '<p class="acct-empty">No labels bought yet.</p>' : `
     <div class="adm-table-scroll"><table class="adm-table adm-table--wrap ev-table">
-      <thead><tr><th>Tracking</th><th>Status</th><th>When</th><th></th></tr></thead>
+      <thead><tr><th>Tracking number</th><th>Label</th><th>Delivery</th><th>When</th><th></th></tr></thead>
       <tbody>${labels.map(l => `
         <tr>
           <td data-th="Tracking" class="cell-ellip">${l.trackingNumber ? e(l.trackingNumber) : '—'}${l.test ? ' <span class="acct-tag">test</span>' : ''}</td>
-          <td data-th="Status" class="cell-tight"><span class="acct-tag ${l.status === 'SUCCESS' ? 'is-verified' : (l.status === 'REFUNDED' || l.status === 'REFUNDPENDING') ? 'is-quiet' : ''}">${e(shipStatusWord(l.status))}</span></td>
+          <td data-th="Label" class="cell-tight"><span class="acct-tag ${l.status === 'SUCCESS' ? 'is-verified' : (l.status === 'REFUNDED' || l.status === 'REFUNDPENDING') ? 'is-quiet' : ''}">${e(shipStatusWord(l.status))}</span></td>
+          <td data-th="Delivery"><span class="acct-tag">${e((s.tracking[l.transactionId]?.status || l.trackingStatus) ? trackingWords(s.tracking[l.transactionId]?.status || l.trackingStatus) : 'Not checked')}</span></td>
           <td data-th="When" class="cell-tight adm-muted">${l.createdAt ? e(D.fmtDate(l.createdAt)) : ''}</td>
           <td class="cell-tight ev-actions-cell"><span class="act-row">
             ${l.trackingNumber ? iconBtn('ship-track', 'search', 'Check tracking', `data-id="${e(l.transactionId)}"`) : ''}
@@ -3038,10 +3045,19 @@ function printShippingLabelView(host) {
 async function trackShippingLabel(transactionId) {
   const c = activeShippo(); if (!c) return;
   const s = shipState();
-  s.busy = 'track'; shipNote(''); paintShipping();
-  try { const d = await post(`${ENV_URL}/shipping/track`, { connectionId: c.id, transactionId }); const st = String(d.status || '').toLowerCase() || 'no status yet'; shipNote(`Tracking ${d.trackingNumber || ''}: ${st}${d.detail ? ' — ' + d.detail : ''}.`); }
-  catch (ex) { shipNote(errText(ex, 'Could not get the tracking status.'), true); }
-  s.busy = ''; paintShipping();
+  const scope = shippingScope(), lane = ev.lane;
+  openShipmentTracking({
+    isCurrent: () => shippingScope() === scope && !!document.getElementById('evShipping'),
+    onClose: () => document.querySelector(`#evShipping [data-env-action="ship-track"][data-id="${CSS.escape(transactionId)}"]`)?.focus(),
+    read: () => post(`${ENV_URL}/shipping/track`, { connectionId: c.id, transactionId }, lane),
+    errorText: error => errText(error, 'Could not get the tracking status.'),
+    onResult: data => {
+      if (shippingScope() !== scope) return;
+      s.tracking[transactionId] = data;
+      shipNote(`Tracking ${data.trackingNumber || ''}: ${trackingWords(data.status)}${data.detail ? ' — ' + data.detail : ''}.`);
+      paintShipping();
+    }
+  });
 }
 // Refund asks once before it acts, the panel's armed pattern (like removing a connection or a domain): the
 // first press arms the trash into a red "Refund?" for six seconds, the second press within that refunds. It
