@@ -27,6 +27,8 @@
 import { PRAG_API_BASE, STUDIO_URL, LANE } from '../runtime/config.js';
 import { connectionAccessMode, connectionOptions, connectionAccessNote } from './connectionAccess.js';
 import { isManagedPrintful, printfulConnectionWords } from './printfulConnection.js';
+import { shippoConnectionWords, shippoReturnWords } from './shippoConnection.js';
+import { microsoftWriteAccess } from './microsoftWriteAccess.js';
 import { tierName, tierBadge } from '../components/tierCopy.js';
 import { explainLink } from '../components/explainer.js';
 import { accessToken } from '../runtime/session.js';
@@ -189,6 +191,7 @@ function canUseSandbox() { return BUILD_ROLES.has(myRole()); }
    ================================================================ */
 
 export async function renderEnvironment(main, deps) {
+  ev.connectionGeneration = (ev.connectionGeneration || 0) + 1;
   closeShipmentTracking();
   let supplierReviewId = "";
   ev.lane = laneChoice();
@@ -228,11 +231,13 @@ export async function renderEnvironment(main, deps) {
 }
 
 async function fetchView() {
-  ev.teamId = teamId();
+  const selectedTeam = teamId();
+  if (ev.teamId !== selectedTeam) ev.connectionGeneration = (ev.connectionGeneration || 0) + 1;
+  ev.teamId = selectedTeam;
   try { return await D.apiFetch(url(TENANT_URL)); }
   catch (ex) {
     // A remembered team this account can no longer open: forget it, fall back.
-    if (ev.teamId && (ex?.status === 403 || ex?.status === 404)) { ev.teamId = ''; forgetTeam(); return D.apiFetch(url(TENANT_URL)); }
+    if (ev.teamId && (ex?.status === 403 || ex?.status === 404)) { ev.connectionGeneration = (ev.connectionGeneration || 0) + 1; ev.teamId = ''; forgetTeam(); return D.apiFetch(url(TENANT_URL)); }
     throw ex;
   }
 }
@@ -443,6 +448,7 @@ function sandboxSetupHtml(v) {
 async function setLane(lane) {
   closeShipmentTracking();
   if (lane === 'sandbox' && !canUseSandbox()) return;   // only the builders switch to the sandbox lane
+  ev.connectionGeneration = (ev.connectionGeneration || 0) + 1;
   ev.lane = lane === 'sandbox' ? 'sandbox' : 'live';
   try { sessionStorage.setItem(LANE_KEY, ev.lane); } catch { /* fine */ }
   ev.files = null; ev.keys = null; ev.domains = null; ev.connections = null; ev.connAccess = null; ev.archive = null; resetDocuments(); resetImport(); ev.connPick = ''; ev.connResult = ''; ev.madeKey = null; ev.filesNote = '';
@@ -2264,7 +2270,7 @@ function connIdentity(c) {
   if (c.provider === 'twilio') return e(d.friendlyName || f.accountSid || '');
   if (c.provider === 'stripe') return e([d.accountId, d.mode, isManagedStripe(c) ? (d.accountName || d.businessName) : ''].filter(Boolean).join(' · '));
   if (isManagedTwilio(c)) return e([d.friendlyName, d.accountSid, d.type ? `${String(d.type).toLowerCase()} account` : ''].filter(Boolean).join(' · ') || 'not yet authorized');
-  if (isManagedShippo(c)) return e(c.status === 'ACTIVE' ? `${d.carrierAccounts || 0} carrier ${d.carrierAccounts === 1 ? 'account' : 'accounts'}${(d.carriers || []).length ? ' · ' + d.carriers.join(', ') : ''}` : 'not yet authorized');
+  if (isManagedShippo(c)) return e(shippoConnectionWords(c).identity);
   if (isManagedShopify(c)) return e(c.status === 'ACTIVE' ? [d.name, d.domain || d.shop, d.productCount !== undefined ? `${d.productCount} products` : ''].filter(Boolean).join(' · ') : [d.shop, 'waiting for the supplier'].filter(Boolean).join(' · '));
   if (c.provider === 'shippo') return e(d.mode ? `${d.mode} token` : '');
   if (isManagedGoogle(c)) return e([d.email, d.projectId ? `project ${d.projectId}` : (d.email ? 'no paying project picked yet' : 'not yet signed in')].filter(Boolean).join(' · '));
@@ -2294,12 +2300,8 @@ function connStatusTag(c) {
     return `<span class="acct-tag is-pending" data-tip="Send the supplier their link; the row reads connected once they approve.">waiting for the supplier</span>`;
   }
   if (isManagedShippo(c)) {
-    const d = c.detail || {};
-    if (c.status === 'ACTIVE') return '<span class="acct-tag is-verified" title="Shippo bills you directly for labels; the platform acts with an access token Shippo issued for PragOptics.">connected</span>';
-    if (c.status === 'REJECTED') return `<span class="acct-tag is-bad" title="${e(c.lastError || '')}">disconnected</span>`;
-    if (d.declined) return `<span class="acct-tag is-pending" data-tip="${e(c.lastError || '')}">declined</span>`;
-    if (d.failed || (c.lastError && /did not hand/i.test(c.lastError))) return `<span class="acct-tag is-bad" data-tip="${e(c.lastError || '')}">failed</span>`;
-    return `<span class="acct-tag is-pending" data-tip="${e(c.lastError || 'Waiting for you to sign in or sign up at Shippo and approve PragOptics.')}">not authorized</span>`;
+    const words = shippoConnectionWords(c);
+    return `<span class="acct-tag is-${words.kind}" title="${e(words.needs || 'Shippo bills this connected account directly for labels.')}">${e(words.label)}</span>`;
   }
   if (isManagedTwilio(c)) {
     const d = c.detail || {};
@@ -2344,7 +2346,7 @@ function isManagedMicrosoft(c) { return c?.provider === 'microsoft' && c?.detail
 function isManagedGoogle(c) { return c?.provider === 'google' && c?.detail?.managed === 'google-oauth'; }
 // THE GITHUB APP (2026-11-10): a GitHub row the PragOptics app made, installed in one press; the archive and the import read and push with its installation's token
 function isManagedGithub(c) { return c?.provider === 'github' && c?.detail?.managed === 'github-app'; }
-function msWaiting(c) { return c?.status !== 'ACTIVE' && c?.status !== 'REJECTED'; }
+function msWaiting(c) { return (c?.status !== 'ACTIVE' && c?.status !== 'REJECTED') || c?.detail?.writeAccessPending === true; }
 function msAwaiting(c) { return msWaiting(c) && !!c.detail?.awaitingConfirm; }
 function msNeedsApproval(c) { return msWaiting(c) && !msAwaiting(c) && !!c.detail?.needsApproval; }
 function msApproving(c) { return msNeedsApproval(c) && !!c.detail?.platformApproving; }
@@ -2357,7 +2359,7 @@ function isManaged(c) { return isManagedPrintful(c) || isManagedStripe(c) || isM
 /** The Microsoft row's tag: connected, waiting for you at Microsoft, needs your Microsoft administrator, PragOptics is approving, disconnected. */
 function msStatusTag(c) {
   const e = D.escapeHtml, d = c.detail || {};
-  if (c.status === 'ACTIVE') return `<span class="acct-tag is-verified" data-tip="${e(`PragOptics reads SharePoint for the software with the access of ${d.accountName || d.account || 'the account that signed in'}.`)}">connected</span>`;
+  if (c.status === 'ACTIVE') return `<span class="acct-tag is-verified" data-tip="${e(microsoftWriteAccess(c).words || `PragOptics uses the SharePoint access of ${d.accountName || d.account || 'the account that signed in'}.`)}">${d.writeAccessPending ? 'connected · publishing approval pending' : 'connected'}</span>`;
   if (c.status === 'REJECTED') return `<span class="acct-tag is-bad" data-tip="${e(c.lastError || 'PragOptics can no longer read with this sign-in.')}">disconnected</span>`;
   if (msAwaiting(c)) return '<span class="acct-tag is-pending" data-tip="Signed in at Microsoft. The PragOptics page where Connect was pressed finishes it.">waiting to be finished</span>';
   if (msApproving(c)) return '<span class="acct-tag is-pending" data-tip="PragOptics holds your organization\'s administrator account and approves it for you.">PragOptics is approving</span>';
@@ -2366,6 +2368,7 @@ function msStatusTag(c) {
 }
 /** The line under a Microsoft row that is not connected: where it stands and what to press, in plain words. */
 function msStateWords(c) {
+  if (c.status === 'ACTIVE') return [microsoftWriteAccess(c).words, c.lastError || ''].filter(Boolean).join(' ');
   if (c.status === 'REJECTED') return c.lastError || 'PragOptics can no longer read with this sign-in. Press Connect again.';
   if (msAwaiting(c)) return c.lastError || MS_AWAITING_WORDS;
   if (msApproving(c)) return 'PragOptics set up your Microsoft organization and holds its administrator account, so PragOptics approves it for you. The owner gets an email when it is done; then press Connect.';
@@ -2454,8 +2457,8 @@ function stripeNeedsHtml(c) {
   if (isManagedPrintful(c)) { const words = printfulConnectionWords(c); return words.needs ? `<div class="ev-conn-needs">${e(words.needs)}</div>` : ''; }
   if (isManagedStripe(c) && c.detail?.disconnected) return `<div class="ev-conn-needs">${e(c.lastError || 'PragOptics was disconnected from this Stripe account.')}</div>`;
   if (isManagedTwilio(c)) return c.status === 'ACTIVE' ? '' : `<div class="ev-conn-needs">${e(c.lastError || 'Waiting for you to authorize PragOptics at Twilio.')}</div>`;
-  if (isManagedShippo(c)) return c.status === 'ACTIVE' ? '' : `<div class="ev-conn-needs">${e(c.lastError || 'Waiting for you to sign in or sign up at Shippo and approve PragOptics.')}</div>`;
-  if (isManagedMicrosoft(c)) return c.status === 'ACTIVE' ? '' : `<div class="ev-conn-needs">${e(msStateWords(c))}</div>`;
+  if (isManagedShippo(c)) { const words = shippoConnectionWords(c); return words.needs ? `<div class="ev-conn-needs">${e(words.needs)}</div>` : ''; }
+  if (isManagedMicrosoft(c)) return `<div class="ev-conn-needs">${e(msStateWords(c))}${ev.msWriteConsent === c.id ? '<p>Publishing lets PragOptics create SharePoint lists and add the data you export from Studio. Microsoft grants broader site-content permissions for this; your organization may require administrator approval. Continue using the same Microsoft account. Your existing read connection is kept if you cancel.</p>' : ''}</div>`;
   if (c.provider === 'microsoft') return `<div class="ev-conn-needs">${e(pastedMicrosoftWords())}</div>`;
   if (!isManagedStripe(c) || c.status === 'REJECTED') return '';
   const d = c.detail || {}, s = stripeState(d);
@@ -2536,8 +2539,11 @@ function connectionsHtml() {
                   <span class="act-row"><button class="btn btn-sm btn-ico is-armed" type="button" data-env-action="conn-remove" data-id="${e(c.id)}" data-label="${e(c.label)}" aria-label="Remove? The credential is deleted and anything using it stops. Press again to confirm." data-tip="The credential is deleted from the vault and anything using it stops on its next call">${ico('trash')}<span>Remove?</span></button>${iconBtn('conn-remove-cancel', 'x', 'Keep it', '', 'btn-arm-cancel')}</span>` : `<span class="act-row">
                   ${isManagedStripe(c) && (() => { const s = stripeState(c.detail); return s.kind === 'action' || s.kind === 'incomplete' || (s.kind === 'payments' && s.needs.length > 0); })() ? doorBtn('conn-stripe-continue', 'external', 'Continue setup', 'Opening with Stripe…', "Stripe's own pages for what it still needs", '', 'btn-primary') : ''}
                   ${isManagedTwilio(c) && c.status !== 'ACTIVE' ? doorBtn('conn-twilio-start', 'external', c.detail?.disconnected || c.detail?.declined ? 'Connect again' : 'Authorize at Twilio', 'Opening with Twilio…', "Twilio's authorization page for PragOptics, on your own Twilio account", '', 'btn-primary') : ''}
-                  ${isManagedShippo(c) && c.status !== 'ACTIVE' ? doorBtn('conn-shippo-start', 'external', c.detail?.disconnected || c.detail?.declined ? 'Connect again' : 'Authorize at Shippo', 'Opening with Shippo…', "Shippo's authorization page for PragOptics; sign in or create your Shippo account there", '', 'btn-primary') : ''}
+                  ${isManagedShippo(c) && shippoConnectionWords(c).canAuthorize ? doorBtn('conn-shippo-start', 'external', c.detail?.disconnected || c.detail?.declined ? 'Connect again' : 'Authorize at Shippo', 'Opening with Shippo…', "Shippo's authorization page for PragOptics; use the Shippo account you want this environment to connect", '', 'btn-primary') : ''}
                   ${isManagedPrintful(c) && c.status !== 'ACTIVE' ? doorBtn('conn-printful-start', 'external', 'Authorize at Printful', 'Opening Printful…', 'Approve your Printful store for this environment', '', 'btn-primary') : ''}
+                  ${isManagedMicrosoft(c) && microsoftWriteAccess(c).canUpgrade ? (ev.msWriteConsent === c.id ? doorBtn('conn-microsoft-write-continue', 'external', 'Continue at Microsoft', 'Opening Microsoft…', 'Approve creating SharePoint lists and adding exported data using this Microsoft account', `data-id="${e(c.id)}"`, 'btn-primary') + iconBtn('conn-microsoft-write-cancel', 'x', 'Keep read-only access', `data-id="${e(c.id)}"`) : iconBtn('conn-microsoft-write', 'external', 'Enable SharePoint publishing', `data-id="${e(c.id)}"`)) : ''}
+                  ${isManagedMicrosoft(c) && microsoftWriteAccess(c).pending ? iconBtn('conn-microsoft-write-stop', 'x', 'Cancel publishing approval', `data-id="${e(c.id)}"`) : ''}
+                  ${isManagedMicrosoft(c) && microsoftWriteAccess(c).needsApproval ? doorBtn('conn-microsoft-write-approve', 'external', 'Approve publishing for my organization', 'Opening Microsoft…', 'A Microsoft organization administrator must approve the publishing permissions', `data-id="${e(c.id)}"`, 'btn-primary') : ''}
                   ${isManagedGoogle(c) && c.status !== 'ACTIVE' ? (c.detail?.email && !c.detail?.disconnected && !c.detail?.failed && !c.detail?.declined ? stateLead('conn-google-pick', 'check', 'Pick the project that pays', { out: ev.connPicking === c.id, busyWord: 'Reading your projects…' }, `data-id="${e(c.id)}"`, 'btn-primary') : doorBtn('conn-google-start', 'external', c.detail?.email ? 'Sign in again' : 'Sign in at Google', 'Opening with Google…', 'Sign in with Google and approve PragOptics', '')) : ''}
                   ${isManagedGithub(c) && c.status !== 'ACTIVE' ? doorBtn('conn-github-app-start', 'external', c.detail?.installationId || c.detail?.uninstalled ? 'Install again' : 'Install on GitHub', 'Opening GitHub…', "GitHub's install page for the PragOptics app", '') : ''}
                   ${isManagedMicrosoft(c) && c.status !== 'ACTIVE' && !msApproving(c) ? (msNeedsApproval(c)
@@ -2605,7 +2611,7 @@ function connectionsHtml() {
         <p class="acct-card-note ev-dom-door">Approve your store at Printful, then return here. Printful bills your account for confirmed fulfillment; connecting does not place an order.</p>`;
     else if (pick === 'm:shippo') door = `
         <div class="ev-key-row">${stateLead('conn-shippo-start', 'external', 'Connect your Shippo account', { out: ev.connBusy && !ev.connRow, busyWord: 'Opening with Shippo…', waiting: pickWait }, '', 'btn-primary')}</div>
-        <p class="acct-card-note ev-dom-door">Sign in or create your Shippo account there and approve PragOptics; Shippo bills you directly for labels.</p>`;
+        <p class="acct-card-note ev-dom-door">Connect the Shippo account you want this environment to use. An existing Shippo browser session may continue without another sign-in. Your PragOptics email does not select the Shippo account. To create a separate Shippo account, first sign out at Shippo yourself, then return here to connect it. Shippo bills the connected account directly for labels.</p>`;
     else if (pick === 'm:microsoft') door = `
         <div class="ev-key-row">${stateLead('conn-microsoft-start', 'external', 'Connect Microsoft 365', { out: ev.connBusy && !ev.connRow, busyWord: 'Opening with Microsoft…', waiting: pickWait }, '', 'btn-primary')}</div>
         <p class="acct-card-note ev-dom-door">Sign in at Microsoft with a work or school account in your organization and approve PragOptics. It asks Microsoft only to read: your profile and the SharePoint sites that account can open, so the software can import their lists and Excel workbooks. Your organization's Microsoft administrator may have to approve it first.</p>`;
@@ -2823,7 +2829,7 @@ function shipFromBilling() {
     phone: String(b.phone || '').trim()
   };
 }
-function shippingScope() { return JSON.stringify([sessionVersion(), ev.teamId || '', ev.lane, activeShippo()?.id || '']); }
+function shippingScope() { const connection = activeShippo(); return JSON.stringify([sessionVersion(), ev.teamId || '', ev.lane, connection?.id || '', connection?.detail?.authorizedAt || '']); }
 function shipState() {
   const scope = shippingScope();
   if (!ev.ship || ev.ship.scope !== scope) ev.ship = { scope, fromV: shipFromBilling(), toV: {}, parcel: { length: '', width: '', height: '', weight: '' }, rates: null, shipmentId: '', picked: '', labels: null, labelFilter: 'active', labelView: labelView(), nextLabelPage: null, labelsBusy: false, tracking: {}, busy: '', note: '', noteErr: false };
@@ -2848,7 +2854,7 @@ function shippingHtml() {
   const s = shipState();
   const manage = canManageConnections();
   const d = c.detail || {};
-  const summary = `${d.carrierAccounts || 0} carrier ${d.carrierAccounts === 1 ? 'account' : 'accounts'} on your Shippo`;
+  const summary = [d.identityVerified === true ? (d.shippoAccountEmail || d.shippoAccountId || 'Shippo account identity unavailable') : 'Shippo account identity not verified', `${d.carrierAccounts || 0} carrier ${d.carrierAccounts === 1 ? 'account' : 'accounts'}`].join(' · ');
   const f = s.fromV || {}, t = s.toV || {}, p = s.parcel || {};
   const rates = s.rates;
   const ratesHtml = rates == null ? '' : !rates.length ? `<p class="acct-card-note">No rates came back for that shipment.</p>` : `
@@ -3590,27 +3596,37 @@ async function refreshPrintfulConnect(id, quiet = false) {
 }
 async function startShippoConnect() {
   if (ev.connBusy) return;
+  const generation = ev.connectionGeneration = (ev.connectionGeneration || 0) + 1;
+  const scope = JSON.stringify([sessionVersion(), ev.teamId || '', ev.lane]);
+  const current = () => generation === (ev.connectionGeneration || 0) && scope === JSON.stringify([sessionVersion(), ev.teamId || '', ev.lane]);
   D.showError('evConnError', '');
   ev.connBusy = true; ev.connResult = ''; paintConnections();
   try {
     const d = await post(`${ENV_URL}/connections/shippo/start`, {});
+    if (!current()) return;
     if (!d?.url) throw new Error('Shippo did not answer with an authorization link.');
     try { sessionStorage.setItem('pragoptics_connect_return', JSON.stringify({ provider: 'shippo', id: String(d.connection?.id || '') })); } catch { /* the return still carries the id */ }
     window.location.assign(d.url);
     return;
   } catch (ex) {
+    if (!current()) return;
     ev.connBusy = false; paintConnections();
     D.showError('evConnError', errText(ex, 'Could not start the Shippo authorization right now.'));
   }
 }
 async function refreshShippoConnect(id, quiet = false) {
   if (!id || ev.connTesting) return;
+  const generation = ev.connectionGeneration || 0;
+  const scope = JSON.stringify([sessionVersion(), ev.teamId || '', ev.lane]);
+  const current = () => generation === (ev.connectionGeneration || 0) && scope === JSON.stringify([sessionVersion(), ev.teamId || '', ev.lane]);
   if (!quiet) D.showError('evConnError', '');
   ev.connTesting = id; paintConnections();
   try {
     const d = await post(`${ENV_URL}/connections/shippo/refresh`, { id });
-    rowNote(id, d.connection?.message || 'Shippo answered for the account.');
-  } catch (ex) { if (!quiet) rowNote(id, errText(ex, 'Could not check that Shippo account.'), true); }
+    if (!current()) return;
+    rowNote(id, d.connection?.lastError || d.connection?.message || 'Shippo answered for the account.', !!d.connection?.lastError);
+  } catch (ex) { if (!current()) return; if (!quiet) rowNote(id, errText(ex, 'Could not check that Shippo account.'), true); }
+  if (!current()) return;
   ev.connTesting = '';
   await loadConnections();
 }
@@ -4105,17 +4121,22 @@ async function refreshGoogleConnect(id, quiet = false) {
   ev.connTesting = '';
   await loadConnections();
 }
-async function startMicrosoftConnect(mode = 'connect') {
+async function startMicrosoftConnect(mode = 'connect', { writeAccess = false } = {}) {
   if (ev.connBusy || ev.connConfirming) return;
+  const generation = ev.connectionGeneration = (ev.connectionGeneration || 0) + 1;
+  const scope = JSON.stringify([sessionVersion(), ev.teamId || '', ev.lane]);
+  const current = () => generation === (ev.connectionGeneration || 0) && scope === JSON.stringify([sessionVersion(), ev.teamId || '', ev.lane]);
   D.showError('evConnError', '');
   ev.connBusy = true; ev.connResult = ''; paintConnections();
   try {
-    const d = await post(`${ENV_URL}/connections/microsoft/start`, { mode: mode === 'approve' ? 'approve' : 'connect' });
+    const d = await post(`${ENV_URL}/connections/microsoft/start`, { mode: mode === 'approve' ? 'approve' : 'connect', ...(writeAccess ? { writeAccess: true } : {}) });
+    if (!current()) return;
     if (!d?.url) throw new Error('The platform did not answer with a Microsoft page to open.');
     try { sessionStorage.setItem('pragoptics_connect_return', JSON.stringify({ provider: 'microsoft', id: String(d.connection?.id || '') })); } catch { /* the return still carries the id */ }
     window.location.assign(d.url);
     return;
   } catch (ex) {
+    if (!current()) return;
     ev.connBusy = false;
     const code = String(ex?.data?.code || '');
     // connected meanwhile (another tab, another admin): the row says so
@@ -4289,7 +4310,7 @@ const PROVIDER_RETURN = {
     refresh: (id) => refreshShopifyConnect(id, true)
   },
   shippo: {
-    words: (o) => (o === 'declined' ? 'You declined the authorization at Shippo. Nothing was connected.' : o === 'failed' ? 'Shippo did not hand the platform a working authorization. Try connecting again.' : 'Back from Shippo. Checking the account…'),
+    words: shippoReturnWords,
     refresh: (id) => refreshShippoConnect(id, true)
   },
   stripe: {
@@ -4566,6 +4587,36 @@ export function bindEnvironmentActions(deps) {
     if (a === 'conn-shopify-refresh') return void refreshShopifyConnect(btn.dataset.id || '');
     if (a === 'conn-shopify-sync') return void syncShopifyProducts(btn.dataset.id || '');
     if (a === 'conn-microsoft-start') return void startMicrosoftConnect('connect');
+    if (a === 'conn-microsoft-write') {
+      const row = (ev.connections || []).find(c => c.id === btn.dataset.id);
+      if (row && isManagedMicrosoft(row) && microsoftWriteAccess(row).canUpgrade && canManageConnections()) { ev.msWriteConsent = row.id; ev.msWriteConsentScope = JSON.stringify([sessionVersion(), ev.teamId || '', ev.lane]); paintConnections(); }
+      return;
+    }
+    if (a === 'conn-microsoft-write-cancel') { ev.msWriteConsent = ''; paintConnections(); return; }
+    if (a === 'conn-microsoft-write-approve') {
+      const row = (ev.connections || []).find(c => c.id === btn.dataset.id);
+      if (row && isManagedMicrosoft(row) && microsoftWriteAccess(row).needsApproval && canManageConnections()) return void startMicrosoftConnect('approve', { writeAccess: true });
+      return;
+    }
+    if (a === 'conn-microsoft-write-continue') {
+      const row = (ev.connections || []).find(c => c.id === btn.dataset.id);
+      if (!row || !isManagedMicrosoft(row) || !microsoftWriteAccess(row).canUpgrade || !canManageConnections() || ev.msWriteConsent !== row.id || ev.msWriteConsentScope !== JSON.stringify([sessionVersion(), ev.teamId || '', ev.lane])) return;
+      ev.msWriteConsent = ''; return void startMicrosoftConnect('connect', { writeAccess: true });
+    }
+    if (a === 'conn-microsoft-write-stop') {
+      const row = (ev.connections || []).find(c => c.id === btn.dataset.id);
+      if (!row || !isManagedMicrosoft(row) || !microsoftWriteAccess(row).pending || !canManageConnections() || ev.connBusy) return;
+      const scope = JSON.stringify([sessionVersion(), ev.teamId || '', ev.lane]);
+      ev.connBusy = true; paintConnections();
+      void post(`${ENV_URL}/connections/microsoft/start`, { cancelWriteUpgrade: true }).then(() => {
+        if (scope !== JSON.stringify([sessionVersion(), ev.teamId || '', ev.lane])) return;
+        ev.connBusy = false; ev.msWriteConsent = ''; return loadConnections();
+      }).catch(ex => {
+        if (scope !== JSON.stringify([sessionVersion(), ev.teamId || '', ev.lane])) return;
+        ev.connBusy = false; paintConnections(); D.showError('evConnError', errText(ex, 'Could not cancel this publishing approval.'));
+      });
+      return;
+    }
     if (a === 'conn-google-start') return void startGoogleConnect();
     if (a === 'conn-github-app-start') return void startGithubApp();
     if (a === 'conn-github-app-refresh') return void refreshGithubApp(btn.dataset.id || '');
