@@ -41,6 +41,7 @@ import { cardHtml, iconBtn, leadBtn, btnLabel, armed, ico, setCardSummary, initC
 import { closeBillOf, closeChargeWord } from './closeBill.js';
 import { accessToken } from '../runtime/session.js';
 import { dayWord, money, cents, esc as escapeHtml } from '../ui/words.js';
+import { subscriptionReportHtml } from './subscriptionReport.js';
 import { writeClipboard } from '../ui/clipboard.js';
 import { cardErrorWords } from '../api/stripeWords.js';
 import { applyTheme, getTheme, applyStarfield, getStarfield, applyNoise, getNoise } from '../runtime/theme.js';
@@ -4334,28 +4335,7 @@ async function renderPayments(main) {
         ${statCard(d.livemode === false ? 'TEST' : d.livemode === true ? 'LIVE' : '—', 'Stripe mode',
           '', d.livemode === false ? 'amber' : d.livemode === true ? 'teal' : '')}
       </div>
-      ${d.planCounts && Object.keys(d.planCounts).length ? `
-        <div class="adm-card">
-          <h3 class="adm-card-h">Subscriptions in force</h3>
-          <div class="adm-table-scroll">
-            <table class="adm-table">
-              <thead><tr><th>Price</th><th class="adm-num">Subscribers</th><th class="adm-num">Monthly run rate</th></tr></thead>
-              <tbody>
-                ${Object.entries(d.planCounts).map(([lk, v]) => `
-                  <tr>
-                    <td><code>${escapeHtml(lk)}</code></td>
-                    <td class="adm-num">${escapeHtml(String(v.count))}</td>
-                    <td class="adm-num adm-money-pos">${escapeHtml(usdCents(v.runRateCents))}</td>
-                  </tr>
-                `).join('')}
-              </tbody>
-            </table>
-          </div>
-          <p class="adm-note">Attach counts against the base plans show whether each add-on earns its
-          keep. Per-account usage metering (what people actually consume against their limits) is the
-          next build and needs its own counters.</p>
-        </div>
-      ` : ''}
+      ${subscriptionReportHtml(d.subscriptionReport, d.planCounts)}
       <div class="adm-card">
         <h3 class="adm-card-h">Recent charges</h3>
         ${(d.charges || []).length ? `
