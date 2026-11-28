@@ -45,9 +45,9 @@ globalThis.fetch = async (url, options) => {
   assert.ok(url.endsWith('/orders/lookup'));
   return new Promise((resolve, reject) => pending.push({ options, resolve, reject }));
 };
-function act(type, selector) {
+function act(type, selector, element = {}) {
   const event = new Event(type, { cancelable: true });
-  Object.defineProperty(event, 'target', { value: { closest: candidate => candidate === selector ? {} : null } });
+  Object.defineProperty(event, 'target', { value: { closest: candidate => candidate === selector ? element : null } });
   document.dispatchEvent(event);
 }
 function enter() { act('click', '[data-track-order]'); }
@@ -65,6 +65,51 @@ function blank() {
 }
 const flush = () => new Promise(resolve => setImmediate(resolve));
 afterEach(() => { setAppMode('landing'); fields.clear(); pending.length = 0; });
+
+const checkoutSource = readFileSync(new URL('../src/shop/checkout.js', import.meta.url), 'utf8');
+const confirmation = checkoutSource.match(/^function doneHtml\(\) \{[\s\S]*?^\}/m)[0];
+function receipt({ signedIn, linked, claim = true }) {
+  return runInNewContext(`${confirmation}\ndoneHtml()`, {
+    state: { order: { orderId: 'sample-order', linked }, contact: { email: 'guest@example.test' } },
+    getAccessToken: () => signedIn, escapeHtml: String, LANE: 'live', ORDERS_CLAIM_LIVE: claim
+  });
+}
+
+test('a guest checkout offers public tracking even with an old sign-in or with claiming disabled', () => {
+  for (const signedIn of [false, true]) {
+    for (const claim of [false, true]) {
+      const html = receipt({ signedIn, linked: false, claim });
+      assert.match(html, /href="#track"[^>]*data-track-order/);
+      assert.doesNotMatch(html, /saved under Shop purchases/);
+      assert.equal(html.includes('Link a guest order'), claim);
+      assert.equal(html.includes('data-co-nav="account-for-order"'), claim && !signedIn);
+      assert.equal(html.includes('data-co-nav="order-to-account"'), claim && signedIn);
+    }
+  }
+  const legacy = receipt({ signedIn: true, linked: undefined });
+  assert.match(legacy, /data-track-order/);
+  assert.doesNotMatch(legacy, /saved under Shop purchases|Link a guest order/);
+});
+
+test('a linked purchase opens the orders section, and after sign-out offers tracking without another account', () => {
+  const html = receipt({ signedIn: true, linked: true });
+  const action = html.match(/data-co-nav="(order-to-account)"/)[1];
+  const visits = [];
+  const previousMode = window.setAppMode;
+  const previousPreset = window.presetAccountSection;
+  try {
+    window.presetAccountSection = section => visits.push(section);
+    window.setAppMode = mode => visits.push(mode);
+    act('click', '[data-co-nav]', { dataset: { coNav: action } });
+    assert.deepEqual(visits, ['orders', 'account']);
+  } finally {
+    window.setAppMode = previousMode;
+    window.presetAccountSection = previousPreset;
+  }
+  const signedOut = receipt({ signedIn: false, linked: true });
+  assert.match(signedOut, /data-track-order/);
+  assert.doesNotMatch(signedOut, /account-for-order|Link a guest order/);
+});
 
 test('the route hook accepts a cached checkout module with only the original hooks', () => {
   let entries = 0;

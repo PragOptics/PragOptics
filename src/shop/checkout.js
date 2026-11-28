@@ -603,6 +603,9 @@ let plansPriced = false;
 function doneHtml() {
   if (state.redemption) return redemptionDoneHtml();
   const orderId = state.order?.orderId || '';
+  const linked = state.order?.linked === true;
+  const signedIn = !!getAccessToken();
+  const canClaim = state.order?.linked === false && (LANE !== 'live' || ORDERS_CLAIM_LIVE);
   return `
     <div class="co-confirm">
       <div class="co-check" aria-hidden="true">✓</div>
@@ -616,18 +619,23 @@ function doneHtml() {
         ? `<p class="muted">Your order number. Keep it to track or link this order:</p>
            <p><code style="word-break:break-all;">${escapeHtml(orderId)}</code></p>`
         : ''}
-      ${getAccessToken()
-        ? `<p class="muted">This order is saved to your account. Track it under Orders.</p>`
-        : (((LANE !== 'live') || ORDERS_CLAIM_LIVE)
-            ? `<p class="muted">Check on it any time from the <a href="#" class="acct-inline-link" data-track-order>Track order</a> link in the footer, with this number and your email.</p>
-               <p class="muted">Want to keep its history? Create an account with
-               <strong>${escapeHtml(state.contact.email)}</strong>, then link this order with the order number above.</p>`
-            : `<p class="muted">Want to track this order and keep its history? Create an account with
-               <strong>${escapeHtml(state.contact.email)}</strong> and keep your order number above for your records.</p>`)}
+      ${linked
+        ? '<p class="muted">This order is saved under Shop purchases in the account used at checkout.</p>'
+        : ''}
+      ${!linked || !signedIn
+        ? '<p class="muted"><a href="#track" class="acct-inline-link" data-track-order>Track order</a> with your order number and checkout email.</p>'
+        : ''}
+      ${canClaim
+        ? `<p class="muted">To add this order to Shop purchases, use an account with
+           <strong>${escapeHtml(state.contact.email)}</strong> verified, then choose Link a guest order.</p>`
+        : ''}
       <div class="co-empty-actions">
-        ${getAccessToken()
-          ? `<button class="ph-btn" type="button" data-co-nav="order-to-account">View in your account</button>`
-          : `<button class="ph-btn" type="button" data-co-nav="account-for-order">Create an account to track this order</button>`}
+        ${signedIn && (linked || canClaim)
+          ? '<button class="ph-btn" type="button" data-co-nav="order-to-account">Open Shop purchases</button>'
+          : ''}
+        ${!signedIn && canClaim
+          ? '<button class="ph-btn" type="button" data-co-nav="account-for-order">Create an account to link this order</button>'
+          : ''}
         <button class="ph-btn ph-btn-ghost" type="button" data-co-nav="shop">Keep shopping</button>
         <button class="ph-btn ph-btn-ghost" type="button" data-co-nav="landing">Back to home</button>
       </div>
