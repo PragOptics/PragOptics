@@ -37,3 +37,21 @@ test('label fields are escaped in both views and armed refunds preserve the seco
     assert.match(html, /Refund\? Press again to confirm/); assert.match(html, /Keep it/);
   }
 });
+
+test('stored PDFs appear in history, with provider actions only when the saved account permits them', () => {
+  for (const view of ['list', 'cards']) {
+    const saved = { transactionId: 'archived', storedOnly: true };
+    const show = (canUseHistoricalActions, canRefund = true) => shippingLabelsHtml({
+      labels: [{ ...saved, canUseHistoricalActions }], filter: 'history', view, canRefund
+    });
+    for (const html of [show(true), show(false)]) {
+      assert.match(html, /Stored PDF/);
+      assert.match(html, /ship-label-open/);
+      assert.doesNotMatch(html, /Pending|Bought/);
+    }
+    assert.match(show(true), /ship-track/);
+    assert.match(show(true), /ship-refund/);
+    assert.doesNotMatch(show(false), /ship-track|ship-refund/);
+    assert.doesNotMatch(show(true, false), /ship-refund/);
+  }
+});

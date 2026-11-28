@@ -13,7 +13,7 @@ test('authorization recovery shows the existing grant instead of inviting anothe
 });
 test('connected account uses provider-verified identity and preserves a later read warning', () => {
   const words=shippoConnectionWords({status:'ACTIVE',lastError:'Shippo temporarily unavailable. Check again.',detail:{identityVerified:true,shippoAccountEmail:'different+owner@example.test',shippoAccountId:'merchant-1',carrierAccounts:14}});
-  assert.equal(words.label,'connected');
+  assert.equal(words.label,'confirmation needed');
   assert.match(words.identity,/different\+owner@example.test/);
   assert.match(words.needs,/temporarily unavailable/);
   assert.equal(words.canAuthorize,false);
@@ -33,5 +33,5 @@ test('provider error and diagnostic remain visible after return',()=>{
 });
 test('a successful retry still explains the earlier provider failure',()=>{
  const words=shippoConnectionWords({status:'ACTIVE',detail:{identityVerified:true,shippoAccountEmail:'owner@example.test',authorizedAt:'2026-11-28T04:46:08Z',lastAuthorizationFailure:{at:'2026-11-28T04:45:46Z',stage:'exchange',code:'invalid_grant',httpStatus:400}}});
- assert.equal(words.label,'connected');assert.match(words.needs,/Earlier authorization attempt: invalid_grant \(HTTP 400\).*later authorization completed successfully/);
+ assert.equal(words.label,'confirmation needed');assert.match(words.needs,/Earlier authorization attempt: invalid_grant \(HTTP 400\).*later authorization completed successfully/);
 });

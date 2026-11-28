@@ -27,7 +27,7 @@
 import { PRAG_API_BASE, STUDIO_URL, LANE } from '../runtime/config.js';
 import { connectionAccessMode, connectionOptions, connectionAccessNote } from './connectionAccess.js';
 import { isManagedPrintful, printfulConnectionWords } from './printfulConnection.js';
-import { shippoConnectionWords, shippoReturnWords } from './shippoConnection.js';
+import { shippoCanBuy, shippoConnectionWords, shippoReturnWords } from './shippoConnection.js?v=account-confirmation';
 import { microsoftWriteAccess } from './microsoftWriteAccess.js';
 import { tierName, tierBadge } from '../components/tierCopy.js';
 import { explainLink } from '../components/explainer.js';
@@ -83,7 +83,7 @@ function laneChoice() { try { return sessionStorage.getItem(LANE_KEY) === 'sandb
 const ev = { lane: laneChoice(), teamId: '', view: null, files: null, filesTruncated: false, keys: null, madeKey: null, filesNote: '', uploading: false, domains: null, domainLimit: 0, cnameTarget: null, serving: null, binding: '', domainNote: '', checking: '', registrations: [], reg: null,
   // Connected accounts (the connection broker): the list, the provider
   // catalog the form renders from, the picked provider, and the last outcome.
-  connections: null, connAccess: null, connProviders: [], connLimit: 0, connNote: '', connPick: '', connBusy: false, connResult: '', connTesting: '',
+  connections: null, connAccess: null, connProviders: [], connLimit: 0, connUsed: null, connNote: '', connPick: '', connBusy: false, connResult: '', connTesting: '',
   // The Microsoft 365 row whose sign-in is being finished (confirmMicrosoftConnect): its request is out, the doors wait.
   // Not reset by a re-render, so a repaint in the middle still draws them waiting.
   connConfirming: '',
@@ -197,7 +197,7 @@ export async function renderEnvironment(main, deps) {
   ev.lane = laneChoice();
   D = deps;
   ev.madeKey = null; ev.filesNote = ''; ev.files = null; ev.keys = null; ev.domains = null; ev.domainNote = ''; ev.linkNote = ''; ev.domArm = ''; ev.keyArm = ''; ev.checking = ''; ev.registrations = []; ev.reg = freshReg();
-  ev.connections = null; ev.connAccess = null; ev.connProviders = []; ev.connNote = ''; ev.connPick = ''; ev.connBusy = false; ev.connResult = ''; ev.connTesting = ''; ev.connDraft = {}; ev.connArm = ''; ev.shipArm = ''; ev.rowNote = null; ev.shopifyLabel = ''; ev.shopifyStep = ''; ev.shopifyLink = ''; ev.shopifyLinkId = ''; ev.connSyncing = ''; ev.rowNote = null;
+  ev.connections = null; ev.connAccess = null; ev.connProviders = []; ev.connNote = ''; ev.connPick = ''; ev.connBusy = false; ev.connResult = ''; ev.connTesting = ''; ev.connDraft = {}; ev.connArm = ''; ev.shipArm = ''; ev.shippingViewId = ''; ev.connUsed = null; ev.rowNote = null; ev.shopifyLabel = ''; ev.shopifyStep = ''; ev.shopifyLink = ''; ev.shopifyLinkId = ''; ev.connSyncing = ''; ev.rowNote = null;
   ev.supplierSearch = newSupplierSearch(); ev.shopifyMode = ''; ev.shopifyModeRequest = null;
   ev.printfulAvailable = false; ev.printfulStoreNaming = false; ev.printfulNaming = '';
   ev.tables = null; ev.tablesNote = ''; ev.table = ''; ev.rows = null; ev.rowsAfter = ''; ev.rowsNote = ''; ev.openRow = ''; ev.rowsLoading = false; ev.rowsFailed = false; ev.moderating = ''; ev.moderatingTo = '';
@@ -364,6 +364,7 @@ async function loadConnections() {
     ev.printfulAvailable = Array.isArray(d.managedProviders) && d.managedProviders.includes('printful');
     ev.printfulStoreNaming = ev.printfulAvailable && d.printfulStoreNaming === true;
     ev.connLimit = Number(d.limit || 0);
+    ev.connUsed = Number.isInteger(d.used) && d.used >= 0 ? d.used : null;
     ev.connNote = '';
     if (ev.connPick === 'm:shopify') checkShopifySupplierMode();
     setTimeout(() => { handleProviderReturn(); }, 0);
@@ -450,6 +451,7 @@ async function setLane(lane) {
   if (lane === 'sandbox' && !canUseSandbox()) return;   // only the builders switch to the sandbox lane
   ev.connectionGeneration = (ev.connectionGeneration || 0) + 1;
   ev.lane = lane === 'sandbox' ? 'sandbox' : 'live';
+  ev.shippingViewId = ''; ev.shipArm = ''; ev.connUsed = null;
   try { sessionStorage.setItem(LANE_KEY, ev.lane); } catch { /* fine */ }
   ev.files = null; ev.keys = null; ev.domains = null; ev.connections = null; ev.connAccess = null; ev.archive = null; resetDocuments(); resetImport(); ev.connPick = ''; ev.connResult = ''; ev.madeKey = null; ev.filesNote = '';
   ev.supplierSearch = newSupplierSearch(); ev.shopifyStep = ''; ev.shopifyLabel = ''; ev.shopifyLink = ''; ev.shopifyLinkId = '';
@@ -2327,6 +2329,27 @@ function isManagedStripe(c) { return c?.provider === 'stripe' && c?.detail?.mana
 function isManagedTwilio(c) { return c?.provider === 'twilio' && c?.detail?.managed === 'twilio-connect'; }
 /** A Shippo account the customer connected through PragOptics (Shippo OAuth): the token sits in the vault, Shippo's own state on the row. */
 function isManagedShippo(c) { return c?.provider === 'shippo' && c?.detail?.managed === 'shippo-connect'; }
+
+function connectionQuotaUsed() {
+  return ev.connUsed ?? (ev.connections || []).filter(c => !(isManagedShippo(c) && c.detail.historyOnly)).length;
+}
+
+function shippoAccountChoice(c, manage) {
+  if (!isManagedShippo(c)) return '';
+  const words = shippoConnectionWords(c);
+  if (!words.canReject) return '';
+  const e = D.escapeHtml;
+  const attrs = `data-id="${e(c.id)}" data-confirmation="${e(c.detail.confirmationId)}" data-account="${e(c.detail.shippoAccountId || '')}"`;
+  const disabled = ev.connBusy || ev.connTesting ? 'disabled' : '';
+  const account = [c.detail.shippoAccountEmail, c.detail.shippoAccountId].filter(Boolean).join(' · ');
+  return `<tr class="ev-note-row"><td colspan="5" data-th="Confirm billing account">
+    ${words.canConfirm ? `<p class="acct-card-note">Shippo identified <strong>${e(account)}</strong>. New labels will be billed to this Shippo account.</p>` : ''}
+    ${manage ? `<div class="ev-key-row">
+      ${words.canConfirm ? `<button type="button" class="btn btn-sm btn-primary" data-env-action="conn-shippo-confirm" ${attrs} ${disabled}>Use this Shippo account</button>` : ''}
+      <button type="button" class="btn btn-sm" data-env-action="conn-shippo-reject" ${attrs} ${disabled}>Choose a different account</button>
+    </div><p class="acct-card-note">Shippo may reuse your current sign-in. To select another account, change accounts at Shippo before starting the next authorization here.</p>`
+    : '<p class="acct-card-note">An authorized environment manager can confirm which account pays for labels.</p>'}</td></tr>`;
+}
 function isManagedShopify(c) { return c?.provider === 'shopify' && c?.detail?.managed === 'shopify-supplier'; }
 /**
  * Microsoft 365 through PragOptics (2026-09-23): the owner or an admin signs in at Microsoft once and approves PragOptics;
@@ -2390,7 +2413,7 @@ function pastedMicrosoftWords() {
   if (!canManageConnections()) return `${head}. The owner or an admin connects Microsoft 365 through PragOptics for the software to import from it.`;
   if (ev.lane === 'sandbox') return `${head}. Connect Microsoft 365 through PragOptics on Live for the software to import from it, then remove this one.`;
   // at the limit the picker is off: this row goes first
-  if (ev.connLimit > 0 && (ev.connections || []).length >= ev.connLimit) return `${head}. Remove this one, then choose Microsoft 365 under Connect above for the software to import from it.`;
+  if (ev.connLimit > 0 && connectionQuotaUsed() >= ev.connLimit) return `${head}. Remove this one, then choose Microsoft 365 under Connect above for the software to import from it.`;
   return `${head}. Choose Microsoft 365 under Connect above for the software to import from it, then remove this one.`;
 }
 /** What was said after a removal, per provider: what the provider still holds, and what the platform no longer does. */
@@ -2503,11 +2526,11 @@ function connectionsHtml() {
   const e = D.escapeHtml;
   const manage = canManageConnections();
   const rows = ev.connections;
-  // connected counts only what is connected (ACTIVE); a row still waiting (a sign-in, an approval, a setup, a supplier) or
-  // one that stopped working is said apart from it, and the limit counts every row, as the limit itself does (atLimit)
   const summary = rows == null ? (ev.connNote ? 'not on this lane' : 'loading') : !rows.length ? 'nothing connected yet' : (() => {
-    const live = rows.filter(c => c.status === 'ACTIVE').length, off = rows.filter(c => c.status === 'REJECTED').length, waiting = rows.length - live - off;
-    return [`${live} connected`, waiting ? `${waiting} waiting` : '', off ? `${off} not working` : ''].filter(Boolean).join(', ') + (ev.connLimit ? ` · ${rows.length} of ${ev.connLimit} used` : '');
+    const current = rows.filter(c => !(isManagedShippo(c) && c.detail.historyOnly));
+    const live = current.filter(c => isManagedShippo(c) ? shippoCanBuy(c) : c.status === 'ACTIVE').length;
+    const off = current.filter(c => c.status === 'REJECTED').length, waiting = current.length - live - off;
+    return [`${live} connected`, waiting ? `${waiting} waiting` : '', off ? `${off} not working` : '', rows.length > current.length ? `${rows.length - current.length} history only` : ''].filter(Boolean).join(', ') + (ev.connLimit ? ` · ${connectionQuotaUsed()} of ${ev.connLimit} used` : '');
   })();
   const list = rows == null ? (ev.connNote ? '' : '<p class="acct-loading">Loading connected accounts…</p>')
     : !rows.length ? `<p class="acct-empty">${manage ? 'Nothing connected yet.' : 'Nothing connected yet. The owner or an admin connects accounts.'}</p>`
@@ -2557,7 +2580,7 @@ function connectionsHtml() {
                   ${isManagedPrintful(c) && ev.printfulStoreNaming ? `<button class="btn btn-sm" type="button" data-env-action="conn-printful-name" data-id="${e(c.id)}" ${ev.connBusy ? 'disabled' : ''}>${c.detail?.requestedStoreName ? 'Change store name' : 'Name store'}</button>` : ''}
                   ${confirming ? stateIcon('conn-remove', 'trash', 'Remove this connection', { waiting: MS_CONFIRM_WAIT }, `data-id="${e(c.id)}" data-label="${e(c.label)}"`, 'is-risky')
                     : iconBtn('conn-remove', 'trash', 'Remove this connection', `data-id="${e(c.id)}" data-label="${e(c.label)}"`, 'is-risky')}</span>`) : ''}</td>
-              </tr>${printfulNameStepHtml(c)}${isManagedShippo(c) && c.status !== 'ACTIVE' && c.lastError && !(ev.rowNote && ev.rowNote.id === c.id) ? `
+              </tr>${shippoAccountChoice(c, manage)}${printfulNameStepHtml(c)}${isManagedShippo(c) && c.status !== 'ACTIVE' && c.lastError && !(ev.rowNote && ev.rowNote.id === c.id) ? `
               <tr class="ev-note-row" data-row="note"><td colspan="5" data-th="Problem"><p class="acct-error ev-row-note">${e(c.lastError)}</p></td></tr>` : ''}${ev.rowNote && ev.rowNote.id === c.id ? `
               <tr class="ev-note-row" data-row="note">
                 <td colspan="5" data-th="${ev.rowNote.error ? 'Problem' : 'Result'}"><p class="${ev.rowNote.error ? 'acct-error' : 'acct-card-note'} ev-row-note" aria-live="polite">${e(ev.rowNote.text)}</p></td>
@@ -2575,13 +2598,13 @@ function connectionsHtml() {
 
   const pick = ev.connAccess ? 'm:shopify' : String(ev.connPick || '');
   const picked = providerOf(pick);
-  const atLimit = ev.connLimit > 0 && (rows || []).length >= ev.connLimit;
+  const atLimit = ev.connLimit > 0 && connectionQuotaUsed() >= ev.connLimit;
   const has = (fn) => (rows || []).some(fn);
   const managedDoors = [
     ...(ev.printfulAvailable && !has(isManagedPrintful) ? [['m:printful', 'Printful, your store']] : []),
     ...(has(isManagedStripe) ? [] : [['m:stripe', 'Stripe, set up through PragOptics']]),
     ...(has(isManagedTwilio) ? [] : [['m:twilio', 'Twilio, your account']]),
-    ...(has(isManagedShippo) ? [] : [['m:shippo', 'Shippo, your account']]),
+    ...(has(c => isManagedShippo(c) && !c.detail.historyOnly) ? [] : [['m:shippo', 'Shippo, your account']]),
     // Microsoft has no test mode: its door is on the live lane only (the sandbox card says so in one sentence)
     ...(ev.lane === 'sandbox' || has(isManagedMicrosoft) ? [] : [['m:microsoft', 'Microsoft 365, sign in with Microsoft']]),
     ...(has(isManagedGoogle) ? [] : [['m:google', 'Google Gemini, sign in with Google']]),
@@ -2813,7 +2836,12 @@ function madeKeyHtml(k) {
 // connected. It acts through that connection (the backend uses the vaulted
 // OAuth token), Shippo bills the customer, and the bought label's PDF is
 // stored by the platform so its link never expires on the customer (96h).
-function activeShippo() { return (ev.connections || []).find(c => isManagedShippo(c) && c.status === 'ACTIVE') || null; }
+function shippingAccounts() { return (ev.connections || []).filter(c => isManagedShippo(c) && (c.status === 'ACTIVE' || (c.status !== 'CLOSED' && c.detail.historyOnly === true))); }
+function activeShippo() { return shippingAccounts().find(c => !c.detail.historyOnly); }
+function shippingConnection() {
+  const rows = shippingAccounts();
+  return rows.find(c => c.id === ev.shippingViewId) || activeShippo() || rows[0];
+}
 /** The Ship-from default, taken from the billing profile the account already gave
  *  (D.cachedPing().billingProfile) so a business never retypes its own address. It
  *  seeds the form and stays editable — ship from elsewhere by changing it. A later
@@ -2829,10 +2857,10 @@ function shipFromBilling() {
     phone: String(b.phone || '').trim()
   };
 }
-function shippingScope() { const connection = activeShippo(); return JSON.stringify([sessionVersion(), ev.teamId || '', ev.lane, connection?.id || '', connection?.detail?.authorizedAt || '']); }
+function shippingScope() { const c = shippingConnection(); return JSON.stringify([sessionVersion(), ev.teamId || '', ev.lane, c?.id, c?.detail?.authorizedAt, c?.detail?.shippoAccountId, shippoCanBuy(c)]); }
 function shipState() {
   const scope = shippingScope();
-  if (!ev.ship || ev.ship.scope !== scope) ev.ship = { scope, fromV: shipFromBilling(), toV: {}, parcel: { length: '', width: '', height: '', weight: '' }, rates: null, shipmentId: '', picked: '', labels: null, labelFilter: 'active', labelView: labelView(), nextLabelPage: null, labelsBusy: false, tracking: {}, busy: '', note: '', noteErr: false };
+  if (!ev.ship || ev.ship.scope !== scope) ev.ship = { scope, fromV: shipFromBilling(), toV: {}, parcel: { length: '', width: '', height: '', weight: '' }, rates: null, shipmentId: '', picked: '', labels: null, labelFilter: shippoCanBuy(shippingConnection()) ? 'active' : 'history', labelView: labelView(), nextLabelPage: null, labelsBusy: false, tracking: {}, busy: '', note: '', noteErr: false };
   return ev.ship;
 }
 function shipInput(id, label, val, ph, extra = '') {
@@ -2848,7 +2876,7 @@ function readShipForm() {
   return s;
 }
 function shippingHtml() {
-  const c = activeShippo();
+  const c = shippingConnection();
   if (!c) return '';
   const e = D.escapeHtml;
   const s = shipState();
@@ -2867,11 +2895,16 @@ function shippingHtml() {
     </div>
     <div class="ev-key-row">${stateLead('ship-buy', 'check', 'Buy this label', { out: s.busy === 'buy', busyWord: 'Buying…', waiting: s.picked ? '' : 'Pick a rate first' }, '', 'btn-primary')}</div>`;
 
-  const labelsHtml = shippingLabelsHtml({ labels: s.labels, tracking: s.tracking, filter: s.labelFilter, view: s.labelView, armed: ev.shipArm, formatDate: D.fmtDate, nextPage: s.nextLabelPage, loadingMore: s.labelsBusy });
+  const labelsHtml = shippingLabelsHtml({ labels: s.labels, tracking: s.tracking, filter: s.labelFilter, view: s.labelView, armed: ev.shipArm, canRefund: manage, formatDate: D.fmtDate, nextPage: s.nextLabelPage, loadingMore: s.labelsBusy });
 
   const note = s.note ? `<p class="${s.noteErr ? 'acct-error' : 'acct-card-note'} ev-row-note" aria-live="polite">${e(s.note)}</p>` : '';
 
-  const body = !manage ? `<p class="acct-card-note">The owner or an admin buys shipping labels.</p><h4 class="ev-ship-h">Labels</h4>${labelsHtml}` : `
+  const accounts = shippingAccounts();
+  const chooser = accounts.length > 1 ? `<div class="ev-key-row" role="group" aria-label="Shipping account">${accounts.map(row => {
+    const account = row.detail.identityVerified === true && (row.detail.shippoAccountEmail || row.detail.shippoAccountId) || `${row.label} · ${row.id.slice(-6)}`;
+    return `<button class="btn btn-sm" type="button" data-env-action="ship-account" data-id="${e(row.id)}" aria-pressed="${c.id === row.id}">${e(account)}${row.detail.historyOnly ? ' (label history)' : ''}</button>`;
+  }).join('')}</div>` : '';
+  const body = !manage || !shippoCanBuy(c) ? `<p class="acct-card-note">${d.historyOnly ? 'This account is available for previous labels.' : !shippoCanBuy(c) ? 'Confirm the billing account in Connected accounts before buying a new label.' : 'An authorized environment manager can buy labels.'}</p>${note}<h4 class="ev-ship-h">Labels</h4>${labelsHtml}` : `
     <p class="acct-card-note ev-dom-door">Buy a shipping label on your own Shippo account. Shippo bills you directly, and the label is stored here so its link never expires on you.</p>
     <div class="ev-ship-grid">
       <fieldset class="ev-ship-col"><legend>Ship from</legend>
@@ -2899,26 +2932,27 @@ function shippingHtml() {
     <h4 class="ev-ship-h">Labels</h4>
     ${labelsHtml}    <div class="ev-key-row ev-ship-test">${stateLead('ship-test', 'check', 'Test this connection (not billed)', { out: s.busy === 'test', busyWord: 'Checking the connection…' }, '', '')}</div>`;
 
-  return cardHtml({ key: 'shipping', icon: 'send', title: 'Shipping', summary, explain: explainLink('connections', 'How connections work'), body });
+  return cardHtml({ key: 'shipping', icon: 'send', title: 'Shipping', summary, explain: explainLink('connections', 'How connections work'), body: chooser + body });
 }
 function paintShipping() { const h = document.getElementById('evShipping'); if (h) h.innerHTML = shippingHtml(); }
 function shipNote(text, err = false) { const s = shipState(); s.note = text || ''; s.noteErr = !!err; }
 
 async function loadShippingLabels(more = false) {
-  const c = activeShippo();
+  const c = shippingConnection();
   if (!c) return;
   const s = shipState();
   if (s.labelsBusy || (more && !s.nextLabelPage)) return;
   s.labelsBusy = true; if (more) { readShipForm(); paintShipping(); }
   try {
     const d = await D.apiFetch(url(`${ENV_URL}/shipping/labels`, { connectionId: c.id, ...(more ? { page: s.nextLabelPage } : {}) }));
+    if (s !== ev.ship || s.scope !== shippingScope()) return;
     s.labels = more ? [...new Map([...(s.labels || []), ...(d.labels || [])].map(label => [label.transactionId, label])).values()] : d.labels || [];
     s.nextLabelPage = d.nextPage || null;
-  } catch (error) { if (!more) s.labels = []; shipNote(errText(error, 'Could not load labels.'), true); }
+  } catch (error) { if (s !== ev.ship || s.scope !== shippingScope()) return; if (!more) s.labels = []; shipNote(errText(error, 'Could not load labels.'), true); }
   s.labelsBusy = false; paintShipping();
 }
 async function getShippingRates() {
-  const c = activeShippo(); if (!c) return;
+  const c = shippingConnection(); if (!shippoCanBuy(c) || !canManageConnections()) return;
   const s = readShipForm();
   if (!s.fromV.street1 || !s.fromV.zip || !s.toV.street1 || !s.toV.zip || !s.parcel.weight) { shipNote('A from and to address and a weight are needed for rates.', true); paintShipping(); return; }
   s.busy = 'rates'; s.rates = null; s.picked = ''; shipNote(''); paintShipping();
@@ -2933,21 +2967,24 @@ async function getShippingRates() {
       from: { ...s.fromV, country: 'US', email: s.fromV.email || acctEmail }, to: { ...s.toV, country: 'US', email: s.toV.email || acctEmail },
       parcel: { length: s.parcel.length || '1', width: s.parcel.width || '1', height: s.parcel.height || '1', distance_unit: 'in', weight: s.parcel.weight, mass_unit: 'lb' }
     });
+    if (s !== ev.ship || s.scope !== shippingScope()) return;
     s.rates = d.rates || []; s.shipmentId = d.shipmentId || '';
     if (s.rates.length) s.picked = s.rates[0].id;
-  } catch (ex) { s.rates = []; shipNote(errText(ex, 'Could not get rates.'), true); }
+  } catch (ex) { if (s !== ev.ship || s.scope !== shippingScope()) return; s.rates = []; shipNote(errText(ex, 'Could not get rates.'), true); }
   s.busy = ''; paintShipping();
 }
 async function buyShippingLabel() {
-  const c = activeShippo(); if (!c) return;
+  const c = shippingConnection(); if (!shippoCanBuy(c) || !canManageConnections()) return;
   const s = shipState();
+  if (s.busy) return;
   if (!s.picked) { shipNote('Pick a rate first.', true); paintShipping(); return; }
   s.busy = 'buy'; shipNote(''); paintShipping();
   try {
     const d = await post(`${ENV_URL}/shipping/label`, { connectionId: c.id, rateId: s.picked });
+    if (s !== ev.ship || s.scope !== shippingScope()) return;
     shipNote(d.pending ? 'Shippo is finishing the label; it appears below in a moment.' : `Label bought. Tracking ${d.trackingNumber || 'pending'}.`);
     s.rates = null; s.picked = '';
-  } catch (ex) { shipNote(errText(ex, 'Could not buy the label.'), true); }
+  } catch (ex) { if (s !== ev.ship || s.scope !== shippingScope()) return; shipNote(errText(ex, 'Could not buy the label.'), true); }
   s.busy = ''; paintShipping();
   loadShippingLabels();
 }
@@ -2968,7 +3005,8 @@ async function ensurePdfjs() {
 // the page so it is unmistakably open. The label renders inside it as canvas page(s); Save downloads the
 // real PDF, Print prints the rendered page(s), Escape / the backdrop / Close dismiss it.
 async function openShippingLabel(transactionId) {
-  const c = activeShippo(); if (!c) return;
+  const c = shippingConnection(); if (!c) return;
+  const scope = shippingScope();
   const e = D.escapeHtml;
   let m = null, blobUrl = '';
   const cleanup = () => { if (blobUrl) { try { URL.revokeObjectURL(blobUrl); } catch { /* fine */ } blobUrl = ''; } if (m) m.close(); };
@@ -2992,19 +3030,23 @@ async function openShippingLabel(transactionId) {
       if (b.dataset.labelAct === 'print') return void printShippingLabelView(m.host);
     }
   });
-  const body = () => m.host.querySelector('#evLabelBody');
+  const labelBody = m.host.querySelector('#evLabelBody');
+  const current = () => shippingScope() === scope && !m.host.hidden && m.host.querySelector('#evLabelBody') === labelBody;
   try {
     const res = await D.apiFetch(url(`${ENV_URL}/shipping/label/file`, { connectionId: c.id, transactionId, bytes: 1 }), { raw: true });
     const buf = await res.arrayBuffer();
+    if (!current()) { cleanup(); return; }
     // Save = the label's real PDF bytes as a same-origin blob (a download is allowed; a blob: <iframe> is not).
     blobUrl = URL.createObjectURL(new Blob([buf], { type: 'application/pdf' }));
     const save = m.host.querySelector('#evLabelSave'); if (save) { save.href = blobUrl; save.hidden = false; }
     const pdfjs = await ensurePdfjs();
     const pdf = await pdfjs.getDocument({ data: new Uint8Array(buf), isEvalSupported: false, useSystemFonts: true }).promise;
-    const host = body(); if (host) host.innerHTML = '';
+    if (!current()) { cleanup(); return; }
+    const host = labelBody; if (host) host.innerHTML = '';
     const ratio = Math.min(window.devicePixelRatio || 1, 2);
     for (let n = 1; n <= pdf.numPages; n++) {
       const page = await pdf.getPage(n);
+      if (!current()) { cleanup(); return; }
       const vp = page.getViewport({ scale: 2 });
       const canvas = document.createElement('canvas');
       canvas.className = 'ev-label-canvas';
@@ -3015,9 +3057,11 @@ async function openShippingLabel(transactionId) {
       await page.render({ canvasContext: cx, viewport: vp }).promise;
       if (host) host.appendChild(canvas);
     }
+    if (!current()) { cleanup(); return; }
     const pr = m.host.querySelector('#evLabelPrint'); if (pr) pr.hidden = false;
   } catch (ex) {
-    const host = body(); if (host) host.innerHTML = `<p class="acct-error" style="padding:16px">${D.escapeHtml(errText(ex, 'Could not open that label.'))}</p>`;
+    if (!current()) { cleanup(); return; }
+    if (labelBody) labelBody.innerHTML = `<p class="acct-error" style="padding:16px">${D.escapeHtml(errText(ex, 'Could not open that label.'))}</p>`;
   }
 }
 // Print just the label page(s): copy the rendered canvas(es) into a print-only node and print that alone
@@ -3035,7 +3079,7 @@ function printShippingLabelView(host) {
   setTimeout(() => { try { window.print(); } catch { doneP(); } }, 60);
 }
 async function trackShippingLabel(transactionId) {
-  const c = activeShippo(); if (!c) return;
+  const c = shippingConnection(); if (!c) return;
   const s = shipState();
   const scope = shippingScope(), lane = ev.lane;
   openShipmentTracking({
@@ -3062,18 +3106,23 @@ function armShipRefund(transactionId) {
   shipArmTimer = setTimeout(() => { if (ev.shipArm === transactionId) { ev.shipArm = ''; paintShipping(); } }, 6000);
 }
 async function refundShippingLabel(transactionId) {
-  const c = activeShippo(); if (!c) return;
+  const c = shippingConnection(); if (!c || !canManageConnections()) return;
+  const s = shipState();
+  const label = s.labels?.find(row => row.transactionId === transactionId);
+  if (!label || (label.storedOnly ? label.canUseHistoricalActions !== true : label.status !== 'SUCCESS')) return;
   if (ev.shipArm !== transactionId) return armShipRefund(transactionId);   // first press arms; the second refunds
   ev.shipArm = ''; clearTimeout(shipArmTimer);
-  const s = shipState();
   s.busy = 'refund'; shipNote(''); paintShipping();
-  try { const d = await post(`${ENV_URL}/shipping/refund`, { connectionId: c.id, transactionId }); shipNote(`Refund ${String(d.status || '').toLowerCase() || 'requested'}.`); }
-  catch (ex) { shipNote(errText(ex, 'Could not refund that label.'), true); }
+  try {
+    const d = await post(`${ENV_URL}/shipping/refund`, { connectionId: c.id, transactionId });
+    if (s !== ev.ship || s.scope !== shippingScope()) return;
+    shipNote(`Refund ${String(d.status || '').toLowerCase() || 'requested'}.`);
+  } catch (ex) { if (s !== ev.ship || s.scope !== shippingScope()) return; shipNote(errText(ex, 'Could not refund that label.'), true); }
   s.busy = ''; paintShipping();
   loadShippingLabels();
 }
 async function runShippingTest() {
-  const c = activeShippo(); if (!c) return;
+  const c = shippingConnection(); if (!shippoCanBuy(c) || !canManageConnections()) return;
   const s = shipState();
   s.busy = 'test'; shipNote(''); paintShipping();
   try { const d = await post(`${ENV_URL}/shipping/test`, { connectionId: c.id }); const cs = Array.isArray(d.carriers) ? d.carriers : []; const extra = (!d.ok && cs.length) ? ' Carriers Shippo returned: ' + cs.map(x => `${x.carrier || '?'}${x.test ? ' test' : ''}${x.active ? '' : ' off'}`).join(', ') + '.' : ''; shipNote(d.ok ? (d.note || 'The connection is verified. Nothing was billed.') : ((d.error || 'The test did not finish.') + extra), !d.ok); }
@@ -3595,7 +3644,8 @@ async function refreshPrintfulConnect(id, quiet = false) {
   await loadConnections();
 }
 async function startShippoConnect() {
-  if (ev.connBusy) return;
+  if (ev.connBusy || ev.connTesting || !canManageConnections()) return;
+  if ((ev.connections || []).some(c => isManagedShippo(c) && !c.detail.historyOnly && !shippoConnectionWords(c).canAuthorize)) return;
   const generation = ev.connectionGeneration = (ev.connectionGeneration || 0) + 1;
   const scope = JSON.stringify([sessionVersion(), ev.teamId || '', ev.lane]);
   const current = () => generation === (ev.connectionGeneration || 0) && scope === JSON.stringify([sessionVersion(), ev.teamId || '', ev.lane]);
@@ -3627,6 +3677,35 @@ async function refreshShippoConnect(id, quiet = false) {
     rowNote(id, d.connection?.lastError || d.connection?.message || 'Shippo answered for the account.', !!d.connection?.lastError);
   } catch (ex) { if (!current()) return; if (!quiet) rowNote(id, errText(ex, 'Could not check that Shippo account.'), true); }
   if (!current()) return;
+  ev.connTesting = '';
+  await loadConnections();
+}
+
+async function decideShippoAccount(btn, decision) {
+  if (!btn.isConnected || !canManageConnections() || ev.connBusy || ev.connTesting) return;
+  const { id, confirmation, account } = btn.dataset;
+  const row = (ev.connections || []).find(c => c.id === id && isManagedShippo(c));
+  if (!row || row.detail.confirmationId !== confirmation || (row.detail.shippoAccountId || '') !== account) return;
+  const words = shippoConnectionWords(row);
+  if (!(decision === 'confirm' ? words.canConfirm : decision === 'reject' && words.canReject)) return;
+  const generation = ev.connectionGeneration || 0;
+  const scope = JSON.stringify([sessionVersion(), ev.teamId, ev.lane]);
+  const current = () => generation === (ev.connectionGeneration || 0) && scope === JSON.stringify([sessionVersion(), ev.teamId, ev.lane]);
+  ev.connTesting = id;
+  rowNote(id, ''); paintConnections();
+  try {
+    const result = await post(`${ENV_URL}/connections/shippo/refresh`, { id, decision, confirmationId: confirmation, shippoAccountId: account });
+    if (!current()) return;
+    const next = result?.connection;
+    const accepted = decision === 'confirm'
+      ? shippoCanBuy(next) && next.detail.confirmedAccountId === account && next.detail.confirmedAccountEmail === row.detail.shippoAccountEmail
+      : next?.detail?.oauthStage === 'account_rejected' && (row.status === 'ACTIVE' ? next.detail.historyOnly === true : next.status === 'PENDING');
+    if (result?.ok !== true || next?.id !== id || !accepted) throw new Error('The account decision was not confirmed. Check the connection again.');
+    rowNote(id, decision === 'confirm' ? 'This Shippo account is confirmed for new labels.' : 'You can now authorize a different Shippo account.');
+  } catch (error) {
+    if (!current()) return;
+    rowNote(id, errText(error, 'Could not save this choice. Check the connection again.'), true);
+  }
   ev.connTesting = '';
   await loadConnections();
 }
@@ -4565,6 +4644,15 @@ export function bindEnvironmentActions(deps) {
     if (a === 'conn-printful-name-cancel') { ev.printfulNaming = ''; paintConnections(); return; }
     if (a === 'conn-printful-name-save') return void savePrintfulName(btn.dataset.id || '');
     if (a === 'conn-shippo-refresh') return void refreshShippoConnect(btn.dataset.id || '');
+    if (a === 'conn-shippo-confirm') return void decideShippoAccount(btn, 'confirm');
+    if (a === 'conn-shippo-reject') return void decideShippoAccount(btn, 'reject');
+    if (a === 'ship-account') {
+      if (!shippingAccounts().some(row => row.id === btn.dataset.id) || shippingConnection()?.id === btn.dataset.id) return;
+      ev.shippingViewId = btn.dataset.id;
+      ev.shipArm = ''; clearTimeout(shipArmTimer);
+      paintShipping();
+      return void loadShippingLabels();
+    }
     if (a === 'ship-rates') return void getShippingRates();
     if (a === 'ship-rate-pick') { shipState().picked = btn.dataset.id || ''; paintShipping(); return; }
     if (a === 'ship-buy') return void buyShippingLabel();

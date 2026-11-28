@@ -1,11 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
-const source=await readFile(new URL('../src/account/environment.js',import.meta.url),'utf8');
+import { shippoCanBuy } from '../src/account/shippoConnection.js';
+const source=(await readFile(new URL('../src/account/environment.js',import.meta.url),'utf8')).replace(/\r\n/g,'\n');
 function makeDoor(name,until){
  const body=source.slice(source.indexOf(`async function ${name}(`),source.indexOf(until,source.indexOf(`async function ${name}(`)));
  let version=1;const resolvers=[],ev={teamId:'original',lane:'live'},navigation=[],requests=[],stored=[];
  const deps={ev,sessionVersion:()=>version,D:{showError(){}},paintConnections(){},post:async(url,body)=>{requests.push({url,body});return new Promise(resolve=>{resolvers.push(resolve);});},ENV_URL:'/api/environment',sessionStorage:{setItem:(...x)=>stored.push(x)},window:{location:{assign:url=>navigation.push(url)}},errText:()=>'',loadConnections:async()=>{}};
+ deps.canManageConnections=()=>true;
  const {action,invalidate}=Function(...Object.keys(deps),body+`;return {action:${name},invalidate:()=>{ev.connectionGeneration=(ev.connectionGeneration||0)+1}};`)(...Object.values(deps));
  return {ev,action,invalidate,navigation,requests,stored,resolve:(i=0,url='https://provider.example/authorize')=>resolvers[i]({url,connection:{id:'row-'+i}}),endSession:()=>{version++;}};
 }
@@ -28,7 +30,7 @@ test('shipping quotes follow the authorization, not only a reused connection id'
  const start=source.indexOf('function shippingScope()'),end=source.indexOf('\n',start);
  let connection={id:'same-id',detail:{authorizedAt:'first-grant',checkedAt:'first-read'}};
  const ev={teamId:'same-team',lane:'live'};
- const scope=Function('sessionVersion','ev','activeShippo',source.slice(start,end)+';return shippingScope;')(()=>1,ev,()=>connection);
+ const scope=Function('sessionVersion','ev','shippingConnection','shippoCanBuy',source.slice(start,end)+';return shippingScope;')(()=>1,ev,()=>connection,shippoCanBuy);
  const original=scope();connection.detail.checkedAt='later-read';assert.equal(scope(),original);
  connection.detail.authorizedAt='new-grant';assert.notEqual(scope(),original);
 });
