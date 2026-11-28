@@ -15,6 +15,7 @@ import { formatPrice, ALL_PRODUCTS, SHOP_LIVE } from './products.js';
 import { submitLaunchInterest, warmLaunchAlerts, looksLikeEmail } from './launchInterest.js';   // the sign-up lands on the platform (2026-11-15)
 import { LANE, PRAG_API_BASE, ORDERS_CLAIM_LIVE } from '../runtime/config.js';
 import { accessToken } from '../runtime/session.js';
+import { sessionVersion } from '../account/sessionPrivacy.js';
 import { tierCardsHtml, bindTierCards, loadPublicPrices } from '../components/tierCards.js';
 import { stripeAppearance } from '../api/stripeAppearance.js';
 import { ensureStripeJs } from '../runtime/stripeLoader.js';
@@ -61,13 +62,23 @@ function currentLines() {
   return lines();
 }
 
-// Entry from the warranty page once the registration checked out as eligible.
 // Guest order tracking. The footer link and the /#track short link land here;
 // the order number plus the checkout email fetch the customer projection.
-const track = { orderId: '', email: '', busy: false, error: '', result: null };
+let track = null;
+
+function clearTrackingVisit() {
+  if (!track) return;
+  track.request?.abort();
+  track = null;
+  state.step = 'details';
+  $host?.replaceChildren();
+}
+
 window.pragTrackOrder = () => {
+  clearTrackingVisit();
+  if (!$view || $view.classList.contains('hidden')) return;
+  track = { session: sessionVersion(), orderId: '', email: '', request: null, error: '', result: null };
   state.step = 'track';
-  track.busy = false; track.error = ''; track.result = null;
   render();
 };
 
@@ -103,7 +114,7 @@ function trackHtml() {
       <p class="muted co-note">Questions about this order: <a class="acct-inline-link" href="mailto:support@bridgesindust.com" data-open-contact data-about="Order ${escapeHtml(o.orderId || o.id || '')}">write to us</a>. Returns follow the <a href="#" class="acct-inline-link" data-legal="returns">returns policy</a>.</p>
     </div>` : '';
   return `
-    <form class="co-form co-track" id="coTrackForm" novalidate>
+    <form class="co-form co-track" id="coTrackForm" autocomplete="off" novalidate>
       <h2 class="co-h2">Track an order</h2>
       <p class="muted co-note">Your order number is in the confirmation email. Enter it with the email you used at checkout.</p>
       <div class="co-field">
@@ -112,11 +123,11 @@ function trackHtml() {
       </div>
       <div class="co-field">
         <label for="co-track-email">Email</label>
-        <input id="co-track-email" name="email" type="email" required autocomplete="email" placeholder="you@company.com" value="${escapeHtml(track.email)}">
+        <input id="co-track-email" name="email" type="email" required autocomplete="off" placeholder="you@company.com" value="${escapeHtml(track.email)}">
       </div>
       ${track.error ? `<div class="co-error" role="alert">${escapeHtml(track.error)}</div>` : ''}
       <div class="co-actions">
-        <button class="ph-btn" type="submit" ${track.busy ? 'disabled' : ''}>${track.busy ? 'Looking…' : 'Find my order'}</button>
+        <button class="ph-btn" type="submit" ${track.request ? 'disabled' : ''}>${track.request ? 'Looking…' : 'Find my order'}</button>
         <button class="ph-btn ph-btn-ghost" type="button" data-co-nav="shop">Back to shop</button>
       </div>
     </form>
@@ -125,21 +136,30 @@ function trackHtml() {
 }
 
 async function submitTrack() {
-  if (track.busy) return;
+  if (!track || track.request) return;
+  const visit = track;
   track.orderId = (document.getElementById('co-track-id')?.value || '').trim();
   track.email = (document.getElementById('co-track-email')?.value || '').trim();
   track.error = ''; track.result = null;
   if (!track.orderId || !track.email) { track.error = 'Enter the order number and the email you used.'; render(); return; }
-  track.busy = true; render();
+  visit.request = new AbortController();
+  render();
   try {
-    const res = await fetch(`${PRAG_API_BASE}/orders/lookup`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ orderId: track.orderId, email: track.email }) });
+    const res = await fetch(`${PRAG_API_BASE}/orders/lookup`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: visit.request.signal,
+      body: JSON.stringify({ orderId: visit.orderId, email: visit.email })
+    });
     const data = await res.json().catch(() => ({}));
+    if (track !== visit) return;
     if (!res.ok) throw new Error(data.error || (res.status === 404 ? 'No order with that number under that email.' : `Lookup failed (${res.status}).`));
-    track.result = data.order || null;
+    visit.result = data.order || null;
   } catch (ex) {
-    track.error = ex?.message || 'The lookup did not go through. Try again.';
+    if (track === visit) visit.error = ex?.message || 'The lookup did not go through. Try again.';
   } finally {
-    track.busy = false; render();
+    if (track === visit) {
+      visit.request = null;
+      render();
+    }
   }
 }
 
@@ -924,6 +944,12 @@ function readDetailsForm(form) {
 function bindOnce() {
   if (bindOnce._bound) return;
   bindOnce._bound = true;
+  window.addEventListener('pragoptics:session-changed', () => {
+    if (track && track.session !== sessionVersion()) window.pragTrackOrder();
+  });
+  window.addEventListener('pagehide', () => {
+    if (track) window.pragTrackOrder();
+  });
 
   document.addEventListener('click', (e) => {
     // Confirmation and empty-state navigation (no inline onclick: CSP).
@@ -969,7 +995,7 @@ function bindOnce() {
     if (e.target.closest('[data-track-order]')) {
       e.preventDefault();
       window.setAppMode?.('checkout');
-      setTimeout(() => window.pragTrackOrder?.(), 30);
+      window.pragTrackOrder();
       return;
     }
     if (e.target.closest('[data-co-signin]')) {
@@ -1109,8 +1135,13 @@ export function initCheckoutView() {
   });
 }
 
+export function onCheckoutLeave() {
+  clearTrackingVisit();
+}
+
 /** Hook: called by appRouter when switching to checkout mode. */
 export function onCheckoutEnter() {
+  clearTrackingVisit();
   // Fresh pass every entry: any prior PI is stale, but contact/address stick
   // around so a returning customer never retypes. A redemption is only in
   // play when the warranty page just armed it; any other entry is the cart.

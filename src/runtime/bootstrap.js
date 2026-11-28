@@ -42,7 +42,7 @@ let idlePrivacyGate = null;
     import { openProductModal, closeProductModal, initProductModal } from '../shop/product-modal.js';
     import { openCart, closeCart, initCartDrawer } from '../shop/cart-drawer.js';
     import { addItem as cartAddItem } from '../shop/cart.js';
-    import { initCheckoutView, onCheckoutEnter } from '../shop/checkout.js';
+    import * as checkout from '../shop/checkout.js';
     import { initWarrantyView, onWarrantyEnter } from '../warranty/warranty.js';
     import { initBuildsView, onBuildsEnter } from '../builds/builds.js';
     import { initAdminView, onAdminEnter, refreshAdminNav } from '../admin/admin.js';
@@ -133,7 +133,7 @@ let idlePrivacyGate = null;
     renderSoftwareGallery('softwareGallery');
     initProductModal();
     initCartDrawer();
-    initCheckoutView();
+    checkout.initCheckoutView();
     initWarrantyView();
     initBuildsView();
     initAdminView();
@@ -146,7 +146,8 @@ let idlePrivacyGate = null;
     window.addToCart         = (pid, variant) => cartAddItem(pid, variant || null, 1);
     window.onEnterMode       = (mode) => {
       if (mode !== 'wizard') endFinalizeVeil();
-      if (mode === 'checkout') onCheckoutEnter();
+      if (mode === 'checkout') checkout.onCheckoutEnter();
+      else checkout.onCheckoutLeave?.();
       if (mode === 'warranty') onWarrantyEnter();
       if (mode === 'builds') onBuildsEnter();
       if (mode === 'admin') onAdminEnter();
@@ -845,7 +846,7 @@ window.applyPostLoginResolution = applyPostLoginResolution;
       // Team invite link (the invite email): /#join/<token>
       else if (/^#join/i.test(String(location.hash || ""))) { setAppMode("join"); setTimeout(() => window.pragJoin?.(), 50); }
       // Guest order tracking short link (the confirmation email): /#track
-      else if (/^#track/i.test(String(location.hash || ""))) { setAppMode("checkout"); setTimeout(() => window.pragTrackOrder?.(), 50); }
+      else if (/^#track/i.test(String(location.hash || ""))) { setAppMode("checkout"); window.pragTrackOrder(); }
       // Report a site or an account (2026-09-24, the community standards): /#report opens the form over the landing, signed in or not
       else if (/^#report/i.test(String(location.hash || ""))) import("../components/footer.js").then((m) => m.openReportSite()).catch(() => {});
       // The account panel: /#account (and a provider's return, /?connect=stripe&id=...#account).

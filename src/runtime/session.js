@@ -1,4 +1,5 @@
 import {clearLaneRouting} from './studioHandoff.js';
+import {sessionChanged} from '../account/sessionPrivacy.js';
 // The session lives entirely in sessionStorage. Everything in localStorage is
 // the customer's own work - cart, warranty and builds queues, pending
 // reservations, account-link intents - so signing out must not touch it.
@@ -25,6 +26,7 @@ export function logout() {
     try { sessionStorage.removeItem(k); } catch {}
   }
   clearLaneRouting(sessionStorage, localStorage);
+  sessionChanged();
 
   // Return user to PragOptics in a signed-out state
   window.location.replace('/');
