@@ -8,7 +8,8 @@ import { esc } from '../src/ui/words.js';
 const source = readFileSync(new URL('../src/account/environment.js', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
 const functions = ['isManagedShippo', 'shippoAccountChoice', 'decideShippoAccount', 'shippingAccounts',
   'activeShippo', 'shippingConnection', 'shippingScope', 'shippingHtml', 'getShippingRates',
-  'buyShippingLabel', 'loadShippingLabels', 'refundShippingLabel', 'connectionQuotaUsed'];
+  'buyShippingLabel', 'loadShippingLabels', 'refundShippingLabel', 'connectionQuotaUsed',
+  'shippoSwitchSource', 'shippoSwitchScope', 'shippoSwitchHtml', 'chooseShippoIntent', 'startShippoConnect'];
 const handlers = functions.map(name => {
   const start = source.search(new RegExp('^(async )?function ' + name + '\\(', 'm'));
   assert.notEqual(start, -1, name);
@@ -20,7 +21,7 @@ function candidate() {
   return { id: 'new', provider: 'shippo', label: 'Shippo', status: 'PENDING', detail: {
     managed: 'shippo-connect', oauthStage: 'awaiting_confirmation', identityVerified: true,
     lastCheckSucceeded: true, confirmationId: 'decision-1', shippoAccountId: 'merchant-2',
-    shippoAccountEmail: 'provider-owner@example.test'
+    shippoAccountEmail: 'provider-owner@example.test', intendedEmail: 'provider-owner@example.test'
   } };
 }
 function confirmed(row) {
@@ -31,7 +32,7 @@ function fixture(rows, manage = true) {
   const ev = { teamId: 'shop', lane: 'live', connections: rows };
   const requests = [], notes = [], reads = [];
   const ctx = createContext({ ev, shippoCanBuy, shippoConnectionWords, canManageConnections: () => manage,
-    sessionVersion: () => 1, ENV_URL: '/environment', D: { escapeHtml: esc, apiFetch: async u => { reads.push(u); return { labels: [] }; } },
+    sessionVersion: () => 1, ENV_URL: '/environment', D: { escapeHtml: esc, showError() {}, apiFetch: async u => { reads.push(u); return { labels: [] }; } },
     url: (path, q) => path + '?' + new URLSearchParams(q), paintConnections() {}, loadConnections() {}, paintShipping() {},
     rowNote: (...args) => notes.push(args), errText: e => e.message, post: async (p, b) => { requests.push({ p, b }); return ctx.answer; },
     cardHtml: ({body}) => body, shippingLabelsHtml: () => '<section>Existing labels</section>', shipInput: () => '',
@@ -140,4 +141,80 @@ test('ended and missing grants can select their saved PDFs without claiming the 
   assert.equal(pending.ctx.shippingHtml(), '');
   await pending.ctx.loadShippingLabels();
   assert.equal(pending.reads.length, 0);
+});
+
+function setup(rows = []) {
+  const f = fixture(rows), {ctx} = f;
+  const navigations = [], stored = [];
+  ctx.window = { location: {assign: value => navigations.push(value)} };
+  ctx.sessionStorage = {setItem: (...args) => stored.push(args)};
+  const email = { value: '', reportValidity() { return this.value.includes('@'); } };
+  function button() {
+    const scope = ctx.shippoSwitchScope(ctx.shippoSwitchSource());
+    const panel = {dataset:{shippoSwitch:scope}, querySelector: selector => selector === '[data-shippo-email]' ? email : null};
+    return {isConnected:true, closest: () => panel};
+  }
+  const html = () => ctx.shippoSwitchHtml(ctx.shippoSwitchSource());
+  return {...f,navigations,stored,email,button,html};
+}
+
+test('first-use existing account and signup both require a typed choice, review and explicit provider authorization', async () => {
+  for (const [kind,path] of [['existing','login'],['new','join']]) {
+    const f=setup();
+    assert.match(f.html(), /type="email" data-shippo-email required/);
+    assert.doesNotMatch(f.html(), /data-shippo-email[^>]*value=|conn-shippo-resume/);
+    f.ctx.chooseShippoIntent(f.button(),kind);
+    await f.ctx.startShippoConnect(f.button());
+    assert.equal(f.ev.shippoIntent,undefined);
+    assert.equal(f.requests.length,0);
+    f.email.value='Shipping@Example.test';
+    f.ctx.chooseShippoIntent(f.button(),kind);
+    assert.ok(f.html().includes(`href="https://apps.goshippo.com/${path}" target="_blank" rel="noopener noreferrer"`));
+    assert.match(f.html(),/shipping@example\.test/);
+    assert.equal(f.requests.length,0);
+    assert.doesNotMatch(f.html(),/checkbox/);
+    f.ctx.answer = {ok:true,intentBound:true,intendedEmail:'SHIPPING@example.test',url:'https://provider.example/authorize',connection:{id:'scoped'}};
+    await f.ctx.startShippoConnect(f.button());
+    assert.deepEqual({...f.requests[0].b},{intendedEmail:'shipping@example.test'});
+    assert.deepEqual(f.navigations,[f.ctx.answer.url]);
+  }
+});
+
+test('wrong warm account, older rollout, rejected history and context changes cannot silently resume', async () => {
+  const mismatch=candidate();
+  Object.assign(mismatch.detail,{oauthStage:'account_mismatch',intendedEmail:'chosen@example.test',returnedEmail:'warm@example.test'});
+  for (const reply of [{}, {intentBound:true,intendedEmail:'warm@example.test'}]) {
+    const f=setup([mismatch]);
+    assert.match(f.html(),/chosen@example\.test.*warm@example\.test.*neither account/);
+    assert.doesNotMatch(f.html(),/data-shippo-email[^>]*value=|conn-shippo-resume/);
+    f.email.value='chosen@example.test'; f.ctx.chooseShippoIntent(f.button(),'existing');
+    f.ctx.answer={ok:true,url:'https://provider.example/should-not-open',...reply};
+    await f.ctx.startShippoConnect(f.button());
+    assert.deepEqual(f.navigations,[]); assert.deepEqual(f.stored,[]);
+    assert.match(f.ev.connResult,/Authorization is paused/);
+  }
+  const history=confirmed(candidate()); Object.assign(history.detail,{historyOnly:true,oauthStage:'account_rejected'});
+  const f=setup([history]); assert.match(f.html(),/declined the previous billing account/);
+  f.email.value='new@example.test'; f.ctx.chooseShippoIntent(f.button(),'new');
+  const fromOriginal=f.button(); f.ev.lane='sandbox';
+  assert.doesNotMatch(f.html(),/new@example\.test/);
+  await f.ctx.startShippoConnect(fromOriginal);
+  assert.equal(f.requests.length,0);
+});
+
+test('a bounded secure storage wait keeps the selected email and exposes only a deliberate retry', async () => {
+  const f=setup();
+  f.email.value='ship@example.test'; f.ctx.chooseShippoIntent(f.button(),'existing');
+  const preparing=candidate();
+  Object.assign(preparing.detail,{oauthStage:'preparing_storage',intendedEmail:'',identityVerified:false});
+  f.ctx.post=async () => {throw Object.assign(new Error(),{data:{code:'SHIPPO_STORAGE_PREPARING',retryAfter:5}});};
+  f.ctx.loadConnections=async () => {f.ev.connections=[preparing];};
+  await f.ctx.startShippoConnect(f.button());
+  assert.match(f.ev.connResult,/Retry secure setup in 5 seconds/);
+  assert.match(f.html(),/Retry secure setup/);
+  assert.deepEqual(f.navigations,[]); assert.deepEqual(f.stored,[]);
+  assert.equal(shippoConnectionWords(preparing).canCheck,false);
+  const legacy=candidate(); delete legacy.detail.intendedEmail;
+  assert.equal(shippoConnectionWords(legacy).canConfirm,false);
+  assert.equal(shippoConnectionWords(legacy).canReject,true);
 });

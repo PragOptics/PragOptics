@@ -27,7 +27,7 @@
 import { PRAG_API_BASE, STUDIO_URL, LANE } from '../runtime/config.js';
 import { connectionAccessMode, connectionOptions, connectionAccessNote } from './connectionAccess.js';
 import { isManagedPrintful, printfulConnectionWords } from './printfulConnection.js';
-import { shippoCanBuy, shippoConnectionWords, shippoReturnWords } from './shippoConnection.js?v=account-confirmation';
+import { shippoCanBuy, shippoConnectionWords, shippoReturnWords } from './shippoConnection.js?v=intended-account';
 import { microsoftWriteAccess } from './microsoftWriteAccess.js';
 import { tierName, tierBadge } from '../components/tierCopy.js';
 import { explainLink } from '../components/explainer.js';
@@ -192,6 +192,7 @@ function canUseSandbox() { return BUILD_ROLES.has(myRole()); }
 
 export async function renderEnvironment(main, deps) {
   ev.connectionGeneration = (ev.connectionGeneration || 0) + 1;
+  ev.shippoIntent = null;
   closeShipmentTracking();
   let supplierReviewId = "";
   ev.lane = laneChoice();
@@ -451,7 +452,7 @@ async function setLane(lane) {
   if (lane === 'sandbox' && !canUseSandbox()) return;   // only the builders switch to the sandbox lane
   ev.connectionGeneration = (ev.connectionGeneration || 0) + 1;
   ev.lane = lane === 'sandbox' ? 'sandbox' : 'live';
-  ev.shippingViewId = ''; ev.shipArm = ''; ev.connUsed = null;
+  ev.shippingViewId = ''; ev.shipArm = ''; ev.connUsed = null; ev.shippoIntent = null;
   try { sessionStorage.setItem(LANE_KEY, ev.lane); } catch { /* fine */ }
   ev.files = null; ev.keys = null; ev.domains = null; ev.connections = null; ev.connAccess = null; ev.archive = null; resetDocuments(); resetImport(); ev.connPick = ''; ev.connResult = ''; ev.madeKey = null; ev.filesNote = '';
   ev.supplierSearch = newSupplierSearch(); ev.shopifyStep = ''; ev.shopifyLabel = ''; ev.shopifyLink = ''; ev.shopifyLinkId = '';
@@ -2334,6 +2335,59 @@ function connectionQuotaUsed() {
   return ev.connUsed ?? (ev.connections || []).filter(c => !(isManagedShippo(c) && c.detail.historyOnly)).length;
 }
 
+function shippoSwitchSource() {
+  const rows = (ev.connections || []).filter(c => isManagedShippo(c) && c.status !== 'CLOSED');
+  const purchase = rows.find(c => !c.detail.historyOnly);
+  if (purchase) return shippoConnectionWords(purchase).canAuthorize ? purchase : null;
+  return rows.sort((a, b) => String(b.updatedAt || b.createdAt || '').localeCompare(String(a.updatedAt || a.createdAt || '')))[0] || null;
+}
+
+function shippoSwitchScope(row) {
+  return JSON.stringify([sessionVersion(), ev.teamId, ev.lane, ev.connectionGeneration || 0, row?.id || '', row?.detail.oauthStage || '', row?.detail.rejectedAt || '']);
+}
+
+function shippoSwitchHtml(row) {
+  const e = D.escapeHtml;
+  const scope = shippoSwitchScope(row);
+  const intent = ev.shippoIntent?.scope === scope ? ev.shippoIntent : null;
+  const d = row?.detail || {};
+  const mismatch = d.oauthStage === 'account_mismatch';
+  const previous = mismatch ? `You chose <strong>${e(d.intendedEmail)}</strong>. Shippo returned <strong>${e(d.returnedEmail)}</strong>. This attempt connected neither account.`
+    : d.oauthStage === 'identity_unavailable' ? 'Shippo could not verify the account email. This attempt did not connect an account.'
+    : d.oauthStage === 'intent_required' ? 'Choose the Shippo account for a new authorization.'
+    : d.oauthStage === 'account_rejected' ? 'You declined the previous billing account. Choose the one you want to use.' : '';
+  const disabled = ev.connBusy || ev.connTesting ? 'disabled' : '';
+  const create = intent?.kind === 'new';
+  return `<fieldset class="ev-ship-col" data-shippo-switch="${e(scope)}">
+    <legend>${intent ? 'Review your Shippo account' : 'Choose your Shippo account'}</legend>
+    ${previous ? `<p class="acct-card-note" role="status">${previous}</p>` : ''}
+    ${!intent ? `<label class="ev-conn-field">Shippo account email<input class="acct-input" type="email" data-shippo-email required maxlength="254" pattern=".+@.+[.].+" autocomplete="off" spellcheck="false"></label>
+      <p class="acct-card-note">Enter the email of the Shippo account that should pay for labels.</p>
+      <div class="ev-key-row"><button class="btn btn-sm btn-primary" type="button" data-env-action="conn-shippo-existing" ${disabled}>Use an existing account</button>
+      <button class="btn btn-sm" type="button" data-env-action="conn-shippo-new" ${disabled}>Create a Shippo account</button></div>`
+    : `<p class="acct-card-note">${create ? 'Continue to Shippo to create an account for' : 'Continue to Shippo to authorize'} <strong>${e(intent.email)}</strong>. PragOptics will accept only this email.</p>
+      <p class="acct-card-note">Shippo may use an account already signed in to this browser. If you need to switch, open Shippo, sign out of the other account there, then return to this tab.</p>
+      <div class="ev-key-row"><a class="btn btn-sm" href="https://apps.goshippo.com/login" target="_blank" rel="noopener noreferrer">Open Shippo sign-in</a>${create ? ' <a class="btn btn-sm" href="https://apps.goshippo.com/join" target="_blank" rel="noopener noreferrer">Open Shippo signup</a>' : ''}</div>
+      <div class="ev-key-row"><button class="btn btn-primary btn-sm" type="button" data-env-action="conn-shippo-resume" ${disabled}>${ev.connBusy ? 'Preparing secure connection…' : d.oauthStage === 'preparing_storage' ? 'Retry secure setup' : 'Continue to Shippo authorization'}</button>
+      <button class="btn btn-sm" type="button" data-env-action="conn-shippo-edit" ${disabled}>Change account</button></div>`}
+  </fieldset>`;
+}
+
+function chooseShippoIntent(btn, kind) {
+  if (!btn.isConnected || !canManageConnections() || ev.connBusy || ev.connTesting || ev.connAccess) return;
+  const panel = btn.closest('[data-shippo-switch]'), scope = shippoSwitchScope(shippoSwitchSource());
+  if (panel?.dataset.shippoSwitch !== scope) return;
+  if (kind === 'edit') ev.shippoIntent = null;
+  else {
+    const input = panel.querySelector('[data-shippo-email]');
+    if (!['new', 'existing'].includes(kind) || !input?.reportValidity()) return;
+    const email = input.value.trim().toLowerCase();
+    if (!email || email.length > 254) return;
+    ev.shippoIntent = { scope, email, kind };
+  }
+  paintConnections();
+}
+
 function shippoAccountChoice(c, manage) {
   if (!isManagedShippo(c)) return '';
   const words = shippoConnectionWords(c);
@@ -2526,6 +2580,7 @@ function connectionsHtml() {
   const e = D.escapeHtml;
   const manage = canManageConnections();
   const rows = ev.connections;
+  const switchShippo = shippoSwitchSource();
   const summary = rows == null ? (ev.connNote ? 'not on this lane' : 'loading') : !rows.length ? 'nothing connected yet' : (() => {
     const current = rows.filter(c => !(isManagedShippo(c) && c.detail.historyOnly));
     const live = current.filter(c => isManagedShippo(c) ? shippoCanBuy(c) : c.status === 'ACTIVE').length;
@@ -2562,7 +2617,6 @@ function connectionsHtml() {
                   <span class="act-row"><button class="btn btn-sm btn-ico is-armed" type="button" data-env-action="conn-remove" data-id="${e(c.id)}" data-label="${e(c.label)}" aria-label="Remove? The credential is deleted and anything using it stops. Press again to confirm." data-tip="The credential is deleted from the vault and anything using it stops on its next call">${ico('trash')}<span>Remove?</span></button>${iconBtn('conn-remove-cancel', 'x', 'Keep it', '', 'btn-arm-cancel')}</span>` : `<span class="act-row">
                   ${isManagedStripe(c) && (() => { const s = stripeState(c.detail); return s.kind === 'action' || s.kind === 'incomplete' || (s.kind === 'payments' && s.needs.length > 0); })() ? doorBtn('conn-stripe-continue', 'external', 'Continue setup', 'Opening with Stripe…', "Stripe's own pages for what it still needs", '', 'btn-primary') : ''}
                   ${isManagedTwilio(c) && c.status !== 'ACTIVE' ? doorBtn('conn-twilio-start', 'external', c.detail?.disconnected || c.detail?.declined ? 'Connect again' : 'Authorize at Twilio', 'Opening with Twilio…', "Twilio's authorization page for PragOptics, on your own Twilio account", '', 'btn-primary') : ''}
-                  ${isManagedShippo(c) && shippoConnectionWords(c).canAuthorize ? doorBtn('conn-shippo-start', 'external', c.detail?.disconnected || c.detail?.declined ? 'Connect again' : 'Authorize at Shippo', 'Opening with Shippo…', "Shippo's authorization page for PragOptics; use the Shippo account you want this environment to connect", '', 'btn-primary') : ''}
                   ${isManagedPrintful(c) && c.status !== 'ACTIVE' ? doorBtn('conn-printful-start', 'external', 'Authorize at Printful', 'Opening Printful…', 'Approve your Printful store for this environment', '', 'btn-primary') : ''}
                   ${isManagedMicrosoft(c) && microsoftWriteAccess(c).canUpgrade ? (ev.msWriteConsent === c.id ? doorBtn('conn-microsoft-write-continue', 'external', 'Continue at Microsoft', 'Opening Microsoft…', 'Approve creating SharePoint lists and adding exported data using this Microsoft account', `data-id="${e(c.id)}"`, 'btn-primary') + iconBtn('conn-microsoft-write-cancel', 'x', 'Keep read-only access', `data-id="${e(c.id)}"`) : iconBtn('conn-microsoft-write', 'external', 'Enable SharePoint publishing', `data-id="${e(c.id)}"`)) : ''}
                   ${isManagedMicrosoft(c) && microsoftWriteAccess(c).pending ? iconBtn('conn-microsoft-write-stop', 'x', 'Cancel publishing approval', `data-id="${e(c.id)}"`) : ''}
@@ -2576,7 +2630,7 @@ function connectionsHtml() {
                   ${isManagedShopify(c) && c.status !== 'ACTIVE' ? doorBtn('conn-shopify-link', 'send', 'Supplier link', 'Making the link…', 'A fresh link for your supplier; the old one stops working', `data-shop="${e(c.detail?.shop || '')}"`) : ''}
                   ${isManagedShopify(c) && c.status === 'ACTIVE' ? stateLead('conn-shopify-sync', 'refresh', 'Sync products', { out: ev.connSyncing === c.id, busyWord: 'Syncing…' }, `data-id="${e(c.id)}" data-tip="Copy the store's products into this environment's data, table supplier_products"`) : ''}
                   ${isManagedShopify(c) && c.status === 'ACTIVE' ? stateLead('conn-shopify-testorder', 'send', 'Review supplier order', { out: ev.connBusy && ev.connRow === c.id, busyWord: 'Reviewing…' }, `data-id="${e(c.id)}" data-tip="Place a real Shopify order. Your supplier can fulfill and bill it."`) : ''}
-                  ${stateIcon(refreshAction, 'check', isManaged(c) ? 'Check status' : 'Test the credential', { out: !!testing, busyWord: 'Checking…', waiting: confirming ? MS_CONFIRM_WAIT : ev.connTesting && !testing ? 'Wait for the check being made' : '' }, `data-id="${e(c.id)}"`)}
+                  ${!isManagedShippo(c) || shippoConnectionWords(c).canCheck ? stateIcon(refreshAction, 'check', isManaged(c) ? 'Check status' : 'Test the credential', { out: !!testing, busyWord: 'Checking…', waiting: confirming ? MS_CONFIRM_WAIT : ev.connTesting && !testing ? 'Wait for the check being made' : '' }, `data-id="${e(c.id)}"`) : ''}
                   ${isManagedPrintful(c) && ev.printfulStoreNaming ? `<button class="btn btn-sm" type="button" data-env-action="conn-printful-name" data-id="${e(c.id)}" ${ev.connBusy ? 'disabled' : ''}>${c.detail?.requestedStoreName ? 'Change store name' : 'Name store'}</button>` : ''}
                   ${confirming ? stateIcon('conn-remove', 'trash', 'Remove this connection', { waiting: MS_CONFIRM_WAIT }, `data-id="${e(c.id)}" data-label="${e(c.label)}"`, 'is-risky')
                     : iconBtn('conn-remove', 'trash', 'Remove this connection', `data-id="${e(c.id)}" data-label="${e(c.label)}"`, 'is-risky')}</span>`) : ''}</td>
@@ -2632,9 +2686,7 @@ function connectionsHtml() {
         ${ev.printfulStoreNaming ? `<label class="ev-conn-field"><span class="ev-conn-field-label">Store name</span><input class="acct-input" id="evPrintfulStoreName" type="text" maxlength="120" required autocomplete="organization" value="${e(ev.connDraft.printfulName || '')}" placeholder="e.g. Bridges Industrial" /></label><p class="acct-card-note">Choose your store’s name first. At Printful, select an existing store or create one. If its name differs, we’ll guide you to its name setting and verify it when you return.</p>` : ''}
         <div class="ev-key-row">${stateLead('conn-printful-start', 'external', 'Connect your Printful store', { out: ev.connBusy && !ev.connRow, busyWord: 'Opening Printful…', waiting: pickWait }, '', 'btn-primary')}</div>
         <p class="acct-card-note ev-dom-door">Approve your store at Printful, then return here. Printful bills your account for confirmed fulfillment; connecting does not place an order.</p>`;
-    else if (pick === 'm:shippo') door = `
-        <div class="ev-key-row">${stateLead('conn-shippo-start', 'external', 'Connect your Shippo account', { out: ev.connBusy && !ev.connRow, busyWord: 'Opening with Shippo…', waiting: pickWait }, '', 'btn-primary')}</div>
-        <p class="acct-card-note ev-dom-door">Connect the Shippo account you want this environment to use. An existing Shippo browser session may continue without another sign-in. Your PragOptics email does not select the Shippo account. To create a separate Shippo account, first sign out at Shippo yourself, then return here to connect it. Shippo bills the connected account directly for labels.</p>`;
+    else if (pick === 'm:shippo' && !switchShippo && !has(c => isManagedShippo(c) && !c.detail.historyOnly)) door = shippoSwitchHtml(null);
     else if (pick === 'm:microsoft') door = `
         <div class="ev-key-row">${stateLead('conn-microsoft-start', 'external', 'Connect Microsoft 365', { out: ev.connBusy && !ev.connRow, busyWord: 'Opening with Microsoft…', waiting: pickWait }, '', 'btn-primary')}</div>
         <p class="acct-card-note ev-dom-door">Sign in at Microsoft with a work or school account in your organization and approve PragOptics. It asks Microsoft only to read: your profile and the SharePoint sites that account can open, so the software can import their lists and Excel workbooks. Your organization's Microsoft administrator may have to approve it first.</p>`;
@@ -2665,6 +2717,7 @@ function connectionsHtml() {
       ${ev.connNote ? `<p class="acct-card-note ev-note">${e(ev.connNote)}</p>` : ''}
       ${ev.connAccess ? `<p class="acct-card-note ev-note">${e(connectionAccessNote(ev.connAccess))}</p>` : ''}
       ${form}
+      ${switchShippo && manage && !ev.connAccess ? shippoSwitchHtml(switchShippo) : ''}
       <p class="acct-error" id="evConnError" hidden></p>
       ${ev.connResult ? `<p class="acct-card-note ev-note ev-conn-result" aria-live="polite">${e(ev.connResult)}</p>` : ''}
       ${ev.shopifyLink && !(ev.connections || []).some(c => c.id === ev.shopifyLinkId) ? `<div class="ev-link-box"><code class="ev-code">${e(ev.shopifyLink)}</code>${iconBtn('domain-copy', 'copy', 'Copy the link', `data-text="${e(ev.shopifyLink)}"`)}</div>` : ''}
@@ -3643,24 +3696,53 @@ async function refreshPrintfulConnect(id, quiet = false) {
   ev.connTesting = '';
   await loadConnections();
 }
-async function startShippoConnect() {
-  if (ev.connBusy || ev.connTesting || !canManageConnections()) return;
+async function startShippoConnect(resumeButton) {
+  if (ev.connBusy || ev.connTesting || ev.connAccess || !canManageConnections()) return;
+  const switchRow = shippoSwitchSource();
+  const intent = ev.shippoIntent;
+  const panel = resumeButton?.closest('[data-shippo-switch]');
+  if (!resumeButton?.isConnected || !intent?.email || intent.scope !== shippoSwitchScope(switchRow) ||
+      panel?.dataset.shippoSwitch !== intent.scope) return;
   if ((ev.connections || []).some(c => isManagedShippo(c) && !c.detail.historyOnly && !shippoConnectionWords(c).canAuthorize)) return;
   const generation = ev.connectionGeneration = (ev.connectionGeneration || 0) + 1;
+  ev.shippoIntent = { ...intent, scope: shippoSwitchScope(switchRow) };
   const scope = JSON.stringify([sessionVersion(), ev.teamId || '', ev.lane]);
   const current = () => generation === (ev.connectionGeneration || 0) && scope === JSON.stringify([sessionVersion(), ev.teamId || '', ev.lane]);
   D.showError('evConnError', '');
   ev.connBusy = true; ev.connResult = ''; paintConnections();
   try {
-    const d = await post(`${ENV_URL}/connections/shippo/start`, {});
+    const d = await post(`${ENV_URL}/connections/shippo/start`, { intendedEmail: intent.email });
     if (!current()) return;
+    if (d?.intentBound !== true || typeof d.intendedEmail !== 'string' || d.intendedEmail.trim().toLowerCase() !== intent.email) {
+      ev.connBusy = false;
+      ev.connResult = 'This connection service could not verify your chosen Shippo email. Authorization is paused here. Try again after the service is updated.';
+      paintConnections();
+      return;
+    }
     if (!d?.url) throw new Error('Shippo did not answer with an authorization link.');
     try { sessionStorage.setItem('pragoptics_connect_return', JSON.stringify({ provider: 'shippo', id: String(d.connection?.id || '') })); } catch { /* the return still carries the id */ }
     window.location.assign(d.url);
     return;
   } catch (ex) {
     if (!current()) return;
-    ev.connBusy = false; paintConnections();
+    ev.connBusy = false;
+    if (['SHIPPO_STORAGE_PREPARING', 'SHIPPO_STORAGE_NOT_READY'].includes(ex?.data?.code)) {
+      await loadConnections();
+      if (!current()) return;
+      const retryRow = shippoSwitchSource();
+      if (retryRow?.detail.oauthStage === 'preparing_storage' && (!switchRow || switchRow.detail.historyOnly || switchRow.id === retryRow.id)) {
+        ev.shippoIntent = { ...intent, scope: shippoSwitchScope(retryRow) };
+      }
+      const seconds = Number(ex.data.retryAfter);
+      const retry = Number.isFinite(seconds) && seconds > 0 ? ` in ${Math.ceil(seconds)} seconds` : ' shortly';
+      const notice = ex.data.code === 'SHIPPO_STORAGE_PREPARING'
+        ? `PragOptics is still preparing this connection. Retry secure setup${retry}.`
+        : 'Secure connection setup needs attention from PragOptics support. Shippo authorization has not started.';
+      ev.connResult = notice;
+      paintConnections();
+      return;
+    }
+    paintConnections();
     D.showError('evConnError', errText(ex, 'Could not start the Shippo authorization right now.'));
   }
 }
@@ -3701,7 +3783,7 @@ async function decideShippoAccount(btn, decision) {
       ? shippoCanBuy(next) && next.detail.confirmedAccountId === account && next.detail.confirmedAccountEmail === row.detail.shippoAccountEmail
       : next?.detail?.oauthStage === 'account_rejected' && (row.status === 'ACTIVE' ? next.detail.historyOnly === true : next.status === 'PENDING');
     if (result?.ok !== true || next?.id !== id || !accepted) throw new Error('The account decision was not confirmed. Check the connection again.');
-    rowNote(id, decision === 'confirm' ? 'This Shippo account is confirmed for new labels.' : 'You can now authorize a different Shippo account.');
+    rowNote(id, decision === 'confirm' ? 'This Shippo account is confirmed for new labels.' : 'Choose the Shippo email you want to use for a new authorization.');
   } catch (error) {
     if (!current()) return;
     rowNote(id, errText(error, 'Could not save this choice. Check the connection again.'), true);
@@ -4447,9 +4529,12 @@ async function handleProviderReturn() {
   if (r.provider === 'google') { await googleReturn(r.id, r.outcome); return; }
   if (r.provider === 'github') { await githubAppReturn(r.id, r.outcome); return; }
   const back = PROVIDER_RETURN[r.provider] || PROVIDER_RETURN.stripe;
-  const progress = back.words(r.outcome);
+  const shippo = r.provider === 'shippo' ? ev.connections.find(c => c.id === r.id) : null;
+  const outcome = shippo && !shippoConnectionWords(shippo).canCheck ? shippo.detail.oauthStage : r.outcome;
+  const progress = back.words(outcome);
   ev.connResult = progress;
   paintConnections();
+  if (shippo && ['account_mismatch', 'identity_unavailable', 'intent_required', 'account_rejected', 'preparing_storage'].includes(outcome)) return;
   await back.refresh(r.id);
   if (r.provider === 'printful' && r.outcome === 'return' && ev.connResult === progress) {
     ev.connResult = '';
@@ -4637,7 +4722,10 @@ export function bindEnvironmentActions(deps) {
     if (a === 'conn-stripe-refresh') return void refreshStripeConnect(btn.dataset.id || '');
     if (a === 'conn-twilio-start') return void startTwilioConnect();
     if (a === 'conn-twilio-refresh') return void refreshTwilioConnect(btn.dataset.id || '');
-    if (a === 'conn-shippo-start') return void startShippoConnect();
+    if (a === 'conn-shippo-existing') return void chooseShippoIntent(btn, 'existing');
+    if (a === 'conn-shippo-new') return void chooseShippoIntent(btn, 'new');
+    if (a === 'conn-shippo-edit') return void chooseShippoIntent(btn, 'edit');
+    if (a === 'conn-shippo-resume') return void startShippoConnect(btn);
     if (a === 'conn-printful-start') return void startPrintfulConnect(btn.dataset.id || '');
     if (a === 'conn-printful-refresh') return void refreshPrintfulConnect(btn.dataset.id || '');
     if (a === 'conn-printful-name') { ev.printfulNaming = btn.dataset.id || ''; paintConnections(); document.getElementById(`evPrintfulName-${ev.printfulNaming}`)?.focus(); return; }
@@ -4722,9 +4810,10 @@ export function bindEnvironmentActions(deps) {
     if (t) setRenewal(t.dataset.host || '', !!t.checked, t);
     // Picking a provider redraws the form with that provider's own fields.
     if (e.target.id === 'evConnProvider') {
+      ev.shippoIntent = null;
       ev.connPick = e.target.value || ''; ev.connResult = ''; ev.shopifyStep = ''; ev.supplierSearch = newSupplierSearch();
       if (ev.connPick === 'm:shopify') checkShopifySupplierMode();
-      paintConnections(); document.querySelector('[data-conn-field], #evShopifyLabel, #evPrintfulStoreName')?.focus();
+      paintConnections(); document.querySelector('[data-conn-field], [data-shippo-email], #evShopifyLabel, #evPrintfulStoreName')?.focus();
     }
     // The archive's GitHub account: read the repositories it can reach and redraw the Repository field for that account.
     if (e.target.id === 'evArcConn') { ev.archivePick = e.target.value || ''; maybeFetchRepos(ev.archivePick); paintArchive(); return; }

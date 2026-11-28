@@ -8,8 +8,16 @@ function makeDoor(name,until){
  let version=1;const resolvers=[],ev={teamId:'original',lane:'live'},navigation=[],requests=[],stored=[];
  const deps={ev,sessionVersion:()=>version,D:{showError(){}},paintConnections(){},post:async(url,body)=>{requests.push({url,body});return new Promise(resolve=>{resolvers.push(resolve);});},ENV_URL:'/api/environment',sessionStorage:{setItem:(...x)=>stored.push(x)},window:{location:{assign:url=>navigation.push(url)}},errText:()=>'',loadConnections:async()=>{}};
  deps.canManageConnections=()=>true;
+ deps.shippoSwitchSource=()=>null;
+ deps.shippoSwitchScope=()=>JSON.stringify([version,ev.teamId,ev.lane,ev.connectionGeneration||0]);
  const {action,invalidate}=Function(...Object.keys(deps),body+`;return {action:${name},invalidate:()=>{ev.connectionGeneration=(ev.connectionGeneration||0)+1}};`)(...Object.values(deps));
- return {ev,action,invalidate,navigation,requests,stored,resolve:(i=0,url='https://provider.example/authorize')=>resolvers[i]({url,connection:{id:'row-'+i}}),endSession:()=>{version++;}};
+ const intendedEmail='chosen@example.test';
+ const begin=(...args)=>{
+   if(name!=='startShippoConnect')return action(...args);
+   const scope=deps.shippoSwitchScope();ev.shippoIntent={scope,email:intendedEmail,kind:'existing'};
+   return action({isConnected:true,closest:()=>({dataset:{shippoSwitch:scope},querySelector:()=>({reportValidity:()=>true})})});
+ };
+ return {ev,action:begin,invalidate,navigation,requests,stored,resolve:(i=0,url='https://provider.example/authorize')=>resolvers[i]({url,connection:{id:'row-'+i},intentBound:true,intendedEmail}),endSession:()=>{version++;}};
 }
 test('Shippo cannot redirect or save return state after the user changes environment',async()=>{
  const w=makeDoor('startShippoConnect','async function refreshShippoConnect');

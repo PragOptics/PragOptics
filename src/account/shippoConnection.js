@@ -18,6 +18,9 @@ export function shippoConnectionWords(connection = {}) {
   const confirmed = shippoCanBuy(connection);
   const review = !historyOnly && !confirmed && (active || ['verifying', 'awaiting_confirmation'].includes(stage));
   const rejected = stage === 'account_rejected';
+  const newAttempt = ['account_mismatch', 'identity_unavailable', 'intent_required'].includes(stage);
+  const intended = String(detail.intendedEmail || '').trim().toLowerCase();
+  const matchesIntent = !!intended && intended === String(detail.shippoAccountEmail || '').trim().toLowerCase();
   const identity = active || stage === 'awaiting_confirmation' || (stage === 'verifying' && verifiedIdentity)
     ? (verifiedIdentity && (detail.shippoAccountEmail || detail.shippoAccountId)
       ? [detail.shippoAccountEmail, detail.shippoAccountId].filter(Boolean).join(' · ')
@@ -38,26 +41,34 @@ export function shippoConnectionWords(connection = {}) {
   if (active && previousCode && Number.isFinite(Date.parse(previous?.at)) && Date.parse(detail.authorizedAt) > Date.parse(previous.at)) {
     notices.push(`Earlier authorization attempt: ${previousCode}${Number(previous.httpStatus) ? ` (HTTP ${Number(previous.httpStatus)})` : ''}. A later authorization completed successfully.`);
   }
-  if (historyOnly) notices.push('Past labels stay available in Shipping. Add Shippo under Connected accounts to choose an account for new labels.');
-  else if (rejected) notices.push('Sign in to the intended account at Shippo, then choose Authorize at Shippo here. Shippo may reuse an existing sign-in.');
+  if (historyOnly) notices.push('Past labels stay available in Shipping.');
+  else if (rejected) notices.push('You declined this billing account. Choose the Shippo email for a new authorization.');
+  else if (newAttempt) notices.push(shippoReturnWords(stage));
+  else if (stage === 'preparing_storage') notices.push('PragOptics is preparing secure storage for this connection. Retry secure setup to continue to Shippo.');
+  else if (!active && stage === 'awaiting_confirmation' && !matchesIntent) notices.push('Choose a different account to restart authorization with your intended Shippo email.');
   else if (review) notices.push(verifiedIdentity && detail.confirmationId
     ? 'Confirm the Shippo account that should pay for new shipping labels.'
     : 'Check the connection again for the provider account details needed to confirm new label purchases.');
   return {
     identity: [identity, summary].filter(Boolean).join(' · '),
-    label: historyOnly ? 'label history only' : confirmed ? 'confirmed for shipping' : stage === 'verifying' ? 'verifying account' : review ? 'confirmation needed' : rejected ? 'choose another account' : stage === 'processing' ? 'processing authorization' : disconnected ? 'disconnected' : failed ? 'authorization failed' : detail.declined ? 'declined' : 'awaiting authorization',
+    label: historyOnly ? 'label history only' : confirmed ? 'confirmed for shipping' : stage === 'verifying' ? 'verifying account' : review ? 'confirmation needed' : stage === 'account_mismatch' ? 'account mismatch' : newAttempt ? 'account selection needed' : rejected ? 'choose another account' : stage === 'preparing_storage' ? 'preparing secure connection' : stage === 'processing' ? 'processing authorization' : disconnected ? 'disconnected' : failed ? 'authorization failed' : detail.declined ? 'declined' : 'awaiting authorization',
     kind: confirmed ? 'verified' : disconnected || failed ? 'bad' : 'pending',
     needs: notices.join(' ') || (active ? '' : fallback),
     canAuthorize: !active && !working && !historyOnly,
     canConfirm: review && stage === 'awaiting_confirmation' && !!detail.confirmationId && verifiedIdentity &&
       detail.lastCheckSucceeded === true && !!detail.shippoAccountId && !!detail.shippoAccountEmail &&
-      (!detail.confirmedAccountId || detail.confirmedAccountId === detail.shippoAccountId),
+      (matchesIntent || (active && !intended)) && (!detail.confirmedAccountId || detail.confirmedAccountId === detail.shippoAccountId),
     canReject: review && !!detail.confirmationId,
-    canCheck: true
+    canCheck: stage !== 'preparing_storage' && !newAttempt && !rejected
   };
 }
 
 export function shippoReturnWords(outcome) {
+  if (outcome === 'account_rejected') return 'You declined this billing account. Choose the Shippo email for a new authorization.';
+  if (outcome === 'preparing_storage') return 'PragOptics is preparing secure storage for this connection.';
+  if (outcome === 'account_mismatch') return 'Shippo returned a different account. Nothing was connected. Choose the account you want and sign in again at Shippo.';
+  if (outcome === 'identity_unavailable') return 'Shippo could not verify the account email. Nothing was connected. Choose the intended account to retry.';
+  if (outcome === 'intent_required') return 'Choose your Shippo account email to start a new authorization.';
   if (outcome === 'awaiting_confirmation' || outcome === 'confirmation') return 'Review the Shippo account below and choose whether to use it for new labels.';
   if (outcome === 'failed') return 'Shippo authorization did not finish. The connection below retains the diagnostic.';
   if (outcome === 'processing') return 'Shippo authorization is still being processed. Check the connection below; do not start another signup.';
